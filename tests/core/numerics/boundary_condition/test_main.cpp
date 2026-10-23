@@ -18,10 +18,11 @@ public:
         , leavingParticles_(Box<int, 2>{Point<int, 2>{0, 0}, Point<int, 2>{20, 20}}, 10)
     {
         bc.setBoundaryBoxes(boundaryBoxes);
-        for (auto& part : leavingParticles_)
+
+        for (std::size_t i = 0; i < leavingParticles_.size(); ++i)
         {
-            part.iCell[0] = 5;
-            part.iCell[1] = -1;
+            leavingParticles_.iCell(i)[0] = 5;  // these particles are out...
+            leavingParticles_.iCell(i)[1] = -1; // and not through the boundarybox
         }
     }
 
@@ -31,7 +32,7 @@ protected:
     BoundaryCondition<2, interpOrder> bc;
     Box<int, 2> bbox{Point<int, 2>{0, 10}, Point<int, 2>{20, 11}};
     std::vector<Box<int, 2>> boundaryBoxes;
-    ParticleArray<2> leavingParticles_;
+    ParticleArray<ParticleArrayOptions{2}> leavingParticles_;
 };
 
 

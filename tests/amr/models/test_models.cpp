@@ -16,6 +16,9 @@
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
@@ -32,12 +35,13 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
+using core_types       = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interpOrder}>::Hybrid;
 using Field_t          = Field<1, HybridQuantity::Scalar>;
 using Grid1D           = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
 using VecField1D       = VecField<Field_t, HybridQuantity>;
 using SymTensorField1D = SymTensorField<Field_t, HybridQuantity>;
-using ParticleArray1D  = ParticleArray<dim>;
-using GridYee1D = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interpOrder}>::Hybrid::GridLayout_t;
+using ParticleArray1D  = core_types::ParticleArray_t;
+using GridYee1D        = core_types::GridLayout_t;
 
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray1D, GridYee1D>;
 

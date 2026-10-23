@@ -1,12 +1,12 @@
 
 #include "phare_mpi.hpp"
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "core/data/grid/grid.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
 #include "amr/data/field/field_variable.hpp"
+
+#include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>

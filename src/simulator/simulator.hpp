@@ -57,12 +57,6 @@ public:
     Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
 
-    ~Simulator()
-    {
-        if (coutbuf != nullptr)
-            std::cout.rdbuf(coutbuf);
-    }
-
 
     NO_DISCARD double startTime() override { return startTime_; }
     NO_DISCARD double endTime() override { return finalTime_; }
@@ -80,7 +74,7 @@ public:
     NO_DISCARD auto& getMHDModel() { return mhd_.model_; }
     NO_DISCARD auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
 
-    NO_DISCARD std::string to_str() override;
+    NO_DISCARD std::string to_str() const override;
 
     bool dump_diagnostics(double timestamp, double timestep) override
     {
@@ -95,6 +89,9 @@ public:
         return false;
     }
 
+    std::string summary() const;
+
+
 
 
 protected:
@@ -104,38 +101,9 @@ protected:
 private:
     auto find_model(std::string name);
 
-    std::unique_ptr<std::ofstream> static log_file()
-    {
-        // ".log" directory is not created here, but in simulator.py
-        if (auto log = core::get_env("PHARE_LOG"))
-        {
-            if (log == "RANK_FILES")
-                return std::make_unique<std::ofstream>(".log/" + std::to_string(mpi::rank())
-                                                       + ".out");
+    std::unique_ptr<std::ofstream> static log_file();
 
-
-            if (log == "DATETIME_FILES")
-            {
-                auto date_time = mpi::date_time();
-                auto rank      = std::to_string(mpi::rank());
-                auto size      = std::to_string(mpi::size());
-                return std::make_unique<std::ofstream>(".log/" + date_time + "_" + rank + "_of_"
-                                                       + size + ".out");
-            }
-
-            if (log == "NULL")
-                return std::make_unique<std::ofstream>("/dev/null");
-
-            if (log != "CLI")
-                throw std::runtime_error(
-                    "PHARE_LOG invalid type, valid keys are RANK_FILES/DATETIME_FILES/CLI/NULL");
-        }
-
-        return nullptr;
-    }
-
-    std::unique_ptr<std::ofstream> log_out{log_file()};
-    std::streambuf* coutbuf = nullptr;
+    CoutRedirect coutRedirect_{log_file()};
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
 
@@ -156,8 +124,7 @@ private:
     double currentTime_              = 0;
     std::size_t fineDumpLvlMax       = 0;
     bool isInitialized               = false;
-
-    bool allowEmergencyDumps = false;
+    bool allowEmergencyDumps         = false;
 
     // empty when opts has the corresponding model disabled, see phare_solver.hpp
     solver::HybridSimState<opts> hyb_;
@@ -186,22 +153,39 @@ private:
     void handle_dictionary_exception(core::DictionaryException const& ex);
 };
 
-
-namespace
+template<auto opts>
+std::unique_ptr<std::ofstream> Simulator<opts>::log_file()
 {
-    inline auto logging(std::unique_ptr<std::ofstream>& log_out)
+    using namespace PHARE::core;
+
+    std::string const base = ".log/";
+    std::string const ext  = ".out";
+
+    // ".log" directory is not created here, but in simulator.py
+    if (auto log = get_env("PHARE_LOG"))
     {
-        std::streambuf* buf = nullptr;
-        if (log_out)
+        if (log == "RANK_FILES")
+            return std::make_unique<std::ofstream>(base + std::to_string(mpi::rank()) + ext);
+
+        if (log == "DATETIME_FILES")
         {
-            buf = std::cout.rdbuf();
-            std::cout.rdbuf(log_out->rdbuf());
+            auto date_time = mpi::date_time();
+            auto rank      = std::to_string(mpi::rank());
+            auto size      = std::to_string(mpi::size());
+            return std::make_unique<std::ofstream>(base + date_time + "_" + rank + "_of_" + size
+                                                   + ext);
         }
-        return buf;
+
+        if (log == "NULL")
+            return std::make_unique<std::ofstream>("/dev/null");
+
+        if (log != "CLI")
+            throw std::runtime_error(
+                "PHARE_LOG invalid type, valid keys are RANK_FILES/DATETIME_FILES/CLI/NULL");
     }
-} // namespace
 
-
+    return nullptr;
+}
 
 //-----------------------------------------------------------------------------
 //                           Definitions
@@ -386,8 +370,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 template<auto opts>
 Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
                            std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
-    : coutbuf{logging(log_out)}
-    , hierarchy_{hierarchy}
+    : hierarchy_{hierarchy}
     , modelNames_{dict["simulation"]["models"].template to<std::vector<std::string>>()}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
     , messengerFactory_{descriptors_, PHARE::amr::RefinementConfig::FROM(dict)}
@@ -409,7 +392,6 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     currentTime_ = restart_time(dict);
     // finalTime_ is computed in Python as start_time + time_step_nbr * time_step
     // (start_time == restart_time), so it already accounts for the restart offset.
-
 
     // we would need a different restart manager for mhd and hybrid if both models are used
 
@@ -470,7 +452,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
 
 
 template<auto opts>
-std::string Simulator<opts>::to_str()
+std::string Simulator<opts>::to_str() const
 {
     std::stringstream ss;
     ss << "PHARE SIMULATOR\n";
@@ -493,7 +475,19 @@ std::string Simulator<opts>::to_str()
 }
 
 
+template<auto opts>
+std::string Simulator<opts>::summary() const
+{
+    std::stringstream ss;
 
+    if constexpr (has_hybrid_v<opts>)
+    {
+        if (hyb_.model_)
+            ss << hyb_.model_->summarize(*hierarchy_);
+    }
+
+    return ss.str();
+}
 
 template<auto opts>
 void Simulator<opts>::initialize()
@@ -630,28 +624,6 @@ std::unique_ptr<Simulator> makeSimulator(std::shared_ptr<amr::Hierarchy> const& 
     return std::make_unique<Simulator>(initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
 }
 
-
-struct SimulatorMaker
-{
-    SimulatorMaker(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
-        : hierarchy_{hierarchy}
-    {
-    }
-
-    std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy_;
-
-    template<auto opts>
-    std::unique_ptr<ISimulator> operator()(SimOpts const& r_opts)
-    {
-        if (r_opts == opts)
-        {
-            PHARE::initializer::PHAREDict& theDict
-                = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-            return std::make_unique<Simulator<opts>>(theDict, hierarchy_);
-        }
-        return nullptr;
-    }
-};
 
 
 } // namespace PHARE
