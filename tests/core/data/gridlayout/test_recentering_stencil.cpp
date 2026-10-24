@@ -8,6 +8,10 @@
 #include "gtest/gtest.h"
 
 #include <array>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -220,6 +224,75 @@ TEST(RecenteringStencil, ProjectAppliesStencil)
         expected += wp.coef * f(index + wp.indexes);
 
     EXPECT_EQ((project<bxCentering, exCentering>(f, index)), expected);
+}
+
+
+struct FormerTable
+{
+    std::string model, name, src, dst;
+    std::size_t dim, n;
+    std::vector<double> values;
+};
+
+std::vector<FormerTable> readFormerTables()
+{
+    std::vector<FormerTable> tables;
+    std::ifstream file(PHARE_RECENTERING_REFERENCE);
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::istringstream in(line);
+        FormerTable t;
+        in >> t.model >> t.name >> t.dim >> t.src >> t.dst >> t.n;
+        double v;
+        while (in >> v)
+            t.values.push_back(v);
+        tables.push_back(std::move(t));
+    }
+    return tables;
+}
+
+template<std::size_t dim>
+std::string centeringString(std::array<QtyCentering, dim> const& c)
+{
+    std::string s;
+    for (auto v : c)
+        s += (v == primal ? 'p' : 'd');
+    return s;
+}
+
+
+TEST(RecenteringStencil, MatchesFormerTablesInOrder)
+{
+    auto const tables = readFormerTables();
+    ASSERT_EQ(tables.size(), 174u);
+
+    for (auto const& table : tables)
+    {
+        std::size_t matched = 0;
+        forEachPairAllDims([&]<auto src, auto dst>() {
+            constexpr std::size_t dim = src.size();
+            if (dim != table.dim || centeringString(src) != table.src
+                || centeringString(dst) != table.dst)
+                return;
+            ++matched;
+
+            constexpr auto stencil  = recenteringStencil<src, dst>();
+            std::string const label = table.model + " " + table.name + " " + std::to_string(dim);
+            ASSERT_EQ(stencil.size(), table.n) << label;
+            ASSERT_EQ(table.values.size(), table.n * (dim + 1)) << label;
+            for (std::size_t k = 0; k < stencil.size(); ++k)
+            {
+                for (std::size_t d = 0; d < dim; ++d)
+                    EXPECT_EQ(stencil[k].indexes[d],
+                              static_cast<int>(table.values[k * (dim + 1) + d]))
+                        << label << " point " << k;
+                EXPECT_EQ(stencil[k].coef, table.values[k * (dim + 1) + dim])
+                    << label << " point " << k;
+            }
+        });
+        EXPECT_EQ(matched, 1u) << table.model << " " << table.name;
+    }
 }
 
 

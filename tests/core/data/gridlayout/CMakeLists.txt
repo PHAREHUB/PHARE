@@ -58,7 +58,8 @@ target_include_directories(test-recentering-stencil PRIVATE
   ${GTEST_INCLUDE_DIRS}
   )
 
-target_compile_definitions(test-recentering-stencil PRIVATE PHARE_FORCE_DEBUG_DO)
+target_compile_definitions(test-recentering-stencil PRIVATE PHARE_FORCE_DEBUG_DO
+  PHARE_RECENTERING_REFERENCE="${CMAKE_CURRENT_SOURCE_DIR}/recentering_former_tables.txt")
 
 target_link_libraries(test-recentering-stencil PRIVATE
   phare_core
