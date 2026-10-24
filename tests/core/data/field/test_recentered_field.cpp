@@ -8,6 +8,7 @@
 #include "gtest/gtest.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -148,6 +149,76 @@ TYPED_TEST(RecenteredFieldLinear, LinearFieldsToCellCentres)
                                   expected += coeffs[d] * (idx[d] + 0.5);
                               EXPECT_EQ(rf(idx), expected) << static_cast<int>(qty);
                           });
+    }
+}
+
+
+template<typename DimConstant>
+struct RecenteredFieldProject : public ::testing::Test
+{
+};
+
+TYPED_TEST_SUITE(RecenteredFieldProject, Dims);
+
+template<std::size_t dim, auto src, auto dst>
+void expectMatchesProject(YeeLayout<dim> const& layout)
+{
+    using Layout = YeeLayout<dim>;
+    Grid_t<dim> grid{"q", layout, src, 0.};
+    fill<dim>(grid, [](auto const& idx) {
+        double value = std::sin(0.3 * idx[0]);
+        if constexpr (dim > 1)
+            value += 0.01 * idx[1] * idx[1];
+        if constexpr (dim > 2)
+            value += 0.7 * std::cos(0.2 * idx[2]);
+        return value;
+    });
+
+    RecenteredField const rf{*grid, Layout::centering(dst), layout};
+    auto shape = grid.shape();
+    std::array<std::uint32_t, dim> lower{};
+    std::array<std::uint32_t, dim> upper{};
+    for (std::size_t d = 0; d < dim; ++d)
+    {
+        lower[d] = 1;
+        upper[d] = shape[d] - 1;
+    }
+    forEachIndex<dim>(lower, upper, [&](auto const& idx) {
+        PHARE::core::Point<std::size_t, dim> mesh;
+        for (std::size_t d = 0; d < dim; ++d)
+            mesh[d] = idx[d];
+        EXPECT_NEAR(rf(idx), (Layout::template project<src, dst>(*grid, mesh)), 1e-12)
+            << static_cast<int>(src) << " " << static_cast<int>(dst);
+    });
+}
+
+template<std::size_t dim, auto src, auto... dsts>
+void expectMatchesProjectFrom(YeeLayout<dim> const& layout)
+{
+    (expectMatchesProject<dim, src, dsts>(layout), ...);
+}
+
+TYPED_TEST(RecenteredFieldProject, MatchesProjectOnHybridPairs)
+{
+    auto constexpr dim = TypeParam::value;
+    if constexpr (dim > 1)
+    {
+        auto const layout = TestGridLayout<YeeLayout<dim>>::make(nCells);
+        using Scalar      = HybridQuantity::Scalar;
+        constexpr auto Bx = Scalar::Bx;
+        constexpr auto By = Scalar::By;
+        constexpr auto Bz = Scalar::Bz;
+        constexpr auto Ex = Scalar::Ex;
+        constexpr auto Ey = Scalar::Ey;
+        constexpr auto Ez = Scalar::Ez;
+        constexpr auto rh = Scalar::rho;
+        expectMatchesProjectFrom<dim, Bx, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, By, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Bz, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Ex, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Ey, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Ez, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, rh, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
     }
 }
 
