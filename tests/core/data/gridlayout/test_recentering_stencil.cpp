@@ -229,7 +229,7 @@ TEST(RecenteringStencil, ProjectAppliesStencil)
 
 constexpr PHARE::SimOpts mhdOpts2D{
     .dimension           = 2,
-    .interp_order        = 0,
+    .interp_order        = 1,
     .reconstruction_type = PHARE::MHDOpts::ReconstructionType::Constant,
     .slope_limiter_type  = PHARE::MHDOpts::SlopeLimiterType::None,
     .riemann_solver_type = PHARE::MHDOpts::RiemannSolverType::Rusanov};
