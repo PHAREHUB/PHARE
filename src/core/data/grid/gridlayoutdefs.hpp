@@ -220,7 +220,8 @@ namespace core
 
 
     template<auto src, auto dst, std::size_t order = 2, typename Field>
-    NO_DISCARD auto project(Field const& field, Point<std::size_t, Field::dimension> const& index)
+    NO_DISCARD inline auto project(Field const& field,
+                                   Point<std::size_t, Field::dimension> const& index)
     {
         constexpr auto stencil = recenteringStencil<src, dst, order>();
 
