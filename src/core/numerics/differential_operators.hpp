@@ -35,7 +35,7 @@ auto destination_centering(GridLayout const& layout, Dst const& dst)
 }
 
 template<Component c>
-constexpr std::size_t component_index()
+constexpr std::size_t vector_component_index()
 {
     static_assert(c == Component::X or c == Component::Y or c == Component::Z);
     return static_cast<std::size_t>(c);
@@ -124,7 +124,7 @@ public:
 template<Component c, std::size_t dim>
 class Curl
 {
-    static constexpr auto i = detail::component_index<c>();
+    static constexpr auto i = detail::vector_component_index<c>();
     static constexpr auto j = (i + 1) % NBR_COMPO;
     static constexpr auto k = (i + 2) % NBR_COMPO;
 
@@ -191,7 +191,7 @@ auto curl(GridLayout const& layout, VecField const& v, Dst const& dst)
 template<Component c, typename GridLayout, typename Src, typename Dst>
 auto grad(GridLayout const& layout, Src const& src, Dst const& dst)
 {
-    return partial<static_cast<Direction>(detail::component_index<c>())>(layout, src, dst);
+    return partial<static_cast<Direction>(detail::vector_component_index<c>())>(layout, src, dst);
 }
 
 template<typename GridLayout, typename VecField, typename Dst>
