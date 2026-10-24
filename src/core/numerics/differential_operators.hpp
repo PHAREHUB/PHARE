@@ -6,6 +6,7 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/utilities/types.hpp"
 
 #include <array>
 #include <cstddef>
@@ -198,16 +199,13 @@ NO_DISCARD double laplacian(GridLayout const& layout, Src const& f,
     static_assert(Src::dimension == GridLayout::dimension,
                   "field and layout dimensions must match");
 
-    auto const along = [&]<std::size_t d>(std::integral_constant<std::size_t, d>) {
-        auto const inv = layout.inverseMeshSize(static_cast<Direction>(d));
+    return sum(for_N_make_array<GridLayout::dimension>([&](auto ic) {
+        constexpr auto d = ic();
+        auto const inv   = layout.inverseMeshSize(static_cast<Direction>(d));
         return inv * inv
                * (detail::shifted<d>(f, idx, 1) - 2.0 * detail::shifted<d>(f, idx, 0)
                   + detail::shifted<d>(f, idx, -1));
-    };
-
-    return [&]<std::size_t... d>(std::index_sequence<d...>) {
-        return (... + along(std::integral_constant<std::size_t, d>{}));
-    }(std::make_index_sequence<GridLayout::dimension>{});
+    }));
 }
 
 } // namespace PHARE::core
