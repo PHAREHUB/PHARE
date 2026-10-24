@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <functional>
 #include <type_traits>
 
@@ -794,6 +795,17 @@ namespace core
                 result += wp.coef * field(index + wp.indexes);
 
             return result;
+        }
+
+
+        template<auto src, auto dst, typename Field>
+        NO_DISCARD static Field::type project(Field const& field, MeshIndex<dimension> index)
+        {
+            PHARE_DEBUG_DO(
+                if (centering(field) != centering(src)) throw std::runtime_error(
+                    "GridLayout::project: field centering does not match the source quantity");)
+
+            return core::project<centering(src), centering(dst)>(field, index);
         }
 
 

@@ -227,6 +227,57 @@ TEST(RecenteringStencil, ProjectAppliesStencil)
 }
 
 
+constexpr PHARE::SimOpts mhdOpts2D{
+    .dimension           = 2,
+    .interp_order        = 0,
+    .reconstruction_type = PHARE::MHDOpts::ReconstructionType::Constant,
+    .slope_limiter_type  = PHARE::MHDOpts::SlopeLimiterType::None,
+    .riemann_solver_type = PHARE::MHDOpts::RiemannSolverType::Rusanov};
+using MHDLayout2D = PHARE_Types<mhdOpts2D>::MHD::GridLayout_t;
+using MHDGrid2D   = Grid<NdArrayVector<2>, MHDQuantity::Scalar>;
+
+TEST(GridLayoutProject, QuantityPairMatchesFreeProject)
+{
+    using Scalar      = HybridQuantity::Scalar;
+    auto const layout = TestGridLayout<YeeLayout2D>::make(10);
+    Grid2D by{"By", layout, Scalar::By, 0.};
+    for (std::uint32_t i = 0; i < by.shape()[0]; ++i)
+        for (std::uint32_t j = 0; j < by.shape()[1]; ++j)
+            by(i, j) = 1.0 * i * i + 3.0 * j;
+
+    EXPECT_EQ((YeeLayout2D::project<Scalar::By, Scalar::Ex>(by, {5, 5})),
+              (project<YeeLayout2D::centering(Scalar::By), YeeLayout2D::centering(Scalar::Ex)>(
+                  by, Point<std::size_t, 2>{5, 5})));
+
+    auto const mhdLayout = TestGridLayout<MHDLayout2D>::make(10);
+    MHDGrid2D rho{"rho", mhdLayout, MHDQuantity::Scalar::rho, 0.};
+    for (std::uint32_t i = 0; i < rho.shape()[0]; ++i)
+        for (std::uint32_t j = 0; j < rho.shape()[1]; ++j)
+            rho(i, j) = 1.0 * i * i + 3.0 * j;
+
+    EXPECT_EQ(
+        (MHDLayout2D::project<MHDQuantity::Scalar::rho, MHDQuantity::Scalar::Ex>(rho, {5, 5})),
+        (project<MHDLayout2D::centering(MHDQuantity::Scalar::rho),
+                 MHDLayout2D::centering(MHDQuantity::Scalar::Ex)>(rho,
+                                                                  Point<std::size_t, 2>{5, 5})));
+}
+
+
+TEST(GridLayoutProject, ThrowsOnWrongCentering)
+{
+    using Scalar      = HybridQuantity::Scalar;
+    auto const layout = TestGridLayout<YeeLayout2D>::make(10);
+    Grid2D bx{"Bx", layout, Scalar::Bx, 0.};
+    Grid2D by{"By", layout, Scalar::By, 0.};
+    Grid2D vx{"Vx", layout, Scalar::Vx, 0.};
+
+    EXPECT_THROW(static_cast<void>(YeeLayout2D::project<Scalar::Bx, Scalar::Ex>(by, {5, 5})),
+                 std::runtime_error);
+    EXPECT_NO_THROW(static_cast<void>(YeeLayout2D::project<Scalar::Bx, Scalar::Ex>(bx, {5, 5})));
+    EXPECT_NO_THROW(static_cast<void>(YeeLayout2D::project<Scalar::rho, Scalar::Ex>(vx, {5, 5})));
+}
+
+
 struct FormerTable
 {
     std::string model, name, src, dst;
