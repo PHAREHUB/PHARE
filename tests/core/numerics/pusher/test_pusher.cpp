@@ -127,7 +127,7 @@ template<std::size_t dim>
 class APusher : public ::testing::Test
 {
 public:
-    using Pusher_ = BorisPusher<dim, IndexRange<ParticleArray<dim>>, Electromag, Interpolator,
+    using Pusher_ = BorisPusher<dim, IndexRange<ParticleArray<dim>>, Electromag, ::Interpolator,
                                 BoundaryCondition<dim, 1>, DummyLayout<dim>>;
 
     APusher()
@@ -166,7 +166,7 @@ protected:
     double tstart, tend;
     std::size_t nt;
     Electromag em;
-    Interpolator interpolator;
+    ::Interpolator interpolator;
     DummySelector selector;
     // BoundaryCondition bc;
 
@@ -286,7 +286,7 @@ class APusherWithLeavingParticles : public ::testing::Test
 public:
     APusherWithLeavingParticles()
         : pusher{std::make_unique<
-              BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+              BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, ::Interpolator,
                           BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , charge{1}
         , mass{1}
@@ -314,7 +314,7 @@ public:
 
 
 protected:
-    std::unique_ptr<BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+    std::unique_ptr<BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, ::Interpolator,
                                 BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
     double charge;
@@ -324,7 +324,7 @@ protected:
     double tend;
     std::size_t nt;
     Electromag em;
-    Interpolator interpolator;
+    ::Interpolator interpolator;
     double dx = 0.1;
     Box<double, 1> domain;
     Box<int, 1> cells;
@@ -415,7 +415,7 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
 TEST(APusherFactory, canReturnABorisPusher)
 {
     auto pusher
-        = PusherFactory::makePusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+        = PusherFactory::makePusher<1, IndexRange<ParticleArray<1>>, Electromag, ::Interpolator,
                                     BoundaryCondition<1, 1>, DummyLayout<1>>("modified_boris");
 
     EXPECT_NE(nullptr, pusher);
