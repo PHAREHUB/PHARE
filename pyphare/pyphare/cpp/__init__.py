@@ -117,6 +117,15 @@ def mpi_initialized():
     return cpp_etc_lib().mpi_initialized()
 
 
+def mpi_hostname():
+    return getattr(cpp_etc_lib(), "mpi_hostname")()
+
+
+def mpi_is_root_rank_for_host():
+    """collective on first call, every rank must make the first call"""
+    return getattr(cpp_etc_lib(), "mpi_is_root_rank_for_host")()
+
+
 def print_rank0(*args, **kwargs):
     def should_print():
         try:

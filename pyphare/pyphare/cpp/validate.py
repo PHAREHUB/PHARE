@@ -105,15 +105,22 @@ def log_runtime_config():
         git_hash=get_git_hash(),
     )
 
-    rank_info_dir = DOT_PHARE_DIR / "rank_info"
+    is_host_root = cpp.mpi_is_root_rank_for_host()  # collective, all ranks
+
+    node_info_dir = DOT_PHARE_DIR / "node_info"
     if cpp.mpi_rank() == 0:
-        rank_info_dir.mkdir(exist_ok=True, parents=True)
+        node_info_dir.mkdir(exist_ok=True, parents=True)
+        with open(node_info_dir / "runtime_config.json", "w") as f:
+            json.dump(dataclasses.asdict(settings), f)
     cpp.mpi_barrier()
 
-    rank_dir = rank_info_dir / f"{cpp.mpi_rank()}"
-    rank_dir.mkdir(exist_ok=True)
+    if not is_host_root:
+        return
 
-    with open(rank_dir / "runtime_config.json", "w") as f:
-        json.dump(dataclasses.asdict(settings), f)
+    node_dir = node_info_dir / f"{cpp.mpi_rank()}"
+    node_dir.mkdir(exist_ok=True)
 
-    try_system_binaries(rank_dir)
+    with open(node_dir / "hostname.txt", "w") as f:
+        f.write(cpp.mpi_hostname())
+
+    try_system_binaries(node_dir)
