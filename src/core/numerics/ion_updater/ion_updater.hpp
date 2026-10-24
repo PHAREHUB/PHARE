@@ -52,12 +52,12 @@ private:
 
     std::unique_ptr<Pusher> pusher_;
     // the domain_only update pushes particle by particle, which needs the concrete pusher
-    Boris const* boris_ = &boris(*pusher_);
+    Boris* boris_ = &boris(*pusher_);
     Interpolator interpolator_;
 
-    static Boris const& boris(Pusher const& pusher)
+    static Boris& boris(Pusher& pusher)
     {
-        if (auto const* boris = dynamic_cast<Boris const*>(&pusher))
+        if (auto* boris = dynamic_cast<Boris*>(&pusher))
             return *boris;
         throw std::runtime_error("IonUpdater: the pusher must be a BorisPusher");
     }
@@ -274,9 +274,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto& domainParticles = pop.domainParticles();
         auto domainPartRange  = makeIndexRange(domainParticles);
 
-        auto inDomain
-            = pusher_->move(domainPartRange, domainPartRange, em, pop.charge(), pop.mass(),
-                            interpolator_, layout, boxing.noop, boxing.inOwnedDomain);
+        auto inDomain = boris_->moveInPlace(domainPartRange, em, pop.charge(), pop.mass(),
+                                            interpolator_, layout, boxing.inOwnedDomain);
 
         auto now_ghosts = makeRange(domainParticles, inDomain.iend(), domainParticles.size());
         auto const not_level_ghosts = boxing.inNonLevelGhostBox(now_ghosts);

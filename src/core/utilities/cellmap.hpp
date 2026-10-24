@@ -157,6 +157,14 @@ public:
     void update(Array& items, std::size_t itemIndex, CellIndex const& oldCell,
                 CellExtractor extract = default_extractor);
 
+    // same as update, with the new cell given instead of read from the item
+    template<typename CellIndex>
+    void update(std::size_t itemIndex, CellIndex const& oldCell, CellIndex const& newCell)
+    {
+        cellIndexes_(local_(oldCell)).remove(itemIndex);
+        addToCell(newCell, itemIndex);
+    }
+
 
     // re-orders the array so that elements satisfying the predicate are found first
     // and element not satisfying after. Returns the pivot index, which is the first

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 namespace PHARE::core
 {
@@ -117,6 +118,64 @@ public:
         }
 
         return secondSelector(rangeOut);
+    }
+
+
+
+    /** move() with a no-op first selector, pushing range in place in a single pass.
+     * The cell map receives the same updates, in the same order, as move(): all half-step
+     * crossings in index order, then all full-step crossings in index order.
+     * Kept out of line: inlined into the caller, the compiler forms different FMAs than in
+     * move(), and the result is no longer bitwise identical.
+     */
+    [[gnu::noinline]] ParticleRange moveInPlace(ParticleRange& range, Electromag const& emFields,
+                                                double charge, double mass,
+                                                Interpolator& interpolator,
+                                                GridLayout const& layout,
+                                                ParticleSelector const& selector)
+    {
+        PHARE_LOG_SCOPE(3, "Boris::moveInPlace");
+
+        double const coef1      = accelerationCoef(charge, mass);
+        auto const halfDtOverDl = halfDtOverDl_;
+        auto& particles         = range.array();
+        auto const end          = range.iend();
+
+        preCrossings_.clear();
+        postCrossings_.clear();
+
+        for (auto idx = range.ibegin(); idx < end; ++idx)
+        {
+            auto& currPart = particles[idx];
+
+            std::array<int, dim> midCell;
+            if (!advancePosition_(halfDtOverDl, currPart, currPart, midCell)) [[unlikely]]
+                throwMovedTwoCells_("PrePush", halfDtOverDl, currPart);
+            if (midCell != currPart.iCell)
+            {
+                preCrossings_.push_back({idx, currPart.iCell, midCell});
+                currPart.iCell = midCell;
+            }
+
+            auto const& local_em = interpolator(currPart, emFields, layout);
+            accelerate_(currPart, local_em, coef1);
+
+            std::array<int, dim> newCell;
+            if (!advancePosition_(halfDtOverDl, currPart, currPart, newCell)) [[unlikely]]
+                throwPostPushAfterPrePush_(range, idx, local_em, layout);
+            if (newCell != midCell)
+            {
+                postCrossings_.push_back({idx, midCell, newCell});
+                currPart.iCell = newCell;
+            }
+        }
+
+        for (auto const& [idx, oldCell, newCell] : preCrossings_)
+            particles.map_icell_change(oldCell, newCell, idx);
+        for (auto const& [idx, oldCell, newCell] : postCrossings_)
+            particles.map_icell_change(oldCell, newCell, idx);
+
+        return selector(range);
     }
 
 
@@ -227,6 +286,27 @@ private:
     }
 
 
+    /** moveInPlace error path: move() would report the first half-step failure of any particle
+     * before a full-step failure, so check the remaining half steps first.
+     */
+    template<typename ParticleEB>
+    [[noreturn, gnu::noinline, gnu::cold]] void
+    throwPostPushAfterPrePush_(ParticleRange const& range, std::size_t const failedIdx,
+                               ParticleEB const& particleEB, GridLayout const& layout) const
+    {
+        auto const em         = particleEB;
+        auto const& particles = range.array();
+        for (auto idx = failedIdx + 1; idx < range.iend(); ++idx)
+        {
+            auto part = particles[idx];
+            std::array<int, dim> cell;
+            if (!advancePosition_(halfDtOverDl_, part, part, cell))
+                throwMovedTwoCells_("PrePush", halfDtOverDl_, part);
+        }
+        throwMovedTwoCells_("PostPush", halfDtOverDl_, particles[failedIdx], &em, &layout);
+    }
+
+
     /** advance the particles in rangeIn of half a time step and store them
      * in rangeOut.
      */
@@ -329,6 +409,14 @@ private:
 
     std::array<double, dim> halfDtOverDl_;
     double dt_;
+
+    // moveInPlace cell changes, replayed on the cell map after the push
+    struct CellCrossing
+    {
+        std::size_t idx;
+        std::array<int, dim> oldCell, newCell;
+    };
+    std::vector<CellCrossing> preCrossings_, postCrossings_;
 };
 
 } // namespace PHARE::core

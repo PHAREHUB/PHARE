@@ -189,6 +189,16 @@ public:
             cellMap_.update(particles_, particleIndex, oldCell);
     }
 
+    // cell map side of change_icell for a particle whose iCell was already set: moves its index
+    // from oldCell to newCell
+    template<typename Cell>
+    void map_icell_change(Cell const& oldCell, Cell const& newCell, std::size_t particleIndex)
+    {
+        auto const box_is_valid = box_.size() > 1;
+        if (box_is_valid)
+            cellMap_.update(particleIndex, oldCell, newCell);
+    }
+
 
     template<typename Predicate>
     auto partition(Predicate&& pred)
