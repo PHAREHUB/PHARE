@@ -123,42 +123,41 @@ public:
         std::array<QtyCentering, NBR_COMPO> const VecAllPrimalZ
             = {{data.primal, data.primal, data.primal}};
 
-        std::array<std::array<QtyCentering, NBR_COMPO>,
-                   static_cast<std::size_t>(MHDQuantity::Scalar::count)> const _QtyCentering{
-            Rho,
-            Vx,
-            Vy,
-            Vz,
-            Bx,
-            By,
-            Bz,
-            P,
-            rhoVx,
-            rhoVy,
-            rhoVz,
-            Etot,
-            Ex,
-            Ey,
-            Ez,
-            Jx,
-            Jy,
-            Jz,
-            ScalarFlux_x,
-            ScalarFlux_y,
-            ScalarFlux_z,
-            VecFluxX_x,
-            VecFluxY_x,
-            VecFluxZ_x,
-            VecFluxX_y,
-            VecFluxY_y,
-            VecFluxZ_y,
-            VecFluxX_z,
-            VecFluxY_z,
-            VecFluxZ_z,
-            ScalarAllPrimal,
-            VecAllPrimalX,
-            VecAllPrimalY,
-            VecAllPrimalZ};
+        auto const _QtyCentering = std::array{Rho,
+                                              Vx,
+                                              Vy,
+                                              Vz,
+                                              Bx,
+                                              By,
+                                              Bz,
+                                              P,
+                                              Etot,
+                                              rhoVx,
+                                              rhoVy,
+                                              rhoVz,
+                                              Ex,
+                                              Ey,
+                                              Ez,
+                                              Jx,
+                                              Jy,
+                                              Jz,
+                                              ScalarFlux_x,
+                                              ScalarFlux_y,
+                                              ScalarFlux_z,
+                                              VecFluxX_x,
+                                              VecFluxY_x,
+                                              VecFluxZ_x,
+                                              VecFluxX_y,
+                                              VecFluxY_y,
+                                              VecFluxZ_y,
+                                              VecFluxX_z,
+                                              VecFluxY_z,
+                                              VecFluxZ_z,
+                                              ScalarAllPrimal,
+                                              VecAllPrimalX,
+                                              VecAllPrimalY,
+                                              VecAllPrimalZ};
+        static_assert(_QtyCentering.size() == static_cast<std::size_t>(MHDQuantity::Scalar::count));
 
         return _QtyCentering;
     }
@@ -170,365 +169,47 @@ public:
 
     static std::size_t const dim_{dim};
 
+    //! qtyCentering_ restricted to the first dim directions, indexed by MHDQuantity::Scalar
+    constexpr static auto scalarCentering_ = [] {
+        std::array<std::array<QtyCentering, dim>, qtyCentering_.size()> centerings{};
+        for (std::size_t iQty = 0; iQty < centerings.size(); ++iQty)
+            for (std::size_t iDir = 0; iDir < dim; ++iDir)
+                centerings[iQty][iDir] = qtyCentering_[iQty][iDir];
+        return centerings;
+    }();
+
+    //! centerings of each vector's components, indexed by MHDQuantity::Vector
+    constexpr static auto vectorCentering_ = [] {
+        std::array<std::array<std::array<QtyCentering, dim>, 3>,
+                   MHDQuantity::vector_components.size()>
+            centerings{};
+        for (std::size_t iVec = 0; iVec < centerings.size(); ++iVec)
+            for (std::size_t iComp = 0; iComp < 3; ++iComp)
+                centerings[iVec][iComp] = scalarCentering_[static_cast<std::size_t>(
+                    MHDQuantity::vector_components[iVec][iComp])];
+        return centerings;
+    }();
+
     // ------------------------------------------------------------------------
     //                          PUBLIC INTERFACE
     // ------------------------------------------------------------------------
 public:
     NO_DISCARD constexpr static std::array<QtyCentering, dim>
-    centering(MHDQuantity::Scalar MHDQuantity)
+    centering(MHDQuantity::Scalar const qty)
     {
-        constexpr GridData gridData_{};
-        if constexpr (dim == 1)
-        {
-            switch (MHDQuantity)
-            {
-                case MHDQuantity::Scalar::rho:
-                    return {{qtyCentering_[gridData_.irho][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Vx:
-                    return {{qtyCentering_[gridData_.iVx][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Vy:
-                    return {{qtyCentering_[gridData_.iVy][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Vz:
-                    return {{qtyCentering_[gridData_.iVz][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Bx:
-                    return {{qtyCentering_[gridData_.iBx][gridData_.idirX]}};
-                case MHDQuantity::Scalar::By:
-                    return {{qtyCentering_[gridData_.iBy][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Bz:
-                    return {{qtyCentering_[gridData_.iBz][gridData_.idirX]}};
-                case MHDQuantity::Scalar::P:
-                    return {{qtyCentering_[gridData_.iP][gridData_.idirX]}};
-                case MHDQuantity::Scalar::rhoVx:
-                    return {{qtyCentering_[gridData_.irhoVx][gridData_.idirX]}};
-                case MHDQuantity::Scalar::rhoVy:
-                    return {{qtyCentering_[gridData_.irhoVy][gridData_.idirX]}};
-                case MHDQuantity::Scalar::rhoVz:
-                    return {{qtyCentering_[gridData_.irhoVz][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Etot:
-                    return {{qtyCentering_[gridData_.iEtot][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Ex:
-                    return {{qtyCentering_[gridData_.iEx][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Ey:
-                    return {{qtyCentering_[gridData_.iEy][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Ez:
-                    return {{qtyCentering_[gridData_.iEz][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Jx:
-                    return {{qtyCentering_[gridData_.iJx][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Jy:
-                    return {{qtyCentering_[gridData_.iJy][gridData_.idirX]}};
-                case MHDQuantity::Scalar::Jz:
-                    return {{qtyCentering_[gridData_.iJz][gridData_.idirX]}};
-                case MHDQuantity::Scalar::ScalarFlux_x:
-                    return {{qtyCentering_[gridData_.iScalarFlux_x][gridData_.idirX]}};
-                case MHDQuantity::Scalar::VecFluxX_x:
-                    return {{qtyCentering_[gridData_.iVecFluxX_x][gridData_.idirX]}};
-                case MHDQuantity::Scalar::VecFluxY_x:
-                    return {{qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirX]}};
-                case MHDQuantity::Scalar::VecFluxZ_x:
-                    return {{qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirX]}};
-                case MHDQuantity::Scalar::ScalarAllPrimal:
-                    return {{qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirX]}};
-                case MHDQuantity::Scalar::VecAllPrimalX:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalX][gridData_.idirX]}};
-                case MHDQuantity::Scalar::VecAllPrimalY:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirX]}};
-                case MHDQuantity::Scalar::VecAllPrimalZ:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirX]}};
-                default: throw std::runtime_error("Wrong MHDQuantity");
-            }
-        }
-
-        else if constexpr (dim == 2)
-        {
-            switch (MHDQuantity)
-            {
-                case MHDQuantity::Scalar::rho:
-                    return {{qtyCentering_[gridData_.irho][gridData_.idirX],
-                             qtyCentering_[gridData_.irho][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Vx:
-                    return {{qtyCentering_[gridData_.iVx][gridData_.idirX],
-                             qtyCentering_[gridData_.iVx][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Vy:
-                    return {{qtyCentering_[gridData_.iVy][gridData_.idirX],
-                             qtyCentering_[gridData_.iVy][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Vz:
-                    return {{qtyCentering_[gridData_.iVz][gridData_.idirX],
-                             qtyCentering_[gridData_.iVz][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Bx:
-                    return {{qtyCentering_[gridData_.iBx][gridData_.idirX],
-                             qtyCentering_[gridData_.iBx][gridData_.idirY]}};
-                case MHDQuantity::Scalar::By:
-                    return {{qtyCentering_[gridData_.iBy][gridData_.idirX],
-                             qtyCentering_[gridData_.iBy][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Bz:
-                    return {{qtyCentering_[gridData_.iBz][gridData_.idirX],
-                             qtyCentering_[gridData_.iBz][gridData_.idirY]}};
-                case MHDQuantity::Scalar::P:
-                    return {{qtyCentering_[gridData_.iP][gridData_.idirX],
-                             qtyCentering_[gridData_.iP][gridData_.idirY]}};
-                case MHDQuantity::Scalar::rhoVx:
-                    return {{qtyCentering_[gridData_.irhoVx][gridData_.idirX],
-                             qtyCentering_[gridData_.irhoVx][gridData_.idirY]}};
-                case MHDQuantity::Scalar::rhoVy:
-                    return {{qtyCentering_[gridData_.irhoVy][gridData_.idirX],
-                             qtyCentering_[gridData_.irhoVy][gridData_.idirY]}};
-                case MHDQuantity::Scalar::rhoVz:
-                    return {{qtyCentering_[gridData_.irhoVz][gridData_.idirX],
-                             qtyCentering_[gridData_.irhoVz][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Etot:
-                    return {{qtyCentering_[gridData_.iEtot][gridData_.idirX],
-                             qtyCentering_[gridData_.iEtot][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Ex:
-                    return {{qtyCentering_[gridData_.iEx][gridData_.idirX],
-                             qtyCentering_[gridData_.iEx][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Ey:
-                    return {{qtyCentering_[gridData_.iEy][gridData_.idirX],
-                             qtyCentering_[gridData_.iEy][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Ez:
-                    return {{qtyCentering_[gridData_.iEz][gridData_.idirX],
-                             qtyCentering_[gridData_.iEz][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Jx:
-                    return {{qtyCentering_[gridData_.iJx][gridData_.idirX],
-                             qtyCentering_[gridData_.iJx][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Jy:
-                    return {{qtyCentering_[gridData_.iJy][gridData_.idirX],
-                             qtyCentering_[gridData_.iJy][gridData_.idirY]}};
-                case MHDQuantity::Scalar::Jz:
-                    return {{qtyCentering_[gridData_.iJz][gridData_.idirX],
-                             qtyCentering_[gridData_.iJz][gridData_.idirY]}};
-                case MHDQuantity::Scalar::ScalarFlux_x:
-                    return {{qtyCentering_[gridData_.iScalarFlux_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarFlux_x][gridData_.idirY]}};
-                case MHDQuantity::Scalar::ScalarFlux_y:
-                    return {{qtyCentering_[gridData_.iScalarFlux_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarFlux_y][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecFluxX_x:
-                    return {{qtyCentering_[gridData_.iVecFluxX_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxX_x][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecFluxY_x:
-                    return {{qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecFluxZ_x:
-                    return {{qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecFluxX_y:
-                    return {{qtyCentering_[gridData_.iVecFluxX_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxX_y][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecFluxY_y:
-                    return {{qtyCentering_[gridData_.iVecFluxY_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxY_y][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecFluxZ_y:
-                    return {{qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirY]}};
-                case MHDQuantity::Scalar::ScalarAllPrimal:
-                    return {{qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecAllPrimalX:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalX][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecAllPrimalX][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecAllPrimalY:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirY]}};
-                case MHDQuantity::Scalar::VecAllPrimalZ:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirY]}};
-                default: throw std::runtime_error("Wrong MHDQuantity");
-            }
-        }
-
-        else if constexpr (dim == 3)
-        {
-            switch (MHDQuantity)
-            {
-                case MHDQuantity::Scalar::rho:
-                    return {{qtyCentering_[gridData_.irho][gridData_.idirX],
-                             qtyCentering_[gridData_.irho][gridData_.idirY],
-                             qtyCentering_[gridData_.irho][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Vx:
-                    return {{qtyCentering_[gridData_.iVx][gridData_.idirX],
-                             qtyCentering_[gridData_.iVx][gridData_.idirY],
-                             qtyCentering_[gridData_.iVx][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Vy:
-                    return {{qtyCentering_[gridData_.iVy][gridData_.idirX],
-                             qtyCentering_[gridData_.iVy][gridData_.idirY],
-                             qtyCentering_[gridData_.iVy][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Vz:
-                    return {{qtyCentering_[gridData_.iVz][gridData_.idirX],
-                             qtyCentering_[gridData_.iVz][gridData_.idirY],
-                             qtyCentering_[gridData_.iVz][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Bx:
-                    return {{qtyCentering_[gridData_.iBx][gridData_.idirX],
-                             qtyCentering_[gridData_.iBx][gridData_.idirY],
-                             qtyCentering_[gridData_.iBx][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::By:
-                    return {{qtyCentering_[gridData_.iBy][gridData_.idirX],
-                             qtyCentering_[gridData_.iBy][gridData_.idirY],
-                             qtyCentering_[gridData_.iBy][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Bz:
-                    return {{qtyCentering_[gridData_.iBz][gridData_.idirX],
-                             qtyCentering_[gridData_.iBz][gridData_.idirY],
-                             qtyCentering_[gridData_.iBz][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::P:
-                    return {{qtyCentering_[gridData_.iP][gridData_.idirX],
-                             qtyCentering_[gridData_.iP][gridData_.idirY],
-                             qtyCentering_[gridData_.iP][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::rhoVx:
-                    return {{qtyCentering_[gridData_.irhoVx][gridData_.idirX],
-                             qtyCentering_[gridData_.irhoVx][gridData_.idirY],
-                             qtyCentering_[gridData_.irhoVx][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::rhoVy:
-                    return {{qtyCentering_[gridData_.irhoVy][gridData_.idirX],
-                             qtyCentering_[gridData_.irhoVy][gridData_.idirY],
-                             qtyCentering_[gridData_.irhoVy][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::rhoVz:
-                    return {{qtyCentering_[gridData_.irhoVz][gridData_.idirX],
-                             qtyCentering_[gridData_.irhoVz][gridData_.idirY],
-                             qtyCentering_[gridData_.irhoVz][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Etot:
-                    return {{qtyCentering_[gridData_.iEtot][gridData_.idirX],
-                             qtyCentering_[gridData_.iEtot][gridData_.idirY],
-                             qtyCentering_[gridData_.iEtot][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Ex:
-                    return {{qtyCentering_[gridData_.iEx][gridData_.idirX],
-                             qtyCentering_[gridData_.iEx][gridData_.idirY],
-                             qtyCentering_[gridData_.iEx][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Ey:
-                    return {{qtyCentering_[gridData_.iEy][gridData_.idirX],
-                             qtyCentering_[gridData_.iEy][gridData_.idirY],
-                             qtyCentering_[gridData_.iEy][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Ez:
-                    return {{qtyCentering_[gridData_.iEz][gridData_.idirX],
-                             qtyCentering_[gridData_.iEz][gridData_.idirY],
-                             qtyCentering_[gridData_.iEz][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Jx:
-                    return {{qtyCentering_[gridData_.iJx][gridData_.idirX],
-                             qtyCentering_[gridData_.iJx][gridData_.idirY],
-                             qtyCentering_[gridData_.iJx][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Jy:
-                    return {{qtyCentering_[gridData_.iJy][gridData_.idirX],
-                             qtyCentering_[gridData_.iJy][gridData_.idirY],
-                             qtyCentering_[gridData_.iJy][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::Jz:
-                    return {{qtyCentering_[gridData_.iJz][gridData_.idirX],
-                             qtyCentering_[gridData_.iJz][gridData_.idirY],
-                             qtyCentering_[gridData_.iJz][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::ScalarFlux_x:
-                    return {{qtyCentering_[gridData_.iScalarFlux_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarFlux_x][gridData_.idirY],
-                             qtyCentering_[gridData_.iScalarFlux_x][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::ScalarFlux_y:
-                    return {{qtyCentering_[gridData_.iScalarFlux_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarFlux_y][gridData_.idirY],
-                             qtyCentering_[gridData_.iScalarFlux_y][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::ScalarFlux_z:
-                    return {{qtyCentering_[gridData_.iScalarFlux_z][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarFlux_z][gridData_.idirY],
-                             qtyCentering_[gridData_.iScalarFlux_z][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxX_x:
-                    return {{qtyCentering_[gridData_.iVecFluxX_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxX_x][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxX_x][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxY_x:
-                    return {{qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxZ_x:
-                    return {{qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxX_y:
-                    return {{qtyCentering_[gridData_.iVecFluxX_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxX_y][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxX_y][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxY_y:
-                    return {{qtyCentering_[gridData_.iVecFluxY_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxY_y][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxY_y][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxZ_y:
-                    return {{qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxX_z:
-                    return {{qtyCentering_[gridData_.iVecFluxX_z][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxX_z][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxX_z][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxY_z:
-                    return {{qtyCentering_[gridData_.iVecFluxY_z][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxY_z][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxY_z][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecFluxZ_z:
-                    return {{qtyCentering_[gridData_.iVecFluxZ_z][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecFluxZ_z][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecFluxZ_z][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::ScalarAllPrimal:
-                    return {{qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirX],
-                             qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirY],
-                             qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecAllPrimalX:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalX][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecAllPrimalX][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecAllPrimalX][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecAllPrimalY:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirZ]}};
-                case MHDQuantity::Scalar::VecAllPrimalZ:
-                    return {{qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirX],
-                             qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirY],
-                             qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirZ]}};
-                default: throw std::runtime_error("Wrong MHDQuantity");
-            }
-        }
+        auto const idx = static_cast<std::size_t>(qty);
+        if (idx >= scalarCentering_.size())
+            throw std::runtime_error("Wrong MHDQuantity");
+        return scalarCentering_[idx];
     }
 
     NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
-    centering(MHDQuantity::Vector MHDQuantity)
+    centering(MHDQuantity::Vector const qty)
     {
-        switch (MHDQuantity)
-        {
-            case MHDQuantity::Vector::V:
-                return {{centering(MHDQuantity::Scalar::Vx), centering(MHDQuantity::Scalar::Vy),
-                         centering(MHDQuantity::Scalar::Vz)}};
-
-            case MHDQuantity::Vector::B:
-                return {{centering(MHDQuantity::Scalar::Bx), centering(MHDQuantity::Scalar::By),
-                         centering(MHDQuantity::Scalar::Bz)}};
-
-            case MHDQuantity::Vector::rhoV:
-                return {{centering(MHDQuantity::Scalar::rhoVx),
-                         centering(MHDQuantity::Scalar::rhoVy),
-                         centering(MHDQuantity::Scalar::rhoVz)}};
-
-            case MHDQuantity::Vector::E:
-                return {{centering(MHDQuantity::Scalar::Ex), centering(MHDQuantity::Scalar::Ey),
-                         centering(MHDQuantity::Scalar::Ez)}};
-
-            case MHDQuantity::Vector::J:
-                return {{centering(MHDQuantity::Scalar::Jx), centering(MHDQuantity::Scalar::Jy),
-                         centering(MHDQuantity::Scalar::Jz)}};
-
-            case MHDQuantity::Vector::VecFlux_x:
-                return {{centering(MHDQuantity::Scalar::VecFluxX_x),
-                         centering(MHDQuantity::Scalar::VecFluxY_x),
-                         centering(MHDQuantity::Scalar::VecFluxZ_x)}};
-
-            case MHDQuantity::Vector::VecFlux_y:
-                return {{centering(MHDQuantity::Scalar::VecFluxX_y),
-                         centering(MHDQuantity::Scalar::VecFluxY_y),
-                         centering(MHDQuantity::Scalar::VecFluxZ_y)}};
-
-            case MHDQuantity::Vector::VecFlux_z:
-                return {{centering(MHDQuantity::Scalar::VecFluxX_z),
-                         centering(MHDQuantity::Scalar::VecFluxY_z),
-                         centering(MHDQuantity::Scalar::VecFluxZ_z)}};
-
-            case MHDQuantity::Vector::VecAllPrimal:
-                return {{centering(MHDQuantity::Scalar::VecAllPrimalX),
-                         centering(MHDQuantity::Scalar::VecAllPrimalY),
-                         centering(MHDQuantity::Scalar::VecAllPrimalZ)}};
-
-            default: throw std::runtime_error("Wrong MHDQuantity");
-        }
+        auto const idx = static_cast<std::size_t>(qty);
+        if (idx >= vectorCentering_.size())
+            throw std::runtime_error("Wrong MHDQuantity");
+        return vectorCentering_[idx];
     }
 
     enum class InterpDir { DualToPrimal = 0, PrimalToDual = 1 };
