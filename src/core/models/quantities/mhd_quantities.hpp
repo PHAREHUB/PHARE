@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 
 #include <array>
+#include <cstdint>
 #include <tuple>
 #include <stdexcept>
 
@@ -13,9 +14,9 @@ namespace PHARE::core
 class MHDQuantity
 {
 public:
-    enum class Scalar {
-        rho, // density
-        Vx,  // velocity components
+    enum class Scalar : std::uint16_t {
+        rho = 0, // density
+        Vx,      // velocity components
         Vy,
         Vz,
         Bx,
@@ -55,8 +56,32 @@ public:
 
         count
     };
-    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal };
-    enum class Tensor { count };
+    enum class Vector : std::uint16_t {
+        V = 0,
+        B,
+        rhoV,
+        E,
+        J,
+        VecFlux_x,
+        VecFlux_y,
+        VecFlux_z,
+        VecAllPrimal,
+        count
+    };
+    enum class Tensor : std::uint16_t { count = 0 };
+
+    static constexpr auto vector_components = std::to_array<std::array<Scalar, 3>>({
+        {Scalar::Vx, Scalar::Vy, Scalar::Vz},                                  // V
+        {Scalar::Bx, Scalar::By, Scalar::Bz},                                  // B
+        {Scalar::rhoVx, Scalar::rhoVy, Scalar::rhoVz},                         // rhoV
+        {Scalar::Ex, Scalar::Ey, Scalar::Ez},                                  // E
+        {Scalar::Jx, Scalar::Jy, Scalar::Jz},                                  // J
+        {Scalar::VecFluxX_x, Scalar::VecFluxY_x, Scalar::VecFluxZ_x},          // VecFlux_x
+        {Scalar::VecFluxX_y, Scalar::VecFluxY_y, Scalar::VecFluxZ_y},          // VecFlux_y
+        {Scalar::VecFluxX_z, Scalar::VecFluxY_z, Scalar::VecFluxZ_z},          // VecFlux_z
+        {Scalar::VecAllPrimalX, Scalar::VecAllPrimalY, Scalar::VecAllPrimalZ}, // VecAllPrimal
+    });
+    static_assert(vector_components.size() == static_cast<std::size_t>(Vector::count));
 
     static constexpr auto all_primal_field = Scalar::ScalarAllPrimal;
 
@@ -79,38 +104,12 @@ public:
         return componentsQuantities(Vector::VecAllPrimal);
     }
 
-    NO_DISCARD static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
+    NO_DISCARD static constexpr std::array<Scalar, 3> componentsQuantities(Vector const qty)
     {
-        if (qty == Vector::V)
-            return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
-
-        if (qty == Vector::B)
-            return {{Scalar::Bx, Scalar::By, Scalar::Bz}};
-
-        if (qty == Vector::rhoV)
-            return {{Scalar::rhoVx, Scalar::rhoVy, Scalar::rhoVz}};
-
-
-        if (qty == Vector::E)
-            return {{Scalar::Ex, Scalar::Ey, Scalar::Ez}};
-
-        if (qty == Vector::J)
-            return {{Scalar::Jx, Scalar::Jy, Scalar::Jz}};
-
-
-        if (qty == Vector::VecFlux_x)
-            return {{Scalar::VecFluxX_x, Scalar::VecFluxY_x, Scalar::VecFluxZ_x}};
-
-        if (qty == Vector::VecFlux_y)
-            return {{Scalar::VecFluxX_y, Scalar::VecFluxY_y, Scalar::VecFluxZ_y}};
-
-        if (qty == Vector::VecFlux_z)
-            return {{Scalar::VecFluxX_z, Scalar::VecFluxY_z, Scalar::VecFluxZ_z}};
-
-        if (qty == Vector::VecAllPrimal)
-            return {{Scalar::VecAllPrimalX, Scalar::VecAllPrimalY, Scalar::VecAllPrimalZ}};
-
-        throw std::runtime_error("Error - invalid Vector");
+        auto const idx = static_cast<std::size_t>(qty);
+        if (idx >= vector_components.size())
+            throw std::runtime_error("Error - invalid Vector");
+        return vector_components[idx];
     }
 
     NO_DISCARD static constexpr auto B_items()
