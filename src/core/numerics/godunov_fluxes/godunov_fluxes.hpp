@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_NUMERICS_GODUNOV_FLUXES_HPP
 #define PHARE_CORE_NUMERICS_GODUNOV_FLUXES_HPP
 
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"

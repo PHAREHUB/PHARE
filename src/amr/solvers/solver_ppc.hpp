@@ -2,6 +2,7 @@
 #define PHARE_SOLVER_PPC_HPP
 
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "mpi/mpi_utils.hpp"

@@ -76,9 +76,12 @@ namespace core
 
             if constexpr (order == 2)
             {
+                constexpr auto offsets = linearRecenteringOffsets(
+                    interpDir == InterpDir::PrimalToDual ? QtyCentering::primal
+                                                         : QtyCentering::dual);
                 auto w = 0.5;
-                return std::array{WeightPoint<dim>{make_p(baseidx - 1), w},
-                                  WeightPoint<dim>{make_p(baseidx), w}};
+                return std::array{WeightPoint<dim>{make_p(offsets[0]), w},
+                                  WeightPoint<dim>{make_p(offsets[1]), w}};
             }
             else if constexpr (order == 4)
             {
@@ -123,6 +126,17 @@ namespace core
     NO_DISCARD consteval auto tensorProduct(auto const&... rows)
     {
         static_assert(sizeof...(dirs) == sizeof...(rows) && sizeof...(rows) > 0);
+        static_assert(
+            []() {
+                constexpr std::array<std::size_t, sizeof...(dirs)> ds{
+                    static_cast<std::size_t>(dirs)...};
+                for (std::size_t i = 0; i < ds.size(); ++i)
+                    for (std::size_t j = i + 1; j < ds.size(); ++j)
+                        if (ds[i] == ds[j])
+                            return false;
+                return true;
+            }(),
+            "tensorProduct directions must be pairwise distinct");
 
         constexpr std::size_t dim
             = detail::weightPointDim(std::get<0>(std::tuple<std::decay_t<decltype(rows)>...>{}));

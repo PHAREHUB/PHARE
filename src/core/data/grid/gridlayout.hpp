@@ -785,10 +785,13 @@ namespace core
 
         template<auto src, auto dst, typename Field>
         NO_DISCARD static Field::type project(Field const& field, MeshIndex<dimension> index)
+            requires(has_physicalQuantity_v<Field>)
         {
             PHARE_DEBUG_DO(
-                if (centering(field) != centering(src)) throw std::runtime_error(
-                    "GridLayout::project: field centering does not match the source quantity");)
+                constexpr auto expected = centering(src);
+                if (centering(field) != expected) throw std::runtime_error(
+                    "GridLayout::project: field centering does not match the source quantity: "
+                    + field.name());)
 
             return core::project<centering(src), centering(dst)>(field, index);
         }

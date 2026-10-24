@@ -5,6 +5,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/ions/ions.hpp"
 #include "src/core/utilities/types.hpp"
