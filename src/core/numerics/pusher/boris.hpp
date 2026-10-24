@@ -5,6 +5,9 @@
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/numerics/pusher/pusher.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 
 #include <array>
@@ -144,8 +147,7 @@ public:
         preCrossings_.clear();
         postCrossings_.clear();
 
-        for (auto idx = range.ibegin(); idx < end; ++idx)
-        {
+        auto moveOne = [&](std::size_t const idx) {
             auto& currPart = particles[idx];
 
             std::array<int, dim> midCell;
@@ -167,6 +169,40 @@ public:
             {
                 postCrossings_.push_back({idx, midCell, newCell});
                 currPart.iCell = newCell;
+            }
+        };
+
+        auto const fields = blockFields_<Interpolator>(emFields, layout);
+        PushBlock block;
+        for (auto idx = range.ibegin(); idx < end; idx += blockSize)
+        {
+            auto const n = std::min(blockSize, end - idx);
+            if (!pushBlock_<Interpolator>(particles, idx, n, fields, coef1, block)) [[unlikely]]
+            {
+                // a particle of the block moves more than one cell: the scalar path throws
+                // the same exception as move()
+                for (auto i = idx; i < idx + n; ++i)
+                    moveOne(i);
+                continue;
+            }
+            for (std::size_t l = 0; l < n; ++l)
+            {
+                auto& part = particles[idx + l];
+                std::array<int, dim> oldCell, midCell, newCell;
+                for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                {
+                    oldCell[iDim]    = part.iCell[iDim];
+                    midCell[iDim]    = block.midCell[iDim][l];
+                    newCell[iDim]    = block.cell[iDim][l];
+                    part.delta[iDim] = block.delta[iDim][l];
+                }
+                for (std::size_t c = 0; c < 3; ++c)
+                    part.v[c] = block.v[c][l];
+                if (midCell != oldCell)
+                    preCrossings_.push_back({idx + l, oldCell, midCell});
+                if (newCell != midCell)
+                    postCrossings_.push_back({idx + l, midCell, newCell});
+                part.iCell = newCell;
             }
         }
 
@@ -209,6 +245,52 @@ public:
         if (!advancePosition_(halfDtOverDl, part, part, newCell)) [[unlikely]]
             throwMovedTwoCells_("PostPush", halfDtOverDl, part, &local_em, &layout);
         part.iCell = newCell;
+    }
+
+
+    /** push() on a copy of every particle of particles, in order, calling onPushed(pushed)
+     * after each. Particles are pushed by blocks of blockSize with the same per-particle
+     * arithmetic as push(); a block where a particle moves more than one cell is redone with
+     * push(), which throws.
+     */
+    template<typename Particles, typename OnPushed>
+    [[gnu::noinline]] void pushEach(Particles const& particles, Electromag const& emFields,
+                                    Interpolator& interpolator, GridLayout const& layout,
+                                    double const coef1, OnPushed&& onPushed)
+    {
+        using Particle_t = std::decay_t<decltype(particles[0])>;
+
+        auto pushOne = [&](std::size_t const idx) {
+            Particle_t pushed = particles[idx];
+            push(pushed, emFields, interpolator, layout, coef1);
+            onPushed(pushed);
+        };
+
+        auto const fields = blockFields_<Interpolator>(emFields, layout);
+        auto const end    = particles.size();
+        PushBlock block;
+        for (std::size_t idx = 0; idx < end; idx += blockSize)
+        {
+            auto const n = std::min(blockSize, end - idx);
+            if (!pushBlock_<Interpolator>(particles, idx, n, fields, coef1, block)) [[unlikely]]
+            {
+                for (auto i = idx; i < idx + n; ++i)
+                    pushOne(i);
+                continue;
+            }
+            for (std::size_t l = 0; l < n; ++l)
+            {
+                Particle_t pushed = particles[idx + l];
+                for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                {
+                    pushed.iCell[iDim] = block.cell[iDim][l];
+                    pushed.delta[iDim] = block.delta[iDim][l];
+                }
+                for (std::size_t c = 0; c < 3; ++c)
+                    pushed.v[c] = block.v[c][l];
+                onPushed(pushed);
+            }
+        }
     }
 
 
@@ -350,13 +432,19 @@ private:
         auto& [pE, pB]        = particleEB;
         auto& [pEx, pEy, pEz] = pE;
         auto& [pBx, pBy, pBz] = pB;
+        accelerate_(part.v[0], part.v[1], part.v[2], pEx, pEy, pEz, pBx, pBy, pBz, coef1);
+    }
 
+    static void accelerate_(double& vx, double& vy, double& vz, double const pEx,
+                            double const pEy, double const pEz, double const pBx,
+                            double const pBy, double const pBz, double const coef1)
+    {
         // We now apply the 3 steps of the BORIS PUSHER
 
         // 1st half push of the electric field
-        double velx1 = part.v[0] + coef1 * pEx;
-        double vely1 = part.v[1] + coef1 * pEy;
-        double velz1 = part.v[2] + coef1 * pEz;
+        double velx1 = vx + coef1 * pEx;
+        double vely1 = vy + coef1 * pEy;
+        double velz1 = vz + coef1 * pEz;
 
 
         // preparing variables for magnetic rotation
@@ -399,11 +487,270 @@ private:
         velz1 = velz2 + coef1 * pEz;
 
         // Update particle velocity
-        part.v[0] = velx1;
-        part.v[1] = vely1;
-        part.v[2] = velz1;
+        vx = velx1;
+        vy = vely1;
+        vz = velz1;
     }
 
+
+
+    // ---- block push: blockSize particles at a time, lane loops the compiler vectorises ----
+
+    static constexpr std::size_t blockSize = 8;
+
+    // block state after the push, one lane per particle
+    struct PushBlock
+    {
+        double delta[dim][blockSize];
+        int midCell[dim][blockSize];
+        int cell[dim][blockSize];
+        double v[3][blockSize];
+    };
+
+    // raw storage of an E or B component: data and row strides of its local index
+    struct BlockField
+    {
+        double const* data;
+        std::array<std::uint32_t, dim> shape;
+    };
+
+    struct BlockFields
+    {
+        std::array<BlockField, 6> EB; // Ex, Ey, Ez, Bx, By, Bz
+        std::array<int, dim> amrToLocal;
+    };
+
+    template<typename Interpolator_t>
+    static BlockFields blockFields_(Electromag const& emFields, GridLayout const& layout)
+    {
+        BlockFields f;
+        auto const& [Ex, Ey, Ez] = emFields.E();
+        auto const& [Bx, By, Bz] = emFields.B();
+        auto set                 = [](auto const& field, BlockField& bf) {
+            bf.data = field.data();
+            for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                bf.shape[iDim] = field.shape()[iDim];
+        };
+        set(Ex, f.EB[0]);
+        set(Ey, f.EB[1]);
+        set(Ez, f.EB[2]);
+        set(Bx, f.EB[3]);
+        set(By, f.EB[4]);
+        set(Bz, f.EB[5]);
+        // GridLayout::AMRToLocal for cells: local = AMR - (AMRBox.lower - localStart)
+        int const localStart = layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            f.amrToLocal[iDim] = localStart - layout.AMRBox().lower[iDim];
+        return f;
+    }
+
+
+    // half-step position advance of the block, lane by lane as advancePosition_. floor(delta)
+    // is converted to int by comparisons (|delta| <= 2 on valid lanes), which vectorises without
+    // -fno-trapping-math. Returns a nonzero value if a lane moves more than two cells.
+    static bool advanceBlock_(std::array<double, dim> const& halfDtOverDl,
+                              double (&delta)[dim][blockSize], int (&cell)[dim][blockSize],
+                              double const (&v)[3][blockSize])
+    {
+        // the lane loops stay loops (unroll 1) for the loop vectoriser: once fully unrolled,
+        // the comparisons are not SLP vectorised
+        int far[blockSize] = {};
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            double const hdl = halfDtOverDl[iDim];
+            double d[blockSize];
+            int shift[blockSize];
+#pragma GCC unroll 1
+            for (std::size_t l = 0; l < blockSize; ++l)
+                d[l] = delta[iDim][l] + static_cast<double>(hdl * v[iDim][l]);
+#pragma GCC unroll 1
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                far[l] |= std::abs(d[l]) > 2.;
+                // floor(d) for |d| <= 2
+                shift[l] = (d[l] >= 1.) + (d[l] >= 2.) - (d[l] < 0.) - (d[l] < -1.);
+            }
+#pragma GCC unroll 1
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                delta[iDim][l] = d[l] - static_cast<double>(shift[l]);
+                cell[iDim][l] += shift[l];
+            }
+        }
+        int anyFar = 0;
+        for (std::size_t l = 0; l < blockSize; ++l)
+            anyFar |= far[l];
+        return anyFar != 0;
+    }
+
+
+    // interpolation of one component on the block lanes, same sum order as MeshToParticle
+    template<std::size_t nbrPts, typename Starts, typename Weights>
+    static void gatherBlock_(BlockField const& f, Starts const& starts, Weights const& weights,
+                             double (&out)[blockSize])
+    {
+        double const* __restrict__ data = f.data;
+        if constexpr (dim == 1)
+        {
+            auto const& [xs]    = starts;
+            auto const& [xw]    = weights;
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                double acc = 0.;
+                for (std::size_t ix = 0; ix < nbrPts; ++ix)
+                    acc += data[(*xs)[l] + static_cast<int>(ix)] * (*xw)[ix][l];
+                out[l] = acc;
+            }
+        }
+        else if constexpr (dim == 2)
+        {
+            auto const& [xs, ys] = starts;
+            auto const& [xw, yw] = weights;
+            int const ny         = f.shape[1];
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                double acc = 0.;
+                for (std::size_t ix = 0; ix < nbrPts; ++ix)
+                {
+                    int const row = ((*xs)[l] + static_cast<int>(ix)) * ny + (*ys)[l];
+                    double Y      = 0.;
+                    for (std::size_t iy = 0; iy < nbrPts; ++iy)
+                        Y += data[row + static_cast<int>(iy)] * (*yw)[iy][l];
+                    acc += Y * (*xw)[ix][l];
+                }
+                out[l] = acc;
+            }
+        }
+        else
+        {
+            auto const& [xs, ys, zs] = starts;
+            auto const& [xw, yw, zw] = weights;
+            int const ny             = f.shape[1];
+            int const nz             = f.shape[2];
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                double acc = 0.;
+                for (std::size_t ix = 0; ix < nbrPts; ++ix)
+                {
+                    double Y = 0.;
+                    for (std::size_t iy = 0; iy < nbrPts; ++iy)
+                    {
+                        int const row = (((*xs)[l] + static_cast<int>(ix)) * ny + (*ys)[l]
+                                         + static_cast<int>(iy))
+                                            * nz
+                                        + (*zs)[l];
+                        double Z = 0.;
+                        for (std::size_t iz = 0; iz < nbrPts; ++iz)
+                            Z += data[row + static_cast<int>(iz)] * (*zw)[iz][l];
+                        Y += Z * (*yw)[iy][l];
+                    }
+                    acc += Y * (*xw)[ix][l];
+                }
+                out[l] = acc;
+            }
+        }
+    }
+
+
+    // start indices and weights of the block lanes, as Interpolator::localIndexAndWeights_
+    template<typename Interpolator_t, QtyCentering centering, std::size_t nbrPts>
+    static void indexAndWeightsBlock_(int const (&localCell)[dim][blockSize],
+                                      double const (&delta)[dim][blockSize],
+                                      int (&starts)[dim][blockSize],
+                                      double (&weights)[dim][nbrPts][blockSize])
+    {
+        constexpr auto order = Interpolator_t::interp_order;
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                double const d = delta[iDim][l];
+                int const lc   = localCell[iDim][l];
+                int const s    = lc
+                              - Interpolator_t::template computeStartLeftShift<QtyCentering,
+                                                                               centering>(d);
+                double normalizedPos = lc + d;
+                if constexpr (centering == QtyCentering::dual)
+                    normalizedPos -= .5;
+                std::array<double, nbrPts> w;
+                Weighter<order>{}.computeWeight(normalizedPos, s, w);
+                starts[iDim][l] = s;
+                for (std::size_t k = 0; k < nbrPts; ++k)
+                    weights[iDim][k][l] = w[k];
+            }
+    }
+
+
+    /** push particles [first, first + n), n <= blockSize, from t=n to t=n+1 into the first n
+     * lanes of block, with the arithmetic of push(); particles are not modified. Returns false if
+     * a particle moves more than one cell in a half step.
+     */
+    template<typename Interpolator_t, typename Particles>
+    bool pushBlock_(Particles const& particles, std::size_t const first, std::size_t const n,
+                    BlockFields const& f, double const coef1, PushBlock& b) const
+    {
+        constexpr std::size_t nbrPts = nbrPointsSupport(Interpolator_t::interp_order);
+        using Scalar                 = HybridQuantity::Scalar;
+
+        auto const halfDtOverDl = halfDtOverDl_;
+
+        // a partial block (n < blockSize) repeats its last particle in the unused lanes, so that
+        // every particle goes through the same, vectorised, arithmetic
+        for (std::size_t l = 0; l < blockSize; ++l)
+        {
+            auto const& part = particles[first + std::min(l, n - 1)];
+            for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            {
+                b.delta[iDim][l] = part.delta[iDim];
+                b.cell[iDim][l]  = part.iCell[iDim];
+            }
+            for (std::size_t c = 0; c < 3; ++c)
+                b.v[c][l] = part.v[c];
+        }
+
+        bool tooFar = advanceBlock_(halfDtOverDl, b.delta, b.cell, b.v);
+
+        int localCell[dim][blockSize];
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            for (std::size_t l = 0; l < blockSize; ++l)
+            {
+                b.midCell[iDim][l]   = b.cell[iDim][l];
+                localCell[iDim][l] = b.cell[iDim][l] + f.amrToLocal[iDim];
+            }
+
+        int dStarts[dim][blockSize], pStarts[dim][blockSize];
+        double dWeights[dim][nbrPts][blockSize], pWeights[dim][nbrPts][blockSize];
+        indexAndWeightsBlock_<Interpolator_t, QtyCentering::dual>(localCell, b.delta, dStarts,
+                                                                  dWeights);
+        indexAndWeightsBlock_<Interpolator_t, QtyCentering::primal>(localCell, b.delta, pStarts,
+                                                                    pWeights);
+
+        double EB[6][blockSize];
+        auto gather = [&]<auto quantity>(std::size_t const c) {
+            constexpr auto centerings = GridLayout::centering(quantity);
+            auto starts               = [&]<std::size_t... i>(std::index_sequence<i...>) {
+                return std::make_tuple(
+                    (centerings[i] == QtyCentering::primal ? &pStarts[i] : &dStarts[i])...);
+            }(std::make_index_sequence<dim>{});
+            auto weights = [&]<std::size_t... i>(std::index_sequence<i...>) {
+                return std::make_tuple(
+                    (centerings[i] == QtyCentering::primal ? &pWeights[i] : &dWeights[i])...);
+            }(std::make_index_sequence<dim>{});
+            gatherBlock_<nbrPts>(f.EB[c], starts, weights, EB[c]);
+        };
+        gather.template operator()<Scalar::Ex>(0);
+        gather.template operator()<Scalar::Ey>(1);
+        gather.template operator()<Scalar::Ez>(2);
+        gather.template operator()<Scalar::Bx>(3);
+        gather.template operator()<Scalar::By>(4);
+        gather.template operator()<Scalar::Bz>(5);
+
+        for (std::size_t l = 0; l < blockSize; ++l)
+            accelerate_(b.v[0][l], b.v[1][l], b.v[2][l], EB[0][l], EB[1][l], EB[2][l], EB[3][l],
+                        EB[4][l], EB[5][l], coef1);
+
+        tooFar |= advanceBlock_(halfDtOverDl, b.delta, b.cell, b.v);
+        return !tooFar;
+    }
 
 
 

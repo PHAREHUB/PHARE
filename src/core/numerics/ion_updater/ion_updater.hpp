@@ -212,13 +212,11 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto& flux            = pop.flux();
         auto const& keepBoxes = boxing.nonLevelGhostBox;
         double const coef1    = boris_->accelerationCoef(pop.charge(), pop.mass());
-        for (auto const& particle : pop.domainParticles())
-        {
-            Particle_t pushed = particle;
-            boris_->push(pushed, em, interpolator_, layout, coef1);
-            if (isIn(Point{pushed.iCell}, keepBoxes))
-                interpolator_.deposit(pushed, density, flux, layout);
-        }
+        boris_->pushEach(pop.domainParticles(), em, interpolator_, layout, coef1,
+                         [&](Particle_t const& pushed) {
+                             if (isIn(Point{pushed.iCell}, keepBoxes))
+                                 interpolator_.deposit(pushed, density, flux, layout);
+                         });
 
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
