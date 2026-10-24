@@ -13,7 +13,8 @@
 #include <sstream>
 #include <iterator>
 #include <algorithm>
-#include <exception>
+#include <string>
+#include <type_traits>
 
 namespace PHARE::core
 {
@@ -24,18 +25,6 @@ template<std::size_t dim, typename ParticleRange, typename Electromag, typename 
 class BorisPusher
     : public Pusher<dim, ParticleRange, Electromag, Interpolator, BoundaryCondition, GridLayout>
 {
-    struct MoveTwoCellException : std::exception
-    {
-        MoveTwoCellException(double const d, double const v)
-            : delta{d}
-            , vel{v}
-        {
-        }
-
-        double delta, vel;
-    };
-
-
 public:
     using Super
         = Pusher<dim, ParticleRange, Electromag, Interpolator, BoundaryCondition, GridLayout>;
@@ -106,11 +95,14 @@ public:
 
         rangeOut = firstSelector(rangeOut);
 
-        double const dto2m = 0.5 * dt_ / mass;
-        double const coef1 = charge * dto2m;
-        for (auto idx = rangeOut.ibegin(); idx < rangeOut.iend(); ++idx)
+        double const dto2m      = 0.5 * dt_ / mass;
+        double const coef1      = charge * dto2m;
+        auto const halfDtOverDl = halfDtOverDl_;
+        auto& particles         = rangeOut.array();
+        auto const end          = rangeOut.iend();
+        for (auto idx = rangeOut.ibegin(); idx < end; ++idx)
         {
-            auto& currPart = rangeOut.array()[idx];
+            auto& currPart = particles[idx];
 
             //  get electromagnetic fields interpolated on the particles of rangeOut stop at newEnd.
             //  get the particle velocity from t=n to t=n+1
@@ -118,22 +110,11 @@ public:
             accelerate_(currPart, local_em, coef1);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
-            // and get a pointer to the first leaving particle
-            try
-            {
-                postPushStep_(rangeOut, idx);
-            }
-            catch (DictionaryException const& bex)
-            {
-                auto ex            = bex;
-                auto const& [e, b] = local_em;
-                for (std::uint16_t i = 0; i < 3; ++i)
-                    ex("E_" + std::to_string(i), std::to_string(e[i]));
-                for (std::uint16_t i = 0; i < 3; ++i)
-                    ex("B_" + std::to_string(i), std::to_string(b[i]));
-                ex("level", std::to_string(layout.levelNumber()));
-                throw ex;
-            }
+            std::array<int, dim> newCell;
+            if (!advancePosition_(halfDtOverDl, currPart, currPart, newCell)) [[unlikely]]
+                throwMovedTwoCells_("PostPush", halfDtOverDl, currPart, &local_em, &layout);
+            if (newCell != currPart.iCell)
+                particles.change_icell(newCell, idx);
         }
 
         return secondSelector(rangeOut);
@@ -152,38 +133,79 @@ public:
 
 
 private:
-    /** move the particle partIn of half a time step and store it in partOut
+    /** move the particle partIn of half a time step and store it in partOut.
+     * Returns false, leaving partOut untouched, if it would cross more than 2 cells.
      */
     template<typename Particle>
-    auto advancePosition_(Particle const& partIn, Particle& partOut)
+    static bool advancePosition_(std::array<double, dim> const& halfDtOverDl,
+                                 Particle const& partIn, Particle& partOut,
+                                 std::array<int, dim>& newCell)
     {
-        std::array<int, dim> newCell;
+        std::array<double, dim> delta;
+        bool tooFar = false;
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            delta[iDim]
+                = partIn.delta[iDim] + static_cast<double>(halfDtOverDl[iDim] * partIn.v[iDim]);
+            tooFar |= std::abs(delta[iDim]) > 2;
+        }
+        if (tooFar)
+            return false;
+
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            auto const iCell    = static_cast<int>(std::floor(delta[iDim]));
+            partOut.delta[iDim] = delta[iDim] - iCell;
+            newCell[iDim]       = iCell + partIn.iCell[iDim];
+        }
+        return true;
+    }
+
+
+    // error path of advancePosition_, kept out of the push loops
+    template<typename Particle, typename ParticleEB = std::nullptr_t>
+    [[noreturn, gnu::noinline, gnu::cold]] static void
+    throwMovedTwoCells_(char const* step, std::array<double, dim> const& halfDtOverDl,
+                        Particle const& part, ParticleEB const* particleEB = nullptr,
+                        GridLayout const* layout = nullptr)
+    {
+        std::stringstream ss;
         for (std::size_t iDim = 0; iDim < dim; ++iDim)
         {
             double const delta
-                = partIn.delta[iDim] + static_cast<double>(halfDtOverDl_[iDim] * partIn.v[iDim]);
-
+                = part.delta[iDim] + static_cast<double>(halfDtOverDl[iDim] * part.v[iDim]);
             if (std::abs(delta) > 2)
-                throw MoveTwoCellException{delta, partIn.v[iDim]};
-
-            auto const iCell    = static_cast<int>(std::floor(delta));
-            partOut.delta[iDim] = delta - iCell;
-            newCell[iDim]       = iCell + partIn.iCell[iDim];
+            {
+                ss << step << " Particle moved 2 cells with delta/vel: ";
+                ss << delta << "/" << part.v[iDim] << std::endl;
+                break;
+            }
         }
-        return newCell;
+
+        DictionaryException ex{"cause", ss.str()};
+        if constexpr (!std::is_same_v<ParticleEB, std::nullptr_t>)
+        {
+            auto const& [e, b] = *particleEB;
+            for (std::uint16_t i = 0; i < 3; ++i)
+                ex("E_" + std::to_string(i), std::to_string(e[i]));
+            for (std::uint16_t i = 0; i < 3; ++i)
+                ex("B_" + std::to_string(i), std::to_string(b[i]));
+            ex("level", std::to_string(layout->levelNumber()));
+        }
+        throw ex;
     }
 
 
     /** advance the particles in rangeIn of half a time step and store them
      * in rangeOut.
-     * @return the function returns and iterator on the first leaving particle, as
-     * detected by the ParticleSelector
      */
     void prePushStep_(ParticleRange const& rangeIn, ParticleRange& rangeOut)
     {
-        auto& inParticles  = rangeIn.array();
-        auto& outParticles = rangeOut.array();
-        for (auto inIdx = rangeIn.ibegin(), outIdx = rangeOut.ibegin(); inIdx < rangeIn.iend();
+        auto const halfDtOverDl = halfDtOverDl_;
+        auto& inParticles       = rangeIn.array();
+        auto& outParticles      = rangeOut.array();
+        auto const inEnd        = rangeIn.iend();
+        for (auto inIdx = rangeIn.ibegin(), outIdx = rangeOut.ibegin(); inIdx < inEnd;
              ++inIdx, ++outIdx)
         {
             // in the first push, this is the first time
@@ -199,38 +221,12 @@ private:
             outParticles[outIdx].weight = inParticles[inIdx].weight;
             outParticles[outIdx].v      = inParticles[inIdx].v;
 
-            try
-            {
-                auto newCell = advancePosition_(inParticles[inIdx], outParticles[outIdx]);
-                if (newCell != inParticles[inIdx].iCell)
-                    outParticles.change_icell(newCell, outIdx);
-            }
-            catch (MoveTwoCellException const& e)
-            {
-                std::stringstream ss;
-                ss << "PrePush Particle moved 2 cells with delta/vel: ";
-                ss << e.delta << "/" << e.vel << std::endl;
-                DictionaryException ex{"cause", ss.str()};
-                throw ex;
-            }
-        }
-    }
-
-    void postPushStep_(ParticleRange& range, std::size_t idx)
-    {
-        try
-        {
-            auto& particles = range.array();
-            auto newCell    = advancePosition_(particles[idx], particles[idx]);
-            if (newCell != particles[idx].iCell)
-                particles.change_icell(newCell, idx);
-        }
-        catch (MoveTwoCellException const& e)
-        {
-            std::stringstream ss;
-            ss << "PostPush Particle moved 2 cells with delta/vel: ";
-            ss << e.delta << "/" << e.vel << std::endl;
-            throw DictionaryException{}("cause", ss.str());
+            std::array<int, dim> newCell;
+            if (!advancePosition_(halfDtOverDl, inParticles[inIdx], outParticles[outIdx], newCell))
+                [[unlikely]]
+                throwMovedTwoCells_("PrePush", halfDtOverDl, inParticles[inIdx]);
+            if (newCell != inParticles[inIdx].iCell)
+                outParticles.change_icell(newCell, outIdx);
         }
     }
 

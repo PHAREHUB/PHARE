@@ -527,20 +527,27 @@ protected:
     PHARE_ALWAYS_INLINE auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_,
                                               Delta const& delta)
     {
+        auto const iCell = layout.AMRToLocal(Point{iCell_});
+        if constexpr (centering == QtyCentering::dual)
+            localIndexAndWeights_<CenteringT, centering>(iCell, delta, dual_startIndex_,
+                                                         dual_weights_);
+        else
+            localIndexAndWeights_<CenteringT, centering>(iCell, delta, primal_startIndex_,
+                                                         primal_weights_);
+    }
+
+    // same as above from a local cell index, into caller-owned arrays
+    template<typename CenteringT, CenteringT centering, typename LocalCell, typename Delta,
+             typename Starts_t, typename Weights_t>
+    void localIndexAndWeights_(LocalCell const& iCell, Delta const& delta, Starts_t& startIndex,
+                               Weights_t& weights)
+    {
         // dual weights require -.5 to take the correct position weight
         auto constexpr dual_offset = .5;
 
-        auto const& [startIndex_, weights_] = [&]() {
-            if constexpr (centering == QtyCentering::dual)
-                return std::forward_as_tuple(dual_startIndex_, dual_weights_);
-            else
-                return std::forward_as_tuple(primal_startIndex_, primal_weights_);
-        }();
-
-        auto iCell = layout.AMRToLocal(Point{iCell_});
         for (auto iDim = 0u; iDim < dimension; ++iDim)
         {
-            startIndex_[iDim]
+            startIndex[iDim]
                 = iCell[iDim] - computeStartLeftShift<CenteringT, centering>(delta[iDim]);
 
             double normalizedPos = iCell[iDim] + delta[iDim];
@@ -548,7 +555,7 @@ protected:
             if constexpr (centering == QtyCentering::dual)
                 normalizedPos -= dual_offset;
 
-            weightComputer_.computeWeight(normalizedPos, startIndex_[iDim], weights_[iDim]);
+            weightComputer_.computeWeight(normalizedPos, startIndex[iDim], weights[iDim]);
         }
     }
 
@@ -577,13 +584,20 @@ public:
         // interpolation. the trick here is that the StartIndex and weights have only been
         // calculated twice, and not for each E,B component.
 
-        auto& iCell = currPart.iCell;
-        auto& delta = currPart.delta;
-        indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, iCell, delta);
-        indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, iCell, delta);
+        // the start indices and weights are per-particle scratch kept local, so that they can
+        // live in registers rather than in the interpolator
+        Starts dualStarts, primalStarts;
+        Weights dualWeights, primalWeights;
 
-        auto indexWeights = std::forward_as_tuple(dual_startIndex_, dual_weights_,
-                                                  primal_startIndex_, primal_weights_);
+        auto const iCell  = layout.AMRToLocal(Point{currPart.iCell});
+        auto const& delta = currPart.delta;
+        localIndexAndWeights_<QtyCentering, QtyCentering::dual>(iCell, delta, dualStarts,
+                                                                dualWeights);
+        localIndexAndWeights_<QtyCentering, QtyCentering::primal>(iCell, delta, primalStarts,
+                                                                  primalWeights);
+
+        auto indexWeights
+            = std::forward_as_tuple(dualStarts, dualWeights, primalStarts, primalWeights);
 
         E_B_tuple particle_EB;
         auto& [pE, pB]        = particle_EB;
