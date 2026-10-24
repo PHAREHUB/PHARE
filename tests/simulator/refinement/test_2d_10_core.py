@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 
 """
-  Complex test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
-    grouping of quantity components with distinct geometries.
+Complex test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
+  grouping of quantity components with distinct geometries.
 
-  Should be run with 10 cores
-    mpirun -n 10 tests/simulator/refinement/test_2d_10_core.py
+Should be run with 10 cores
+  mpirun -n 10 tests/simulator/refinement/test_2d_10_core.py
 """
-
 
 import numpy as np
 
-from pyphare import cpp
-import pyphare.pharein as ph
 import pyphare.core.box as boxm
+import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.simulator.simulator import Simulator, startMPI
-
 from tests.simulator.test_advance import AdvanceTestBase
-
 
 ph.NO_GUI()
 test = AdvanceTestBase(rethrow=True)  # change to False for debugging images
@@ -115,7 +112,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
 
 def get_time(path, time=None, datahier=None):
     if time is not None:
-        time = "{:.10f}".format(time)
+        time = f"{time:.10f}"
     from pyphare.pharesee.hierarchy import hierarchy_from
 
     datahier = hierarchy_from(h5_filename=path + "/EM_E.h5", times=time, hier=datahier)
@@ -151,7 +148,7 @@ def make_fig(hier, fig_name, ilvl, extra_collections=[]):
 
 
 def check_hier(hier):
-    for ilvl, lvl in hier.levels().items():
+    for lvl in hier.levels().values():
         for patch in lvl.patches:
             assert all(patch.box.shape > 5)
     return hier
@@ -159,7 +156,7 @@ def check_hier(hier):
 
 def post_advance(new_time):
     if cpp.mpi_rank() == 0:
-        L0_datahier = check_hier(get_hier(L0_diags))
+        check_hier(get_hier(L0_diags))
         L0L1_datahier = check_hier(get_hier(L0L1_diags))
         extra_collections = []
         errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)

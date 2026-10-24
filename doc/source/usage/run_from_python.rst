@@ -10,14 +10,21 @@ Python dependencies
 
 PHARE requires a minimmum version of python 3.11 to run properly.
 Make sure `python3` shows the version is at least 3.11. 
-Python package dependencies are listed in `requirements.txt` file.
-Install dependencies for the user:
+Python package dependencies are listed in `pyproject.toml`, and runtime ones also in `requirements.txt`.
+Install dependencies in a virtual environment with `uv <https://docs.astral.sh/uv/>`_, from the PHARE source directory:
+
+.. code-block:: bash
+
+     uv sync
+     source .venv/bin/activate
+
+Install dependencies for the user with pip:
 
 .. code-block:: bash
 
      pip3 install --user -r requirements.txt
 
-Install dependencies in a virtual environment:
+Install dependencies in a virtual environment with pip:
 
 .. code-block:: bash
 

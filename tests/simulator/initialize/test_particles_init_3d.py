@@ -1,14 +1,14 @@
 """
-  This file exists independently from test_initialization.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_initialization.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
 
 import matplotlib
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box3D
 
+from pyphare.core.box import Box3D
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 
 matplotlib.use("Agg")  # for systems without GUI
@@ -32,9 +32,9 @@ class Initialization3DTest(HybridInitializationTest):
         )
 
     @data(
-        *per_interp(({"L0": {"B0": Box3D(10, 14)}})),
-        *per_interp(({"L0": {"B0": Box3D(10, 14)}, "L1": {"B0": Box3D(22, 26)}})),
-        *per_interp(({"L0": {"B0": Box3D(2, 6), "B1": Box3D(7, 11)}})),
+        *per_interp({"L0": {"B0": Box3D(10, 14)}}),
+        *per_interp({"L0": {"B0": Box3D(10, 14)}, "L1": {"B0": Box3D(22, 26)}}),
+        *per_interp({"L0": {"B0": Box3D(2, 6), "B1": Box3D(7, 11)}}),
     )
     @unpack
     def test_levelghostparticles_have_correct_split_from_coarser_particle(
@@ -57,9 +57,9 @@ class Initialization3DTest(HybridInitializationTest):
         )
 
     @data(
-        *per_interp(({"L0": {"B0": Box3D(10, 14)}})),
-        *per_interp(({"L0": {"B0": Box3D(5, 14)}, "L1": {"B0": Box3D(15, 19)}})),
-        *per_interp(({"L0": {"B0": Box3D(7, 12), "B1": Box3D(13, 18)}})),
+        *per_interp({"L0": {"B0": Box3D(10, 14)}}),
+        *per_interp({"L0": {"B0": Box3D(5, 14)}, "L1": {"B0": Box3D(15, 19)}}),
+        *per_interp({"L0": {"B0": Box3D(7, 12), "B1": Box3D(13, 18)}}),
     )
     @unpack
     def test_domainparticles_have_correct_split_from_coarser_particle(

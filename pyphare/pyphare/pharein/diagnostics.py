@@ -38,7 +38,7 @@ def diagnostics_checker(func):
         # at least one way to schedule dumps must be given
         one_of_required = ["write_timestamps", "elapsed_timestamps"]
         for k in one_of_required:
-            if kwargs.get(k, None) is None:
+            if kwargs.get(k) is None:
                 kwargs.pop(k, None)
         if not any(
             phare_utilities.np_array_ify(kwargs[k]).size > 0
@@ -67,7 +67,7 @@ def diagnostics_checker(func):
         try:
             # just take mandatory arguments from the dict
             # since if we arrived here we are sure they are there
-           
+
             kwargs["path"] = kwargs.get("path", "./")
 
             return func(diagnostics_object, name, **kwargs)
@@ -154,7 +154,7 @@ def try_cpp_build_config():
         return {}
 
 
-class Diagnostics(object):
+class Diagnostics:
     """
     Base parameters shared by every diagnostics block below
     (:class:`ElectromagDiagnostics`, :class:`FluidDiagnostics`,
@@ -175,7 +175,6 @@ class Diagnostics(object):
     create two independent diagnostics: it extends the existing one's list
     of timestamps with the new ones instead.
     """
-
     h5_flush_never = 0
     cpp_dep_vers = try_cpp_dep_vers()
 
@@ -291,11 +290,11 @@ class MHDDiagnostics(Diagnostics):
         * "Etot" - total energy density
     """
 
-    mhd_quantities = ["rho", "V", "P", "rhoV", "Etot"]
+    mhd_quantities = ("rho", "V", "P", "rhoV", "Etot")
     type = "mhd"
 
     def __init__(self, **kwargs):
-        super(MHDDiagnostics, self).__init__(
+        super().__init__(
             MHDDiagnostics.type
             + str(global_vars.sim.count_diagnostics(MHDDiagnostics.type)),
             **kwargs,
@@ -340,11 +339,11 @@ class ElectromagDiagnostics(Diagnostics):
     **quantity**, one of: "E" (electric field), "B" (magnetic field).
     """
 
-    em_quantities = ["E", "B"]
+    em_quantities = ("E", "B")
     type = "electromag"
 
     def __init__(self, **kwargs):
-        super(ElectromagDiagnostics, self).__init__(
+        super().__init__(
             ElectromagDiagnostics.type
             + str(global_vars.sim.count_diagnostics(ElectromagDiagnostics.type)),
             **kwargs,
@@ -367,13 +366,13 @@ class ElectromagDiagnostics(Diagnostics):
 
 
 def population_in_model(population):
-    return population in [p for p in global_vars.sim.model.populations]
+    return population in global_vars.sim.model.populations
 
 
 class FluidDiagnostics_(Diagnostics):
     """:meta private:"""
 
-    fluid_quantities = [
+    fluid_quantities = (
         "density",
         "charge_density",
         "mass_density",
@@ -381,11 +380,11 @@ class FluidDiagnostics_(Diagnostics):
         "bulkVelocity",
         "charge_flux",
         "momentum_tensor",
-    ]
+    )
     type = "fluid"
 
     def __init__(self, **kwargs):
-        super(FluidDiagnostics_, self).__init__(
+        super().__init__(
             FluidDiagnostics_.type
             + str(global_vars.sim.count_diagnostics(FluidDiagnostics_.type)),
             **kwargs,
@@ -422,9 +421,7 @@ class FluidDiagnostics_(Diagnostics):
         else:
             if not population_in_model(self.population_name):
                 raise ValueError(
-                    "Error: population '{}' not in simulation initial model".format(
-                        self.population_name
-                    )
+                    f"Error: population '{self.population_name}' not in simulation initial model"
                 )
             self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
@@ -532,11 +529,11 @@ class ParticleDiagnostics(Diagnostics):
     :class:`~pyphare.pharein.MaxwellianFluidModel`.
     """
 
-    particle_quantities = ["space_box", "domain", "levelGhost"]
+    particle_quantities = ("space_box", "domain", "levelGhost")
     type = "particle"
 
     def __init__(self, **kwargs):
-        super(ParticleDiagnostics, self).__init__(
+        super().__init__(
             ParticleDiagnostics.type
             + str(global_vars.sim.count_diagnostics(ParticleDiagnostics.type)),
             **kwargs,
@@ -564,9 +561,7 @@ class ParticleDiagnostics(Diagnostics):
 
         if not population_in_model(self.population_name):
             raise ValueError(
-                "Error: population '{}' not in simulation initial model".format(
-                    self.population_name
-                )
+                f"Error: population '{self.population_name}' not in simulation initial model"
             )
 
         self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
@@ -611,11 +606,11 @@ class MetaDiagnostics(Diagnostics):
           `tagging_threshold` and `tag_buffer`.
     """
 
-    meta_quantities = ["tags"]
+    meta_quantities = ("tags",)
     type = "meta"
 
     def __init__(self, **kwargs):
-        super(MetaDiagnostics, self).__init__(
+        super().__init__(
             MetaDiagnostics.type
             + str(global_vars.sim.count_diagnostics(MetaDiagnostics.type)),
             **kwargs,
@@ -659,7 +654,7 @@ class InfoDiagnostics(Diagnostics):
     simulation time step if not given explicitly.
     """
 
-    info_quantities = ["particle_count"]
+    info_quantities = ("particle_count",)
     type = "info"
 
     @classmethod
@@ -669,7 +664,7 @@ class InfoDiagnostics(Diagnostics):
         return kwargs
 
     def __init__(self, **kwargs):
-        super(InfoDiagnostics, self).__init__(
+        super().__init__(
             InfoDiagnostics.type
             + str(global_vars.sim.count_diagnostics(InfoDiagnostics.type)),
             **InfoDiagnostics.default_kwargs(**kwargs),

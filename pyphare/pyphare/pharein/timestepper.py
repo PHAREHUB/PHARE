@@ -116,7 +116,7 @@ def _resolve_constant_time_step(start_time, time_step, time_step_nbr, final_time
         # from it (identical to C++ finalTime_ = start + dt*nbr). Flooring instead would
         # leave the user's raw final_time slightly above nbr*dt, so a dump grid built at
         # multiples of dt up to final_time overshoots it. See master check_time().
-        time_step_nbr = int(round(total_time / time_step))
+        time_step_nbr = round(total_time / time_step)
         final_time = start_time + time_step_nbr * time_step
     elif final_and_nsteps:
         time_step = total_time / time_step_nbr
@@ -192,7 +192,10 @@ def resolve_time_stepper(**kwargs):
 
     if isinstance(ts, dict):
         return _resolve_dict_time_step(
-            ts, start_time=start_time, final_time=final_time, time_step_nbr=time_step_nbr
+            ts,
+            start_time=start_time,
+            final_time=final_time,
+            time_step_nbr=time_step_nbr,
         )
 
     return _resolve_constant_time_step(

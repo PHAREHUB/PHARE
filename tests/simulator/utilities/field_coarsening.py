@@ -43,7 +43,6 @@ def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
             for indexY in coarse_indices(1):
                 fineIndexY = fineLocal(indexY, 1)
                 coarseLocalIndexY = coarseLocal(indexY, 1)
-                left, middle, right = 0, 0, 0
                 if all(is_primal):
                     coarseData[coarseLocalIndexX][coarseLocalIndexY] = fineData[
                         fineIndexX

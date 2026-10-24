@@ -1,0 +1,54 @@
+[project]
+name = "pyphare"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "h5py",
+    "matplotlib",
+    "seaborn",
+    "dill",
+]
+
+[dependency-groups]
+test = ["ddt"]
+vtk = ["vtk"]
+timing = ["phlop"]
+docs = [
+    "pandas",
+    "appdirs",
+    "requests",
+    "urllib3>=1.26.0",
+    "packaging",
+    "numpy",
+    "python_dateutil",
+    "tqdm",
+    "matplotlib",
+    "PyYAML",
+    "sphinx<8.2.0",  # this version breaks nbsphinx
+    "sphinx-rtd-theme",
+    "argh",
+    "numpydoc",
+    "sphinx-gallery<0.11.0",
+    "nbsphinx",
+    "ipympl",
+    "ipywidgets",
+    "sphinx-codeautolink",
+    "sphinxcontrib-apidoc",
+    "myst-parser",
+]
+lint = [
+    "clang-format==20.1.8",
+    "ruff==0.16.10",
+]
+dev = [
+    { include-group = "test" },
+    { include-group = "lint" },
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+src = [".", "pyphare"]

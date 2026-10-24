@@ -1,11 +1,12 @@
 import numbers
+
 import numpy as np
 
 from . import global_vars
 from .boundary import SuperMagnetofastInflowBoundary
 
 
-class MHDModel(object):
+class MHDModel:
     """
     MHDModel sets up the MHD simulation type: the initial density, velocity,
     magnetic field and pressure profiles of the single MHD fluid.
@@ -37,7 +38,6 @@ class MHDModel(object):
     dimension: `f(x)`, `f(x, y)` or `f(x, y, z)`), or a plain number for a
     spatially uniform value.
     """
-
     def defaulter(self, input, value):
         if input is not None:
             if isinstance(input, numbers.Real):

@@ -1,6 +1,6 @@
 import math
-import numpy as np
 
+import numpy as np
 
 from pyphare import cpp
 
@@ -14,16 +14,14 @@ def all_iterables(*args):
     """
     return true if all arguments are either lists or tuples
     """
-    return all([isinstance(arg, list) or isinstance(arg, tuple) for arg in args])
+    return all(isinstance(arg, (list, tuple)) for arg in args)
 
 
 def none_iterable(*args):
     """
     return true if none of the arguments are either lists or tuples
     """
-    return all(
-        [not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args]
-    )
+    return all(not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args)
 
 
 def equal_size(*args):
@@ -41,9 +39,8 @@ def check_iterables(*args):
 
 
 def check_equal_size(*args):
-    if all_iterables(*args):
-        if not equal_size(*args):
-            raise ValueError
+    if all_iterables(*args) and not equal_size(*args):
+        raise ValueError
 
 
 def listify(arg):
@@ -78,7 +75,7 @@ def not_in_keywords_list(kwd_list, **kwargs):
     """
     return the list of kwargs keys that are not in 'kwd_list'
     """
-    keys = [k for k in kwargs.keys()]
+    keys = list(kwargs)
     isIn = [k in kwd_list for k in keys]
     wrong_kwds = [keys[i] for i, wrong in enumerate(isIn) if not wrong]
     return wrong_kwds
@@ -88,7 +85,7 @@ def check_mandatory_keywords(mandatory_kwd_list, **kwargs):
     """
     return those of mandatory_kwd_list not found in the kwargs keys
     """
-    keys = [k for k in kwargs.keys()]
+    keys = list(kwargs)
     check = [(mk, mk in keys) for mk in mandatory_kwd_list]
     return [mk[0] for mk in check if mk[1] is False]
 
@@ -133,9 +130,9 @@ def is_fp32(item):
 
 
 def any_fp_tol(a, b, atol=1e-16, rtol=0, atol_fp32=None):
-    if any([is_fp32(el) for el in [a, b]]):
+    if any(is_fp32(el) for el in [a, b]):
         atol = atol_fp32 if atol_fp32 else atol * 1e8
-    return dict(atol=atol, rtol=rtol)
+    return {"atol": atol, "rtol": rtol}
 
 
 def fp_any_all_close(a, b, atol=1e-16, rtol=0, atol_fp32=None):
@@ -163,7 +160,7 @@ def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=Fal
             cmd, shell=shell, capture_output=capture_output, check=check
         )
     except subprocess.CalledProcessError as e:  # only triggers on failure if check=True
-        raise RuntimeError(decode_bytes(e.stderr))
+        raise RuntimeError(decode_bytes(e.stderr)) from e
 
 
 def print_trace():
@@ -174,8 +171,10 @@ def print_trace():
     traceback.print_tb(tb)
 
 
-def deep_copy(item, memo, excludes=[]):
+def deep_copy(item, memo, excludes=None):
     from copy import deepcopy
+
+    excludes = excludes if excludes is not None else []
 
     clazz = item.__class__
     that = clazz.__new__(clazz)

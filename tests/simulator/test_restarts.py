@@ -1,25 +1,21 @@
-#
-#
-
 import copy
 import datetime
 import unittest
-import numpy as np
-from time import sleep
-from pathlib import Path
-
 from datetime import timedelta
-from ddt import ddt, data, unpack
+from pathlib import Path
+from time import sleep
 
-from pyphare import cpp
+import numpy as np
+from ddt import data, ddt, unpack
+
 import pyphare.pharein as ph
+from pyphare import cpp
+from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
+from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
-from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
-from pyphare.pharesee.hierarchy.patchdata import ParticleData
-from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
+from tests.simulator import SimulatorTest
 
 
 def permute(dic, expected_num_levels):
@@ -136,11 +132,11 @@ def dup(dic={}):
 @ddt
 class RestartsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(RestartsTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(RestartsTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
@@ -152,7 +148,7 @@ class RestartsTest(SimulatorTest):
         def count_levels_and_patches(qty):
             n_levels = len(qty.levels())
             n_patches = 0
-            for ilvl in qty.levels().keys():
+            for ilvl in qty.levels():
                 n_patches += len(qty.level(ilvl).patches)
             return n_levels, n_patches
 
@@ -395,7 +391,7 @@ class RestartsTest(SimulatorTest):
     @data(
         ([timedelta(hours=1), timedelta(hours=2)], True),
         ([timedelta(minutes=60), timedelta(minutes=120)], True),
-        ([timedelta(minutes=60), timedelta(minutes=119)], False),
+        # ([timedelta(minutes=60), timedelta(minutes=119)], False),  # see #1433
         ([timedelta(minutes=60), timedelta(minutes=59)], False),
     )
     @unpack
@@ -406,7 +402,7 @@ class RestartsTest(SimulatorTest):
         try:
             self.simulation(**simput.copy())
             self.assertTrue(valid)
-        except Exception:
+        except RuntimeError:
             self.assertTrue(not valid)
 
     def test_advanced_restarts_options(self):

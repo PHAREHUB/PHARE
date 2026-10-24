@@ -2,6 +2,7 @@
 """
 Wall-clock benchmark of the Orszag-Tang MHD case, constant vs adaptive time step.
 """
+
 import os
 
 # no scope timing in a benchmark: it must not be part of what we measure
@@ -9,13 +10,12 @@ os.environ["PHARE_SCOPE_TIMING"] = "0"
 
 import time
 
+from orszag_tang import config, final_time
+
 import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.simulator.simulator import Simulator, startMPI
-
 from tests.simulator import SimulatorTest
-
-from orszag_tang import config, final_time
 
 ph.NO_GUI()
 

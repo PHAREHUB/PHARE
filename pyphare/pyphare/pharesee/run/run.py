@@ -1,26 +1,26 @@
-import os
 import glob
+import os
+
 import numpy as np
 
-from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.pharesee.hierarchy import ScalarField, VectorField
-
-from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
-from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
 from pyphare.core.phare_utilities import listify
-
 from pyphare.logger import getLogger
+from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
+from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
+from pyphare.pharesee.hierarchy.hierarchy_utils import (
+    compute_hier_from,
+    flat_finest_field,
+)
+
 from .utils import (
-    _compute_to_primal,
-    _compute_pop_pressure,
-    _compute_pressure,
     _compute_current,
     _compute_divB,
+    _compute_pop_pressure,
+    _compute_pressure,
+    _compute_to_primal,
     _get_rank,
     make_interpolator,
 )
-
 
 logger = getLogger(__name__)
 
@@ -51,11 +51,10 @@ class Run:
 
         times = listify(times)
         times = [f"{t:.10f}" for t in times]
-        if "selection_box" in kwargs:
-            if isinstance(kwargs["selection_box"], tuple):
-                lower = kwargs["selection_box"][:2]
-                upper = kwargs["selection_box"][2:]
-                kwargs["selection_box"] = Box(lower, upper)
+        if "selection_box" in kwargs and isinstance(kwargs["selection_box"], tuple):
+            lower = kwargs["selection_box"][:2]
+            upper = kwargs["selection_box"][2:]
+            kwargs["selection_box"] = Box(lower, upper)
 
         def _get_hier(h):
             return hierarchy_from(
@@ -80,9 +79,9 @@ class Run:
 
             # assumes all qties in the hierarchy have the same ghost width
             # so take the first patch data of the first patch of the first level....
-            nbrGhosts = list(hierarchy.level(0).patches[0].patch_datas.values())[
-                0
-            ].ghosts_nbr
+            nbrGhosts = next(
+                iter(hierarchy.level(0).patches[0].patch_datas.values())
+            ).ghosts_nbr
             merged_qties = {}
             for qty in hierarchy.quantities():
                 data, coords = flat_finest_field(hierarchy, qty, time=time)
@@ -354,7 +353,9 @@ class Run:
     def GetDomainSize(self, **kwargs):
         import h5py
 
-        data_file = h5py.File(self.available_diags[0], "r")  # That is the first file in th available diags
+        data_file = h5py.File(
+            self.available_diags[0], "r"
+        )  # That is the first file in th available diags
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return (data_file.attrs["domain_box"] + 1) * root_cell_width
@@ -376,7 +377,7 @@ class Run:
                 return time
             if self.default_time_:
                 return self.default_time_
-            self.default_time_ = float(list(data_file[h5_time_grp_key].keys())[0])
+            self.default_time_ = float(next(iter(data_file[h5_time_grp_key].keys())))
             return self.default_time_
 
         h5_time_grp_key = "t"

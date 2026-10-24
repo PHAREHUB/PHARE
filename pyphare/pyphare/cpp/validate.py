@@ -2,31 +2,31 @@
 PHARE build and runtime validation checks
 """
 
+import dataclasses
+import json
 import os
 import sys
-import json
-import dataclasses
 from pathlib import Path
 
-from pyphare.core import phare_utilities
 from pyphare import cpp
+from pyphare.core import phare_utilities
 
 DOT_PHARE_DIR = Path(os.getcwd()) / ".phare"
 
 
-ERROR_MESSAGES = dict(
-    on_phare_config_error="""
+ERROR_MESSAGES = {
+    "on_phare_config_error": """
         Warning: PHARE was not built with the configurator active""",
-    on_python3_version_mismatch="""
+    "on_python3_version_mismatch": """
         Inconsistency detected!
         Python during build and now are not the same!
         Build python version  : {}
         Current python version: {}""",
-    on_build_config_check_runtime_error="""
+    "on_build_config_check_runtime_error": """
         Could not interrogate python versions
         Please see 'Having Issues' Section of ISSUES.TXT
         Actual error (consider adding to issue report): {}""",
-)
+}
 
 
 def print_error(key, *args):
@@ -87,7 +87,7 @@ def try_system_binary(cli, log_to):
         try:
             proc = phare_utilities.run_cli_cmd(cli, check=True)
             f.write(phare_utilities.decode_bytes(proc.stdout).strip())
-        except Exception as e:
+        except RuntimeError as e:
             f.write(f"failed to run cli command {cli}\n")
             f.write(f"error {e}")
 
@@ -105,15 +105,22 @@ def log_runtime_config():
         git_hash=get_git_hash(),
     )
 
-    rank_info_dir = DOT_PHARE_DIR / "rank_info"
+    is_host_root = cpp.mpi_is_root_rank_for_host()  # collective, all ranks
+
+    node_info_dir = DOT_PHARE_DIR / "node_info"
     if cpp.mpi_rank() == 0:
-        rank_info_dir.mkdir(exist_ok=True, parents=True)
+        node_info_dir.mkdir(exist_ok=True, parents=True)
+        with open(node_info_dir / "runtime_config.json", "w") as f:
+            json.dump(dataclasses.asdict(settings), f)
     cpp.mpi_barrier()
 
-    rank_dir = rank_info_dir / f"{cpp.mpi_rank()}"
-    rank_dir.mkdir(exist_ok=True)
+    if not is_host_root:
+        return
 
-    with open(rank_dir / "runtime_config.json", "w") as f:
-        json.dump(dataclasses.asdict(settings), f)
+    node_dir = node_info_dir / f"{cpp.mpi_rank()}"
+    node_dir.mkdir(exist_ok=True)
 
-    try_system_binaries(rank_dir)
+    with open(node_dir / "hostname.txt", "w") as f:
+        f.write(cpp.mpi_hostname())
+
+    try_system_binaries(node_dir)
