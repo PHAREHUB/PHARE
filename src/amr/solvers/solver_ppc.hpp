@@ -351,9 +351,15 @@ double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& mode
             core::MeshIndex<dimension> const index{args...};
 
             auto const rho = n(index);
-            auto const bx  = GridLayout::template project<GridLayout::BxToMoments>(Bx, index);
-            auto const by  = GridLayout::template project<GridLayout::ByToMoments>(By, index);
-            auto const bz  = GridLayout::template project<GridLayout::BzToMoments>(Bz, index);
+            auto const bx
+                = GridLayout::template project<core::HybridQuantity::Scalar::Bx,
+                                               core::HybridQuantity::Scalar::rho>(Bx, index);
+            auto const by
+                = GridLayout::template project<core::HybridQuantity::Scalar::By,
+                                               core::HybridQuantity::Scalar::rho>(By, index);
+            auto const bz
+                = GridLayout::template project<core::HybridQuantity::Scalar::Bz,
+                                               core::HybridQuantity::Scalar::rho>(Bz, index);
 
             auto const BdotB = bx * bx + by * by + bz * bz;
 

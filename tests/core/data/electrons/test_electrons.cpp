@@ -408,15 +408,15 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
     electrons.update(layout);
     auto& Ne = electrons.density();
 
-    auto check = [&layout]<auto projector>(auto const& Vecomp, auto const& Fcomp, auto const& Jcomp,
-                                           auto const& Ne_) -> void {
+    auto check = [&layout]<auto src, auto dst>(auto const& Vecomp, auto const& Fcomp,
+                                               auto const& Jcomp, auto const& Ne_) -> void {
         if constexpr (dim == 1)
         {
             auto psi_X = layout.physicalStartIndex(Fcomp, Direction::X);
             auto pei_X = layout.physicalEndIndex(Fcomp, Direction::X);
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
             {
-                auto const JOnV = GridYee::template project<projector>(Jcomp, {i});
+                auto const JOnV = GridYee::template project<src, dst>(Jcomp, {i});
                 EXPECT_DOUBLE_EQ(Vecomp(i), (Fcomp(i) - JOnV) / Ne_(i));
             }
         }
@@ -429,7 +429,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
                 for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
                 {
-                    auto const JOnV = GridYee::template project<projector>(Jcomp, {i, j});
+                    auto const JOnV = GridYee::template project<src, dst>(Jcomp, {i, j});
                     EXPECT_DOUBLE_EQ(Vecomp(i, j), (Fcomp(i, j) - JOnV) / Ne_(i, j));
                 }
         }
@@ -445,7 +445,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
                 for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
                     for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
                     {
-                        auto const JOnV = GridYee::template project<projector>(Jcomp, {i, j, k});
+                        auto const JOnV = GridYee::template project<src, dst>(Jcomp, {i, j, k});
                         EXPECT_DOUBLE_EQ(Vecomp(i, j, k), (Fcomp(i, j, k) - JOnV) / Ne_(i, j, k));
                     }
         }
@@ -455,9 +455,12 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
     auto const& [Fx, Fy, Fz]    = this->chargeFlux();
     auto const& [Vex, Vey, Vez] = this->Ve();
 
-    check.template operator()<GridYee::JxToMoments>(Vex, Fx, Jx, Ne);
-    check.template operator()<GridYee::JyToMoments>(Vey, Fy, Jy, Ne);
-    check.template operator()<GridYee::JzToMoments>(Vez, Fz, Jz, Ne);
+    check.template operator()<HybridQuantity::Scalar::Jx, HybridQuantity::Scalar::Vx>(Vex, Fx, Jx,
+                                                                                      Ne);
+    check.template operator()<HybridQuantity::Scalar::Jy, HybridQuantity::Scalar::Vy>(Vey, Fy, Jy,
+                                                                                      Ne);
+    check.template operator()<HybridQuantity::Scalar::Jz, HybridQuantity::Scalar::Vz>(Vez, Fz, Jz,
+                                                                                      Ne);
 }
 
 
