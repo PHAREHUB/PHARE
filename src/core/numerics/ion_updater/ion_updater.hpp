@@ -5,6 +5,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
+#include "core/numerics/pusher/boris.hpp"
 #include "core/numerics/pusher/pusher.hpp"
 #include "core/numerics/moments/moments.hpp"
 #include "core/numerics/pusher/pusher_factory.hpp"
@@ -15,6 +16,7 @@
 
 
 #include <memory>
+#include <stdexcept>
 
 
 namespace PHARE::core
@@ -40,6 +42,8 @@ public:
     using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
     using Pusher = PHARE::core::Pusher<dimension, ParticleRange, Electromag, Interpolator,
                                        BoundaryCondition, GridLayout>;
+    using Boris  = PHARE::core::BorisPusher<dimension, ParticleRange, Electromag, Interpolator,
+                                            BoundaryCondition, GridLayout>;
 
 private:
     constexpr static auto makePusher
@@ -47,7 +51,16 @@ private:
                                                  BoundaryCondition, GridLayout>;
 
     std::unique_ptr<Pusher> pusher_;
+    // the domain_only update pushes particle by particle, which needs the concrete pusher
+    Boris const* boris_ = &boris(*pusher_);
     Interpolator interpolator_;
+
+    static Boris const& boris(Pusher const& pusher)
+    {
+        if (auto const* boris = dynamic_cast<Boris const*>(&pusher))
+            return *boris;
+        throw std::runtime_error("IonUpdater: the pusher must be a BorisPusher");
+    }
 
 public:
     IonUpdater(PHARE::initializer::PHAREDict const& dict)
@@ -193,16 +206,19 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
     for (auto& pop : ions)
     {
-        auto& domain = (tmp_particles_ = pop.domainParticles()); // make local copy
-
-        // first push all domain particles twice
-        // accumulate those inNonLevelGhostBox
-        auto outRange = makeIndexRange(domain);
-        auto allowed  = outRange
-            = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_, layout,
-                            boxing.noop, boxing.inNonLevelGhostBox);
-
-        interpolator_(allowed, pop.particleDensity(), pop.flux(), layout);
+        // push each domain particle on a local copy, leaving the domain array untouched,
+        // and deposit it if it ends in the non level ghost box
+        auto& density         = pop.particleDensity();
+        auto& flux            = pop.flux();
+        auto const& keepBoxes = boxing.nonLevelGhostBox;
+        double const coef1    = boris_->accelerationCoef(pop.charge(), pop.mass());
+        for (auto const& particle : pop.domainParticles())
+        {
+            Particle_t pushed = particle;
+            boris_->push(pushed, em, interpolator_, layout, coef1);
+            if (isIn(Point{pushed.iCell}, keepBoxes))
+                interpolator_.deposit(pushed, density, flux, layout);
+        }
 
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)

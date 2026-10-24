@@ -95,8 +95,7 @@ public:
 
         rangeOut = firstSelector(rangeOut);
 
-        double const dto2m      = 0.5 * dt_ / mass;
-        double const coef1      = charge * dto2m;
+        double const coef1      = accelerationCoef(charge, mass);
         auto const halfDtOverDl = halfDtOverDl_;
         auto& particles         = rangeOut.array();
         auto const end          = rangeOut.iend();
@@ -120,6 +119,38 @@ public:
         return secondSelector(rangeOut);
     }
 
+
+
+    /** charge * dt / (2 * mass), the coefficient of E and B in the Boris acceleration */
+    double accelerationCoef(double const charge, double const mass) const
+    {
+        double const dto2m = 0.5 * dt_ / mass;
+        return charge * dto2m;
+    }
+
+
+    /** push a single particle in place from t=n to t=n+1, with the same arithmetic as move()
+     * but without selection or cell map update: the caller owns the particle (e.g. a local
+     * copy). coef1 is accelerationCoef(charge, mass).
+     */
+    template<typename Particle_t>
+    void push(Particle_t& part, Electromag const& emFields, Interpolator& interpolator,
+              GridLayout const& layout, double const coef1) const
+    {
+        auto const halfDtOverDl = halfDtOverDl_;
+
+        std::array<int, dim> newCell;
+        if (!advancePosition_(halfDtOverDl, part, part, newCell)) [[unlikely]]
+            throwMovedTwoCells_("PrePush", halfDtOverDl, part);
+        part.iCell = newCell;
+
+        auto const& local_em = interpolator(part, emFields, layout);
+        accelerate_(part, local_em, coef1);
+
+        if (!advancePosition_(halfDtOverDl, part, part, newCell)) [[unlikely]]
+            throwMovedTwoCells_("PostPush", halfDtOverDl, part, &local_em, &layout);
+        part.iCell = newCell;
+    }
 
 
     /** see Pusher::move() documentation*/
@@ -234,7 +265,7 @@ private:
     /** Accelerate the particles in rangeIn and put the new velocity in rangeOut
      */
     template<typename Particle_t, typename ParticleEB>
-    void accelerate_(Particle_t& part, ParticleEB const& particleEB, double const coef1)
+    static void accelerate_(Particle_t& part, ParticleEB const& particleEB, double const coef1)
     {
         auto& [pE, pB]        = particleEB;
         auto& [pEx, pEy, pEz] = pE;

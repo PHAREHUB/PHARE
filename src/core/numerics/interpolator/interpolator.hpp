@@ -627,27 +627,34 @@ public:
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
+    /**\brief deposit the density and flux of a single particle on the mesh
+     */
+    template<typename Particle_t, typename VecField, typename GridLayout, typename Field>
+    inline void deposit(Particle_t const& part, Field& particleDensity, VecField& flux,
+                        GridLayout const& layout, double coef = 1.)
+    {
+        auto const& [xFlux, yFlux, zFlux] = flux();
+
+        Starts startIndex;
+        Weights weights;
+        localIndexAndWeights_<QtyCentering, QtyCentering::primal>(
+            layout.AMRToLocal(Point{part.iCell}), part.delta, startIndex, weights);
+
+        particleToMesh_(particleDensity, xFlux, yFlux, zFlux, part, startIndex, weights, coef);
+    }
+
+
+    /**\brief deposit the density and flux of all particles in the range on the mesh
+     */
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
     inline void operator()(ParticleRange& particleRange, Field& particleDensity, VecField& flux,
                            GridLayout const& layout, double coef = 1.)
     {
-        auto begin                        = particleRange.begin();
-        auto end                          = particleRange.end();
-        auto& startIndex_                 = primal_startIndex_;
-        auto& weights_                    = primal_weights_;
-        auto const& [xFlux, yFlux, zFlux] = flux();
-
-
         PHARE_LOG_START(3, "ParticleToMesh::operator()");
 
-        for (auto currPart = begin; currPart != end; ++currPart)
-        {
-            indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, currPart->iCell,
-                                                                 currPart->delta);
+        for (auto const& part : particleRange)
+            deposit(part, particleDensity, flux, layout, coef);
 
-            particleToMesh_(particleDensity, xFlux, yFlux, zFlux, *currPart, startIndex_, weights_,
-                            coef);
-        }
         PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
