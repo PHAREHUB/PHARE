@@ -226,8 +226,7 @@ TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
         if (parity == 0)
             row.push_back({Point<int, 2>{}, 1.0});
         else
-            for (auto const& w :
-                 ImplYee2D::directionalInterp<0, ImplYee2D::InterpDir::PrimalToDual, 2>())
+            for (auto const& w : directionalInterp<2, 0, InterpDir::PrimalToDual, 2>())
                 row.push_back(w);
         return row;
     };
