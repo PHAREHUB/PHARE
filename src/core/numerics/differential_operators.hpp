@@ -5,6 +5,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/types.hpp"
 
@@ -14,55 +15,62 @@
 #include <stdexcept>
 #include <type_traits>
 
-namespace PHARE::core
+namespace PHARE::core::detail
 {
-namespace detail
+template<std::size_t d, typename Array, std::size_t dim>
+double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
 {
-    template<std::size_t d, typename Array, std::size_t dim>
-    double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
-    {
-        return [&]<std::size_t... i>(std::index_sequence<i...>) {
-            return array((i == d ? idx[i] + shift : idx[i])...);
-        }(std::make_index_sequence<dim>{});
-    }
+    return [&]<std::size_t... i>(std::index_sequence<i...>) {
+        return array((i == d ? idx[i] + shift : idx[i])...);
+    }(std::make_index_sequence<dim>{});
+}
 
-    template<typename GridLayout, typename Dst>
-    auto destination_centering(GridLayout const& layout, Dst const& dst)
-    {
-        if constexpr (std::is_same_v<Dst, std::array<QtyCentering, GridLayout::dimension>>)
-            return dst;
-        else
-            return layout.centering(dst);
-    }
+template<typename GridLayout, typename Dst>
+auto destination_centering(GridLayout const& layout, Dst const& dst)
+{
+    if constexpr (std::is_same_v<Dst, std::array<QtyCentering, GridLayout::dimension>>)
+        return dst;
+    else
+        return layout.centering(dst);
+}
 
-    template<Component c>
-    constexpr std::size_t component_index()
-    {
-        static_assert(c == Component::X or c == Component::Y or c == Component::Z);
-        return static_cast<std::size_t>(c);
-    }
-
-    struct Stencil
-    {
-        int next;
-        int prev;
-        double coefficient;
-    };
-
-    constexpr Stencil stencil(QtyCentering const src, QtyCentering const dst)
-    {
-        if (src == dst)
-            return {1, -1, 0.5};
-        if (src == QtyCentering::primal)
-            return {1, 0, 1.};
-        return {0, -1, 1.};
-    }
-} // namespace detail
-
-
+template<Component c>
+constexpr std::size_t component_index()
+{
+    static_assert(c == Component::X or c == Component::Y or c == Component::Z);
+    return static_cast<std::size_t>(c);
+}
 
 template<auto dir, std::size_t dim>
-class Partial
+constexpr bool direction_exists = static_cast<std::size_t>(dir) < dim;
+
+struct Stencil
+{
+    int next;
+    int prev;
+    double coefficient;
+};
+
+constexpr Stencil stencil(QtyCentering const src, QtyCentering const dst)
+{
+    if (src == dst)
+        return {1, -1, 0.5};
+    if (src == QtyCentering::primal)
+        return {1, 0, 1.};
+    return {0, -1, 1.};
+}
+} // namespace PHARE::core::detail
+
+
+
+namespace PHARE::core
+{
+template<auto dir, std::size_t dim>
+class Partial;
+
+template<auto dir, std::size_t dim>
+    requires(detail::direction_exists<dir, dim>)
+class Partial<dir, dim>
 {
     static constexpr auto d = static_cast<std::size_t>(dir);
 
@@ -100,7 +108,7 @@ private:
 };
 
 template<auto dir, std::size_t dim>
-    requires(static_cast<std::size_t>(dir) >= dim)
+    requires(not detail::direction_exists<dir, dim>)
 class Partial<dir, dim>
 {
 public:
@@ -117,8 +125,8 @@ template<Component c, std::size_t dim>
 class Curl
 {
     static constexpr auto i = detail::component_index<c>();
-    static constexpr auto j = (i + 1) % 3;
-    static constexpr auto k = (i + 2) % 3;
+    static constexpr auto j = (i + 1) % NBR_COMPO;
+    static constexpr auto k = (i + 2) % NBR_COMPO;
 
 public:
     template<typename GridLayout, typename VecField>

@@ -35,6 +35,8 @@ public:
     template<typename VecField>
     void operator()(VecField const& B, VecField& J)
     {
+        // can't use structured bindings because
+        //   "reference to local binding declared in enclosing function"
         auto& Jx = J(Component::X);
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);

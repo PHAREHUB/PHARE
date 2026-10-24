@@ -32,6 +32,8 @@ public:
 
         this->dt_ = dt;
 
+        // can't use structured bindings because
+        //   "reference to local binding declared in enclosing function"
         auto const& Bx = B(Component::X);
         auto const& By = B(Component::Y);
         auto const& Bz = B(Component::Z);
