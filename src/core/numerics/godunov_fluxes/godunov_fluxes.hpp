@@ -115,9 +115,9 @@ public:
                     if constexpr (Hall)
                     {
                         auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, GridLayout::implT::edgeXToCellCenter,
-                            GridLayout::implT::edgeYToCellCenter,
-                            GridLayout::implT::edgeZToCellCenter>(state.J, {indices...});
+                            direction, MHDQuantity::Scalar::Jx, MHDQuantity::Scalar::Jy,
+                            MHDQuantity::Scalar::Jz, MHDQuantity::Scalar::rho>(state.J,
+                                                                               {indices...});
 
                         auto const& j = std::forward_as_tuple(jL, jR);
 
@@ -165,7 +165,7 @@ private:
     template<auto direction>
     auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
     {
-        using implT        = GridLayout::implT;
+        using M            = MHDQuantity::Scalar;
         auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
 
         auto const& Ex = E(Component::X);
@@ -177,26 +177,22 @@ private:
 
         if constexpr (direction == Direction::X)
             return std::make_pair(
-                PerIndexVector<double>{nan,
-                                       GridLayout::template project<implT::edgeYToFaceX>(Ey, idx),
-                                       GridLayout::template project<implT::edgeZToFaceX>(Ez, idx)},
-                PerIndexVector<double>{nan, GridLayout::template project<implT::ByToFaceX>(By, idx),
-                                       GridLayout::template project<implT::BzToFaceX>(Bz, idx)});
+                PerIndexVector<double>{nan, GridLayout::template project<M::Ey, M::Bx>(Ey, idx),
+                                       GridLayout::template project<M::Ez, M::Bx>(Ez, idx)},
+                PerIndexVector<double>{nan, GridLayout::template project<M::By, M::Bx>(By, idx),
+                                       GridLayout::template project<M::Bz, M::Bx>(Bz, idx)});
         else if constexpr (direction == Direction::Y)
             return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<implT::edgeXToFaceY>(Ex, idx),
-                                       nan,
-                                       GridLayout::template project<implT::edgeZToFaceY>(Ez, idx)},
-                PerIndexVector<double>{GridLayout::template project<implT::BxToFaceY>(Bx, idx), nan,
-                                       GridLayout::template project<implT::BzToFaceY>(Bz, idx)});
+                PerIndexVector<double>{GridLayout::template project<M::Ex, M::By>(Ex, idx), nan,
+                                       GridLayout::template project<M::Ez, M::By>(Ez, idx)},
+                PerIndexVector<double>{GridLayout::template project<M::Bx, M::By>(Bx, idx), nan,
+                                       GridLayout::template project<M::Bz, M::By>(Bz, idx)});
         else
             return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<implT::edgeXToFaceZ>(Ex, idx),
-                                       GridLayout::template project<implT::edgeYToFaceZ>(Ey, idx),
-                                       nan},
-                PerIndexVector<double>{GridLayout::template project<implT::BxToFaceZ>(Bx, idx),
-                                       GridLayout::template project<implT::ByToFaceZ>(By, idx),
-                                       nan});
+                PerIndexVector<double>{GridLayout::template project<M::Ex, M::Bz>(Ex, idx),
+                                       GridLayout::template project<M::Ey, M::Bz>(Ey, idx), nan},
+                PerIndexVector<double>{GridLayout::template project<M::Bx, M::Bz>(Bx, idx),
+                                       GridLayout::template project<M::By, M::Bz>(By, idx), nan});
     }
 
     GridLayout layout_;

@@ -5,6 +5,7 @@
 #include <array>
 
 #include "core/utilities/index/index.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -92,11 +93,14 @@ private:
 
 
         auto const bx
-            = GridLayout::template project<GridLayout::implT::faceXToCellCenter>(Bx, index);
+            = GridLayout::template project<MHDQuantity::Scalar::Bx, MHDQuantity::Scalar::rho>(
+                Bx, index);
         auto const by
-            = GridLayout::template project<GridLayout::implT::faceYToCellCenter>(By, index);
+            = GridLayout::template project<MHDQuantity::Scalar::By, MHDQuantity::Scalar::rho>(
+                By, index);
         auto const bz
-            = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
+            = GridLayout::template project<MHDQuantity::Scalar::Bz, MHDQuantity::Scalar::rho>(
+                Bz, index);
 
         Etot(index)
             = eosPToEtot(gamma, rho(index), Vx(index), Vy(index), Vz(index), bx, by, bz, P(index));

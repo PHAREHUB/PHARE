@@ -90,27 +90,25 @@ private:
             auto const& meshSize = layout_.meshSize();
             auto const dx        = *std::min_element(meshSize.begin(), meshSize.end());
 
-            auto coef = [&]<auto BxProj, auto ByProj, auto BzProj, auto rhoProj>() {
-                auto const bx = GridLayout::template project<BxProj>(B(Component::X), idx);
-                auto const by = GridLayout::template project<ByProj>(B(Component::Y), idx);
-                auto const bz = GridLayout::template project<BzProj>(B(Component::Z), idx);
-                auto const n  = GridLayout::template project<rhoProj>(rho, idx);
+            auto coef = [&]<auto dst>() {
+                auto const bx = GridLayout::template project<MHDQuantity::Scalar::Bx, dst>(
+                    B(Component::X), idx);
+                auto const by = GridLayout::template project<MHDQuantity::Scalar::By, dst>(
+                    B(Component::Y), idx);
+                auto const bz = GridLayout::template project<MHDQuantity::Scalar::Bz, dst>(
+                    B(Component::Z), idx);
+                auto const n
+                    = GridLayout::template project<MHDQuantity::Scalar::rho, dst>(rho, idx);
                 auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);
             };
 
             if constexpr (component == Component::X)
-                return coef
-                    .template operator()<GridLayout::BxToEx, GridLayout::ByToEx, GridLayout::BzToEx,
-                                         GridLayout::implT::cellCenterToEdgeX>();
+                return coef.template operator()<MHDQuantity::Scalar::Ex>();
             else if constexpr (component == Component::Y)
-                return coef
-                    .template operator()<GridLayout::BxToEy, GridLayout::ByToEy, GridLayout::BzToEy,
-                                         GridLayout::implT::cellCenterToEdgeY>();
+                return coef.template operator()<MHDQuantity::Scalar::Ey>();
             else
-                return coef
-                    .template operator()<GridLayout::BxToEz, GridLayout::ByToEz, GridLayout::BzToEz,
-                                         GridLayout::implT::cellCenterToEdgeZ>();
+                return coef.template operator()<MHDQuantity::Scalar::Ez>();
         }
     }
 

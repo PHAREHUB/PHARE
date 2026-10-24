@@ -34,21 +34,21 @@ public:
                               recons_mp5_R_(u_2, u_1, u, u1, u2));
     }
 
-    template<auto direction, auto Projection, typename Field>
+    template<auto direction, auto src, auto dst, typename Field>
     static auto center_reconstruct(Field const& U, MeshIndex<Field::dimension> index)
     {
-        auto u_3 = GridLayout::template project<Projection>(
+        auto u_3 = GridLayout::template project<src, dst>(
             U, GridLayout::template previous<direction>(GridLayout::template previous<direction>(
                    GridLayout::template previous<direction>(index))));
-        auto u_2 = GridLayout::template project<Projection>(
+        auto u_2 = GridLayout::template project<src, dst>(
             U, GridLayout::template previous<direction>(
                    GridLayout::template previous<direction>(index)));
-        auto u_1 = GridLayout::template project<Projection>(
+        auto u_1 = GridLayout::template project<src, dst>(
             U, GridLayout::template previous<direction>(index));
-        auto u  = GridLayout::template project<Projection>(U, index);
-        auto u1 = GridLayout::template project<Projection>(
+        auto u  = GridLayout::template project<src, dst>(U, index);
+        auto u1 = GridLayout::template project<src, dst>(
             U, GridLayout::template next<direction>(index));
-        auto u2 = GridLayout::template project<Projection>(
+        auto u2 = GridLayout::template project<src, dst>(
             U, GridLayout::template next<direction>(GridLayout::template next<direction>(index)));
 
         return std::make_pair(recons_mp5_L_(u_3, u_2, u_1, u, u1),

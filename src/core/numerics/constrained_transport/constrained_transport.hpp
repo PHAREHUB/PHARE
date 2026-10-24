@@ -4,6 +4,7 @@
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 
@@ -243,11 +244,15 @@ private:
                 return std::min({meshSize[0], meshSize[1], meshSize[2]});
         }();
 
-        auto computeHR = [&]<auto BxProj, auto ByProj, auto BzProj, auto rhoProj>() {
-            auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);
-            auto const ByOnE = GridLayout::template project<ByProj>(B(Component::Y), index);
-            auto const BzOnE = GridLayout::template project<BzProj>(B(Component::Z), index);
-            auto const nOnE  = GridLayout::template project<rhoProj>(rho, index);
+        auto computeHR = [&]<auto dst>() {
+            auto const BxOnE = GridLayout::template project<MHDQuantity::Scalar::Bx, dst>(
+                B(Component::X), index);
+            auto const ByOnE = GridLayout::template project<MHDQuantity::Scalar::By, dst>(
+                B(Component::Y), index);
+            auto const BzOnE = GridLayout::template project<MHDQuantity::Scalar::Bz, dst>(
+                B(Component::Z), index);
+            auto const nOnE
+                = GridLayout::template project<MHDQuantity::Scalar::rho, dst>(rho, index);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             E(index)
                 -= nu_ * layout_.laplacian(J, index) * minMeshSize * minMeshSize * (b / nOnE + 1);
@@ -255,21 +260,15 @@ private:
 
         if constexpr (component == Component::X)
         {
-            return computeHR
-                .template operator()<GridLayout::BxToEx, GridLayout::ByToEx, GridLayout::BzToEx,
-                                     GridLayout::implT::cellCenterToEdgeX>();
+            return computeHR.template operator()<MHDQuantity::Scalar::Ex>();
         }
         if constexpr (component == Component::Y)
         {
-            return computeHR
-                .template operator()<GridLayout::BxToEy, GridLayout::ByToEy, GridLayout::BzToEy,
-                                     GridLayout::implT::cellCenterToEdgeY>();
+            return computeHR.template operator()<MHDQuantity::Scalar::Ey>();
         }
         if constexpr (component == Component::Z)
         {
-            return computeHR
-                .template operator()<GridLayout::BxToEz, GridLayout::ByToEz, GridLayout::BzToEz,
-                                     GridLayout::implT::cellCenterToEdgeZ>();
+            return computeHR.template operator()<MHDQuantity::Scalar::Ez>();
         }
     }
 };

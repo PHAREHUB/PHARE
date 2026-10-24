@@ -23,10 +23,6 @@ public:
         auto [VzL, VzR] = Reconstruction::template reconstruct<direction>(S.V(Component::Z), index);
         auto [PL, PR]   = Reconstruction::template reconstruct<direction>(S.P, index);
 
-        // auto [BL, BR] = center_reconstruct<direction>(S.B, GridLayout::faceXToCellCenter(),
-        //                                               GridLayout::faceYToCellCenter(),
-        //                                               GridLayout::faceZToCellCenter(), index);
-
         auto [BL, BR] = transverse_reconstruct<direction>(S.B, index);
 
         PerIndex uL{rhoL, {VxL, VyL, VzL}, BL, PL};
@@ -35,8 +31,7 @@ public:
         return std::make_pair(uL, uR);
     }
 
-    template<auto direction, auto ProjectionX, auto ProjectionY, auto ProjectionZ,
-             typename VecField>
+    template<auto direction, auto srcX, auto srcY, auto srcZ, auto dst, typename VecField>
     static auto center_reconstruct(VecField const& U, MeshIndex<VecField::dimension> index)
     {
         auto const& Ux = U(Component::X);
@@ -44,24 +39,24 @@ public:
         auto const& Uz = U(Component::Z);
 
         auto [UxL, UxR]
-            = Reconstruction::template center_reconstruct<direction, ProjectionX>(Ux, index);
+            = Reconstruction::template center_reconstruct<direction, srcX, dst>(Ux, index);
         auto [UyL, UyR]
-            = Reconstruction::template center_reconstruct<direction, ProjectionY>(Uy, index);
+            = Reconstruction::template center_reconstruct<direction, srcY, dst>(Uy, index);
         auto [UzL, UzR]
-            = Reconstruction::template center_reconstruct<direction, ProjectionZ>(Uz, index);
+            = Reconstruction::template center_reconstruct<direction, srcZ, dst>(Uz, index);
 
         return std::make_tuple(PerIndexVector{UxL, UyL, UzL}, PerIndexVector{UxR, UyR, UzR});
     }
 
     template<auto direction>
-    static constexpr auto projection()
+    static constexpr auto faceQuantity()
     {
         if constexpr (direction == Direction::X)
-            return GridLayout::implT::faceXToCellCenter();
+            return MHDQuantity::Scalar::Bx;
         else if constexpr (direction == Direction::Y)
-            return GridLayout::implT::faceYToCellCenter();
+            return MHDQuantity::Scalar::By;
         else if constexpr (direction == Direction::Z)
-            return GridLayout::implT::faceZToCellCenter();
+            return MHDQuantity::Scalar::Bz;
     }
 
     // The normal direction for B is already face centered, so we only reconstruct the transverse
@@ -83,9 +78,11 @@ public:
         auto const Bt1 = B(static_cast<Component>(transverse[1]));
 
         auto [Bt0L, Bt0R] = Reconstruction::template center_reconstruct<
-            direction, Reconstructor::template projection<transverse[0]>>(Bt0, index);
+            direction, Reconstructor::template faceQuantity<transverse[0]>(),
+            MHDQuantity::Scalar::rho>(Bt0, index);
         auto [Bt1L, Bt1R] = Reconstruction::template center_reconstruct<
-            direction, Reconstructor::template projection<transverse[1]>>(Bt1, index);
+            direction, Reconstructor::template faceQuantity<transverse[1]>(),
+            MHDQuantity::Scalar::rho>(Bt1, index);
 
         PerIndexVector<typename VecField::value_type> BL, BR;
         BL(direction)     = Bn(index);
@@ -107,15 +104,15 @@ public:
         auto const& Jz = J(Component::Z);
 
         auto const& [laplJxL, laplJxR]
-            = reconstructed_laplacian_component_<direction, GridLayout::implT::edgeXToCellCenter>(
+            = reconstructed_laplacian_component_<direction, MHDQuantity::Scalar::Jx>(
                 inverseMeshSize, Jx, index);
 
         auto const& [laplJyL, laplJyR]
-            = reconstructed_laplacian_component_<direction, GridLayout::implT::edgeYToCellCenter>(
+            = reconstructed_laplacian_component_<direction, MHDQuantity::Scalar::Jy>(
                 inverseMeshSize, Jy, index);
 
         auto const& [laplJzL, laplJzR]
-            = reconstructed_laplacian_component_<direction, GridLayout::implT::edgeZToCellCenter>(
+            = reconstructed_laplacian_component_<direction, MHDQuantity::Scalar::Jz>(
                 inverseMeshSize, Jz, index);
 
         return std::make_tuple(PerIndexVector{laplJxL, laplJyL, laplJzL},
@@ -123,7 +120,7 @@ public:
     }
 
 private:
-    template<auto direction, auto Projection, typename Field>
+    template<auto direction, auto src, typename Field>
     static auto reconstructed_laplacian_component_(auto inverseMeshSize, Field const& J,
                                                    MeshIndex<Field::dimension> index)
     {
@@ -133,15 +130,18 @@ private:
         };
 
         auto const [JL, JR]
-            = Reconstruction::template center_reconstruct<direction, Projection>(J, index);
+            = Reconstruction::template center_reconstruct<direction, src, MHDQuantity::Scalar::rho>(
+                J, index);
 
         MeshIndex<Field::dimension> prevX = GridLayout::template previous<Direction::X>(index);
         MeshIndex<Field::dimension> nextX = GridLayout::template next<Direction::X>(index);
 
         auto const [JL_X_1, JR_X_1]
-            = Reconstruction::template center_reconstruct<direction, Projection>(J, prevX);
+            = Reconstruction::template center_reconstruct<direction, src, MHDQuantity::Scalar::rho>(
+                J, prevX);
         auto const [JL_X1, JR_X1]
-            = Reconstruction::template center_reconstruct<direction, Projection>(J, nextX);
+            = Reconstruction::template center_reconstruct<direction, src, MHDQuantity::Scalar::rho>(
+                J, nextX);
 
         std::uint32_t dirX = static_cast<std::uint32_t>(Direction::X);
 
@@ -158,9 +158,11 @@ private:
             MeshIndex<Field::dimension> nextY = GridLayout::template next<Direction::Y>(index);
 
             auto const [JL_Y_1, JR_Y_1]
-                = Reconstruction::template center_reconstruct<direction, Projection>(J, prevY);
+                = Reconstruction::template center_reconstruct<direction, src,
+                                                              MHDQuantity::Scalar::rho>(J, prevY);
             auto const [JL_Y1, JR_Y1]
-                = Reconstruction::template center_reconstruct<direction, Projection>(J, nextY);
+                = Reconstruction::template center_reconstruct<direction, src,
+                                                              MHDQuantity::Scalar::rho>(J, nextY);
 
             std::uint32_t dirY = static_cast<std::uint32_t>(Direction::Y);
 
@@ -178,9 +180,13 @@ private:
                 MeshIndex<Field::dimension> nextZ = GridLayout::template next<Direction::Z>(index);
 
                 auto const [JL_Z_1, JR_Z_1]
-                    = Reconstruction::template center_reconstruct<direction, Projection>(J, prevZ);
+                    = Reconstruction::template center_reconstruct<direction, src,
+                                                                  MHDQuantity::Scalar::rho>(J,
+                                                                                            prevZ);
                 auto const [JL_Z1, JR_Z1]
-                    = Reconstruction::template center_reconstruct<direction, Projection>(J, nextZ);
+                    = Reconstruction::template center_reconstruct<direction, src,
+                                                                  MHDQuantity::Scalar::rho>(J,
+                                                                                            nextZ);
 
                 std::uint32_t dirZ = static_cast<std::uint32_t>(Direction::Z);
 
