@@ -3,6 +3,7 @@
 
 #include "gridlayout_deriv.hpp"
 #include "gridlayout_params.hpp"
+#include "core/numerics/differential_operators.hpp"
 
 #include "gmock/gmock.h"
 
@@ -47,9 +48,11 @@ TYPED_TEST(a1DDerivative, DXBY1D)
         this->By(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]);
     }
 
+    auto const derivative = partial<Direction::X>(
+        this->layout, this->By, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Ez));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, {lcl_idx});
+        auto const localDerivative = derivative(lcl_idx);
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[lcl_idx[0]], 1e-12));
     }
 }
@@ -68,9 +71,11 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
         this->Ez(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]);
     }
 
+    auto const derivative = partial<Direction::X>(
+        this->layout, this->Ez, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::By));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {lcl_idx});
+        auto const localDerivative = derivative(lcl_idx);
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[lcl_idx[0]], 1e-12));
     }
 }
@@ -105,9 +110,11 @@ TYPED_TEST(a2DDerivative, DXBY2D)
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
 
+    auto const derivative = partial<Direction::X>(
+        this->layout, this->By, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Ez));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -129,9 +136,11 @@ TYPED_TEST(a2DDerivative, DYBY2D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
+    auto const derivative = partial<Direction::Y>(
+        this->layout, this->By, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Bz));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->By, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -153,9 +162,11 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
 
+    auto const derivative = partial<Direction::X>(
+        this->layout, this->Ez, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::By));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -177,9 +188,11 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
 
+    auto const derivative = partial<Direction::Y>(
+        this->layout, this->Ez, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Bx));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->Ez, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -215,9 +228,11 @@ TYPED_TEST(a3DDerivative, DXBY3D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
+    auto const derivative = partial<Direction::X>(
+        this->layout, this->By, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Ez));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -240,9 +255,12 @@ TYPED_TEST(a3DDerivative, DYBY3D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
+    auto const derivative = partial<Direction::Y>(
+        this->layout, this->By,
+        std::array<QtyCentering, 3>{QtyCentering::dual, QtyCentering::dual, QtyCentering::dual});
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->By, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -265,9 +283,11 @@ TYPED_TEST(a3DDerivative, DZBY3D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Z);
 
+    auto const derivative = partial<Direction::Z>(
+        this->layout, this->By, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Ex));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::Z>(this->By, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -290,9 +310,11 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
 
+    auto const derivative = partial<Direction::X>(
+        this->layout, this->Ez, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::By));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -315,9 +337,11 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
 
+    auto const derivative = partial<Direction::Y>(
+        this->layout, this->Ez, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::Bx));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->Ez, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
@@ -340,9 +364,11 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
 
     auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Z);
 
+    auto const derivative = partial<Direction::Z>(
+        this->layout, this->Ez, TestFixture::GridLayout_t::centering(HybridQuantity::Scalar::rho));
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::Z>(this->Ez, lcl_idx);
+        auto const localDerivative = derivative(lcl_idx);
         auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
