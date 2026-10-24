@@ -2,7 +2,7 @@
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_slabs.hpp"
-#include "core/data/field/field_box_slabs.hpp"
+#include "core/data/field/field_box_spans.hpp"
 
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"

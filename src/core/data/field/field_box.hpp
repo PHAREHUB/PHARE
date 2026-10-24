@@ -1,13 +1,12 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BOX_HPP
 #define PHARE_CORE_DATA_FIELD_FIELD_BOX_HPP
 
-#include "core/def.hpp"
-#include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
-#include "core/data/field/field_box_slabs.hpp"
+#include "core/data/field/field_box_spans.hpp"
 
 #include <vector>
+#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
@@ -85,7 +84,7 @@ void operate_on_span(auto& dst, T const* src_data)
 template<typename Operator>
 void operate_on_fields(auto& dst, auto const& src)
 {
-    assert(dst.lcl_box.size() == src.lcl_box.size());
+    assert(dst.lcl_box.shape() == src.lcl_box.shape()); // spans are paired slab by slab
     auto d_span       = make_field_box_slabs(dst.lcl_box, dst.field);
     auto const s_span = make_field_box_slabs(src.lcl_box, src.field);
 

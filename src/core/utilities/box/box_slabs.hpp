@@ -30,24 +30,85 @@ inner loops) rather than a callback per point.
 */
 
 
-/** @brief Iterator over the spans of one slab.
+/** @brief One span of a box: the contiguous run of `size` cells from `start` along the
+ * fastest-varying dimension.
  *
- * Dereferencing yields a (start point, span length) tuple, where the returned
- * point references internal storage recomputed on each dereference: it is
- * invalidated by the next dereference or increment.
- *
- * Comparison operators only inspect span_idx, so comparing iterators made
- * from different boxes or slabs is meaningless.
+ * Binds as [start, size], or iterates its points: a point_iterator advances its own
+ * copy of start, which unlike advancing start in place lets the compiler vectorize
+ * loops over the span (2D points otherwise stay packed in one 64 bit register).
+ */
+template<typename T, std::size_t dim>
+struct BoxSpan
+{
+    class point_iterator;
+
+    point_iterator begin() const { return {start}; }
+    T end() const { return start[dim - 1] + size; }
+
+    Point<T, dim> start;
+    std::uint32_t size;
+};
+
+
+/** @brief Entry point of the span-wise iteration: iterates the slabs of a box.
+ * See make_box_slabs() for the usual way to construct one.
  */
 template<typename T, std::size_t dim_>
-class BoxSpans
+class BoxSlabs
 {
     auto constexpr static dim = dim_;
 
 public:
     using value_type = T;
 
-    BoxSpans(Box<T, dim> const& box, T const slab_idx, T const span_idx)
+    class slab_iterator;
+    class span_iterator;
+
+    BoxSlabs(Box<T, dim> const& _box)
+        : box{_box}
+    {
+    }
+
+    slab_iterator begin() { return {box, slab_begin()}; }
+    slab_iterator begin() const { return {box, slab_begin()}; }
+    slab_iterator end() { return {box, slab_end()}; }
+    slab_iterator end() const { return {box, slab_end()}; }
+
+    T slab_begin() const
+    {
+        if constexpr (dim > 2)
+            return box.lower[0];
+        return 0;
+    }
+    T slab_end() const // clamped, see span_iterator::_span_size
+    {
+        if constexpr (dim > 2)
+            return std::max<T>(box.lower[0], box.upper[0] + 1);
+        return 1;
+    }
+
+    // number of slabs (not the number of cells in the box), 0 for an ill-formed box
+    std::uint32_t size() const { return slab_end() - slab_begin(); }
+
+protected:
+    Box<T, dim> const box;
+};
+
+
+/** @brief Iterator over the spans of one slab.
+ *
+ * Dereferencing yields the current BoxSpan by value.
+ *
+ * Comparison operators only inspect span_idx, so comparing iterators made
+ * from different boxes or slabs is meaningless.
+ */
+template<typename T, std::size_t dim_>
+class BoxSlabs<T, dim_>::span_iterator
+{
+public:
+    using value_type = T;
+
+    span_iterator(Box<T, dim> const& box, T const slab_idx, T const span_idx)
         : box{box}
         , slab_idx{slab_idx}
         , span_idx{span_idx}
@@ -55,24 +116,24 @@ public:
     {
     }
 
-    BoxSpans& operator++()
+    span_iterator& operator++()
     {
         ++span_idx;
         return *this;
     }
-    BoxSpans operator++(int) // postfix increment
+    span_iterator operator++(int) // postfix increment
     {
         auto copy = *this;
         ++(*this);
         return copy;
     }
 
-    BoxSpans& operator--()
+    span_iterator& operator--()
     {
         --span_idx;
         return *this;
     }
-    BoxSpans operator--(int) // postfix decrement
+    span_iterator operator--(int) // postfix decrement
     {
         auto copy = *this;
         --(*this);
@@ -91,12 +152,12 @@ public:
             return (_point = {slab_idx, span_idx, box.lower[2]});
     }
 
-    auto operator*() { return std::forward_as_tuple(point(), span_size); }
+    BoxSpan<T, dim> operator*() { return {point(), span_size}; }
 
-    bool operator==(BoxSpans const& that) const { return span_idx == that.span_idx; }
-    bool operator!=(BoxSpans const& that) const { return span_idx != that.span_idx; }
-    bool operator<(BoxSpans const& that) const { return span_idx < that.span_idx; }
-    bool operator>(BoxSpans const& that) const { return span_idx > that.span_idx; }
+    bool operator==(span_iterator const& that) const { return span_idx == that.span_idx; }
+    bool operator!=(span_iterator const& that) const { return span_idx != that.span_idx; }
+    bool operator<(span_iterator const& that) const { return span_idx < that.span_idx; }
+    bool operator>(span_iterator const& that) const { return span_idx > that.span_idx; }
 
 
 protected:
@@ -116,53 +177,54 @@ protected:
 };
 
 
-/** @brief One slab of a box: a fixed slowest-varying index, iterated over its spans. */
+/** @brief Iterator over the slabs of a box.
+ *
+ * A slab is a fixed slowest-varying index: dereferencing yields the slab_iterator
+ * itself, whose begin()/end() are span_iterators over that slab's spans.
+ */
 template<typename T, std::size_t dim_>
-class BoxSlab
+class BoxSlabs<T, dim_>::slab_iterator
 {
-    auto constexpr static dim = dim_;
-    using BoxSpans_t          = BoxSpans<T, dim>;
-
 public:
     using value_type = T;
 
-    BoxSlab(Box<T, dim> const& _box, T const _slab_idx)
+    slab_iterator(Box<T, dim> const& _box, T const _slab_idx)
         : box{_box}
         , slab_idx{_slab_idx}
     {
     }
 
-    BoxSpans_t begin() { return {box, slab_idx, span_begin()}; }
-    BoxSpans_t begin() const { return {box, slab_idx, span_begin()}; }
-    BoxSpans_t end() { return {box, slab_idx, span_end()}; }
-    BoxSpans_t end() const { return {box, slab_idx, span_end()}; }
+    span_iterator begin() { return {box, slab_idx, span_begin()}; }
+    span_iterator begin() const { return {box, slab_idx, span_begin()}; }
+    span_iterator end() { return {box, slab_idx, span_end()}; }
+    span_iterator end() const { return {box, slab_idx, span_end()}; }
 
     auto& operator*() { return *this; }
     auto& operator*() const { return *this; }
 
-    bool operator==(BoxSlab const& that) const { return slab_idx == that.slab_idx; }
-    bool operator!=(BoxSlab const& that) const { return slab_idx != that.slab_idx; }
-    bool operator<(BoxSlab const& that) const { return slab_idx < that.slab_idx; }
-    bool operator>(BoxSlab const& that) const { return slab_idx > that.slab_idx; }
+    bool operator==(slab_iterator const& that) const { return slab_idx == that.slab_idx; }
+    bool operator!=(slab_iterator const& that) const { return slab_idx != that.slab_idx; }
+    bool operator<(slab_iterator const& that) const { return slab_idx < that.slab_idx; }
+    bool operator>(slab_iterator const& that) const { return slab_idx > that.slab_idx; }
 
-    BoxSlab& operator++()
+    slab_iterator& operator++()
     {
         ++slab_idx;
         return *this;
     }
-    BoxSlab operator++(int) // postfix increment
+    slab_iterator operator++(int) // postfix increment
     {
         auto copy = *this;
         ++(*this);
         return copy;
     }
 
-    BoxSlab& operator--()
+    slab_iterator& operator--()
     {
         --slab_idx;
         return *this;
     }
-    BoxSlab operator--(int) // postfix decrement
+    slab_iterator operator--(int) // postfix decrement
     {
         auto copy = *this;
         --(*this);
@@ -175,7 +237,7 @@ public:
             return box.lower[dim - 2];
         return 0;
     }
-    T span_end() const // clamped, see BoxSpans::_span_size
+    T span_end() const // clamped, see span_iterator::_span_size
     {
         if constexpr (dim > 1)
             return std::max<T>(box.lower[dim - 2], box.upper[dim - 2] + 1);
@@ -187,46 +249,31 @@ protected:
     T slab_idx;
 };
 
-/** @brief Entry point of the span-wise iteration: iterates the slabs of a box.
- * See make_box_slabs() for the usual way to construct one.
+
+/** @brief Iterator over the points of one span, compared against the span's end
+ * coordinate along the fastest-varying dimension.
  */
-template<typename T, std::size_t dim_>
-class BoxSlabs
+template<typename T, std::size_t dim>
+class BoxSpan<T, dim>::point_iterator
 {
-    auto constexpr static dim = dim_;
-    using BoxSlab_t           = BoxSlab<T, dim>;
-
 public:
-    using value_type = T;
-
-    BoxSlabs(Box<T, dim> const& _box)
-        : box{_box}
+    point_iterator(Point<T, dim> const& start)
+        : point{start}
     {
     }
 
-    BoxSlab_t begin() { return {box, slab_begin()}; }
-    BoxSlab_t begin() const { return {box, slab_begin()}; }
-    BoxSlab_t end() { return {box, slab_end()}; }
-    BoxSlab_t end() const { return {box, slab_end()}; }
+    auto& operator*() const { return point; }
 
-    T slab_begin() const
+    point_iterator& operator++()
     {
-        if constexpr (dim > 2)
-            return box.lower[0];
-        return 0;
-    }
-    T slab_end() const // clamped, see BoxSpans::_span_size
-    {
-        if constexpr (dim > 2)
-            return std::max<T>(box.lower[0], box.upper[0] + 1);
-        return 1;
+        ++point[dim - 1];
+        return *this;
     }
 
-    // number of slabs (not the number of cells in the box), 0 for an ill-formed box
-    std::uint32_t size() const { return slab_end() - slab_begin(); }
+    bool operator!=(T const end) const { return point[dim - 1] != end; }
 
-protected:
-    Box<T, dim> const box;
+private:
+    Point<T, dim> point;
 };
 
 
@@ -239,8 +286,8 @@ auto make_box_slabs(Box<T, dim> const box)
 
 /** @brief Calls fn(point, args...) for every point of `box`, walking it span-wise.
  *
- * `point` is the current span's starting point, advanced in place along the
- * fastest-varying dimension: it is only valid for the duration of the call.
+ * `point` is owned by the span's point_iterator: it is only valid for the duration
+ * of the call.
  * `args` are passed to every call as lvalues, never forwarded: fn runs once per
  * point, so a by-value parameter could otherwise move from them on the first one.
  */
@@ -248,8 +295,8 @@ template<typename T, std::size_t dim>
 void for_each_point(Box<T, dim> const& box, auto&& fn, auto&&... args)
 {
     for (auto const& slab : make_box_slabs(box))
-        for (auto&& [point, size] : slab)
-            for (std::uint32_t i = 0; i < size; ++i, ++point[dim - 1])
+        for (auto const& span : slab)
+            for (auto const& point : span)
                 fn(point, args...);
 }
 

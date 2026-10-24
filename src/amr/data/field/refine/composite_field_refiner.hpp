@@ -7,7 +7,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
-#include "core/data/field/field_box_slabs.hpp"
+#include "core/data/field/field_box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -85,7 +85,7 @@ namespace detail
                 return centering[d] == core::QtyCentering::dual ? 1u : 0u;
             };
 
-            // The destination is walked span-wise (see core/data/field/field_box_slabs.hpp).
+            // The destination is walked span-wise (see core/data/field/field_box_spans.hpp).
             // Along a span only the fastest direction changes: its parity alternates and the
             // coarse anchor advances one coarse cell every two fine cells, so the anchor and
             // the choice bits of the other directions are computed once per span.
