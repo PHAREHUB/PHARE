@@ -141,6 +141,58 @@ def config(sim, loadbalancing={}):
     return sim
 
 
+def drifting_load_config(sim):
+    """y-modulated density drifting along y, so the level 0 load moves between rebalances"""
+
+    def density(x, y):
+        Ly = sim.simulation_domain()[1]
+        return (
+            0.4
+            + 1.0 / np.cosh((y - Ly * 0.3) / 0.5) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.7) / 0.5) ** 2
+        ) * (1.0 + 0.8 * np.sin(2 * np.pi * y / Ly))
+
+    def S(y, y0, l):
+        return 0.5 * (1.0 + np.tanh((y - y0) / l))
+
+    def bx(x, y):
+        Ly = sim.simulation_domain()[1]
+        return -1 + 2 * (S(y, Ly * 0.3, 0.5) - S(y, Ly * 0.7, 0.5))
+
+    def zero(x, y):
+        return 0.0
+
+    def vdrift(x, y):
+        return 40.0 + 0.0 * x
+
+    def vth(x, y):
+        return np.sqrt(0.3)
+
+    ph.MaxwellianFluidModel(
+        bx=bx,
+        by=zero,
+        bz=zero,
+        protons={
+            "charge": 1,
+            "density": density,
+            "vbulkx": zero,
+            "vbulky": vdrift,
+            "vbulkz": zero,
+            "vthx": vth,
+            "vthy": vth,
+            "vthz": vth,
+            "nbr_part_per_cell": 44,
+            "init": {"seed": 12345},
+        },
+    )
+    ph.ElectronModel(closure="isothermal", Te=0.0)
+    ph.ElectromagDiagnostics(
+        quantity="B", write_timestamps=[0.0, sim.time_stepper.final_time]
+    )
+    ph.LoadBalancer(active=True, mode="nppc", tol=0.05, on_init=True, every=3)
+    return sim
+
+
 def get_time(path, time=0, pop="protons", datahier=None):
     time = f"{time:.10f}"
     from pyphare.pharesee.hierarchy import hierarchy_from
@@ -209,6 +261,30 @@ class LoadBalancingTest(SimulatorTest):
                 dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
             )
             # does not get here
+
+    def test_three_levels_level0_rebalance(self):
+        # a rebalance that moves the level 0 partition under levels 1 and 2
+        if cpp.mpi_size() == 1:  # doesn't make sense
+            return
+
+        sim = self.simulation(
+            time_step_nbr=4,
+            time_step=0.005,
+            cells=(40, 40),
+            dl=(0.4, 0.4),
+            refinement="tagging",
+            max_nbr_levels=3,
+            nesting_buffer=1,
+            tag_buffer="1",
+            largest_patch_size=(8, 8),
+            hyper_resistivity=0.002,
+            resistivity=0.001,
+            diag_options={
+                "format": "phareh5",
+                "options": {"dir": diag_outputs, "mode": "overwrite"},
+            },
+        )
+        Simulator(drifting_load_config(sim)).run()
 
     @unittest.skip("should change with moments")
     @data(
