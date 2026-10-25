@@ -117,6 +117,14 @@ namespace amr
             strat_->registerLevel(hierarchy, levelNumber);
         }
 
+        /**
+         * @brief see IMessenger::onHierarchyChanged
+         */
+        void onHierarchyChanged(hierarchy_ptr const& hierarchy, int const levelNumber) override
+        {
+            strat_->onHierarchyChanged(hierarchy, levelNumber);
+        }
+
 
 
         /**
@@ -137,8 +145,7 @@ namespace amr
          * @param levelNumber
          * @param initDataTime
          */
-        void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                       IPhysicalModel& model, level_t& level,
+        void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model, level_t& level,
                        double const initDataTime) override
         {
             strat_->initLevel(hierarchy, model, level, initDataTime);

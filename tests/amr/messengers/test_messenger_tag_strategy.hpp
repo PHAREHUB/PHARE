@@ -112,10 +112,12 @@ public:
         }
     }
 
-    void
-    resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                                int const /*coarsestLevel*/, int const /*finestLevel*/) override
+    void resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                     int const /*coarsestLevel*/,
+                                     int const /*finestLevel*/) override
     {
+        for (auto ilvl = 0; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
+            messenger_->onHierarchyChanged(hierarchy, ilvl);
     }
 
 

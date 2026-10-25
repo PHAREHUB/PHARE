@@ -56,6 +56,8 @@ namespace amr
 
         virtual void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
 
+        virtual void onHierarchyChanged(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
+
         virtual void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
                             level_ptr const& oldLevel, IPhysicalModel& model,
                             double const initDataTime)
@@ -63,9 +65,8 @@ namespace amr
 
         // domain filling methods
         // used during level creation
-        virtual void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                               IPhysicalModel& model, level_t& level,
-                               double const initDataTime)
+        virtual void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model,
+                               level_t& level, double const initDataTime)
             = 0;
 
         // ghost filling

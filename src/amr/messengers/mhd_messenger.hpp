@@ -30,6 +30,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace PHARE
 {
@@ -284,53 +285,34 @@ namespace amr
 
         void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
-            auto const level = hierarchy->getPatchLevel(levelNumber);
+            sameLevelBuiltOn_.erase(levelNumber);
+            interLevelBuiltOn_.erase(levelNumber);
+            removeInterLevelSchedules_(levelNumber);
 
-            // magPatchGhostsRefineSchedules[levelNumber]
-            //     = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
+            buildSameLevelSchedules_(hierarchy, levelNumber);
+            sameLevelBuiltOn_[levelNumber] = levelsOf_(hierarchy, levelNumber, levelNumber);
+        }
 
-            // elecPatchGhostsRefineSchedules[levelNumber] = EalgoPatchGhost.createSchedule(level);
 
-            EpatchGhostRefluxedSchedules[levelNumber]
-                = EpatchGhostRefluxedAlgo.createSchedule(level);
-            HydroXpatchGhostRefluxedSchedules[levelNumber]
-                = HydroXpatchGhostRefluxedAlgo.createSchedule(level);
-            HydroYpatchGhostRefluxedSchedules[levelNumber]
-                = HydroYpatchGhostRefluxedAlgo.createSchedule(level);
-            HydroZpatchGhostRefluxedSchedules[levelNumber]
-                = HydroZpatchGhostRefluxedAlgo.createSchedule(level);
 
-            elecGhostsRefiners_.registerLevel(hierarchy, level);
-
-            rhoGhostsRefiners_.registerLevel(hierarchy, level);
-            // velGhostsRefiners_.registerLevel(hierarchy, level);
-            // pressureGhostsRefiners_.registerLevel(hierarchy, level);
-
-            momentumGhostsRefiners_.registerLevel(hierarchy, level);
-            totalEnergyGhostsRefiners_.registerLevel(hierarchy, level);
-
-            magFluxesXGhostRefiners_.registerLevel(hierarchy, level);
-            magFluxesYGhostRefiners_.registerLevel(hierarchy, level);
-            magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
-
-            magGhostsRefiners_.registerLevel(hierarchy, level);
-            magMaxRefiners_.registerLevel(hierarchy, level);
-            magMaxModelRefiners_.registerLevel(hierarchy, level);
-
-            if (levelNumber != rootLevelNumber)
+        // Schedule construction is collective. The staleness decisions below are the same on
+        // every rank because SAMRAI replaces a level collectively.
+        void onHierarchyChanged(hierarchy_ptr const& hierarchy, int const levelNumber) override
+        {
+            if (!isCurrent_(sameLevelBuiltOn_, hierarchy, levelNumber, levelNumber))
             {
-                // refluxing
-                auto const& coarseLevel       = hierarchy->getPatchLevel(levelNumber - 1);
-                ErefluxSchedules[levelNumber] = ErefluxAlgo.createSchedule(coarseLevel, level);
-                HydroXrefluxSchedules[levelNumber]
-                    = HydroXrefluxAlgo.createSchedule(coarseLevel, level);
-                HydroYrefluxSchedules[levelNumber]
-                    = HydroYrefluxAlgo.createSchedule(coarseLevel, level);
-                HydroZrefluxSchedules[levelNumber]
-                    = HydroZrefluxAlgo.createSchedule(coarseLevel, level);
+                buildSameLevelSchedules_(hierarchy, levelNumber);
+                sameLevelBuiltOn_[levelNumber] = levelsOf_(hierarchy, levelNumber, levelNumber);
+            }
 
-                // the init-only refinement schedules (magnetic, density, momentum, total
-                // energy) are transient, built in initLevel() at fill time
+            if (levelNumber != rootLevelNumber
+                and !isCurrent_(interLevelBuiltOn_, hierarchy, rootLevelNumber, levelNumber))
+            {
+                interLevelBuiltOn_.erase(levelNumber);
+                removeInterLevelSchedules_(levelNumber);
+                buildInterLevelSchedules_(hierarchy, levelNumber);
+                interLevelBuiltOn_[levelNumber]
+                    = levelsOf_(hierarchy, rootLevelNumber, levelNumber);
             }
         }
 
@@ -370,8 +352,7 @@ namespace amr
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
-                       IPhysicalModel& model, level_t& level,
+        void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model, level_t& level,
                        double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
@@ -380,6 +361,7 @@ namespace amr
 
             auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
 
+            // init-only schedules are used once, so they are built at fill time, not stored
             BalgoInit
                 .createSchedule(levelPtr, nullptr, levelNumber - 1, hierarchy,
                                 &magneticRefinePatchStrategy_)
@@ -436,15 +418,15 @@ namespace amr
         void reflux(int const coarserLevelNumber, int const fineLevelNumber,
                     double const syncTime) override
         {
-            ErefluxSchedules[fineLevelNumber]->coarsenData();
-            HydroXrefluxSchedules[fineLevelNumber]->coarsenData();
-            HydroYrefluxSchedules[fineLevelNumber]->coarsenData();
-            HydroZrefluxSchedules[fineLevelNumber]->coarsenData();
+            ErefluxSchedules.at(fineLevelNumber)->coarsenData();
+            HydroXrefluxSchedules.at(fineLevelNumber)->coarsenData();
+            HydroYrefluxSchedules.at(fineLevelNumber)->coarsenData();
+            HydroZrefluxSchedules.at(fineLevelNumber)->coarsenData();
 
-            EpatchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
-            HydroXpatchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
-            HydroYpatchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
-            HydroZpatchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
+            EpatchGhostRefluxedSchedules.at(coarserLevelNumber)->fillData(syncTime);
+            HydroXpatchGhostRefluxedSchedules.at(coarserLevelNumber)->fillData(syncTime);
+            HydroYpatchGhostRefluxedSchedules.at(coarserLevelNumber)->fillData(syncTime);
+            HydroZpatchGhostRefluxedSchedules.at(coarserLevelNumber)->fillData(syncTime);
         }
 
         void postSynchronize(IPhysicalModel& model, level_t& level, double const time) override
@@ -502,6 +484,93 @@ namespace amr
 
 
     private:
+        void buildSameLevelSchedules_(hierarchy_ptr const& hierarchy, int const levelNumber)
+        {
+            auto const level = hierarchy->getPatchLevel(levelNumber);
+
+            EpatchGhostRefluxedSchedules[levelNumber]
+                = EpatchGhostRefluxedAlgo.createSchedule(level);
+            HydroXpatchGhostRefluxedSchedules[levelNumber]
+                = HydroXpatchGhostRefluxedAlgo.createSchedule(level);
+            HydroYpatchGhostRefluxedSchedules[levelNumber]
+                = HydroYpatchGhostRefluxedAlgo.createSchedule(level);
+            HydroZpatchGhostRefluxedSchedules[levelNumber]
+                = HydroZpatchGhostRefluxedAlgo.createSchedule(level);
+
+            // on the root level there is no coarser source, so these are same-level schedules
+            if (levelNumber == rootLevelNumber)
+            {
+                forEachGhostFieldPool_([&](auto& pool) { pool.registerLevel(hierarchy, level); });
+            }
+            magMaxRefiners_.registerLevel(hierarchy, level);
+            magMaxModelRefiners_.registerLevel(hierarchy, level);
+        }
+
+
+
+        void buildInterLevelSchedules_(hierarchy_ptr const& hierarchy, int const levelNumber)
+        {
+            auto const level = hierarchy->getPatchLevel(levelNumber);
+
+            forEachGhostFieldPool_([&](auto& pool) { pool.registerLevel(hierarchy, level); });
+
+            // refluxing
+            auto const& coarseLevel       = hierarchy->getPatchLevel(levelNumber - 1);
+            ErefluxSchedules[levelNumber] = ErefluxAlgo.createSchedule(coarseLevel, level);
+            HydroXrefluxSchedules[levelNumber]
+                = HydroXrefluxAlgo.createSchedule(coarseLevel, level);
+            HydroYrefluxSchedules[levelNumber]
+                = HydroYrefluxAlgo.createSchedule(coarseLevel, level);
+            HydroZrefluxSchedules[levelNumber]
+                = HydroZrefluxAlgo.createSchedule(coarseLevel, level);
+        }
+
+
+
+        // the levels lo..hi of the hierarchy, recorded against the schedules built from them
+        static auto levelsOf_(hierarchy_ptr const& hierarchy, int const lo, int const hi)
+        {
+            std::vector<std::weak_ptr<level_t>> levels;
+            for (auto ilvl = lo; ilvl <= hi; ++ilvl)
+                levels.emplace_back(hierarchy->getPatchLevel(ilvl));
+            return levels;
+        }
+
+        // whether the schedules of level hi were built against the current levels lo..hi
+        static bool isCurrent_(auto const& builtOn, hierarchy_ptr const& hierarchy, int const lo,
+                               int const hi)
+        {
+            auto const it = builtOn.find(hi);
+            if (it == builtOn.end())
+                return false;
+            for (auto ilvl = lo; ilvl <= hi; ++ilvl)
+                if (it->second[ilvl - lo].lock() != hierarchy->getPatchLevel(ilvl))
+                    return false;
+            return true;
+        }
+
+        template<typename Fn>
+        void forEachGhostFieldPool_(Fn&& fn)
+        {
+            fn(elecGhostsRefiners_);
+            fn(rhoGhostsRefiners_);
+            fn(momentumGhostsRefiners_);
+            fn(totalEnergyGhostsRefiners_);
+            fn(magFluxesXGhostRefiners_);
+            fn(magFluxesYGhostRefiners_);
+            fn(magFluxesZGhostRefiners_);
+            fn(magGhostsRefiners_);
+        }
+
+        void removeInterLevelSchedules_(int const levelNumber)
+        {
+            forEachGhostFieldPool_([&](auto& pool) { pool.removeLevel(levelNumber); });
+            ErefluxSchedules.erase(levelNumber);
+            HydroXrefluxSchedules.erase(levelNumber);
+            HydroYrefluxSchedules.erase(levelNumber);
+            HydroZrefluxSchedules.erase(levelNumber);
+        }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order.
         void makeRefineOperators_(RefinementConfig const& config)
@@ -736,7 +805,7 @@ namespace amr
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost; //
         SAMRAI::xfer::RefineAlgorithm BalgoInit;
         SAMRAI::xfer::RefineAlgorithm BregridAlgo;
-        SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost; //
+        SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost;                                         //
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules; //
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
             magPatchGhostsRefineSchedules; //
@@ -766,6 +835,12 @@ namespace amr
             HydroYpatchGhostRefluxedSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
             HydroZpatchGhostRefluxedSchedules;
+
+        // Level objects each level's schedules were built against: {L} for same-level schedules,
+        // [root, L] for inter-level ones (coarse interpolation can read below L-1). SAMRAI
+        // replaces a reinitialised level object and never changes a kept one in place.
+        std::map<int, std::vector<std::weak_ptr<level_t>>> sameLevelBuiltOn_;
+        std::map<int, std::vector<std::weak_ptr<level_t>>> interLevelBuiltOn_;
 
         PatchGhostRefinerPool elecGhostsRefiners_{resourcesManager_};
         GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};

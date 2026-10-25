@@ -34,7 +34,6 @@ public:
 
 
 
-    /** @brief drops the schedules of all synchronizers for the given level number. */
     void removeLevel(int const levelNumber)
     {
         for (auto& [_, synchronizer] : synchronizers_)
