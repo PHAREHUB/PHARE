@@ -13,6 +13,7 @@
 
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/indexer.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
@@ -48,8 +49,7 @@ public:
     NO_DISCARD bool check_unique() const
     {
         std::unordered_map<std::size_t, std::size_t> counts;
-        for (auto const& cell : box_)
-        {
+        for_each_point(box_, [&](auto const& cell) {
             auto& itemIndexes = cellIndexes_(local_(cell));
             for (auto const& index : itemIndexes)
             {
@@ -62,7 +62,7 @@ public:
                               << " appears mapped more than once\n";
                 }
             }
-        }
+        });
         bool unique = true;
         for (auto const& [index, count] : counts)
             if (count > 1)
@@ -292,11 +292,10 @@ inline auto CellMap<dim, cell_index_t>::size(box_t const& box) const
 {
     PHARE_LOG_SCOPE(3, "CellMap::size(box)");
     std::size_t s = 0;
-    for (auto const& cell : box)
-    {
+    for_each_point(box, [&](auto const& cell) {
         auto& blist = cellIndexes_(local_(cell));
         s += blist.size();
-    }
+    });
     return s;
 }
 
@@ -319,14 +318,13 @@ template<typename Src, typename Dst>
 inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Src const& from,
                                                   Dst& dest) const
 {
-    for (auto const& cell : box)
-    {
+    for_each_point(box, [&](auto const& cell) {
         auto& blist = cellIndexes_(local_(cell));
         for (auto itemIndex : blist)
         {
             dest.push_back(from[itemIndex]);
         }
-    }
+    });
 }
 
 template<std::size_t dim, typename cell_index_t>
@@ -334,14 +332,13 @@ template<typename Src, typename Dst, typename Transformation>
 inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Src const& from, Dst& dest,
                                                   Transformation&& Fn) const
 {
-    for (auto const& cell : box)
-    {
+    for_each_point(box, [&](auto const& cell) {
         auto& blist = cellIndexes_(local_(cell));
         for (auto itemIndex : blist)
         {
             dest.push_back(Fn(from[itemIndex]));
         }
-    }
+    });
 }
 
 template<std::size_t dim, typename cell_index_t>
@@ -349,8 +346,7 @@ template<typename Src, typename Dst, typename Predicate>
 inline void CellMap<dim, cell_index_t>::export_if(Src const& from, Dst& dest,
                                                   Predicate&& pred) const
 {
-    for (auto const& cell : box_)
-    {
+    for_each_point(box_, [&](auto const& cell) {
         auto& blist = cellIndexes_(local_(cell));
         if (pred(cell))
         {
@@ -359,7 +355,7 @@ inline void CellMap<dim, cell_index_t>::export_if(Src const& from, Dst& dest,
                 dest.push_back(from[itemIndex]);
             }
         }
-    }
+    });
 }
 
 
@@ -369,21 +365,17 @@ template<std::size_t dim, typename cell_index_t>
 inline auto CellMap<dim, cell_index_t>::capacity() const
 {
     std::size_t tot = 0;
-    for (auto const& cell : box_)
-    {
-        tot += cellIndexes_(local_(cell)).capacity();
-    }
+    for_each_point(box_, [&](auto const& cell) { tot += cellIndexes_(local_(cell)).capacity(); });
     return tot;
 }
 
 template<std::size_t dim, typename cell_index_t>
 inline void CellMap<dim, cell_index_t>::empty()
 {
-    for (auto const& cell : box_)
-    {
+    for_each_point(box_, [&](auto const& cell) {
         cellIndexes_(local_(cell)).empty();
         assert(cellIndexes_(local_(cell)).is_empty());
-    }
+    });
 }
 
 
@@ -413,8 +405,7 @@ inline auto CellMap<dim, cell_index_t>::partition(Range range, Predicate&& pred,
 {
     std::size_t toSwapIndex = range.iend() - 1;
     auto pivot              = range.iend();
-    for (auto const& cell : box_)
-    {
+    for_each_point(box_, [&](auto const& cell) {
         auto& itemIndexes = cellIndexes_(local_(cell));
         if (!pred(cell))
         {
@@ -446,7 +437,7 @@ inline auto CellMap<dim, cell_index_t>::partition(Range range, Predicate&& pred,
                 }
             }
         }
-    }
+    });
 
     return makeRange(range.array(), range.ibegin(), pivot);
 }
@@ -475,10 +466,7 @@ inline void CellMap<dim, cell_index_t>::erase(Range range)
 template<std::size_t dim, typename cell_index_t>
 inline void CellMap<dim, cell_index_t>::sort()
 {
-    for (auto const& cell : box_)
-    {
-        cellIndexes_(local_(cell)).sort();
-    }
+    for_each_point(box_, [&](auto const& cell) { cellIndexes_(local_(cell)).sort(); });
 }
 
 
@@ -488,8 +476,7 @@ template<typename CellMap, typename Box, typename ParticleArray>
 void get_sorted(CellMap const& cm, Box const& box, ParticleArray& dest)
 {
     std::size_t pidx = 0;
-    for (auto const& cell : box)
-    {
+    for_each_point(box, [&](auto const& cell) {
         auto bucketlist = cm.list_at(cell);
         if (bucketlist)
         {
@@ -498,7 +485,7 @@ void get_sorted(CellMap const& cm, Box const& box, ParticleArray& dest)
                 dest[pidx++] = *part_ptr;
             }
         }
-    }
+    });
 }
 #endif
 

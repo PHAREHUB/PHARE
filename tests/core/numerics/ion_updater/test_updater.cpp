@@ -629,11 +629,10 @@ struct IonUpdaterTest : public ::testing::Test
 
             // We do not use the primal box as the last primal is incomplete.
             // This is because level ghosts are only interpolated if they enter the domain
-            for (auto const [amr_idx, lcl_idx] : this->layout.amr_lcl_idx())
-            {
+            this->layout.amr_lcl_idx([&](auto const& amr_idx, auto const& lcl_idx) {
                 ixes.emplace_back(lcl_idx[0]);
                 x.emplace_back(layout.cellCenteredCoordinates(amr_idx)[0]);
-            }
+            });
 
             auto const span   = make_const_span(x);
             auto functionXPtr = function(span); // keep alive

@@ -102,6 +102,27 @@ void for_each_point(Box<T, dim> const& box, auto&& fn)
 }
 
 
+/** Calls fn(a_point, b_point) for every point of `a` and its counterpart in the
+ * same-shaped box `b` (e.g. the AMR and local indices of the same cells), in memory order.
+ * Both points are only valid for the duration of the call.
+ */
+template<typename T, typename U, std::size_t dim>
+void for_each_point_zip(Box<T, dim> const& a, Box<U, dim> const& b, auto&& fn)
+{
+    for_each_span(a, b, [&](auto const& a_start, auto const& b_start, std::uint32_t const size) {
+        auto a_point = a_start;
+        auto b_point = b_start;
+        U j          = b_start[dim - 1];
+        for (T i = a_start[dim - 1], end = i + size; i < end; ++i, ++j)
+        {
+            a_point[dim - 1] = i;
+            b_point[dim - 1] = j;
+            fn(a_point, b_point);
+        }
+    });
+}
+
+
 } // namespace PHARE::core
 
 #endif // PHARE_CORE_UTILITIES_BOX_BOX_SPANS_HPP

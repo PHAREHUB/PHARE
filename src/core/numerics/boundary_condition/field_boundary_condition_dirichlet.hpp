@@ -3,6 +3,7 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 
 #include <array>
@@ -85,8 +86,7 @@ public:
                                    : 2.0 * v - field(mirrorIndex);
             };
 
-            for (auto const& index : fieldBox)
-                extrapolate(index, value_[i]);
+            for_each_point(fieldBox, [&](auto const& index) { extrapolate(index, value_[i]); });
         });
     }
 
