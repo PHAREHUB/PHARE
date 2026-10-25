@@ -3,9 +3,9 @@ cmake_minimum_required (VERSION 3.20.1)
 project(test-box)
 
 
-function(_box_test test_name)
+function(_box_test test_file test_name)
 
-  add_executable(${test_name} ${test_name}.cpp)
+  add_executable(${test_name} ${test_file})
 
   target_include_directories(${test_name} PRIVATE
     ${GTEST_INCLUDE_DIRS}
@@ -19,5 +19,5 @@ function(_box_test test_name)
 
 endfunction(_box_test)
 
-_box_test(test_box)
-_box_test(test_box_slabs)
+_box_test(test_box.cpp test-box)
+_box_test(test_box_slabs.cpp test-box-slabs)

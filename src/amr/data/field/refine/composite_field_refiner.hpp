@@ -7,7 +7,6 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
-#include "core/data/field/field_box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -79,56 +78,28 @@ namespace detail
                         "composite field refinement supports refinement ratio 2 only");
 
             // Centering is fixed over the box, parity varies per fine index. The 2-bits-per-
-            // direction index (bit0 = parity, bit1 = dual) selects the matching compile-time
-            // stencil.
-            auto const dualBit = [&](std::size_t const d) -> std::size_t {
-                return centering[d] == core::QtyCentering::dual ? 1u : 0u;
-            };
+            // direction index built below (bit0 = parity, bit1 = dual) selects the matching
+            // compile-time stencil.
+            for (auto const fineIndex : phare_box_from<dimension>(region))
+            {
+                auto const anchor = toCoarseIndex<dimension>(fineIndex);
 
-            // The destination is walked span-wise (see core/data/field/field_box_spans.hpp).
-            // Along a span only the fastest direction changes: its parity alternates and the
-            // coarse anchor advances one coarse cell every two fine cells, so the anchor and
-            // the choice bits of the other directions are computed once per span.
-            constexpr auto fast = dimension - 1;
-
-            auto const fineLower = phare_box_from<dimension>(destFieldBox).lower;
-            auto const localRegion
-                = as_unsigned_phare_box<dimension>(AMRToLocal(region, destFieldBox));
-
-            for (auto const& slab : core::make_field_box_point_slabs(localRegion, destinationField))
-                for (auto&& [span, localStart] : slab)
+                std::size_t combined = 0; // 2 bits/dir: (dual<<1)|parity
+                for (std::size_t d = 0; d < dimension; ++d)
                 {
-                    Point_t fineStart;
-                    for (std::size_t d = 0; d < dimension; ++d)
-                        fineStart[d] = static_cast<int>(localStart[d]) + fineLower[d];
-
-                    auto const anchor = toCoarseIndex<dimension>(fineStart);
-                    Point_t anchorLocal{AMRToLocal(anchor, sourceFieldBox)};
-
-                    std::size_t slowBits = 0; // 2 bits/dir: (dual<<1)|parity
-                    if constexpr (dimension > 1)
-                        for (std::size_t d = 0; d < fast; ++d)
-                        {
-                            auto const parity
-                                = static_cast<std::size_t>(fineStart[d] - 2 * anchor[d]);
-                            slowBits |= ((dualBit(d) << 1) | parity) << (2u * d);
-                        }
-
-                    auto const fastDual = dualBit(fast) << 1;
-                    auto parity = static_cast<std::size_t>(fineStart[fast] - 2 * anchor[fast]);
-
-                    for (std::size_t i = 0; i < span.size(); ++i)
-                    {
-                        // preserve the legacy NaN-guard: only fill fine indices not already set
-                        if (std::isnan(span[i]))
-                            span[i] = gatherers_[slowBits | ((fastDual | parity) << (2u * fast))](
-                                sourceField, anchorLocal);
-
-                        if (parity == 1)
-                            ++anchorLocal[fast];
-                        parity ^= 1u;
-                    }
+                    auto const parity = static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]);
+                    std::size_t const dualBit
+                        = (centering[d] == core::QtyCentering::dual) ? 1u : 0u;
+                    combined |= ((dualBit << 1) | parity) << (2u * d);
                 }
+
+                auto const anchorLocal = AMRToLocal(anchor, sourceFieldBox);
+                auto const fineLocal   = AMRToLocal(fineIndex, destFieldBox);
+
+                double const value = gatherers_[combined](sourceField, anchorLocal);
+
+                assignFine_(destinationField, fineLocal, value);
+            }
         }
 
     private:
@@ -188,6 +159,13 @@ namespace detail
         using Gatherer_t                 = double (*)(FieldT const&, Point_t const&);
         static constexpr auto gatherers_ = core::for_N_make_array<nCombined>(
             [](auto ic) { return Gatherer_t{&gatherStencil_<ic()>}; });
+
+        // preserve the legacy NaN-guard: only fill fine indices not already set
+        static void assignFine_(FieldT& dst, Point_t const& fineLocal, double const value)
+        {
+            if (auto& dst_val = dst(fineLocal); std::isnan(dst_val))
+                dst_val = value;
+        }
     };
 
 } // namespace detail
