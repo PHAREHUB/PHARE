@@ -392,6 +392,9 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 template<auto opts>
 void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
 {
+    if (bool const already_setup = multiphysInteg_ != nullptr)
+        throw std::runtime_error("Simulator::setup already called");
+
     log_out = log_file();
     coutbuf = logging(log_out);
 
@@ -506,6 +509,9 @@ template<auto opts>
 void Simulator<opts>::initialize()
 {
     PHARE_LOG_SCOPE(1, "Simulator::initialize");
+
+    if (bool const needs_setup = multiphysInteg_ == nullptr)
+        throw std::runtime_error("Simulator::initialize: setup() needs to be called first");
 
     std::optional<std::string> error = std::nullopt;
 
