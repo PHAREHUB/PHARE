@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
 import unittest
+
 import numpy as np
 
 import pyphare.pharein as ph
 from pyphare import cpp
+from pyphare.pharesee.hierarchy.fromsim import hierarchy_from_sim
 from pyphare.simulator.simulator import Simulator
 from tests.simulator import populate_simulation
 
-from pyphare.pharesee.hierarchy.fromsim import hierarchy_from_sim
-
 
 def populate_simulation_mhd(dim):
-    from pyphare.pharein.simulation import check_patch_size
 
     cells = [20 for _ in range(dim)]
     dl = [1.0 / v for v in cells]
@@ -22,7 +21,6 @@ def populate_simulation_mhd(dim):
         largest_patch_size=[20] * dim,
         time_step_nbr=1,
         final_time=0.001,
-        boundary_types=["periodic"] * dim,
         cells=cells,
         dl=dl,
         diag_options={},
@@ -56,7 +54,7 @@ def populate_simulation_mhd(dim):
 
 class DataWranglerTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(DataWranglerTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.dw = None
         self.simulator = None
 
@@ -91,7 +89,7 @@ class DataWranglerTest(unittest.TestCase):
         self.assertGreaterEqual(total, (expected * 0.95) / cpp.mpi_size())
 
     def test_mhd(self):
-        ndim, interp = 2, 1
+        ndim = 2
         self.simulator = Simulator(populate_simulation_mhd(ndim))
         self.simulator.initialize()
 

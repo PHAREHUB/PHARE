@@ -1,6 +1,5 @@
 import numpy as np
 
-
 from ...core import gridlayout  #  import GridLayout, HybridGridLayoutFor
 from ...core.box import Box
 from ...core.phare_utilities import refinement_ratio
@@ -52,7 +51,12 @@ def hierarchy_from_sim(simulator, qty, pop="", hier=None, sync=False):
         getters = quantidic(ilvl, dw)
 
         if isFieldQty(qty):
-            patch_datas = getters[qty]()
+            if qty.startswith("flux_"):
+                if pop == "":
+                    raise ValueError("must specify pop argument for flux")
+                patch_datas = getters[qty](pop)
+            else:
+                patch_datas = getters[qty]()
 
             if sync:
                 patch_datas = dw.sync(patch_datas)
