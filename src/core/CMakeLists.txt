@@ -5,6 +5,7 @@ set( SOURCES_INC
      data/electromag/electromag.hpp
      data/field/field.hpp
      data/field/field_traits.hpp
+     data/field/recentered_field.hpp
      data/grid/gridlayoutdefs.hpp
      data/grid/gridlayout.hpp
      data/grid/gridlayout_impl.hpp

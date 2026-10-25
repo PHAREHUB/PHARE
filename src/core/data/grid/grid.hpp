@@ -90,6 +90,9 @@ public:
     NO_DISCARD auto operator&() { return &field_; }
     NO_DISCARD auto operator&() const { return &field_; }
 
+    NO_DISCARD auto& operator*() { return field_; }
+    NO_DISCARD auto& operator*() const { return field_; }
+
 private:
     std::string name_{"No Name"};
     PhysicalQuantity qty_;
