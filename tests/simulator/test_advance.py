@@ -545,7 +545,7 @@ class AdvanceTestBase(SimulatorTest):
 
         rando = random.randint(0, int(1e10))
 
-        def _getHier(diag_dir, boxes=[]):
+        def _getHier(diag_dir, boxes=()):
             return self.getHierarchy(
                 ndim,
                 interp_order,

@@ -27,7 +27,10 @@ diag_outputs = "phare_outputs/load_balancing_2d"
 timestamps = [x * time_step for x in range(time_step_nbr + 1)]
 
 
-def config(sim, loadbalancing={}):
+def config(sim, loadbalancing=None):
+    if loadbalancing is None:
+        loadbalancing = {}
+
     def density(x, y):
         L = sim.simulation_domain()[1]
         return (
@@ -178,7 +181,9 @@ class LoadBalancingTest(SimulatorTest):
         super().tearDown()
         ph.global_vars.sim = None
 
-    def run_sim(self, dic={}):
+    def run_sim(self, dic=None):
+        if dic is None:
+            dic = {}
         ph.global_vars.sim = None
         sim = self.simulation(
             time_step_nbr=time_step_nbr,

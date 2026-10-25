@@ -83,7 +83,7 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
 
     # N=16 preasymptotic here too (same family as the alfven test); dt ~ dx^2
     # makes N=128 the expensive end (~2800 steps at sigma=0.4).
-    SPATIAL_NS = [32, 64, 128]
+    SPATIAL_NS = (32, 64, 128)
     SPATIAL_SIGMA = 0.4  # proven operating point
     SPATIAL_ORDER_BAND = (1.70, 2.25)
 
@@ -91,7 +91,7 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
     # error ratio (see base class). sigma=0.9 is stable up to N=128 (N=256
     # blows up there; the shorter run at N=64 leaves more margin).
     SWEEP_N = 64
-    SWEEP_SIGMAS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    SWEEP_SIGMAS = (0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
     MAX_AMR_SIGMA_DRIFT = 0.05
 
     def cfl_dt(self, N):

@@ -1,3 +1,4 @@
+import contextlib
 import os
 from pathlib import Path
 
@@ -32,10 +33,8 @@ def try_delete_obsolete_restarts(simulator):
     dirs = []
     for path_object in Path(directory).iterdir():
         if path_object.is_dir():
-            try:
+            with contextlib.suppress(ValueError):
                 dirs.append(float(path_object.name))
-            except ValueError:
-                ...  # skip
 
     if len(dirs) < keep_last:
         return  # nothing to do
@@ -69,10 +68,8 @@ def find_latest_time_from_restarts(restart_options):
     dirs = []
     for path_object in Path(directory).iterdir():
         if path_object.is_dir():
-            try:
+            with contextlib.suppress(ValueError):
                 dirs.append(float(path_object.name))
-            except ValueError:
-                ...  # skipped
 
     return None if len(dirs) == 0 else sorted(dirs)[-1]
 

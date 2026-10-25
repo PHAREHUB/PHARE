@@ -16,7 +16,7 @@ class MHDAdvanceTest(AdvanceTestBase):
         ndim,
         _interp_order,
         qty,
-        refinement_boxes={},
+        refinement_boxes=None,
         density=None,
         time_step_nbr=1,
         time_step=0.001,
@@ -34,6 +34,8 @@ class MHDAdvanceTest(AdvanceTestBase):
         # has no interp order, so it is accepted and deliberately unused --
         # forwarding it would override pharein's derivation from model_options
         # and select the coupled hybrid+MHD module.
+        if refinement_boxes is None:
+            refinement_boxes = {}
         if smallest_patch_size is None:
             from pyphare.pharein.simulation import check_patch_size
 

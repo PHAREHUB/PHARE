@@ -19,7 +19,7 @@ class HybridAdvanceTest(AdvanceTestBase):
         ndim,
         interp_order,
         qty,
-        refinement_boxes={},
+        refinement_boxes=None,
         nbr_part_per_cell=100,
         density=None,
         smallest_patch_size=None,
@@ -34,6 +34,8 @@ class HybridAdvanceTest(AdvanceTestBase):
         block_merging_particles=False,
         diag_outputs="",
     ):
+        if refinement_boxes is None:
+            refinement_boxes = {}
         if smallest_patch_size is None:
             from pyphare.pharein.simulation import check_patch_size
 

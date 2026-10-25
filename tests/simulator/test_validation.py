@@ -62,7 +62,7 @@ class SimulatorValidation(SimulatorTest):
       Patches across MPI domains. This case must be handled and not hang due
       to collective calls not being handled properly.
     """
-    valid1D = [
+    valid1D = (
         dup({"cells": [65], "refinement_boxes": {"L0": {"B0": [(10,), (14,)]}}}),
         dup({"cells": [65], "refinement_boxes": {"L0": {"B0": [(5,), (55,)]}}}),
         dup({"cells": [65], "refinement_boxes": {"L0": {"B0": Box(5, 55)}}}),
@@ -120,9 +120,9 @@ class SimulatorValidation(SimulatorTest):
                 "nesting_buffer": 10,
             }
         ),
-    ]
+    )
 
-    invalid1D = [
+    invalid1D = (
         # finer box spans the touching boundary of two same-level
         # siblings -- no longer valid once nesting_buffer >= 1
         dup(
@@ -195,7 +195,7 @@ class SimulatorValidation(SimulatorTest):
                 },
             }
         ),
-    ]
+    )
 
     @data(*valid1D)
     def test_1d_valid(self, input):
@@ -205,7 +205,7 @@ class SimulatorValidation(SimulatorTest):
     def test_1d_invalid(self, input):
         self._do_dim(1, input)
 
-    valid2D = [
+    valid2D = (
         dup({"cells": [65, 65], "refinement_boxes": {"L0": [Box2D(5, 55)]}}),
         dup({"smallest_patch_size": None, "largest_patch_size": None}),
         dup({"smallest_patch_size": (10, 10), "largest_patch_size": (20, 20)}),
@@ -278,9 +278,9 @@ class SimulatorValidation(SimulatorTest):
                 "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(15, 49)]},
             }
         ),
-    ]
+    )
 
-    invalid2D = [
+    invalid2D = (
         # finer box outside lower
         dup(
             {
@@ -366,7 +366,7 @@ class SimulatorValidation(SimulatorTest):
                 },
             }
         ),
-    ]
+    )
 
     @data(*valid2D)
     def test_2d_valid(self, input):
