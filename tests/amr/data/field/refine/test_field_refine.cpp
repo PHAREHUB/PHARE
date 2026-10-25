@@ -216,8 +216,6 @@ TEST(compositeRefiner1D, dualRowSumsToOne)
 // divB-safety of the interior faces belongs to the stage-2 touch-up, not exercised by this test.
 TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
 {
-    using ImplYee2D = GridYee2D::implT;
-
     auto src_at = [](int ix, int iy) { return 1.0 * ix + 0.5 * iy + 0.1 * ix * iy; };
     std::array<QtyCentering, 2> centering{QtyCentering::primal, QtyCentering::dual}; // Bx
 
@@ -226,18 +224,17 @@ TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
         if (parity == 0)
             row.push_back({Point<int, 2>{}, 1.0});
         else
-            for (auto const& w :
-                 ImplYee2D::directionalInterp<0, ImplYee2D::InterpDir::PrimalToDual, 2>())
+            for (auto const& w : directionalInterp<2, 0, InterpDir::PrimalToDual, 2>())
                 row.push_back(w);
         return row;
     };
     auto rowY = [](int parity) {
         std::vector<WeightPoint<2>> row;
         if (parity == 0)
-            for (auto const& w : ImplYee2D::directionalProlongation<1, -1, 2>())
+            for (auto const& w : directionalProlongation<2, 1, -1, 2>())
                 row.push_back(w);
         else
-            for (auto const& w : ImplYee2D::directionalProlongation<1, +1, 2>())
+            for (auto const& w : directionalProlongation<2, 1, +1, 2>())
                 row.push_back(w);
         return row;
     };

@@ -7,6 +7,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -40,6 +41,7 @@ class Ohm : public OhmInfo
 {
     using Super                     = OhmInfo;
     constexpr static auto dimension = GridLayout::dimension;
+    using Q                         = HybridQuantity::Scalar;
 
 public:
     explicit Ohm(OhmInfo const& info, GridLayout const& layout)
@@ -129,10 +131,10 @@ private:
             auto const& By = B(Component::Y);
             auto const& Bz = B(Component::Z);
 
-            auto const vyOnEx = GridLayout::template project<GridLayout::momentsToEx>(Vy, index);
-            auto const vzOnEx = GridLayout::template project<GridLayout::momentsToEx>(Vz, index);
-            auto const byOnEx = GridLayout::template project<GridLayout::ByToEx>(By, index);
-            auto const bzOnEx = GridLayout::template project<GridLayout::BzToEx>(Bz, index);
+            auto const vyOnEx = GridLayout::template project<Q::Vy, Q::Ex>(Vy, index);
+            auto const vzOnEx = GridLayout::template project<Q::Vz, Q::Ex>(Vz, index);
+            auto const byOnEx = GridLayout::template project<Q::By, Q::Ex>(By, index);
+            auto const bzOnEx = GridLayout::template project<Q::Bz, Q::Ex>(Bz, index);
 
             return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
         }
@@ -144,10 +146,10 @@ private:
             auto const& Bx = B(Component::X);
             auto const& Bz = B(Component::Z);
 
-            auto const vxOnEy = GridLayout::template project<GridLayout::momentsToEy>(Vx, index);
-            auto const vzOnEy = GridLayout::template project<GridLayout::momentsToEy>(Vz, index);
-            auto const bxOnEy = GridLayout::template project<GridLayout::BxToEy>(Bx, index);
-            auto const bzOnEy = GridLayout::template project<GridLayout::BzToEy>(Bz, index);
+            auto const vxOnEy = GridLayout::template project<Q::Vx, Q::Ey>(Vx, index);
+            auto const vzOnEy = GridLayout::template project<Q::Vz, Q::Ey>(Vz, index);
+            auto const bxOnEy = GridLayout::template project<Q::Bx, Q::Ey>(Bx, index);
+            auto const bzOnEy = GridLayout::template project<Q::Bz, Q::Ey>(Bz, index);
 
             return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
         }
@@ -159,10 +161,10 @@ private:
             auto const& Bx = B(Component::X);
             auto const& By = B(Component::Y);
 
-            auto const vxOnEz = GridLayout::template project<GridLayout::momentsToEz>(Vx, index);
-            auto const vyOnEz = GridLayout::template project<GridLayout::momentsToEz>(Vy, index);
-            auto const bxOnEz = GridLayout::template project<GridLayout::BxToEz>(Bx, index);
-            auto const byOnEz = GridLayout::template project<GridLayout::ByToEz>(By, index);
+            auto const vxOnEz = GridLayout::template project<Q::Vx, Q::Ez>(Vx, index);
+            auto const vyOnEz = GridLayout::template project<Q::Vy, Q::Ez>(Vy, index);
+            auto const bxOnEz = GridLayout::template project<Q::Bx, Q::Ez>(Bx, index);
+            auto const byOnEz = GridLayout::template project<Q::By, Q::Ez>(By, index);
 
             return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
         }
@@ -174,7 +176,7 @@ private:
     {
         if constexpr (component == Component::X)
         {
-            auto const nOnEx = GridLayout::template project<GridLayout::momentsToEx>(n, index);
+            auto const nOnEx = GridLayout::template project<Q::rho, Q::Ex>(n, index);
 
             return -gradPe(index) / nOnEx;
         }
@@ -183,7 +185,7 @@ private:
         {
             if constexpr (Field::dimension >= 2)
             {
-                auto const nOnEy = GridLayout::template project<GridLayout::momentsToEy>(n, index);
+                auto const nOnEy = GridLayout::template project<Q::rho, Q::Ey>(n, index);
 
                 return -gradPe(index) / nOnEy;
             }
@@ -197,7 +199,7 @@ private:
         {
             if constexpr (Field::dimension >= 3)
             {
-                auto const nOnEz = GridLayout::template project<GridLayout::momentsToEz>(n, index);
+                auto const nOnEz = GridLayout::template project<Q::rho, Q::Ez>(n, index);
 
                 return -gradPe(index) / nOnEz;
             }
@@ -218,19 +220,19 @@ private:
 
         if constexpr (component == Component::X)
         {
-            auto const jxOnEx = GridLayout::template project<GridLayout::JxToEx>(Jxyx, index);
+            auto const jxOnEx = GridLayout::template project<Q::Jx, Q::Ex>(Jxyx, index);
             return eta * jxOnEx;
         }
 
         if constexpr (component == Component::Y)
         {
-            auto const jyOnEy = GridLayout::template project<GridLayout::JyToEy>(Jxyx, index);
+            auto const jyOnEy = GridLayout::template project<Q::Jy, Q::Ey>(Jxyx, index);
             return eta * jyOnEy;
         }
 
         if constexpr (component == Component::Z)
         {
-            auto const jzOnEz = GridLayout::template project<GridLayout::JzToEz>(Jxyx, index);
+            auto const jzOnEz = GridLayout::template project<Q::Jz, Q::Ez>(Jxyx, index);
             return eta * jzOnEz;
         }
     }
@@ -261,29 +263,26 @@ private:
     {
         auto const lvlCoeff        = 1. / std::pow(4, layout_.levelNumber());
         auto constexpr min_density = 0.1;
-        auto computeHR             = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() {
-            auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);
-            auto const ByOnE = GridLayout::template project<ByProj>(B(Component::Y), index);
-            auto const BzOnE = GridLayout::template project<BzProj>(B(Component::Z), index);
-            auto const nOnE  = GridLayout::template project<nProj>(n, index);
+        auto computeHR             = [&]<auto dst>() {
+            auto const BxOnE = GridLayout::template project<Q::Bx, dst>(B(Component::X), index);
+            auto const ByOnE = GridLayout::template project<Q::By, dst>(B(Component::Y), index);
+            auto const BzOnE = GridLayout::template project<Q::Bz, dst>(B(Component::Z), index);
+            auto const nOnE  = GridLayout::template project<Q::rho, dst>(n, index);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
                    * laplacian(layout_, J(component), index);
         };
         if constexpr (component == Component::X)
         {
-            return computeHR.template operator()<GridLayout::BxToEx, GridLayout::ByToEx,
-                                                 GridLayout::BzToEx, GridLayout::momentsToEx>();
+            return computeHR.template operator()<Q::Ex>();
         }
         if constexpr (component == Component::Y)
         {
-            return computeHR.template operator()<GridLayout::BxToEy, GridLayout::ByToEy,
-                                                 GridLayout::BzToEy, GridLayout::momentsToEy>();
+            return computeHR.template operator()<Q::Ey>();
         }
         if constexpr (component == Component::Z)
         {
-            return computeHR.template operator()<GridLayout::BxToEz, GridLayout::ByToEz,
-                                                 GridLayout::BzToEz, GridLayout::momentsToEz>();
+            return computeHR.template operator()<Q::Ez>();
         }
     }
 };

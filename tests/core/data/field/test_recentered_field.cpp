@@ -10,8 +10,10 @@
 #include "gtest/gtest.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <type_traits>
 
 using namespace PHARE::core;
@@ -188,7 +190,135 @@ TEST(RecenteredFieldDeathTest, DualToPrimalAssertsOnOutermostPrimalGhosts)
     EXPECT_DEATH(static_cast<void>(rf(3, 0)), "");
     EXPECT_DEATH(static_cast<void>(rf(3, nDual<2>)), "");
 }
+
+TEST(CompileTimeRecenteredFieldDeathTest, DualToPrimalAssertsOnOutermostPrimalGhosts)
+{
+    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
+    CompileTimeRecenteredField<std::array{primal, dual}, std::array{primal, primal},
+                               Grid_t<2>::field_type> const rf{*bx, layout};
+    EXPECT_DEATH(static_cast<void>(rf(3, 0)), "");
+    EXPECT_DEATH(static_cast<void>(rf(3, nDual<2>)), "");
+}
 #endif
+
+
+template<typename DimConstant>
+struct RecenteredFieldProject : public ::testing::Test
+{
+};
+
+TYPED_TEST_SUITE(RecenteredFieldProject, Dims);
+
+template<std::size_t dim>
+double smooth(std::array<std::uint32_t, dim> const& idx)
+{
+    double value = std::sin(0.3 * idx[0]);
+    if constexpr (dim > 1)
+        value += 0.01 * idx[1] * idx[1];
+    if constexpr (dim > 2)
+        value += 0.7 * std::cos(0.2 * idx[2]);
+    return value;
+}
+
+template<std::size_t dim, auto src, auto dst>
+void expectMatchesProject(YeeLayout<dim> const& layout)
+{
+    using Layout = YeeLayout<dim>;
+    Grid_t<dim> grid{"q", layout, src, 0.};
+    fill(grid, smooth<dim>);
+
+    RecenteredField const rf{*grid, Layout::centering(dst), layout};
+    CompileTimeRecenteredField<Layout::centering(src), Layout::centering(dst),
+                               typename Grid_t<dim>::field_type> const ctrf{*grid, layout};
+    for (auto const& idx : shrink(indexBox(grid.shape()), 1u))
+    {
+        PHARE::core::Point<std::size_t, dim> mesh;
+        for (std::size_t d = 0; d < dim; ++d)
+            mesh[d] = idx[d];
+        EXPECT_NEAR(rf(*idx), (Layout::template project<src, dst>(*grid, mesh)), 1e-12)
+            << static_cast<int>(src) << " " << static_cast<int>(dst);
+        EXPECT_EQ(ctrf(*idx), (Layout::template project<src, dst>(*grid, mesh)))
+            << static_cast<int>(src) << " " << static_cast<int>(dst);
+    }
+}
+
+template<std::size_t dim, auto src, auto... dsts>
+void expectMatchesProjectFrom(YeeLayout<dim> const& layout)
+{
+    (expectMatchesProject<dim, src, dsts>(layout), ...);
+}
+
+TYPED_TEST(RecenteredFieldProject, MatchesProjectOnHybridPairs)
+{
+    auto constexpr dim = TypeParam::value;
+    if constexpr (dim > 1)
+    {
+        auto const layout = TestGridLayout<YeeLayout<dim>>::make(nCells);
+        using Scalar      = HybridQuantity::Scalar;
+        constexpr auto Bx = Scalar::Bx;
+        constexpr auto By = Scalar::By;
+        constexpr auto Bz = Scalar::Bz;
+        constexpr auto Ex = Scalar::Ex;
+        constexpr auto Ey = Scalar::Ey;
+        constexpr auto Ez = Scalar::Ez;
+        constexpr auto rh = Scalar::rho;
+        expectMatchesProjectFrom<dim, Bx, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, By, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Bz, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Ex, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Ey, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, Ez, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+        expectMatchesProjectFrom<dim, rh, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
+    }
+}
+
+
+template<std::size_t dim, auto qty>
+void expectFortranPrimalMatchesProject(YeeLayout<dim> const& layout)
+{
+    Grid_t<dim> src{"src", layout, qty, 0.};
+    fill(src, smooth<dim>);
+    Grid_t<dim> dst{"dst", layout, HybridQuantity::Scalar::rho, 0.};
+
+    convert_to_fortran_primal(*dst, *src, layout);
+
+    auto const lcl_box = layout.AMRToLocal(layout.AMRBoxFor(*dst));
+    auto const view    = make_array_view<false>((*dst).data(), *lcl_box.shape());
+    for (auto const& lix : lcl_box)
+        EXPECT_EQ(view(*(lix - lcl_box.lower)),
+                  (project<YeeLayout<dim>::centering(qty), ConstArray<QtyCentering, dim>(primal)>(
+                      *src, lix)))
+            << static_cast<int>(qty);
+}
+
+TYPED_TEST(RecenteredFieldProject, FortranPrimalConversionMatchesProject)
+{
+    auto constexpr dim = TypeParam::value;
+    auto const layout  = TestGridLayout<YeeLayout<dim>>::make(nCells);
+    using Scalar       = HybridQuantity::Scalar;
+    expectFortranPrimalMatchesProject<dim, Scalar::Bx>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::By>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Bz>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Ex>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Ey>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Ez>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::rho>(layout);
+}
+
+
+TEST(CompileTimeRecenteredField, ThrowsIfFieldCenteringIsNotSource)
+{
+    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
+    auto constexpr bxCentering = std::array{primal, dual};
+    auto constexpr notBx       = std::array{dual, dual};
+    auto constexpr allPrimal   = std::array{primal, primal};
+    using Field_t              = Grid_t<2>::field_type;
+    EXPECT_THROW((CompileTimeRecenteredField<notBx, allPrimal, Field_t>{*bx, layout}),
+                 std::runtime_error);
+    EXPECT_NO_THROW((CompileTimeRecenteredField<bxCentering, allPrimal, Field_t>{*bx, layout}));
+}
 
 
 TEST(RecenteredField, ExposesDestinationCentering)
