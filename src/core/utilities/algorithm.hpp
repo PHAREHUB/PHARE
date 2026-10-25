@@ -7,13 +7,11 @@
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/field/field.hpp"
+#include "core/data/field/recentered_field.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
-
-#include "core/models/quantities/mhd_quantities.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include <string>
 #include <algorithm>
@@ -75,45 +73,8 @@ void average(Span const& f1, Span const& f2, Span& avg)
         av[i] = (d1[i] + d2[i]) * .5;
 }
 
-
-template<typename PhysicalQuantity>
-auto convert_to_primal(        //
-    auto const& src,           //
-    auto const& layout,        //
-    auto const lix,            //
-    PhysicalQuantity const qty //
-)
-{
-    using PQ         = PhysicalQuantity;
-    using GridLayout = std::decay_t<decltype(layout)>;
-
-    if (qty == PQ::Bx)
-        return GridLayout::template project<GridLayout::BxToMoments>(src, lix);
-    else if (qty == PQ::By)
-        return GridLayout::template project<GridLayout::ByToMoments>(src, lix);
-    else if (qty == PQ::Bz)
-        return GridLayout::template project<GridLayout::BzToMoments>(src, lix);
-
-
-    // ONLY EVER Scalar type!
-    if constexpr (std::is_same_v<PhysicalQuantity, HybridQuantity::Scalar>)
-    {
-        if (qty == PQ::Ex)
-            return GridLayout::template project<GridLayout::ExToMoments>(src, lix);
-        else if (qty == PQ::Ey)
-            return GridLayout::template project<GridLayout::EyToMoments>(src, lix);
-        else if (qty == PQ::Ez)
-            return GridLayout::template project<GridLayout::EzToMoments>(src, lix);
-    }
-    if constexpr (std::is_same_v<PhysicalQuantity, MHDQuantity::Scalar>)
-    {
-        // if we are not the magnetic field, then all scalars and vectors are cell-centered in MHD
-        return GridLayout::template project<GridLayout::implT::cellCenterToFullPrimal>(src, lix);
-    }
-
-    throw std::runtime_error("Quantity not supported for conversion to primal.");
-}
-
+// TODO benchmark several ways of converting to primal
+// https://github.com/PHAREHUB/PHARE/pull/1486#issuecomment-6401620199
 template<std::size_t dim, typename... Ts>
 auto& convert_to_fortran_primal(  // DOES NOT WORK ON GHOST BOX!
     Field<dim, Ts...>& dst,       //
@@ -144,8 +105,12 @@ auto& convert_to_fortran_primal(  // DOES NOT WORK ON GHOST BOX!
             dst_view(lix0) = src(lix);
 
     else
+    {
+        RecenteredField const primal_src{src, ConstArray<QtyCentering, dim>(QtyCentering::primal),
+                                         layout};
         for (auto const [lix, lix0] : boxes_iterator(lcl_box, lcl_zero_box))
-            dst_view(lix0) = convert_to_primal(src, layout, lix, src.physicalQuantity());
+            dst_view(lix0) = primal_src(*lix);
+    }
 
     return dst;
 }
