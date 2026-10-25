@@ -45,13 +45,15 @@ TEST(BoxSpansTest, a_span_runs_along_the_last_direction)
                           {0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {1, 0, 0}, {1, 1, 0}, {1, 2, 0}}));
 }
 
-// same order as Box's own iterator, i.e. memory order
+// memory order: last direction fastest
 TEST(BoxSpansTest, points_come_in_memory_order)
 {
     Box<int, 3> const box{{-2, 0, 3}, {0, 2, 5}};
     std::vector<Point<int, 3>> expected;
-    for (auto const& point : box)
-        expected.push_back(point);
+    for (int x = -2; x <= 0; ++x)
+        for (int y = 0; y <= 2; ++y)
+            for (int z = 3; z <= 5; ++z)
+                expected.push_back({x, y, z});
     EXPECT_EQ(points_of(box), expected);
 }
 

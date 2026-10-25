@@ -230,11 +230,10 @@ struct ElectronsTest : public ::testing::Test
         if constexpr (dim == 1)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                for (auto const [amr_idx, lcl_idx] : layout.ghost_amr_lcl_idx(field))
-                {
+                layout.ghost_amr_lcl_idx(field, [&](auto const& amr_idx, auto const& lcl_idx) {
                     auto const point = this->layout.fieldNodeCoordinates(field, amr_idx);
                     field(lcl_idx)   = filler(point[0]);
-                }
+                });
             };
 
             fill(Fx, [](double x) { return std::cosh(0.2 * x); });
@@ -250,11 +249,10 @@ struct ElectronsTest : public ::testing::Test
         else if constexpr (dim == 2)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
-                {
+                for_each_point(layout.AMRGhostBoxFor(field), [&](auto const& amr_idx) {
                     auto point = this->layout.fieldNodeCoordinates(field, amr_idx);
                     field(layout.AMRToLocal(amr_idx)) = filler(point[0], point[1]);
-                }
+                });
             };
 
             fill(Fx, [](double x, double y) { return std::cosh(0.2 * x) * std::cosh(0.2 * y); });
@@ -271,11 +269,10 @@ struct ElectronsTest : public ::testing::Test
         else if constexpr (dim == 3)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
-                {
+                for_each_point(layout.AMRGhostBoxFor(field), [&](auto const& amr_idx) {
                     auto point = this->layout.fieldNodeCoordinates(field, amr_idx);
                     field(layout.AMRToLocal(amr_idx)) = filler(point[0], point[1], point[2]);
-                }
+                });
             };
 
             fill(Fx, [](double x, double y, double z) {

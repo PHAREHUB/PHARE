@@ -7,6 +7,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -80,8 +81,7 @@ namespace detail
             // Centering is fixed over the box, parity varies per fine index. The 2-bits-per-
             // direction index built below (bit0 = parity, bit1 = dual) selects the matching
             // compile-time stencil.
-            for (auto const fineIndex : phare_box_from<dimension>(region))
-            {
+            core::for_each_point(phare_box_from<dimension>(region), [&](auto const& fineIndex) {
                 auto const anchor = toCoarseIndex<dimension>(fineIndex);
 
                 std::size_t combined = 0; // 2 bits/dir: (dual<<1)|parity
@@ -99,7 +99,7 @@ namespace detail
                 double const value = gatherers_[combined](sourceField, anchorLocal);
 
                 assignFine_(destinationField, fineLocal, value);
-            }
+            });
         }
 
     private:

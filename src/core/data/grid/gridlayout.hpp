@@ -220,11 +220,12 @@ namespace core
         template<typename T>
         NO_DISCARD auto indices(Box<T, dimension> const& box) const
         {
-            return generate_from(
-                [](auto const& amr_idx) -> tuple_fixed_type<T, dimension> {
-                    return for_N<dimension>([&](auto i) { return amr_idx[i]; });
-                },
-                box);
+            std::vector<tuple_fixed_type<T, dimension>> indices;
+            indices.reserve(box.size());
+            for_each_point(box, [&](auto const& amr_idx) {
+                indices.emplace_back(for_N<dimension>([&](auto i) { return amr_idx[i]; }));
+            });
+            return indices;
         }
 
 
@@ -1149,12 +1150,19 @@ namespace core
         auto levelNumber() const { return levelNumber_; }
 
 
-        auto amr_lcl_idx(auto const& box) const { return boxes_iterator{box, AMRToLocal(box)}; }
-        auto amr_lcl_idx() const { return amr_lcl_idx(AMRBox()); }
-        auto domain_amr_lcl_idx(auto const& field) const { return amr_lcl_idx(AMRBoxFor(field)); }
-        auto ghost_amr_lcl_idx(auto const& field) const
+        // call fn(amr_idx, lcl_idx) for each point of the AMR box
+        void amr_lcl_idx(auto const& box, auto&& fn) const
         {
-            return amr_lcl_idx(AMRGhostBoxFor(field));
+            for_each_point_zip(box, AMRToLocal(box), fn);
+        }
+        void amr_lcl_idx(auto&& fn) const { amr_lcl_idx(AMRBox(), fn); }
+        void domain_amr_lcl_idx(auto const& field, auto&& fn) const
+        {
+            amr_lcl_idx(AMRBoxFor(field), fn);
+        }
+        void ghost_amr_lcl_idx(auto const& field, auto&& fn) const
+        {
+            amr_lcl_idx(AMRGhostBoxFor(field), fn);
         }
 
     private:

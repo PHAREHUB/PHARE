@@ -278,10 +278,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                 auto const nearbyBox = grow(Box(particle.iCell, particle.iCell), 3);
                 for (auto const& xyz : em.E)
                     if (auto const overlap = nearbyBox * layout.AMRGhostBoxFor(xyz))
-                        for (auto const [bix, lix] : layout.amr_lcl_idx(*overlap))
-                        {
+                        layout.amr_lcl_idx(*overlap, [&](auto const& bix, auto const& lix) {
                             PHARE_LOG_LINE_SS(xyz.name() << " at:" << bix << ":" << xyz(lix));
-                        }
+                        });
             }
             if (outsideGhostBox.size())
                 throw core::DictionaryException{}("ID", "Updater::outsideGhostBox");

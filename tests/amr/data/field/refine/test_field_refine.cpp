@@ -471,34 +471,33 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
     auto const& by         = fields[1];
     std::size_t interiorBx = 0, interiorBy = 0;
 
-    for (auto const& idx :
-         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::Bx, fineLayout)))
-    {
-        auto const loc = localOf(fineLayout, idx[0], idx[1]);
-        ASSERT_TRUE(std::isfinite(bx(loc[0], loc[1])))
-            << "Bx not written at amr (" << idx[0] << "," << idx[1] << ")";
-        EXPECT_NEAR(bx(loc[0], loc[1]), fineBxAt(idx[0], idx[1]), 1e-12);
-        if (idx[0] % 2 != 0)
-            ++interiorBx;
-    }
+    for_each_point(
+        phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::Bx, fineLayout)),
+        [&](auto const& idx) {
+            auto const loc = localOf(fineLayout, idx[0], idx[1]);
+            ASSERT_TRUE(std::isfinite(bx(loc[0], loc[1])))
+                << "Bx not written at amr (" << idx[0] << "," << idx[1] << ")";
+            EXPECT_NEAR(bx(loc[0], loc[1]), fineBxAt(idx[0], idx[1]), 1e-12);
+            if (idx[0] % 2 != 0)
+                ++interiorBx;
+        });
 
-    for (auto const& idx :
-         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::By, fineLayout)))
-    {
-        auto const loc = localOf(fineLayout, idx[0], idx[1]);
-        ASSERT_TRUE(std::isfinite(by(loc[0], loc[1])))
-            << "By not written at amr (" << idx[0] << "," << idx[1] << ")";
-        EXPECT_NEAR(by(loc[0], loc[1]), fineByAt(idx[0], idx[1]), 1e-12);
-        if (idx[1] % 2 != 0)
-            ++interiorBy;
-    }
+    for_each_point(
+        phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::By, fineLayout)),
+        [&](auto const& idx) {
+            auto const loc = localOf(fineLayout, idx[0], idx[1]);
+            ASSERT_TRUE(std::isfinite(by(loc[0], loc[1])))
+                << "By not written at amr (" << idx[0] << "," << idx[1] << ")";
+            EXPECT_NEAR(by(loc[0], loc[1]), fineByAt(idx[0], idx[1]), 1e-12);
+            if (idx[1] % 2 != 0)
+                ++interiorBy;
+        });
 
     EXPECT_GT(interiorBx, 0u); // the test is only meaningful if faces were reconstructed
     EXPECT_GT(interiorBy, 0u);
 
     // and the discrete divergence of every fine cell of the region is zero
-    for (auto const& cell : phare_box_from<2>(region))
-    {
+    for_each_point(phare_box_from<2>(region), [&](auto const& cell) {
         auto const bxLo = localOf(fineLayout, cell[0], cell[1]);
         auto const bxHi = localOf(fineLayout, cell[0] + 1, cell[1]);
         auto const byHi = localOf(fineLayout, cell[0], cell[1] + 1);
@@ -506,7 +505,7 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
         double const divB = (bx(bxHi[0], bxHi[1]) - bx(bxLo[0], bxLo[1]))
                             + (by(byHi[0], byHi[1]) - by(bxLo[0], bxLo[1]));
         EXPECT_NEAR(divB, 0., 1e-12) << "divB at fine cell (" << cell[0] << "," << cell[1] << ")";
-    }
+    });
 }
 
 
@@ -607,10 +606,12 @@ void touchUp2D(Grid2D& bxFine, Grid2D& byFine)
     TouchUp2D::DivScratch scratch;
     scratch.reset(destBox, layout);
 
-    for (auto const& i : phare_box_from<2>(destBox))
+    for_each_point(phare_box_from<2>(destBox), [&](auto const& i) {
         TouchUp2D::correctBx2d(scratch, bxFine, byFine, layout, i);
-    for (auto const& i : phare_box_from<2>(destBox))
+    });
+    for_each_point(phare_box_from<2>(destBox), [&](auto const& i) {
         TouchUp2D::correctBy2d(scratch, bxFine, byFine, layout, i);
+    });
 }
 
 void fillNaN2D(Grid2D& bxFine, Grid2D& byFine)

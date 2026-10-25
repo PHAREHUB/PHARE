@@ -9,6 +9,7 @@
 #include "core/data/field/field.hpp"
 #include "core/data/field/recentered_field.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
@@ -90,26 +91,27 @@ auto& convert_to_fortran_primal(  // DOES NOT WORK ON GHOST BOX!
     auto const all_primal
         = all(layout.centering(src), [](auto const c) { return c == QtyCentering::primal; });
 
-    auto const lcl_box = layout.AMRToLocal(layout.AMRBoxFor(dst));
-    auto dst_view      = make_array_view<c_ordering>(dst.data(), *lcl_box.shape());
+    auto const lcl_src_box = layout.AMRToLocal(layout.AMRBoxFor(dst));
+    auto dst_view          = make_array_view<c_ordering>(dst.data(), *lcl_src_box.shape());
 
-    auto const lcl_zero_box = [&]() {
-        auto box = lcl_box;
-        box.lower -= lcl_box.lower; // 0
-        box.upper -= lcl_box.lower; // shift
+    auto const lcl_dst_box = [&]() {
+        auto box = lcl_src_box;
+        box.lower -= lcl_src_box.lower; // 0
+        box.upper -= lcl_src_box.lower; // shift
         return box;
     }();
 
     if (all_primal)
-        for (auto const [lix, lix0] : boxes_iterator(lcl_box, lcl_zero_box))
-            dst_view(lix0) = src(lix);
+        for_each_point_zip(lcl_src_box, lcl_dst_box,
+                           [&](auto const& lix, auto const& lix0) { dst_view(lix0) = src(lix); });
 
     else
     {
         RecenteredField const primal_src{src, ConstArray<QtyCentering, dim>(QtyCentering::primal),
                                          layout};
-        for (auto const [lix, lix0] : boxes_iterator(lcl_box, lcl_zero_box))
+        for_each_point_zip(lcl_src_box, lcl_dst_box, [&](auto const& lix, auto const& lix0) {
             dst_view(lix0) = primal_src(*lix);
+        });
     }
 
     return dst;

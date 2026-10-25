@@ -10,6 +10,7 @@
 
 
 #include "amr/data/field/field_data.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
@@ -31,11 +32,9 @@ void linear_time_interpolate(Dst& fieldDest, auto const& fieldSrcOld, auto const
     auto const lclDstBox                           = phare_box_from<Dst::dimension>(localDestBox);
     auto const lclSrcBox                           = phare_box_from<Dst::dimension>(localSrcBox);
 
-    auto src_it = lclSrcBox.begin();
-    auto dst_it = lclDstBox.begin();
-
-    for (; dst_it != lclDstBox.end(); ++src_it, ++dst_it)
-        fieldDest(*dst_it) = (1. - alpha) * fieldSrcOld(*src_it) + alpha * fieldSrcNew(*src_it);
+    core::for_each_point_zip(lclDstBox, lclSrcBox, [&](auto const& dst, auto const& src) {
+        fieldDest(dst) = (1. - alpha) * fieldSrcOld(src) + alpha * fieldSrcNew(src);
+    });
 }
 
 

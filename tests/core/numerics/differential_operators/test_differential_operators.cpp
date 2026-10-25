@@ -303,8 +303,8 @@ template<typename Layout, typename Field, typename Fn>
 void fill(Layout const& layout, Field& field, Fn const& fn)
 {
     auto const centering = layout.centering(field);
-    for (auto const& idx : ghostBox(layout, centering))
-        field(idx) = fn(coordinates(layout, centering, idx));
+    for_each_point(ghostBox(layout, centering),
+                   [&](auto const& idx) { field(idx) = fn(coordinates(layout, centering, idx)); });
 }
 
 template<typename Layout, typename VecField>
@@ -317,8 +317,7 @@ void fillWave(Layout const& layout, VecField& v)
 template<typename Op, typename Field, typename Box>
 void store(Op const& op, Field& out, Box const& box)
 {
-    for (auto const& idx : box)
-        out(idx) = op(idx);
+    for_each_point(box, [&](auto const& idx) { out(idx) = op(idx); });
 }
 
 template<std::size_t i, typename Vector>
@@ -414,10 +413,11 @@ TYPED_TEST(DifferentialOperators, partialIsExactOnQuadratics)
                                                                     : QtyCentering::primal;
             EXPECT_EQ(dx.centering(), expected);
 
-            for (auto const& idx : reach(layout, srcCentering, dx.centering(), d))
+            for_each_point(reach(layout, srcCentering, dx.centering(), d), [&](auto const& idx) {
                 EXPECT_NEAR(dx(idx),
                             quadraticDerivative(d, coordinates(layout, dx.centering(), idx)),
                             1e-10);
+            });
         }
     });
 }
@@ -470,9 +470,10 @@ TYPED_TEST(DifferentialOperators, laplacianIsExactOnCubics)
 
         auto const centering = layout.centering(f.field);
         auto const tol       = tolerance(layout, maxAbs(f));
-        for (auto const& idx : shrink(ghostBox(layout, centering), 1))
+        for_each_point(shrink(ghostBox(layout, centering), 1), [&](auto const& idx) {
             EXPECT_NEAR(laplacian(layout, f.field, idx),
                         cubicLaplacian(coordinates(layout, centering, idx)), tol);
+        });
     }
 }
 
@@ -490,8 +491,8 @@ TYPED_TEST(DifferentialOperators, divCurlVanishes)
 
         auto const divA = div(layout, curlA.view);
         auto const tol  = tolerance(layout, maxAbs(a));
-        for (auto const& idx : physicalBox(layout, divA.centering()))
-            EXPECT_NEAR(divA(idx), 0., tol);
+        for_each_point(physicalBox(layout, divA.centering()),
+                       [&](auto const& idx) { EXPECT_NEAR(divA(idx), 0., tol); });
     };
 
     check(TypeParam::edgeVector, TypeParam::faceVector);
@@ -515,8 +516,8 @@ TYPED_TEST(DifferentialOperators, curlGradVanishes)
         for_N<3>([&](auto ic) {
             constexpr std::size_t i = ic();
             auto const& op          = component<i>(curlGrad);
-            for (auto const& idx : physicalBox(layout, op.centering()))
-                EXPECT_NEAR(op(idx), 0., tol);
+            for_each_point(physicalBox(layout, op.centering()),
+                           [&](auto const& idx) { EXPECT_NEAR(op(idx), 0., tol); });
         });
     };
 
@@ -540,8 +541,9 @@ TYPED_TEST(DifferentialOperators, divGradEqualsLaplacian)
         auto const divGrad = div(layout, gradPhi.view);
         EXPECT_EQ(divGrad.centering(), layout.centering(phi.field));
         auto const tol = tolerance(layout, maxAbs(phi));
-        for (auto const& idx : physicalBox(layout, layout.centering(phi.field)))
+        for_each_point(physicalBox(layout, layout.centering(phi.field)), [&](auto const& idx) {
             EXPECT_NEAR(divGrad(idx), laplacian(layout, phi.field, idx), tol);
+        });
     };
 
     check(TypeParam::nodalScalar, TypeParam::edgeVector);
@@ -562,15 +564,13 @@ TYPED_TEST(NonSimulatedDirections, nonSimulatedDirectionsAreZero)
 
     auto const dz = partial<Direction::Z>(layout, f.field);
     EXPECT_EQ(dz.centering(), nodal);
-    for (auto const& idx : ghostBox(layout, nodal))
-        EXPECT_EQ(dz(idx), 0.);
+    for_each_point(ghostBox(layout, nodal), [&](auto const& idx) { EXPECT_EQ(dz(idx), 0.); });
 
     if constexpr (dim == 1)
     {
         auto const dy = partial<Direction::Y>(layout, f.field);
         EXPECT_EQ(dy.centering(), nodal);
-        for (auto const& idx : ghostBox(layout, nodal))
-            EXPECT_EQ(dy(idx), 0.);
+        for_each_point(ghostBox(layout, nodal), [&](auto const& idx) { EXPECT_EQ(dy(idx), 0.); });
 
         OwnedVecField<Model> a{layout, TypeParam::edgeVector};
         fillWave(layout, a.view);
@@ -579,21 +579,18 @@ TYPED_TEST(NonSimulatedDirections, nonSimulatedDirectionsAreZero)
         auto const dxAz  = partial<Direction::X>(layout, a.view[2]);
         auto const dxAy  = partial<Direction::X>(layout, a.view[1]);
 
-        for (auto const& idx : ghostBox(layout, curlA.x.centering()))
-        {
+        for_each_point(ghostBox(layout, curlA.x.centering()), [&](auto const& idx) {
             EXPECT_EQ(curlA.x(idx), 0.);
             EXPECT_FALSE(std::signbit(curlA.x(idx)));
-        }
-        for (auto const& idx : ghostBox(layout, curlA.y.centering()))
-        {
+        });
+        for_each_point(ghostBox(layout, curlA.y.centering()), [&](auto const& idx) {
             EXPECT_EQ(curlA.y(idx), -dxAz(idx));
             EXPECT_EQ(std::signbit(curlA.y(idx)), std::signbit(-dxAz(idx)));
-        }
-        for (auto const& idx : ghostBox(layout, curlA.z.centering()))
-        {
+        });
+        for_each_point(ghostBox(layout, curlA.z.centering()), [&](auto const& idx) {
             EXPECT_EQ(curlA.z(idx), dxAy(idx));
             EXPECT_EQ(std::signbit(curlA.z(idx)), std::signbit(dxAy(idx)));
-        }
+        });
     }
 }
 
@@ -635,9 +632,10 @@ TYPED_TEST(DifferentialOperators, componentArrayAndVecFieldAgree)
         constexpr std::size_t i = ic();
         auto const& expected    = component<i>(fromVecField);
         auto const& actual      = component<i>(fromComponents);
-        for (auto const& idx : ghostBox(layout, expected.centering()))
+        for_each_point(ghostBox(layout, expected.centering()), [&](auto const& idx) {
             EXPECT_EQ(std::bit_cast<std::uint64_t>(expected(idx)),
                       std::bit_cast<std::uint64_t>(actual(idx)));
+        });
     });
 }
 

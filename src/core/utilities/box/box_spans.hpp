@@ -36,8 +36,8 @@ namespace PHARE::core
  * The start points are only valid for the duration of the call.
  * A box with lower > upper in any direction (e.g. an empty intersection) has no spans.
  */
-template<typename T, std::size_t dim>
-void for_each_span(Box<T, dim> const& a, Box<T, dim> const& b, auto&& fn)
+template<typename T, typename U, std::size_t dim>
+void for_each_span(Box<T, dim> const& a, Box<U, dim> const& b, auto&& fn)
 {
     static_assert(dim >= 1 and dim <= 3);
     assert(a.shape() == b.shape()); // b is only read through its lower corner
@@ -53,16 +53,25 @@ void for_each_span(Box<T, dim> const& a, Box<T, dim> const& b, auto&& fn)
     std::uint32_t const size = end[dim - 1] - lo[dim - 1];
 
     if constexpr (dim == 1)
-        fn(Point<T, 1>{lo[0]}, Point<T, 1>{b.lower[0]}, size);
+        fn(Point<T, 1>{lo[0]}, Point<U, 1>{b.lower[0]}, size);
 
     if constexpr (dim == 2)
-        for (T x = lo[0], bx = b.lower[0]; x < end[0]; ++x, ++bx)
-            fn(Point<T, 2>{x, lo[1]}, Point<T, 2>{bx, b.lower[1]}, size);
+    {
+        U bx = b.lower[0];
+        for (T x = lo[0]; x < end[0]; ++x, ++bx)
+            fn(Point<T, 2>{x, lo[1]}, Point<U, 2>{bx, b.lower[1]}, size);
+    }
 
     if constexpr (dim == 3)
-        for (T x = lo[0], bx = b.lower[0]; x < end[0]; ++x, ++bx)
-            for (T y = lo[1], by = b.lower[1]; y < end[1]; ++y, ++by)
-                fn(Point<T, 3>{x, y, lo[2]}, Point<T, 3>{bx, by, b.lower[2]}, size);
+    {
+        U bx = b.lower[0];
+        for (T x = lo[0]; x < end[0]; ++x, ++bx)
+        {
+            U by = b.lower[1];
+            for (T y = lo[1]; y < end[1]; ++y, ++by)
+                fn(Point<T, 3>{x, y, lo[2]}, Point<U, 3>{bx, by, b.lower[2]}, size);
+        }
+    }
 }
 
 
@@ -92,6 +101,27 @@ void for_each_point(Box<T, dim> const& box, auto&& fn)
         {
             point[dim - 1] = i;
             fn(point);
+        }
+    });
+}
+
+
+/** Calls fn(a_point, b_point) for every point of `a` and its counterpart in the
+ * same-shaped box `b` (e.g. the AMR and local indices of the same cells), in memory order.
+ * Both points are only valid for the duration of the call.
+ */
+template<typename T, typename U, std::size_t dim>
+void for_each_point_zip(Box<T, dim> const& a, Box<U, dim> const& b, auto&& fn)
+{
+    for_each_span(a, b, [&](auto const& a_start, auto const& b_start, std::uint32_t const size) {
+        auto a_point = a_start;
+        auto b_point = b_start;
+        U j          = b_start[dim - 1];
+        for (T i = a_start[dim - 1], end = i + size; i < end; ++i, ++j)
+        {
+            a_point[dim - 1] = i;
+            b_point[dim - 1] = j;
+            fn(a_point, b_point);
         }
     });
 }
