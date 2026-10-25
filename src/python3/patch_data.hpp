@@ -18,7 +18,7 @@ struct __attribute__((visibility("hidden"))) PatchData
     py_array_t<double> origin{dim};
     py_array_t<int> lower{dim};
     py_array_t<int> upper{dim};
-    std::size_t nGhosts;
+    std::size_t nGhosts = 0;
     Data data;
 
     PatchData() = default;
