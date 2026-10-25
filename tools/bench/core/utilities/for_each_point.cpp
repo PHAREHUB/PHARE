@@ -2,6 +2,8 @@
 #include "core/utilities/box/box_slabs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
+#include "tools/bench/core/no_vectorize.hpp"
+
 #include "benchmark/benchmark.h"
 
 #include <cstddef>
@@ -14,14 +16,12 @@ std::uint32_t constexpr static cells = 64;
 
 // for_each_point with its innermost loop kept scalar, as a baseline
 template<typename T, std::size_t dim>
-void for_each_point_scalar(Box<T, dim> const& box, auto&& fn)
+PHARE_BENCH_NO_VECTORIZE void for_each_point_scalar(Box<T, dim> const& box, auto&& fn)
 {
     for (auto const& slab : make_box_slabs(box))
         for (auto const& span : slab)
 #if defined(__clang__)
 #pragma clang loop vectorize(disable) interleave(disable)
-#elif defined(__GNUC__)
-#pragma GCC novector
 #endif
             for (auto const& point : span)
                 fn(point);

@@ -3,6 +3,8 @@
 #include "core/data/field/field_box.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
+#include "tools/bench/core/no_vectorize.hpp"
+
 #include "benchmark/benchmark.h"
 
 #include <cstddef>
@@ -30,7 +32,7 @@ struct ArrayBox
 
 // operate_on_fields with operate_on_span's element-wise loop kept scalar
 template<typename Operator>
-void operate_on_fields_scalar(auto& dst, auto const& src)
+PHARE_BENCH_NO_VECTORIZE void operate_on_fields_scalar(auto& dst, auto const& src)
 {
     auto d_span       = make_field_box_slabs(dst.lcl_box, dst.field);
     auto const s_span = make_field_box_slabs(src.lcl_box, src.field);
@@ -45,11 +47,9 @@ void operate_on_fields_scalar(auto& dst, auto const& src)
         {
             auto* d_data       = (*d_spans).data();
             auto const* s_data = (*s_spans).data();
-            auto const size    = (*d_spans).size(); // gcc ignores the pragma on a call condition
+            auto const size    = (*d_spans).size();
 #if defined(__clang__)
 #pragma clang loop vectorize(disable) interleave(disable)
-#elif defined(__GNUC__)
-#pragma GCC novector
 #endif
             for (std::size_t i = 0; i < size; ++i)
                 Operator{d_data[i]}(s_data[i]);
