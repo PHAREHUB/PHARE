@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_UTILITIES_META_META_UTILITIES_HPP
 #define PHARE_CORE_UTILITIES_META_META_UTILITIES_HPP
 
+#include "core/utilities/types.hpp"
 
 #include <concepts>
 #include <iterator>
@@ -107,18 +108,18 @@ namespace core
     template<CountedEnum Enum>
     EnumConstantVariant_t<Enum> asEnumConstant(Enum const value)
     {
-        return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        return for_N_fold<static_cast<std::uint16_t>(Enum::count)>([&](auto... is) {
             EnumConstantVariant_t<Enum> result;
             bool found = false;
-            (void)(((value == static_cast<Enum>(Is))
-                        ? (result = std::integral_constant<Enum, static_cast<Enum>(Is)>{},
+            (void)(((value == static_cast<Enum>(is()))
+                        ? (result = std::integral_constant<Enum, static_cast<Enum>(is())>{},
                            found  = true, true)
                         : false)
                    || ...);
             if (!found)
                 throw std::runtime_error("asEnumConstant: enum value out of range");
             return result;
-        }(std::make_index_sequence<static_cast<std::size_t>(Enum::count)>{});
+        });
     }
 
     namespace detail

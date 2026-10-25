@@ -439,28 +439,16 @@ auto inline float_equals(double const& a, double const& b, double diff = 1e-12)
     return std::abs(a - b) < diff;
 }
 
-template<typename T = std::uint16_t>
-struct Apply
+template<std::uint16_t N, typename Fn>
+constexpr decltype(auto) for_N_fold(Fn&& fn)
 {
-    template<T i>
-    auto constexpr operator()()
-    {
-        return std::integral_constant<T, i>{};
-    }
-};
+    /*  // how to use: fn gets every index at once, as a pack
+        for_N_fold<3>([&](auto... ics) { return array(idx[ics]...); });
+    */
 
-template<typename Apply, std::uint16_t... Is>
-constexpr auto apply_N(Apply& f, std::integer_sequence<std::uint16_t, Is...> const&)
-{
-    if constexpr (!std::is_same_v<decltype(f.template operator()<0>()), void>)
-        return std::make_tuple(f.template operator()<Is>()...);
-    (f.template operator()<Is>(), ...);
-}
-
-template<std::uint16_t N, typename Apply>
-constexpr auto apply_N(Apply&& f)
-{
-    return apply_N(f, std::make_integer_sequence<std::uint16_t, N>{});
+    return [&]<std::uint16_t... Is>(std::integer_sequence<std::uint16_t, Is...>) -> decltype(auto) {
+        return fn(std::integral_constant<std::uint16_t, Is>{}...);
+    }(std::make_integer_sequence<std::uint16_t, N>{});
 }
 
 enum class for_N_R_mode {
@@ -470,7 +458,7 @@ enum class for_N_R_mode {
 };
 
 template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
-constexpr auto for_N(Fn& fn)
+constexpr auto for_N(Fn&& fn)
 {
     /*  // how to use
         for_N<2>([](auto ic) {
@@ -481,32 +469,20 @@ constexpr auto for_N(Fn& fn)
 
     static_assert(std::is_same_v<decltype(M), for_N_R_mode>);
     using return_type
-        = std::decay_t<std::invoke_result_t<Fn, std::integral_constant<std::uint16_t, 0>>>;
-    constexpr bool returns = !std::is_same_v<return_type, void>;
+        = std::decay_t<std::invoke_result_t<Fn&, std::integral_constant<std::uint16_t, 0>>>;
 
-    if constexpr (returns)
-    {
-        return std::apply(
-            [&](auto... ics) {
-                if constexpr (M == for_N_R_mode::make_tuple)
-                    return std::make_tuple(fn(ics)...);
-                else if constexpr (M == for_N_R_mode::make_array)
-                    return std::array{fn(ics)...};
-                else if constexpr (M == for_N_R_mode::forward_tuple)
-                    return std::forward_as_tuple(fn(ics)...);
-                else
-                    throw std::runtime_error("unknown return mode");
-            },
-            apply_N<N>(Apply{}));
-    }
-    else
-        std::apply([&](auto... ics) { (fn(ics), ...); }, apply_N<N>(Apply{}));
-}
-
-template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
-constexpr auto for_N(Fn&& fn)
-{
-    return for_N<N, M>(fn);
+    return for_N_fold<N>([&](auto... ics) {
+        if constexpr (std::is_void_v<return_type>)
+            (fn(ics), ...);
+        else if constexpr (M == for_N_R_mode::make_tuple)
+            return std::make_tuple(fn(ics)...);
+        else if constexpr (M == for_N_R_mode::make_array)
+            return std::array{fn(ics)...};
+        else if constexpr (M == for_N_R_mode::forward_tuple)
+            return std::forward_as_tuple(fn(ics)...);
+        else
+            static_assert(dependent_false_v<Fn>, "unknown return mode");
+    });
 }
 
 

@@ -52,8 +52,7 @@ namespace amr
         FieldCoarsenIndexesAndWeights(std::array<core::QtyCentering, dimension> const& centering,
                                       SAMRAI::hier::IntVector const& ratio)
             : ratio_{ratio}
-            , weighters_{make_weighters(nbrFinePoints_(centering, ratio),
-                                        std::make_index_sequence<dimension>{})}
+            , weighters_{make_weighters(nbrFinePoints_(centering, ratio))}
         {
             std::array<int, dimension> halfRatio;
 

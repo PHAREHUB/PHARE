@@ -2,6 +2,7 @@
 #define PHARE_COARSEN_WEIGHTER_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 
 #include <array>
 #include <cassert>
@@ -41,11 +42,10 @@ namespace amr
 
 
 
-    template<typename T, std::size_t... Is>
-    NO_DISCARD std::array<CoarsenWeighter, sizeof...(Is)>
-    make_weighters(std::array<T, sizeof...(Is)> const& nbrPoints, std::index_sequence<Is...>)
+    template<typename T, std::size_t N>
+    NO_DISCARD std::array<CoarsenWeighter, N> make_weighters(std::array<T, N> const& nbrPoints)
     {
-        return {{(CoarsenWeighter{nbrPoints[Is]})...}};
+        return core::for_N_make_array<N>([&](auto i) { return CoarsenWeighter{nbrPoints[i]}; });
     }
 } // namespace amr
 

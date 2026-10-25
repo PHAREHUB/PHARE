@@ -73,7 +73,7 @@ public:
         , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
         , componentNames_{detail::tensor_field_names<rank>(name)}
         , components_{detail::tensor_field_make_fields<Field_t>(componentNames_, physQties_)}
-        , nameToIndex_{makeMap_(std::make_index_sequence<N>{})}
+        , nameToIndex_{makeMap_()}
     {
     }
 
@@ -149,20 +149,15 @@ public:
     }
 
 
-    template<std::size_t... Index>
-    NO_DISCARD auto components(std::index_sequence<Index...>) const
+    NO_DISCARD auto components() const
     {
-        return std::forward_as_tuple((*this)[Index]...);
+        return for_N_fold<N>([&](auto... i) { return std::forward_as_tuple((*this)[i]...); });
     }
-    NO_DISCARD auto components() const { return components(std::make_index_sequence<N>{}); }
 
-
-    template<std::size_t... Index>
-    NO_DISCARD auto components(std::index_sequence<Index...>)
+    NO_DISCARD auto components()
     {
-        return std::forward_as_tuple((*this)[Index]...);
+        return for_N_fold<N>([&](auto... i) { return std::forward_as_tuple((*this)[i]...); });
     }
-    NO_DISCARD auto components() { return components(std::make_index_sequence<N>{}); }
 
 
     NO_DISCARD auto& operator()(Component component) const { return getComponent(component); }
@@ -208,11 +203,11 @@ private:
     }
 
 
-    template<std::size_t... Index>
-    auto makeMap_(std::index_sequence<Index...>) const
+    auto makeMap_() const
     {
         std::unordered_map<std::string, std::size_t> m;
-        ((m[componentNames_[Index]] = Index), ...);
+        for (std::size_t i = 0; i < N; ++i)
+            m[componentNames_[i]] = i;
         return m;
     }
 
