@@ -24,13 +24,6 @@ struct GridLayoutMock1D
 {
     static auto const dimension = 1u;
 
-    template<auto direction>
-    double deriv(FieldMock<1> const& /*f*/, MeshIndex<1u> /*mi*/)
-    {
-        return 0;
-    }
-
-
     std::size_t physicalStartIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
     std::size_t physicalEndIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
 };
@@ -38,12 +31,6 @@ struct GridLayoutMock1D
 struct GridLayoutMock2D
 {
     static auto const dimension = 2u;
-
-    template<auto direction>
-    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<2u> /*mi*/)
-    {
-        return 0;
-    }
 
     std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 
@@ -53,12 +40,6 @@ struct GridLayoutMock2D
 struct GridLayoutMock3D
 {
     static auto const dimension = 3u;
-
-    template<auto direction>
-    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<3u> /*mi*/)
-    {
-        return 0;
-    }
 
     std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
     std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
@@ -426,6 +407,62 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
             }
         }
     }
+}
+
+
+TEST_F(Ampere2DTest, grownPhysicalBoxIsExactOnQuadraticB)
+{
+    using GrownAmpere = Ampere<GridLayout_t, AmpereBox{AmpereMode::GrownPhysical, 1}>;
+
+    auto const dl = layout.meshSize();
+
+    auto const x
+        = [&](auto const& field, std::uint32_t const i, std::uint32_t const iy, Direction const d) {
+              auto const c = layout.centering(field)[static_cast<std::size_t>(d)];
+              auto const n = d == Direction::X ? i : iy;
+              auto const s = static_cast<double>(n) - layout.physicalStartIndex(field, d);
+              return s * dl[static_cast<std::size_t>(d)]
+                     + (c == QtyCentering::dual ? 0.5 * dl[static_cast<std::size_t>(d)] : 0.);
+          };
+
+    auto const bx = [](double const X, double const Y) { return 0.3 * Y * Y + 0.5 * X * Y; };
+    auto const by = [](double const X, double const Y) { return -0.4 * X * X + 0.2 * X * Y; };
+    auto const bz = [](double const X, double const Y) { return 0.7 * X * Y + 0.1 * X * X; };
+
+    auto const fill = [&](auto& field, auto const& fn) {
+        auto const nx = field.shape()[0];
+        auto const ny = field.shape()[1];
+        for (std::uint32_t ix = 0; ix < nx; ++ix)
+            for (std::uint32_t iy = 0; iy < ny; ++iy)
+                field(ix, iy) = fn(x(field, ix, iy, Direction::X), x(field, ix, iy, Direction::Y));
+    };
+
+    auto const& [Bx, By, Bz] = B();
+    auto const& [Jx, Jy, Jz] = J();
+
+    fill(Bx, bx);
+    fill(By, by);
+    fill(Bz, bz);
+
+    GrownAmpere{layout}(B, J);
+
+    auto const check = [&](auto const& Jc, auto const& expected) {
+        auto const sx = layout.physicalStartIndex(Jc, Direction::X) - 1;
+        auto const ex = layout.physicalEndIndex(Jc, Direction::X) + 1;
+        auto const sy = layout.physicalStartIndex(Jc, Direction::Y) - 1;
+        auto const ey = layout.physicalEndIndex(Jc, Direction::Y) + 1;
+        for (auto ix = sx; ix <= ex; ++ix)
+            for (auto iy = sy; iy <= ey; ++iy)
+                EXPECT_NEAR(Jc(ix, iy),
+                            expected(x(Jc, ix, iy, Direction::X), x(Jc, ix, iy, Direction::Y)),
+                            1e-10);
+    };
+
+    check(Jx, [](double const X, double const) { return 0.7 * X; });
+    check(Jy, [](double const X, double const Y) { return -(0.7 * Y + 0.2 * X); });
+    check(Jz, [](double const X, double const Y) {
+        return (-0.8 * X + 0.2 * Y) - (0.6 * Y + 0.5 * X);
+    });
 }
 
 

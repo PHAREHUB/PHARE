@@ -3,6 +3,7 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/differential_operators.hpp"
 
 #include <cstdint>
 
@@ -54,57 +55,16 @@ public:
                 layout_.evalOnBiggerBox(Jc, amount, fn);
         };
 
-        eval(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
-        eval(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
-        eval(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
+        auto const curlB = curl(layout_, B);
+
+        eval(Jx, [&](auto const&... ijk) { Jx(ijk...) = curlB.x({ijk...}); });
+        eval(Jy, [&](auto const&... ijk) { Jy(ijk...) = curlB.y({ijk...}); });
+        eval(Jz, [&](auto const&... ijk) { Jz(ijk...) = curlB.z({ijk...}); });
     }
 
 
 private:
     GridLayout layout_;
-
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void JxEq_(Field& Jx, VecField const& B, Indexes const&... ijk) const
-    {
-        auto const& [_, By, Bz] = B();
-
-        if constexpr (dimension == 1)
-            Jx(ijk...) = 0.0;
-
-        if constexpr (dimension == 2)
-            Jx(ijk...) = layout_.template deriv<Direction::Y>(Bz, {ijk...});
-
-        if constexpr (dimension == 3)
-            Jx(ijk...) = layout_.template deriv<Direction::Y>(Bz, {ijk...})
-                         - layout_.template deriv<Direction::Z>(By, {ijk...});
-    }
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void JyEq_(Field& Jy, VecField const& B, Indexes const&... ijk) const
-    {
-        auto const& [Bx, By, Bz] = B();
-
-        if constexpr (dimension == 1 || dimension == 2)
-            Jy(ijk...) = -layout_.template deriv<Direction::X>(Bz, {ijk...});
-
-        if constexpr (dimension == 3)
-            Jy(ijk...) = layout_.template deriv<Direction::Z>(Bx, {ijk...})
-                         - layout_.template deriv<Direction::X>(Bz, {ijk...});
-    }
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void JzEq_(Field& Jz, VecField const& B, Indexes const&... ijk) const
-    {
-        auto const& [Bx, By, Bz] = B();
-
-        if constexpr (dimension == 1)
-            Jz(ijk...) = layout_.template deriv<Direction::X>(By, {ijk...});
-
-        else
-            Jz(ijk...) = layout_.template deriv<Direction::X>(By, {ijk...})
-                         - layout_.template deriv<Direction::Y>(Bx, {ijk...});
-    }
 };
 
 } // namespace PHARE::core

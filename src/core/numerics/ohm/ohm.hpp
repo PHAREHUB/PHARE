@@ -6,6 +6,7 @@
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/differential_operators.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -71,17 +72,19 @@ private:
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
+        auto const gradPe = grad(layout_, Pe);
+
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Pe, Ve, B, J}, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Pe, Ve, B, J}, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Pe, Ve, B, J}, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
         });
     }
 
@@ -89,20 +92,21 @@ private:
     struct OhmPack
     {
         VecField& Exyz;
-        Field const &n, &Pe;
+        Field const& n;
         VecField const &Ve, &B, &J;
     };
 
 
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename... IDXs>
-    void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
+             typename... IDXs>
+    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
     {
-        auto const& [E, n, Pe, Ve, B, J] = pack;
+        auto const& [E, n, Ve, B, J]     = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, Pe, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, gradPe, {ijk...});
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -165,16 +169,14 @@ private:
     }
 
 
-    template<auto component, typename Field>
-    auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
+    template<auto component, typename Field, typename GradPe>
+    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
     {
         if constexpr (component == Component::X)
         {
             auto const nOnEx = GridLayout::template project<GridLayout::momentsToEx>(n, index);
 
-            auto gradPOnEx = layout_.template deriv<Direction::X>(Pe, index); // TODO : issue 3391
-
-            return -gradPOnEx / nOnEx;
+            return -gradPe(index) / nOnEx;
         }
 
         else if constexpr (component == Component::Y)
@@ -183,10 +185,7 @@ private:
             {
                 auto const nOnEy = GridLayout::template project<GridLayout::momentsToEy>(n, index);
 
-                auto gradPOnEy
-                    = layout_.template deriv<Direction::Y>(Pe, index); // TODO : issue 3391
-
-                return -gradPOnEy / nOnEy;
+                return -gradPe(index) / nOnEy;
             }
             else
             {
@@ -200,10 +199,7 @@ private:
             {
                 auto const nOnEz = GridLayout::template project<GridLayout::momentsToEz>(n, index);
 
-                auto gradPOnEz
-                    = layout_.template deriv<Direction::Z>(Pe, index); // TODO : issue 3391
-
-                return -gradPOnEz / nOnEz;
+                return -gradPe(index) / nOnEz;
             }
             else
             {
@@ -255,7 +251,7 @@ private:
     template<auto component, typename VecField>
     auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        return -nu * layout_.laplacian(J(component), index);
+        return -nu * laplacian(layout_, J(component), index);
     }
 
 
@@ -272,7 +268,7 @@ private:
             auto const nOnE  = GridLayout::template project<nProj>(n, index);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
-                   * layout_.laplacian(J(component), index);
+                   * laplacian(layout_, J(component), index);
         };
         if constexpr (component == Component::X)
         {
