@@ -6,6 +6,8 @@
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
+#include "initializer/data_provider.hpp"
+
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -15,6 +17,7 @@
 #include <cstdint>
 #include <numbers>
 #include <numeric>
+#include <stdexcept>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -32,8 +35,10 @@
  * Unequal weights follow Higginson et al. 2020 as written by Angus et al. 2025: n_eff uses the
  * larger weight of the pair and each partner is deflected with probability w_other / w_max.
  *
- * Random draws are pure functions of (seed, level, step, cell, block, draw index), so results do
- * not depend on how the level is split into patches and ranks.
+ * Random draws are pure functions of (seed, level, step, cell, block, draw index) and of the
+ * particles, so for given particles they do not depend on how the level is split into patches
+ * and ranks. Runs on different numbers of ranks differ at round-off in the moments, which
+ * changes the pairing: they are different statistical realizations.
  *
  * Accuracy: relaxation rates converge to the Landau-Fokker-Planck ones as dt -> 0, the error
  * growing like sqrt(s_th) (Wang et al. 2008), s_th being s at the thermal relative speed:
@@ -55,6 +60,24 @@ struct CollisionInfo
     std::uint64_t const seed;
 
     NO_DISCARD bool isActive() const { return nu0 > 0.; }
+
+    // from simulation/algo, inactive when it has no "collisions" entry
+    CollisionInfo static FROM(initializer::PHAREDict const& algo)
+    {
+        if (!algo.contains("collisions"))
+            return {0., 1, ScatteringLaw::nanbu, false, 0};
+
+        auto const& dict = algo["collisions"];
+        auto const every = cppdict::get_value(dict, "every", 1);
+        if (every < 1)
+            throw std::runtime_error("collisions: 'every' must be at least 1");
+        auto const scheme = cppdict::get_value(dict, "scheme", 0);
+        if (scheme < 0 or scheme >= static_cast<int>(ScatteringLaw::count))
+            throw std::runtime_error("collisions: unknown 'scheme'");
+        return {dict["nu0"].template to<double>(), every, static_cast<ScatteringLaw>(scheme),
+                cppdict::get_value(dict, "exact_conservation", true),
+                cppdict::get_value(dict, "seed", std::size_t{0})};
+    }
     NO_DISCARD bool collidesAt(std::int64_t const step) const
     {
         assert(every > 0);
