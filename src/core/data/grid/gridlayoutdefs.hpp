@@ -46,6 +46,24 @@ namespace core
         return box;
     }
 
+
+    template<auto src, auto dst, std::size_t order = 2>
+    NO_DISCARD consteval auto recenteringStencil();
+
+
+    template<auto src, auto dst, std::size_t order = 2, typename Field>
+    NO_DISCARD inline auto project(Field const& field,
+                                   Point<std::size_t, Field::dimension> const& index)
+    {
+        constexpr auto stencil = recenteringStencil<src, dst, order>();
+
+        typename Field::type result = 0.;
+        for (auto const& wp : stencil)
+            result += wp.coef * field(index + wp.indexes);
+        return result;
+    }
+
+
     enum class InterpDir { DualToPrimal = 0, PrimalToDual = 1 };
 
 
@@ -199,7 +217,7 @@ namespace core
     } // namespace detail
 
 
-    template<auto src, auto dst, std::size_t order = 2>
+    template<auto src, auto dst, std::size_t order>
     NO_DISCARD consteval auto recenteringStencil()
     {
         static_assert(src.size() == dst.size());
@@ -216,19 +234,6 @@ namespace core
             return detail::recenteringStencilImpl<src, dst, order, diff>(
                 std::make_index_sequence<p>{});
         }
-    }
-
-
-    template<auto src, auto dst, std::size_t order = 2, typename Field>
-    NO_DISCARD inline auto project(Field const& field,
-                                   Point<std::size_t, Field::dimension> const& index)
-    {
-        constexpr auto stencil = recenteringStencil<src, dst, order>();
-
-        typename Field::type result = 0.;
-        for (auto const& wp : stencil)
-            result += wp.coef * field(index + wp.indexes);
-        return result;
     }
 
 
