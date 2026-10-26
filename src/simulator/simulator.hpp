@@ -54,8 +54,14 @@ public:
     using Integrator             = PHARE::amr::Integrator<dimension>;
 
 
-    Simulator(PHARE::initializer::PHAREDict const& dict,
-              std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
+    // does nothing that can throw, see setup()
+    Simulator(std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy) noexcept
+        : hierarchy_{hierarchy}
+    {
+    }
+
+    // throwing setup, the destructor still runs if it throws
+    void setup(PHARE::initializer::PHAREDict const& dict);
 
     ~Simulator()
     {
@@ -134,19 +140,19 @@ private:
         return nullptr;
     }
 
-    std::unique_ptr<std::ofstream> log_out{log_file()};
+    std::unique_ptr<std::ofstream> log_out;
     std::streambuf* coutbuf = nullptr;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
 
     std::vector<std::string> modelNames_;
     std::vector<PHARE::amr::MessengerDescriptor> descriptors_;
-    MessengerFactory messengerFactory_;
+    MessengerFactory messengerFactory_{{}};
 
 
-    int maxLevelNumber_;
-    int maxMHDLevel_;
-    double dt_;
+    int maxLevelNumber_              = 0;
+    int maxMHDLevel_                 = 0;
+    double dt_                       = 0;
     core::TimeStepType timeStepType_ = core::TimeStepType::constant;
     double cflWave_                  = 0;
     double cflDiffusive_             = 0;
@@ -384,27 +390,31 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 
 
 template<auto opts>
-Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
-                           std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
-    : coutbuf{logging(log_out)}
-    , hierarchy_{hierarchy}
-    , modelNames_{dict["simulation"]["models"].template to<std::vector<std::string>>()}
-    , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
-    , messengerFactory_{descriptors_, PHARE::amr::RefinementConfig::FROM(dict)}
-    , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
-    , maxMHDLevel_{dict["simulation"]["AMR"]["max_mhd_level"].template to<int>()}
-    , dt_{cppdict::get_value(dict, "simulation/time_step/value", 0.)}
-    , timeStepType_{cppdict::get_value(dict, "simulation/time_step/mode",
-                                       core::TimeStepType::constant)}
-    , cflWave_{cppdict::get_value(dict, "simulation/time_step/cfl_wave", 0.)}
-    , cflDiffusive_{cppdict::get_value(dict, "simulation/time_step/cfl_diffusive", 0.)}
-    , timeStepNbr_{cppdict::get_value(dict, "simulation/time_step_nbr", 0)}
-    , finalTime_{dict["simulation"]["final_time"].template to<double>()}
-    , functors_{functors_setup(dict)}
-    , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
+void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
 {
+    if (bool const already_setup = multiphysInteg_ != nullptr; already_setup)
+        throw std::runtime_error("Simulator::setup already called");
+
+    log_out = log_file();
+    coutbuf = logging(log_out);
+
     if (!hierarchy_)
         throw std::runtime_error("NO HIERARCHY!");
+
+    modelNames_       = dict["simulation"]["models"].template to<std::vector<std::string>>();
+    descriptors_      = PHARE::amr::makeDescriptors(modelNames_);
+    messengerFactory_ = MessengerFactory{descriptors_, PHARE::amr::RefinementConfig::FROM(dict)};
+    maxLevelNumber_   = dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>();
+    maxMHDLevel_      = dict["simulation"]["AMR"]["max_mhd_level"].template to<int>();
+    dt_               = cppdict::get_value(dict, "simulation/time_step/value", 0.);
+    timeStepType_
+        = cppdict::get_value(dict, "simulation/time_step/mode", core::TimeStepType::constant);
+    cflWave_        = cppdict::get_value(dict, "simulation/time_step/cfl_wave", 0.);
+    cflDiffusive_   = cppdict::get_value(dict, "simulation/time_step/cfl_diffusive", 0.);
+    timeStepNbr_    = cppdict::get_value(dict, "simulation/time_step_nbr", 0);
+    finalTime_      = dict["simulation"]["final_time"].template to<double>();
+    functors_       = functors_setup(dict);
+    multiphysInteg_ = std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_);
 
     currentTime_ = restart_time(dict);
     // finalTime_ is computed in Python as start_time + time_step_nbr * time_step
@@ -499,6 +509,9 @@ template<auto opts>
 void Simulator<opts>::initialize()
 {
     PHARE_LOG_SCOPE(1, "Simulator::initialize");
+
+    if (bool const needs_setup = multiphysInteg_ == nullptr; needs_setup)
+        throw std::runtime_error("Simulator::initialize: setup() needs to be called first");
 
     std::optional<std::string> error = std::nullopt;
 
@@ -627,7 +640,9 @@ auto Simulator<opts>::find_model(std::string name)
 template<typename Simulator>
 std::unique_ptr<Simulator> makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
 {
-    return std::make_unique<Simulator>(initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
+    auto sim = std::make_unique<Simulator>(hierarchy);
+    sim->setup(initializer::PHAREDictHandler::INSTANCE().dict()); // owned: destructed on throw
+    return sim;
 }
 
 
@@ -644,11 +659,7 @@ struct SimulatorMaker
     std::unique_ptr<ISimulator> operator()(SimOpts const& r_opts)
     {
         if (r_opts == opts)
-        {
-            PHARE::initializer::PHAREDict& theDict
-                = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-            return std::make_unique<Simulator<opts>>(theDict, hierarchy_);
-        }
+            return makeSimulator<Simulator<opts>>(hierarchy_);
         return nullptr;
     }
 };
