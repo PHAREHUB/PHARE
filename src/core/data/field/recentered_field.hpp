@@ -6,6 +6,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <stdexcept>
 #include <type_traits>
 
 namespace PHARE::core
@@ -82,6 +84,41 @@ private:
     Field field_;                                     ///< source field
     std::array<QtyCentering, dimension> source_;      ///< source field's centering
     std::array<QtyCentering, dimension> destination_; ///< destination centering
+};
+
+
+template<auto source, auto destination, typename Field>
+class CompileTimeRecenteredField
+{
+public:
+    static constexpr auto dimension = Field::dimension;
+    using value_type                = Field::value_type;
+
+    template<typename GridLayout>
+    CompileTimeRecenteredField(Field const& field, GridLayout const& layout)
+        : field_{field}
+    {
+        if (layout.centering(field) != source)
+            throw std::runtime_error(
+                "CompileTimeRecenteredField: field centering does not match the source centering: "
+                + field.name());
+    }
+
+    template<typename... Indexes>
+    value_type operator()(Indexes... indexes) const
+        requires(sizeof...(Indexes) == dimension && (std::is_integral_v<Indexes> && ...))
+    {
+        return (*this)(
+            std::array<std::uint32_t, dimension>{static_cast<std::uint32_t>(indexes)...});
+    }
+
+    value_type operator()(std::array<std::uint32_t, dimension> const& index) const
+    {
+        return project<source, destination>(field_, Point<std::size_t, dimension>{index});
+    }
+
+private:
+    Field field_;
 };
 
 } // namespace PHARE::core

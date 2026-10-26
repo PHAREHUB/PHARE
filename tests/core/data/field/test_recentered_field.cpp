@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <type_traits>
 
 using namespace PHARE::core;
@@ -160,21 +161,27 @@ struct RecenteredFieldProject : public ::testing::Test
 
 TYPED_TEST_SUITE(RecenteredFieldProject, Dims);
 
+template<std::size_t dim>
+double smooth(std::array<std::uint32_t, dim> const& idx)
+{
+    double value = std::sin(0.3 * idx[0]);
+    if constexpr (dim > 1)
+        value += 0.01 * idx[1] * idx[1];
+    if constexpr (dim > 2)
+        value += 0.7 * std::cos(0.2 * idx[2]);
+    return value;
+}
+
 template<std::size_t dim, auto src, auto dst>
 void expectMatchesProject(YeeLayout<dim> const& layout)
 {
     using Layout = YeeLayout<dim>;
     Grid_t<dim> grid{"q", layout, src, 0.};
-    fill<dim>(grid, [](auto const& idx) {
-        double value = std::sin(0.3 * idx[0]);
-        if constexpr (dim > 1)
-            value += 0.01 * idx[1] * idx[1];
-        if constexpr (dim > 2)
-            value += 0.7 * std::cos(0.2 * idx[2]);
-        return value;
-    });
+    fill<dim>(grid, smooth<dim>);
 
     RecenteredField const rf{*grid, Layout::centering(dst), layout};
+    CompileTimeRecenteredField<Layout::centering(src), Layout::centering(dst),
+                               typename Grid_t<dim>::field_type> const ctrf{*grid, layout};
     auto shape = grid.shape();
     std::array<std::uint32_t, dim> lower{};
     std::array<std::uint32_t, dim> upper{};
@@ -188,6 +195,8 @@ void expectMatchesProject(YeeLayout<dim> const& layout)
         for (std::size_t d = 0; d < dim; ++d)
             mesh[d] = idx[d];
         EXPECT_NEAR(rf(idx), (Layout::template project<src, dst>(*grid, mesh)), 1e-12)
+            << static_cast<int>(src) << " " << static_cast<int>(dst);
+        EXPECT_EQ(ctrf(idx), (Layout::template project<src, dst>(*grid, mesh)))
             << static_cast<int>(src) << " " << static_cast<int>(dst);
     });
 }
@@ -220,6 +229,20 @@ TYPED_TEST(RecenteredFieldProject, MatchesProjectOnHybridPairs)
         expectMatchesProjectFrom<dim, Ez, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
         expectMatchesProjectFrom<dim, rh, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
     }
+}
+
+
+TEST(CompileTimeRecenteredField, ThrowsIfFieldCenteringIsNotSource)
+{
+    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
+    auto constexpr bxCentering = std::array{primal, dual};
+    auto constexpr notBx       = std::array{dual, dual};
+    auto constexpr allPrimal   = std::array{primal, primal};
+    using Field_t              = Grid_t<2>::field_type;
+    EXPECT_THROW((CompileTimeRecenteredField<notBx, allPrimal, Field_t>{*bx, layout}),
+                 std::runtime_error);
+    EXPECT_NO_THROW((CompileTimeRecenteredField<bxCentering, allPrimal, Field_t>{*bx, layout}));
 }
 
 
