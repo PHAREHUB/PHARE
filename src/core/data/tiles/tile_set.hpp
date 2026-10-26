@@ -133,7 +133,8 @@ public:
         : box_{box}
         , cells_{box.shape().template toArray<std::uint32_t>()}
     {
-        make_tiles_(TilingOptions::from_env(), args...);
+        make_tiles_(TilingOptions::from_env(TilingOptions::defaults_for<alloc_mode, dimension>()),
+                    args...);
         tag_cells_();
     }
 
@@ -419,7 +420,8 @@ public:
     GhostClampedTileSet(Box_t const& domain_box, std::size_t const ghosts, Args&&... args)
         : GhostClampedTileSet{untiled_t{}, domain_box, ghosts}
     {
-        this->make_tiles_(TilingOptions::from_env(), args...); // tiles the domain box
+        this->make_tiles_( // tiles the domain box
+            TilingOptions::from_env(TilingOptions::defaults_for<alloc_mode, dimension>()), args...);
         tag_cells_();
     }
 

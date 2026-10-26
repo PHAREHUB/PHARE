@@ -75,8 +75,16 @@ private:
     using Faraday_t    = FE_t::Faraday_t;
     using Ampere_t     = FE_t::Ampere_t;
     using Ohm_t        = OhmLevelTransformer<HybridModel>;
+#if PHARE_HAVE_MKN_GPU
+    using IonUpdater_t
+        = std::conditional_t<ParticleArray::alloc_mode == AllocatorMode::GPU_UNIFIED
+                                 and ParticleArray::layout_mode != core::LayoutMode::AoSMapped,
+                             core::mkn_xyz::ParallelIonUpdater<ParticleArray, GridLayout>,
+                             core::IonUpdaterFor_t<ParticleArray, GridLayout>>;
+#else
     using IonUpdater_t = core::IonUpdaterFor_t<ParticleArray, GridLayout>;
-    using Boxing_t     = IonUpdater_t::Boxing_t;
+#endif
+    using Boxing_t = IonUpdater_t::Boxing_t;
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};

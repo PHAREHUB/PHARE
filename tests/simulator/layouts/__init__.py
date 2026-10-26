@@ -26,16 +26,22 @@ ppc_per_dim = [100, 33, 15]
 # os.environ["PHARE_TILING_MIN_BEFORE_SPLIT"] = "1000"
 
 
+def allocators(layout):
+    gpu = cpp.gpu_unified_supported() and "AoSCMTS" not in str(layout)
+    return ["CPU"] + (["GPU_UNIFIED"] if gpu else [])
+
+
 def permute(ndim_list, interp_orders=(1,)):
     cmp_layouts = [
         l for l in cpp.supported_particle_layouts() if _ref_layout not in str(l)
     ]
 
     return [
-        dict(ndim=ndim, interp_order=interp, cmp_layout=cmp_layout)
+        dict(ndim=ndim, interp_order=interp, cmp_layout=cmp_layout, allocator=allocator)
         for ndim, interp, cmp_layout in itertools.product(
             ndim_list, interp_orders, cmp_layouts
         )
+        for allocator in allocators(cmp_layout)
     ]
 
 
@@ -107,7 +113,7 @@ def compare_hierarchies(test, run0, run1, atol):
 
 
 class ALayoutInitTest(HybridInitializationTest):
-    def compare_init(self, ndim, interp_order, cmp_layout, atol, **kwargs):
+    def compare_init(self, ndim, interp_order, cmp_layout, allocator, atol, **kwargs):
         common = dict(
             cells=cells,
             time_step_nbr=1,
@@ -131,7 +137,8 @@ class ALayoutInitTest(HybridInitializationTest):
             interp_order,
             qty="run",
             particle_layout=cmp_layout,
-            diag_outputs=f"{diag_outputs}_{cmp_layout}",
+            allocator=allocator,
+            diag_outputs=f"{diag_outputs}_{cmp_layout}_{allocator}",
             **common,
         )
 
@@ -140,29 +147,33 @@ class ALayoutInitTest(HybridInitializationTest):
 
 
 class LayoutInitL0Test(ALayoutInitTest):
-    def _compare_init(self, ndim, interp_order, cmp_layout):
+    def _compare_init(self, ndim, interp_order, cmp_layout, allocator):
         self.compare_init(
             ndim,
             interp_order,
             cmp_layout,
+            allocator,
             atol=dict(b=0, e=1e-14, moments=1e-14, particles=0),
             refinement_boxes=None,
         )
 
 
 class LayoutInitL1Test(ALayoutInitTest):
-    def _compare_init(self, ndim, interp_order, cmp_layout):
+    def _compare_init(self, ndim, interp_order, cmp_layout, allocator):
         self.compare_init(
             ndim,
             interp_order,
             cmp_layout,
+            allocator,
             atol=dict(b=0, e=1e-14, moments=1e-14, particles=0),
             refinement_boxes={"L0": {"B0": nDBox(ndim, 1, 12)}},
         )
 
 
 class ALayoutAdvanceTest(HybridAdvanceTest):
-    def compare_advance(self, ndim, interp_order, cmp_layout, atol, **kwargs):
+    def compare_advance(
+        self, ndim, interp_order, cmp_layout, allocator, atol, **kwargs
+    ):
         common = dict(
             cells=cells,
             time_step_nbr=kwargs.pop("time_step_nbr", 1),
@@ -187,7 +198,8 @@ class ALayoutAdvanceTest(HybridAdvanceTest):
             interp_order,
             qty="run",
             particle_layout=cmp_layout,
-            diag_outputs=f"{diag_outputs}_{cmp_layout}",
+            allocator=allocator,
+            diag_outputs=f"{diag_outputs}_{cmp_layout}_{allocator}",
             **common,
         )
 
@@ -196,11 +208,12 @@ class ALayoutAdvanceTest(HybridAdvanceTest):
 
 
 class LayoutAdvanceL0Test(ALayoutAdvanceTest):
-    def _compare_advance(self, ndim, interp_order, cmp_layout):
+    def _compare_advance(self, ndim, interp_order, cmp_layout, allocator):
         self.compare_advance(
             ndim,
             interp_order,
             cmp_layout,
+            allocator,
             atol=dict(b=1e-14, e=1e-12, moments=1e-14, particles=1e-14),
             refinement_boxes=None,
         )
@@ -216,11 +229,12 @@ _L1_advance_atol_per_dim = {
 
 
 class LayoutAdvanceL1Test(ALayoutAdvanceTest):
-    def _compare_advance(self, ndim, interp_order, cmp_layout):
+    def _compare_advance(self, ndim, interp_order, cmp_layout, allocator):
         self.compare_advance(
             ndim,
             interp_order,
             cmp_layout,
+            allocator,
             atol=_L1_advance_atol_per_dim[ndim],
             refinement_boxes={"L0": {"B0": nDBox(ndim, 1, 12)}},
         )
@@ -242,11 +256,12 @@ _L2_advance_atol_per_dim = {
 
 
 class LayoutAdvanceL2Test(ALayoutAdvanceTest):
-    def _compare_advance(self, ndim, interp_order, cmp_layout):
+    def _compare_advance(self, ndim, interp_order, cmp_layout, allocator):
         self.compare_advance(
             ndim,
             interp_order,
             cmp_layout,
+            allocator,
             atol=_L2_advance_atol_per_dim[ndim],
             refinement_boxes={
                 "L0": {"B0": nDBox(ndim, 1, 12)},

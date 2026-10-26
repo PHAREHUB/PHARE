@@ -9,11 +9,21 @@
 
 #if !defined(PHARE_HAVE_MKN_GPU) || PHARE_HAVE_MKN_GPU == 1
 #if __has_include("mkn/gpu.hpp")
+#include "core/def/pragma_disable.hpp"
+// clang-format off
+DISABLE_WARNING(double-promotion, double-promotion, 42)
 #include "mkn/gpu.hpp"
 #include "mkn/kul/alloc.hpp"
+ENABLE_WARNING(double-promotion, double-promotion, 42)
+// clang-format on
 #define PHARE_HAVE_MKN_GPU 1
 
-#define PHARE_HAVE_MKN_GPU_HW (MKN_GPU_ROCM || MKN_GPU_CUDA)
+#if PHARE_HAVE_GPU_HARDWARE
+#if !(MKN_GPU_ROCM || MKN_GPU_CUDA)
+#error "PHARE_HAVE_GPU_HARDWARE requires mkn.gpu built for CUDA or ROCm"
+#endif
+#define PHARE_HAVE_MKN_GPU_HW 1
+#endif // PHARE_HAVE_GPU_HARDWARE
 #endif // __has_include("mkn/gpu.hpp")
 #endif // !defined(PHARE_HAVE_MKN_GPU)
 

@@ -178,6 +178,10 @@ def supported_particle_layouts():
     return list(valid_particle_layouts)
 
 
+def gpu_unified_supported():
+    return cpp_etc_lib().gpu_unified_supported()
+
+
 def simulation_to_simopts(sim):
     lib = cpp_etc_lib()
     opts = lib.SimOpts()

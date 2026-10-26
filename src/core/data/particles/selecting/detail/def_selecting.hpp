@@ -2,6 +2,7 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_SELECTING_DETAIL_DEF_SELECTING
 #define PHARE_CORE_DATA_PARTICLES_SELECTING_DETAIL_DEF_SELECTING
 
+#include "core/utilities/types.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 
 namespace PHARE::core
@@ -21,15 +22,25 @@ struct ParticlesSelector
     // intersect against a tile's domain box or its (clamped) ghost box
     template<ParticleType particle_type = ParticleType::Domain, typename SrcParticles,
              typename DstParticles, typename box_t>
-    static void select(SrcParticles const&, DstParticles&, box_t const&);
+    static void select(SrcParticles const&, DstParticles&, box_t const&)
+    {
+        static_assert(dependent_false_v<SrcParticles>, "no ParticlesSelector impl");
+    }
 
     template<ParticleType particle_type = ParticleType::Domain, typename SrcParticles,
              typename DstParticles, typename box_t, typename Shift>
-    static void select(SrcParticles const&, DstParticles&, box_t const&, Shift&&);
+    static void select(SrcParticles const&, DstParticles&, box_t const&, Shift&&)
+    {
+        static_assert(dependent_false_v<SrcParticles>, "no ParticlesSelector impl");
+    }
 
     template<ParticleType particle_type = ParticleType::Domain, typename SrcParticles,
              typename box_t>
-    static std::size_t count(SrcParticles const&, box_t const&);
+    static std::size_t count(SrcParticles const&, box_t const&)
+    {
+        static_assert(dependent_false_v<SrcParticles>, "no ParticlesSelector impl");
+        return 0;
+    }
 };
 
 

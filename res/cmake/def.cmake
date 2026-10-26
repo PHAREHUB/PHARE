@@ -30,6 +30,15 @@ if(useExceptionsInsteadOfMPIAbort)
   set (PHARE_FLAGS ${PHARE_FLAGS} -DPHARE_ERRORS_USE_MPI_ABORT=0 ) # defaults in C++ to true if not set!
 endif(useExceptionsInsteadOfMPIAbort)
 
+if(withGpu)
+  if(NOT withMkn)
+    message(FATAL_ERROR "withGpu requires withMkn")
+  endif()
+  add_compile_definitions(PHARE_HAVE_GPU_HARDWARE=1)
+elseif(withMkn)
+  add_compile_definitions(MKN_GPU_CPU=1)
+endif(withGpu)
+
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
 

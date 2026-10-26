@@ -29,7 +29,6 @@ def main():
                 particles = pd.dataset
                 stat(hier.sim.ndim, particles.v, "v")
                 stat(hier.sim.ndim, particles.weights, "weights")
-                stat(hier.sim.ndim, particles.charges, "charges")
                 # stat(hier.sim.ndim, particles.deltas, "delta")
                 print(particles.weights)
 

@@ -180,6 +180,27 @@ void ParticlesSelector<AoSPCTS, CPU>::select( // box is unshifted global AMR ind
 }
 
 
+// AoSPCTS, GPU_UNIFIED
+
+template<>
+template<ParticleType particle_type, typename SrcParticles, typename DstParticles, typename box_t>
+void ParticlesSelector<AoSPCTS, GPU_UNIFIED>::select( //
+    SrcParticles const& src, DstParticles& dst, box_t const& box)
+{
+    ParticlesSelector<AoSPCTS, CPU>::template select<particle_type>(src, dst, box);
+}
+
+template<>
+template<ParticleType particle_type, typename SrcParticles, typename DstParticles, typename box_t,
+         typename Shift>
+void ParticlesSelector<AoSPCTS, GPU_UNIFIED>::select( //
+    SrcParticles const& src, DstParticles& dst, box_t const& box, Shift&& shifter)
+{
+    ParticlesSelector<AoSPCTS, CPU>::template select<particle_type>(src, dst, box,
+                                                                    std::forward<Shift>(shifter));
+}
+
+
 //
 
 // AoSCMTS, CPU
@@ -447,6 +468,16 @@ std::size_t ParticlesSelector<AoSPCTS, CPU>::count(SrcParticles const& src, box_
         }
     }
     return n;
+}
+
+// AoSPCTS, GPU_UNIFIED
+
+template<>
+template<ParticleType particle_type, typename SrcParticles, typename box_t>
+std::size_t ParticlesSelector<AoSPCTS, GPU_UNIFIED>::count(SrcParticles const& src,
+                                                           box_t const& box)
+{
+    return ParticlesSelector<AoSPCTS, CPU>::template count<particle_type>(src, box);
 }
 
 // AoSCMTS, CPU

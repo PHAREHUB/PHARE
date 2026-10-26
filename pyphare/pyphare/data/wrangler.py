@@ -1,6 +1,3 @@
-from pyphare.core import gridlayout
-
-
 class DataWrangler:
     def __init__(self, simulator):
         from pyphare import cpp

@@ -36,13 +36,13 @@ public:
     using Particle_t                   = ParticleDefaults<opts.dim>::Particle_t;
     using container_type               = std::array<Particle_t, opts.size>;
 
-    auto begin() const { return particles_.begin(); }
-    auto begin() { return particles_.begin(); }
-    auto end() const { return particles_.end(); }
-    auto end() { return particles_.end(); }
-    auto constexpr static size() { return opts.size; }
-    auto& operator[](std::size_t i) const { return particles_.data()[i]; }
-    auto& operator[](std::size_t i) { return particles_.data()[i]; }
+    auto begin() const _PHARE_ALL_FN_ { return particles_.begin(); }
+    auto begin() _PHARE_ALL_FN_ { return particles_.begin(); }
+    auto end() const _PHARE_ALL_FN_ { return particles_.end(); }
+    auto end() _PHARE_ALL_FN_ { return particles_.end(); }
+    auto constexpr static size() _PHARE_ALL_FN_ { return opts.size; }
+    auto& operator[](std::size_t i) const _PHARE_ALL_FN_ { return particles_.data()[i]; }
+    auto& operator[](std::size_t i) _PHARE_ALL_FN_ { return particles_.data()[i]; }
 
 protected:
     container_type particles_;

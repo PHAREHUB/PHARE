@@ -146,7 +146,7 @@ profile:
   self: core
   inc: . tools
   dep: google.benchmark
-  test: tools/bench/core/(\w).cpp
+  # test: tools/bench/core/(\w).cpp
   link: -pthread
 
 
