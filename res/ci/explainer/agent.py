@@ -12,7 +12,8 @@ import re
 import subprocess
 from pathlib import Path
 
-MODEL = "opencode/deepseek-v4.1-flash-free"  # the one place the model is chosen
+# the one place the model is chosen; in CI, the repo variable CI_EXPLAINER_MODEL overrides it
+MODEL = os.environ.get("CI_EXPLAINER_MODEL") or "opencode/deepseek-v4.1-flash-free"
 PROMPT = Path(__file__).with_name("prompt.md")
 
 # how each configuration builds (TeamCity steps as of 2026-10-26; guest access can't read them)

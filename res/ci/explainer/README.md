@@ -27,8 +27,10 @@ status, always with master's workflow and scripts.
 
 Run by hand: Actions → ci-explainer → Run workflow, with the PR head's full sha.
 
-The model is chosen once, `MODEL` in `agent.py`. Free models may train on what they read: they only
-ever see public code and logs.
+The model is chosen once, `MODEL` in `agent.py`. To switch it without a PR, set the repository
+variable `CI_EXPLAINER_MODEL` (Settings → Secrets and variables → Actions → Variables), e.g.
+`opencode/<model>-free`; delete it to go back to the default. Free models may train on what they
+read: they only ever see public code and logs.
 
 ## Replay (offline, nothing posted)
 
