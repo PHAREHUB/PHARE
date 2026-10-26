@@ -30,10 +30,10 @@ ppc = 20
 # Gaussian bumps of Bx tagged for refinement, positions chosen so that level 2 has a
 # two-cell wide overlap between a large patch and a grown one
 bump_centers = [
-    (12.98, 19.72),
-    (7.33, 19.69),
-    (9.91, 11.62),
-    (17.83, 11.41),
+    (13.18, 19.92),
+    (7.53, 19.89),
+    (10.11, 11.82),
+    (18.03, 11.61),
 ]
 bump_widths = [1.37, 0.64, 1.65, 1.35]
 
