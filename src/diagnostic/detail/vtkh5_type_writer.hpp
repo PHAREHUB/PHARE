@@ -43,6 +43,8 @@ struct HierarchyData
     //  and 1d data is * 4
     constexpr static auto X_TIMES = std::array{4, 2, 1}[dim - 1];
 
+    std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
+
     static auto& INSTANCE()
     {
         static HierarchyData data;
@@ -103,7 +105,7 @@ struct HierarchyData
 
     auto static flatten_boxes(auto const& boxes_per_rank)
     {
-        std::vector<std::array<int, 6>> data;
+        std::vector<std::array<int, boxValsIn3D>> data;
         for (auto const& boxes : boxes_per_rank)
             for (auto const& box : boxes)
             {
@@ -118,7 +120,7 @@ struct HierarchyData
         return data;
     }
 
-    std::vector<std::vector<std::array<int, 6>>> flattened_level_boxes;
+    std::vector<std::vector<std::array<int, boxValsIn3D>>> flattened_level_boxes;
     std::vector<std::vector<std::vector<core::Box<int, dim>>>> level_boxes_per_rank;
     // row/box counts are 64 bit, a single dump of a large 2d/3d run overflows 32 bits
     std::vector<std::vector<std::size_t>> level_rank_data_size;
@@ -215,8 +217,9 @@ void H5TypeWriter<Writer>::writeFileAttributes(DiagnosticProperties const& prop,
 template<typename Writer>
 class H5TypeWriter<Writer>::VTKFileInitializer
 {
-    auto static constexpr primal_qty         = physical_quantity_type::all_primal_field;
-    std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
+    auto static constexpr primal_qty  = physical_quantity_type::all_primal_field;
+    auto static constexpr boxValsIn3D = HierData::boxValsIn3D;
+
 public:
     VTKFileInitializer(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter);
 
@@ -286,8 +289,7 @@ private:
 template<typename Writer>
 class H5TypeWriter<Writer>::VTKFileWriter
 {
-    auto static constexpr primal_qty         = physical_quantity_type::all_primal_field;
-    std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
+    auto static constexpr primal_qty = physical_quantity_type::all_primal_field;
 
 
 public:
