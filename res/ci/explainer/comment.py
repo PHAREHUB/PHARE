@@ -6,14 +6,10 @@ One comment per PR, edited on each new commit: the hidden marker lets ci.py find
 """
 
 import re
+import textwrap
 
-# code shown as written: only the plain forms, ``` blocks opening and closing a line and single-backtick
-# spans not touching a backslash or another backtick. Anything GitHub might read differently
-# (\`, ``` mid-line, ~~~) is treated as text and escaped: at worst a '<' shows as &lt;.
-CODE = re.compile(
-    r"^ {0,3}```[^`\n]*\n.*?^ {0,3}```[ \t]*$|(?<![\\`])`[^`\n]+`(?!`)", re.S | re.M
-)
-MAX_REPORT = 1500  # characters per agent report, after cleaning
+MAX_REPORT = 1500  # characters per agent report
+WIDTH = 100  # a code block doesn't wrap on GitHub
 SKIPPED = object()  # report of a failure the agent was not run on
 
 
@@ -29,44 +25,25 @@ def builds_tag(ids):
     return f"<!-- builds:{','.join(map(str, sorted(ids)))} -->"
 
 
-def escape_html(text):
-    """'<' escaped, not removed, outside code: `std::vector<double>` and #include <cstdint> survive."""
-    parts, end = [], 0
-    for code in CODE.finditer(text):
-        parts += [text[end : code.start()].replace("<", "&lt;"), code[0]]
-        end = code.end()
-    return "".join(parts) + text[end:].replace("<", "&lt;")
-
-
-def clean(report):
-    """Agent text made safe to post: no @-mentions, no links, no HTML, bounded length.
-    HTML is escaped last, on the exact text posted: an edit made after it (a cut, a removed
-    address) could take a code span's closing backtick and leave its '<' as live HTML."""
-    text = re.sub(
-        r"\[([^\]]*)\]\([^)]*\)", r"\1", report
-    )  # markdown links: keep the words
-    # reference links: without their "[r]: url" line, [words][r] is plain text (and a[i][j] stays)
-    text = re.sub(r"^ {0,3}\[[^\]]+\]:.*$", "", text, flags=re.M)
-    # GitHub links www. addresses too
-    text = re.sub(r"(https?://|www\.)\S+", "(link removed)", text)
-    text = re.sub(r"@(?=[\w-])", "@\u200b", text)  # zero-width space: no GitHub mention
-    text = "\n".join(
-        line for line in text.splitlines() if not line.startswith("Owner:")
-    )
+def as_code(report):
+    """The agent's text as one code block, the only safe way to post it: GitHub renders nothing
+    inside (no link, HTML, mention or entity), whatever the text holds; escaping it as markdown
+    failed on one trick after another. The fence is longer than any backtick run in the text, so
+    the text can't close it."""
+    lines = []
+    for line in report.splitlines():
+        if line.startswith("Owner:"):  # for replay's grading, not for people
+            continue
+        line = re.sub(
+            r"^> ?", "", line
+        )  # the fix prompt's quote marks: noise in a block
+        lines += textwrap.wrap(line, WIDTH, break_on_hyphens=False) or [""]
+    text = "\n".join(lines)
     if len(text) > MAX_REPORT:
         text = text[:MAX_REPORT] + " [...]"
-    return escape_html(text)
-
-
-def layout(report):
-    """'What: x' -> '**What** x'; the fix prompt stays a quote block."""
-    text = re.sub(r"^(What|Why):[ \t]*", r"**\1** ", report, flags=re.M)
-    return re.sub(
-        r"^Fix prompt:\s*$",
-        "**Fix**, to paste into your coding agent:",
-        text,
-        flags=re.M,
-    )
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}text\n{text}\n{fence}"
 
 
 def render(pr, sha, explained, others, signature):
@@ -99,7 +76,7 @@ def render(pr, sha, explained, others, signature):
         )
         lines += [
             f"#### {verdict.reason}: {where}",
-            clean(layout(report))
+            as_code(report)
             if isinstance(report, str)
             else "_(not explained: too many distinct failures on this commit)_"
             if report is SKIPPED

@@ -148,7 +148,7 @@ def explain_commit(pr, sha, ids, out):
         siblings = tc.builds_of(sha)
     except OSError:  # a clue, not a must: explain without it
         siblings = []
-    explained = []
+    explained, others = [], others.get((pr, sha), [])
     for n, members in enumerate(
         sorted(groups.values(), key=lambda members: members[0][0]["id"])
     ):
@@ -164,13 +164,12 @@ def explain_commit(pr, sha, ids, out):
             else comment.SKIPPED
         )
         explained.append(([b for b, _, _ in members], members[0][1], report))
-    text = comment.render(
-        pr,
-        sha,
-        explained,
-        others.get((pr, sha), []),
-        explain.signature(agent.MODEL),
-    )
+    if not others and not any(isinstance(r, str) for _, _, r in explained):
+        print(
+            "no usable explanation, nothing put on the CI: no comment"
+        )  # e.g. a wrong model name
+        return
+    text = comment.render(pr, sha, explained, others, explain.signature(agent.MODEL))
     (out / "comment.md").write_text(text)
 
 
@@ -195,7 +194,8 @@ if __name__ == "__main__":
             Path(out).mkdir(parents=True, exist_ok=True)
             explain_commit(int(pr), sha, [int(i) for i in ids.split(",")], Path(out))
         case ["post", pr, sha, path]:
-            post(int(pr), sha, Path(path).read_text())
+            if Path(path).exists():  # explain may have had nothing to say
+                post(int(pr), sha, Path(path).read_text())
         case ["green", pr, sha]:
             post(int(pr), sha, comment.render_green(int(pr), sha))
         case _:

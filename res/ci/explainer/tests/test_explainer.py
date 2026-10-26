@@ -6,6 +6,7 @@ run: python3 -m unittest discover -s res/ci/explainer/tests
 import contextlib
 import io
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -214,36 +215,38 @@ class Report(unittest.TestCase):
 
 
 class Comment(unittest.TestCase):
-    def test_clean_removes_mentions_links_html_and_owner_line(self):
-        text = comment.clean(
-            "Owner: pr\nWhat: ping @someone, see [here](https://evil.example) or https://x.y <img src=x>"
+    # tricks that got past escaping the answer as markdown, each checked on GitHub's renderer
+    TRICKS = (
+        "What: ping @someone, see [here](https://evil.example) <img src=x> &#64;octocat",
+        '\\`<a href="//evil.example">x</a>`',
+        '```<a href="//evil.example">x</a>`',
+        '`<a href="//evil.example">x</a> http://y`',
+        'What: x\n```\ncode\n````\n<a href="//evil.example/a">x</a>\n```\n',
+        '- item\n  ```\n<a href="//evil.example/b">x</a>\n  ```\n',
+        "What: see [a\\]b](//evil.example/c) and [a [b] c](//evil.example/d)",
+        "> [r]: //evil.example/e\n\nWhat: [QUOTEREF][r] HTTPS://evil.example/f",
+        "`" * 7 + "\n<b>x</b>",
+        "x" * (comment.MAX_REPORT - 10) + '`<a href="//evil.example">x</a>`',
+    )
+
+    def test_the_answer_is_one_code_block_it_cannot_close(self):
+        for trick in self.TRICKS:
+            text = comment.as_code(trick)
+            fence = text.split("\n", 1)[0].removesuffix("text")
+            self.assertTrue(set(fence) == {"`"} and len(fence) >= 3, trick)
+            self.assertTrue(text.endswith("\n" + fence), trick)
+            body = text[len(fence) + 5 : -len(fence) - 1]
+            self.assertFalse(re.search("`" * len(fence), body), trick)
+
+    def test_code_block_keeps_cpp_drops_owner_and_wraps(self):
+        text = comment.as_code(
+            "Owner: pr\nWhat: `std::vector<int>` and #include <cstdint>\nFix prompt:\n> "
+            + "word " * 40
         )
-        self.assertNotIn("@s", text)
-        self.assertNotIn("http", text)
-        self.assertNotIn("<img", text)
+        self.assertIn("`std::vector<int>` and #include <cstdint>", text)
         self.assertNotIn("Owner:", text)
-        self.assertIn("here", text)
-
-    def test_clean_keeps_cpp_angle_brackets_but_no_html(self):
-        text = comment.clean(
-            "What: `std::vector<int>` and #include <cstdint>\n```\ntemplate<typename T>\n```"
-        )
-        self.assertIn("`std::vector<int>`", text)
-        self.assertIn("template<typename T>", text)
-        self.assertIn("&lt;cstdint>", text)  # shown as <cstdint>, not read as a tag
-        self.assertNotIn("<cstdint>", text)
-
-    def test_no_html_through_lookalike_code(self):
-        # GitHub renders both as a link: an escaped backtick, and ``` that opens no block
-        for trick in (
-            '\\`<a href="//evil.example">x</a>`',
-            '```<a href="//evil.example">x</a>`',
-            # a removed address must not take the closing backtick with it
-            '`<a href="//evil.example">x</a> http://y`',
-            # nor the cut of a long answer
-            "x" * (comment.MAX_REPORT - 10) + '`<a href="//evil.example">x</a>`',
-        ):
-            self.assertNotIn("<a", comment.clean(trick))
+        self.assertNotIn("> word", text)
+        self.assertTrue(all(len(line) <= comment.WIDTH for line in text.splitlines()))
 
     def test_render_has_marker_counts_and_fix(self):
         report = agent.parse(REPORT)
@@ -262,7 +265,8 @@ class Comment(unittest.TestCase):
         )
         self.assertTrue(text.startswith(comment.marker(1)))
         self.assertIn("2 red**: 1 explained below, 1 put on the CI by the rules.", text)
-        self.assertIn("**Fix**, to paste into your coding agent:", text)
+        self.assertIn("```text\nWhat: src/simulator/simulator.hpp:395", text)
+        self.assertIn("\nRemove the unused variable", text)
         self.assertIn("hit the build time limit", text)
 
     def test_failure_not_run_says_so(self):
@@ -281,14 +285,6 @@ class Comment(unittest.TestCase):
         )
         self.assertIn("not explained: too many", text)
         self.assertIn("1 red**: 1 not explained.", text)
-
-    def test_reference_links_and_www_addresses_are_removed(self):
-        text = comment.clean(
-            "see [the fix][r] or www.evil.example, `E[i][j]`\n\n[r]: //example.invalid\n   [s]: http://x.y"
-        )
-        self.assertIn("see [the fix][r] or (link removed) `E[i][j]`", text)
-        self.assertNotIn("example.invalid", text)
-        self.assertNotIn("x.y", text)
 
     def test_failures_without_a_test_name_are_not_merged(self):
         unknown = triage.Verdict("unknown", "unknown", "red")
@@ -436,6 +432,23 @@ class Ci(unittest.TestCase):
         finally:
             ci.api = real
         self.assertEqual(calls[-1], ("POST", "issues/1/comments"))
+
+    def test_no_comment_when_the_agent_answered_nothing_usable(self):
+        red = (build("x"), triage.Verdict("unknown", "unknown", "red"), "excerpt")
+        real = ci.tc.build, ci.tc.builds_of, ci.explain.sort, ci.explain.explain
+        ci.tc.build = lambda i: build("x")
+        ci.tc.builds_of = lambda sha: []
+        ci.explain.sort = lambda builds, log: ([], {"k": [red]}, {})
+        ci.explain.explain = lambda *args, **kwargs: None  # e.g. a mistyped model name
+        try:
+            with (
+                tempfile.TemporaryDirectory() as out,
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                ci.explain_commit(1, "0" * 40, [1], Path(out))
+                self.assertFalse((Path(out) / "comment.md").exists())
+        finally:
+            ci.tc.build, ci.tc.builds_of, ci.explain.sort, ci.explain.explain = real
 
     def test_no_comment_when_every_red_was_canceled(self):
         statuses = [status("gh_pr_gcc (Phare)", "failure", 7)]

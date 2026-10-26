@@ -9,7 +9,8 @@ into a coding agent. Advisory only: it never blocks a merge.
 3. `excerpt.py` cuts the few log lines that matter.
 4. `agent.py` runs a free OpenCode model in a folder holding the excerpt, the PR diff and the
    built commit's code; it may only read (`opencode.json`: no edits, no shell, no web).
-5. `comment.py` cleans the answer (no mentions, links or HTML) and lays out one comment per PR.
+5. `comment.py` lays out one comment per PR, each answer inside a code block: GitHub renders
+   no link, HTML or mention there, whatever the model wrote.
 
 `explain.py` holds what replay and CI share (sorting, git, one agent run).
 

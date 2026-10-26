@@ -35,6 +35,9 @@ SANDBOX = {
     "$schema": "https://opencode.ai/config.json",
     "autoupdate": False,
     "share": "disabled",
+    # off explicitly: language servers and formatters can run code from the PR's build files
+    "lsp": False,
+    "formatter": False,
     "permission": {
         **dict.fromkeys(("read", "glob", "grep", "list"), "allow"),
         **dict.fromkeys(
@@ -49,6 +52,7 @@ SANDBOX = {
                 "question",
                 "lsp",
                 "skill",
+                "doom_loop",  # "ask" by default: a run with nobody to answer would hang
             ),
             "deny",
         ),
@@ -141,11 +145,17 @@ def run(workdir, model=MODEL, timeout=600):
     """(report or None, raw JSON events); events are kept even on timeout, to see where it got stuck."""
     # absolute: it is both --dir and cwd, where a relative path would be read twice
     workdir = Path(workdir).resolve()
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if not re.search(r"TOKEN|SECRET|PASSWORD|KEY", k, re.I)
-    }
+    env = (
+        {
+            k: v
+            for k, v in os.environ.items()
+            if not re.search(r"TOKEN|SECRET|PASSWORD|KEY", k, re.I)
+        }
+        | {
+            "OPENCODE_DISABLE_LSP_DOWNLOAD": "1",
+            "OPENCODE_DISABLE_CLAUDE_CODE": "1",  # no CLAUDE.md from the PR read as instructions
+        }
+    )
     message = PROMPT.read_text() + "\nStart by reading context.md."
     try:
         done = subprocess.run(
