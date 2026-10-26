@@ -527,7 +527,7 @@ public:
     ACollectionOfParticles_1d()
         : part{}
         , particles{grow(layout.AMRBox(), safeLayer)}
-        , rho{"field", HybridQuantity::Scalar::rho, nx}
+        , rho{"field", layout, HybridQuantity::Scalar::rho}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
         rho.zero();
@@ -688,7 +688,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
 
     ACollectionOfParticles_2d()
         : particles{grow(layout.AMRBox(), safeLayer)}
-        , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        , rho{"field", layout, HybridQuantity::Scalar::rho}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
         rho.zero();

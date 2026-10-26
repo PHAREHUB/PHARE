@@ -9,6 +9,7 @@
 #include "core/models/quantities/hybrid_quantities.hpp"
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 
 
@@ -55,8 +56,8 @@ template<>
 class Weighter<1>
 {
 public:
-    inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(1)>& weights)
+    PHARE_ALWAYS_INLINE void computeWeight(double normalizedPos, int startIndex,
+                                           std::array<double, nbrPointsSupport(1)>& weights)
     {
         weights[1] = normalizedPos - static_cast<double>(startIndex);
         weights[0] = 1. - weights[1];
@@ -72,8 +73,8 @@ template<>
 class Weighter<2>
 {
 public:
-    inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(2)>& weights)
+    PHARE_ALWAYS_INLINE void computeWeight(double normalizedPos, int startIndex,
+                                           std::array<double, nbrPointsSupport(2)>& weights)
     {
         auto index = startIndex + 1;
         auto delta = static_cast<double>(index) - normalizedPos;
@@ -98,8 +99,8 @@ template<>
 class Weighter<3>
 {
 public:
-    inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(3)>& weights)
+    PHARE_ALWAYS_INLINE void computeWeight(double normalizedPos, int startIndex,
+                                           std::array<double, nbrPointsSupport(3)>& weights)
     {
         constexpr double _4_over_3 = 4. / 3.;
         constexpr double _2_over_3 = 2. / 3.;
@@ -160,7 +161,8 @@ public:
      * the field \param[in] weights are the nbrPointsSupport weights used for the interpolation
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    NO_DISCARD inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    NO_DISCARD PHARE_ALWAYS_INLINE auto operator()(Field const& field,
+                                                   IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -191,7 +193,8 @@ public:
      * weights used for the interpolation in both directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    NO_DISCARD inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    NO_DISCARD PHARE_ALWAYS_INLINE auto operator()(Field const& field,
+                                                   IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -200,14 +203,19 @@ public:
 
         auto const& order_size = xWeights.size();
 
+        // one field index for the stencil's lower corner, the rest via the C ordered stride
+        std::size_t const xStride = field.shape()[1];
+        auto const* corner        = &field(xStartIndex, yStartIndex);
+
         double fieldAtParticle = 0.;
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
-            double Yinterp = 0.;
+            auto const* row = corner + ix * xStride;
+            double Yinterp  = 0.;
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                Yinterp += field(xStartIndex + ix, yStartIndex + iy) * yWeights[iy];
+                Yinterp += row[iy] * yWeights[iy];
             }
             fieldAtParticle += Yinterp * xWeights[ix];
         }
@@ -232,7 +240,8 @@ public:
      * weights used for the interpolation in the 3 directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    NO_DISCARD inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    NO_DISCARD PHARE_ALWAYS_INLINE auto operator()(Field const& field,
+                                                   IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -243,17 +252,23 @@ public:
 
         auto const& order_size = xWeights.size();
 
+        // one field index for the stencil's lower corner, the rest via the C ordered strides
+        auto const& shape         = field.shape();
+        std::size_t const yStride = shape[2];
+        std::size_t const xStride = shape[1] * yStride;
+        auto const* corner        = &field(xStartIndex, yStartIndex, zStartIndex);
+
         double fieldAtParticle = 0.;
         for (auto ix = 0u; ix < order_size; ++ix)
         {
             double Yinterp = 0.;
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                double Zinterp = 0.;
+                auto const* row = corner + ix * xStride + iy * yStride;
+                double Zinterp  = 0.;
                 for (auto iz = 0u; iz < order_size; ++iz)
                 {
-                    Zinterp += field(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                               * zWeights[iz];
+                    Zinterp += row[iz] * zWeights[iz];
                 }
                 Yinterp += Zinterp * yWeights[iy];
             }
@@ -267,6 +282,10 @@ public:
 
 
 //! ParticleToMesh projects a particle density and flux to given grids
+//! the per field operator() deposits func(particle) on one field, the fused one deposits
+//! density and flux together: they are all primal, so share the stencil offset and weights
+//! the fused deposit takes __restrict pointers, without which the compiler must assume a
+//! field store may change the weights/particle, and reload them after every one
 template<std::size_t dim>
 class ParticleToMesh
 {
@@ -280,8 +299,9 @@ class ParticleToMesh<1>
 {
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
-    inline void operator()(Field& field, Particle const& particle, Func&& func,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+    PHARE_ALWAYS_INLINE void operator()(Field& field, Particle const& particle, Func&& func,
+                                        Indexes const& startIndex, Weights const& weights,
+                                        double coef = 1.)
     {
         auto const& [xStartIndex] = startIndex;
         auto const& [xWeights]    = weights;
@@ -292,6 +312,41 @@ public:
         for (auto ik = 0u; ik < order_size; ++ik)
         {
             field(xStartIndex + ik) += deposit * xWeights[ik];
+        }
+    }
+
+    template<typename Density, typename Flux, typename Particle, typename Indexes, typename Weights>
+    PHARE_ALWAYS_INLINE void operator()(Density& density, Flux& xFlux, Flux& yFlux, Flux& zFlux,
+                                        Particle const& particle, Indexes const& startIndex,
+                                        Weights const& weights, double coef = 1.)
+    {
+        auto const& [xStartIndex] = startIndex;
+
+        assert(density.shape() == xFlux.shape() and density.shape() == yFlux.shape()
+               and density.shape() == zFlux.shape());
+
+        auto const offset = xStartIndex;
+        deposit_(density.data() + offset, xFlux.data() + offset, yFlux.data() + offset,
+                 zFlux.data() + offset, weights, particle.weight * coef, particle.v);
+    }
+
+private:
+    template<typename T, typename Weights, typename V>
+    PHARE_ALWAYS_INLINE static void deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy,
+                                             T* __restrict fz, Weights const& weights,
+                                             double const deposit, V const& v)
+    {
+        auto const& [xWeights]   = weights;
+        auto const& order_size   = xWeights.size();
+        auto const& [vx, vy, vz] = v;
+
+        for (auto ik = 0u; ik < order_size; ++ik)
+        {
+            auto const w = deposit * xWeights[ik];
+            rho[ik] += w;
+            fx[ik] += w * vx;
+            fy[ik] += w * vy;
+            fz[ik] += w * vz;
         }
     }
 };
@@ -305,8 +360,9 @@ class ParticleToMesh<2>
 {
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
-    inline void operator()(Field& field, Particle const& particle, Func&& func,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+    PHARE_ALWAYS_INLINE void operator()(Field& field, Particle const& particle, Func&& func,
+                                        Indexes const& startIndex, Weights const& weights,
+                                        double coef = 1.)
     {
         auto const& [xStartIndex, yStartIndex] = startIndex;
         auto const& [xWeights, yWeights]       = weights;
@@ -325,6 +381,47 @@ public:
             }
         }
     }
+
+    template<typename Density, typename Flux, typename Particle, typename Indexes, typename Weights>
+    PHARE_ALWAYS_INLINE void operator()(Density& density, Flux& xFlux, Flux& yFlux, Flux& zFlux,
+                                        Particle const& particle, Indexes const& startIndex,
+                                        Weights const& weights, double coef = 1.)
+    {
+        auto const& [xStartIndex, yStartIndex] = startIndex;
+
+        assert(density.shape() == xFlux.shape() and density.shape() == yFlux.shape()
+               and density.shape() == zFlux.shape());
+
+        auto* const rho   = &density(xStartIndex, yStartIndex);
+        auto const offset = rho - density.data();
+        deposit_(rho, xFlux.data() + offset, yFlux.data() + offset, zFlux.data() + offset,
+                 density.shape()[1], weights, particle.weight * coef, particle.v);
+    }
+
+private:
+    template<typename T, typename Weights, typename V>
+    PHARE_ALWAYS_INLINE static void
+    deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy, T* __restrict fz,
+             std::size_t const xStride, Weights const& weights, double const deposit, V const& v)
+    {
+        auto const& [xWeights, yWeights] = weights;
+        auto const& order_size           = xWeights.size();
+        auto const& [vx, vy, vz]         = v;
+
+        for (auto ix = 0u; ix < order_size; ++ix)
+        {
+            auto const row = ix * xStride;
+            auto const xw  = deposit * xWeights[ix];
+            for (auto iy = 0u; iy < order_size; ++iy)
+            {
+                auto const w = xw * yWeights[iy];
+                rho[row + iy] += w;
+                fx[row + iy] += w * vx;
+                fy[row + iy] += w * vy;
+                fz[row + iy] += w * vz;
+            }
+        }
+    }
 };
 
 
@@ -336,8 +433,9 @@ class ParticleToMesh<3>
 {
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
-    inline void operator()(Field& field, Particle const& particle, Func&& func,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+    PHARE_ALWAYS_INLINE void operator()(Field& field, Particle const& particle, Func&& func,
+                                        Indexes const& startIndex, Weights const& weights,
+                                        double coef = 1.)
     {
         auto const& [xStartIndex, yStartIndex, zStartIndex] = startIndex;
         auto const& [xWeights, yWeights, zWeights]          = weights;
@@ -360,6 +458,54 @@ public:
             }
         }
     }
+
+    template<typename Density, typename Flux, typename Particle, typename Indexes, typename Weights>
+    PHARE_ALWAYS_INLINE void operator()(Density& density, Flux& xFlux, Flux& yFlux, Flux& zFlux,
+                                        Particle const& particle, Indexes const& startIndex,
+                                        Weights const& weights, double coef = 1.)
+    {
+        auto const& [xStartIndex, yStartIndex, zStartIndex] = startIndex;
+        auto const& shape                                   = density.shape();
+        std::size_t const yStride                           = shape[2];
+
+        assert(density.shape() == xFlux.shape() and density.shape() == yFlux.shape()
+               and density.shape() == zFlux.shape());
+
+        auto* const rho   = &density(xStartIndex, yStartIndex, zStartIndex);
+        auto const offset = rho - density.data();
+        deposit_(rho, xFlux.data() + offset, yFlux.data() + offset, zFlux.data() + offset,
+                 shape[1] * yStride, yStride, weights, particle.weight * coef, particle.v);
+    }
+
+private:
+    template<typename T, typename Weights, typename V>
+    PHARE_ALWAYS_INLINE static void deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy,
+                                             T* __restrict fz, std::size_t const xStride,
+                                             std::size_t const yStride, Weights const& weights,
+                                             double const deposit, V const& v)
+    {
+        auto const& [xWeights, yWeights, zWeights] = weights;
+        auto const& order_size                     = xWeights.size();
+        auto const& [vx, vy, vz]                   = v;
+
+        for (auto ix = 0u; ix < order_size; ++ix)
+        {
+            auto const xw = deposit * xWeights[ix];
+            for (auto iy = 0u; iy < order_size; ++iy)
+            {
+                auto const row = ix * xStride + iy * yStride;
+                auto const xyw = xw * yWeights[iy];
+                for (auto iz = 0u; iz < order_size; ++iz)
+                {
+                    auto const w = xyw * zWeights[iz];
+                    rho[row + iz] += w;
+                    fx[row + iz] += w * vx;
+                    fy[row + iz] += w * vy;
+                    fz[row + iz] += w * vz;
+                }
+            }
+        }
+    }
 };
 
 
@@ -378,7 +524,8 @@ protected:
     // is offseted compared to primal ones.
     template<typename CenteringT, CenteringT centering, typename GridLayout, typename ICell,
              typename Delta>
-    auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_, Delta const& delta)
+    PHARE_ALWAYS_INLINE auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_,
+                                              Delta const& delta)
     {
         // dual weights require -.5 to take the correct position weight
         auto constexpr dual_offset = .5;
@@ -418,7 +565,8 @@ public:
      * onto the particle.
      */
     template<typename Particle_t, typename Electromag, typename GridLayout>
-    inline auto operator()(Particle_t& currPart, Electromag const& Em, GridLayout const& layout)
+    PHARE_ALWAYS_INLINE auto operator()(Particle_t& currPart, Electromag const& Em,
+                                        GridLayout const& layout)
     {
         using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
         using Scalar    = HybridQuantity::Scalar;
@@ -483,18 +631,8 @@ public:
             indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, currPart->iCell,
                                                                  currPart->delta);
 
-            particleToMesh_(
-                particleDensity, *currPart, [](auto const& part) { return 1.; }, startIndex_,
-                weights_, coef);
-            particleToMesh_(
-                xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
-                coef);
-            particleToMesh_(
-                yFlux, *currPart, [](auto const& part) { return part.v[1]; }, startIndex_, weights_,
-                coef);
-            particleToMesh_(
-                zFlux, *currPart, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
-                coef);
+            particleToMesh_(particleDensity, xFlux, yFlux, zFlux, *currPart, startIndex_, weights_,
+                            coef);
         }
         PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
