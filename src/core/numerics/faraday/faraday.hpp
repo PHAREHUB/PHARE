@@ -42,9 +42,9 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        auto const curlX = curl<Component::X>(layout_, E, Bxnew);
-        auto const curlY = curl<Component::Y>(layout_, E, Bynew);
-        auto const curlZ = curl<Component::Z>(layout_, E, Bznew);
+        auto const curlX = curl<Component::X>(layout_, E);
+        auto const curlY = curl<Component::Y>(layout_, E);
+        auto const curlZ = curl<Component::Z>(layout_, E);
 
         layout_.evalOnBox(
             Bxnew, [&](auto const&... ijk) { Bxnew(ijk...) = Bx(ijk...) - dt_ * curlX({ijk...}); });

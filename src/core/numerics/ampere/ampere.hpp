@@ -55,9 +55,9 @@ public:
                 layout_.evalOnBiggerBox(Jc, amount, fn);
         };
 
-        auto const curlX = curl<Component::X>(layout_, B, Jx);
-        auto const curlY = curl<Component::Y>(layout_, B, Jy);
-        auto const curlZ = curl<Component::Z>(layout_, B, Jz);
+        auto const curlX = curl<Component::X>(layout_, B);
+        auto const curlY = curl<Component::Y>(layout_, B);
+        auto const curlZ = curl<Component::Z>(layout_, B);
 
         eval(Jx, [&](auto const&... ijk) { Jx(ijk...) = curlX({ijk...}); });
         eval(Jy, [&](auto const&... ijk) { Jy(ijk...) = curlY({ijk...}); });

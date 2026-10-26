@@ -336,10 +336,11 @@ void storeCurl(Layout const& layout, VecField const& v, VecField& out)
         constexpr std::size_t i = ic();
         constexpr std::size_t j = (i + 1) % 3;
         constexpr std::size_t k = (i + 2) % 3;
-        auto const dst          = layout.centering(out[i]);
-        auto const box          = intersect(reach(layout, layout.centering(v[k]), dst, j),
-                                            reach(layout, layout.centering(v[j]), dst, k));
-        store(curl<static_cast<Component>(i)>(layout, v, out[i]), out[i], box);
+        auto const op           = curl<static_cast<Component>(i)>(layout, v);
+        EXPECT_EQ(op.centering(), layout.centering(out[i]));
+        auto const box = intersect(reach(layout, layout.centering(v[k]), op.centering(), j),
+                                   reach(layout, layout.centering(v[j]), op.centering(), k));
+        store(op, out[i], box);
     });
 }
 
@@ -348,8 +349,9 @@ void storeGrad(Layout const& layout, Field const& f, VecField& out)
 {
     for_N<3>([&](auto ic) {
         constexpr std::size_t i = ic();
-        auto const box          = reach(layout, layout.centering(f), layout.centering(out[i]), i);
-        store(grad<static_cast<Component>(i)>(layout, f, out[i]), out[i], box);
+        auto const op           = grad<static_cast<Component>(i)>(layout, f);
+        EXPECT_EQ(op.centering(), layout.centering(out[i]));
+        store(op, out[i], reach(layout, layout.centering(f), op.centering(), i));
     });
 }
 
@@ -373,24 +375,16 @@ using DifferentialOperatorsParams
 
 TYPED_TEST_SUITE(DifferentialOperators, DifferentialOperatorsParams);
 
-using LowDimParams  = ::testing::Types<HybridParam<1, 1>, HybridParam<1, 3>, MHDParam<1, Constant>,
-                                       MHDParam<1, WENOZ>, HybridParam<2, 1>, HybridParam<2, 3>,
-                                       MHDParam<2, Constant>, MHDParam<2, WENOZ>>;
-using HighDimParams = ::testing::Types<HybridParam<2, 1>, HybridParam<2, 3>, MHDParam<2, Constant>,
-                                       MHDParam<2, WENOZ>, HybridParam<3, 1>, HybridParam<3, 3>,
-                                       MHDParam<3, Constant>, MHDParam<3, WENOZ>>;
+using LowDimParams = ::testing::Types<HybridParam<1, 1>, HybridParam<1, 3>, MHDParam<1, Constant>,
+                                      MHDParam<1, WENOZ>, HybridParam<2, 1>, HybridParam<2, 3>,
+                                      MHDParam<2, Constant>, MHDParam<2, WENOZ>>;
 
 template<typename Param>
 struct NonSimulatedDirections : public DifferentialOperators<Param>
 {
 };
-template<typename Param>
-struct TransverseMismatch : public DifferentialOperators<Param>
-{
-};
 
 TYPED_TEST_SUITE(NonSimulatedDirections, LowDimParams);
-TYPED_TEST_SUITE(TransverseMismatch, HighDimParams);
 
 
 TYPED_TEST(DifferentialOperators, partialIsExactOnQuadratics)
@@ -409,19 +403,46 @@ TYPED_TEST(DifferentialOperators, partialIsExactOnQuadratics)
             fill(layout, src.field, [](auto const& x) { return quadratic(x); });
             auto const srcCentering = layout.centering(src.field);
 
-            for (auto const alongD : {QtyCentering::primal, QtyCentering::dual})
-            {
-                auto dstCentering = srcCentering;
-                dstCentering[d]   = alongD;
+            auto const dx = partial<dir>(layout, src.field);
+            auto expected = srcCentering;
+            expected[d]   = srcCentering[d] == QtyCentering::primal ? QtyCentering::dual
+                                                                    : QtyCentering::primal;
+            EXPECT_EQ(dx.centering(), expected);
 
-                auto const dx = partial<dir>(layout, src.field, dstCentering);
-                for (auto const& idx : reach(layout, srcCentering, dstCentering, d))
-                    EXPECT_NEAR(dx(idx),
-                                quadraticDerivative(d, coordinates(layout, dstCentering, idx)),
-                                1e-10);
-            }
+            for (auto const& idx : reach(layout, srcCentering, dx.centering(), d))
+                EXPECT_NEAR(dx(idx),
+                            quadraticDerivative(d, coordinates(layout, dx.centering(), idx)),
+                            1e-10);
         }
     });
+}
+
+
+TYPED_TEST(DifferentialOperators, destinationsFollowYee)
+{
+    using Model               = TypeParam::Model;
+    static constexpr auto dim = TestFixture::dim;
+    auto const& layout        = this->layout;
+
+    OwnedVecField<Model> e{layout, TypeParam::edgeVector};
+    OwnedVecField<Model> b{layout, TypeParam::faceVector};
+    OwnedField<Model> n{layout, TypeParam::nodalScalar};
+
+    for_N<3>([&](auto ic) {
+        constexpr std::size_t i = ic();
+        constexpr auto c        = static_cast<Component>(i);
+        EXPECT_EQ(curl<c>(layout, e.view).centering(), layout.centering(b.view[i]));
+        EXPECT_EQ(curl<c>(layout, b.view).centering(), layout.centering(e.view[i]));
+        EXPECT_EQ(grad<c>(layout, n.field).centering(), layout.centering(e.view[i]));
+        if constexpr (TypeParam::is_mhd)
+        {
+            OwnedField<Model> cell{layout, TypeParam::cellScalar};
+            EXPECT_EQ(grad<c>(layout, cell.field).centering(), layout.centering(b.view[i]));
+        }
+    });
+
+    EXPECT_EQ(div(layout, e.view).centering(), layout.centering(n.field));
+    EXPECT_EQ(div(layout, b.view).centering(), (ConstArray<QtyCentering, dim>(QtyCentering::dual)));
 }
 
 
@@ -446,55 +467,49 @@ TYPED_TEST(DifferentialOperators, laplacianIsExactOnCubics)
 
 TYPED_TEST(DifferentialOperators, divCurlVanishes)
 {
-    using Model               = TypeParam::Model;
-    static constexpr auto dim = TestFixture::dim;
-    auto const& layout        = this->layout;
+    using Model        = TypeParam::Model;
+    auto const& layout = this->layout;
 
-    auto const check = [&](auto const aQty, auto const curlQty, QtyCentering const divCentering) {
+    auto const check = [&](auto const aQty, auto const curlQty) {
         OwnedVecField<Model> a{layout, aQty};
         fillWave(layout, a.view);
         OwnedVecField<Model> curlA{layout, curlQty};
         storeCurl(layout, a.view, curlA.view);
 
-        auto const dst  = ConstArray<QtyCentering, dim>(divCentering);
-        auto const divA = div(layout, curlA.view, dst);
+        auto const divA = div(layout, curlA.view);
         auto const tol  = tolerance(layout, maxAbs(a));
-        for (auto const& idx : physicalBox(layout, dst))
+        for (auto const& idx : physicalBox(layout, divA.centering()))
             EXPECT_NEAR(divA(idx), 0., tol);
     };
 
-    check(TypeParam::edgeVector, TypeParam::faceVector, QtyCentering::dual);
-    check(TypeParam::faceVector, TypeParam::edgeVector, QtyCentering::primal);
-    check(TypeParam::nodalVector, TypeParam::nodalVector, QtyCentering::primal);
+    check(TypeParam::edgeVector, TypeParam::faceVector);
+    check(TypeParam::faceVector, TypeParam::edgeVector);
 }
 
 
 TYPED_TEST(DifferentialOperators, curlGradVanishes)
 {
     using Model        = TypeParam::Model;
-    using Layout       = TestFixture::Layout;
     auto const& layout = this->layout;
 
-    auto const check = [&](auto const phiQty, auto const gradQty, auto const curlQty) {
+    auto const check = [&](auto const phiQty, auto const gradQty) {
         OwnedField<Model> phi{layout, phiQty};
         fill(layout, phi.field, [](auto const& x) { return std::sin(phase(x)); });
         OwnedVecField<Model> gradPhi{layout, gradQty};
         storeGrad(layout, phi.field, gradPhi.view);
 
-        auto const dsts = Layout::centering(curlQty);
-        auto const tol  = tolerance(layout, maxAbs(phi));
+        auto const tol = tolerance(layout, maxAbs(phi));
         for_N<3>([&](auto ic) {
             constexpr std::size_t i = ic();
-            auto const curlGrad = curl<static_cast<Component>(i)>(layout, gradPhi.view, dsts[i]);
-            for (auto const& idx : physicalBox(layout, dsts[i]))
+            auto const curlGrad     = curl<static_cast<Component>(i)>(layout, gradPhi.view);
+            for (auto const& idx : physicalBox(layout, curlGrad.centering()))
                 EXPECT_NEAR(curlGrad(idx), 0., tol);
         });
     };
 
-    check(TypeParam::nodalScalar, TypeParam::edgeVector, TypeParam::faceVector);
+    check(TypeParam::nodalScalar, TypeParam::edgeVector);
     if constexpr (TypeParam::is_mhd)
-        check(TypeParam::cellScalar, TypeParam::faceVector, TypeParam::edgeVector);
-    check(TypeParam::nodalScalar, TypeParam::nodalVector, TypeParam::nodalVector);
+        check(TypeParam::cellScalar, TypeParam::faceVector);
 }
 
 
@@ -509,8 +524,9 @@ TYPED_TEST(DifferentialOperators, divGradEqualsLaplacian)
         OwnedVecField<Model> gradPhi{layout, gradQty};
         storeGrad(layout, phi.field, gradPhi.view);
 
-        auto const divGrad = div(layout, gradPhi.view, phi.field);
-        auto const tol     = tolerance(layout, maxAbs(phi));
+        auto const divGrad = div(layout, gradPhi.view);
+        EXPECT_EQ(divGrad.centering(), layout.centering(phi.field));
+        auto const tol = tolerance(layout, maxAbs(phi));
         for (auto const& idx : physicalBox(layout, layout.centering(phi.field)))
             EXPECT_NEAR(divGrad(idx), laplacian(layout, phi.field, idx), tol);
     };
@@ -524,7 +540,6 @@ TYPED_TEST(DifferentialOperators, divGradEqualsLaplacian)
 TYPED_TEST(NonSimulatedDirections, nonSimulatedDirectionsAreZero)
 {
     using Model               = TypeParam::Model;
-    using Layout              = TestFixture::Layout;
     static constexpr auto dim = TestFixture::dim;
     auto const& layout        = this->layout;
 
@@ -532,37 +547,38 @@ TYPED_TEST(NonSimulatedDirections, nonSimulatedDirectionsAreZero)
     fill(layout, f.field, [](auto const& x) { return quadratic(x); });
     auto const nodal = layout.centering(f.field);
 
-    auto const dz = partial<Direction::Z>(layout, f.field, nodal);
+    auto const dz = partial<Direction::Z>(layout, f.field);
+    EXPECT_EQ(dz.centering(), nodal);
     for (auto const& idx : ghostBox(layout, nodal))
         EXPECT_EQ(dz(idx), 0.);
 
     if constexpr (dim == 1)
     {
-        auto const dy = partial<Direction::Y>(layout, f.field, nodal);
+        auto const dy = partial<Direction::Y>(layout, f.field);
+        EXPECT_EQ(dy.centering(), nodal);
         for (auto const& idx : ghostBox(layout, nodal))
             EXPECT_EQ(dy(idx), 0.);
 
         OwnedVecField<Model> a{layout, TypeParam::edgeVector};
         fillWave(layout, a.view);
-        auto const dsts = Layout::centering(TypeParam::faceVector);
 
-        auto const curlX = curl<Component::X>(layout, a.view, dsts[0]);
-        auto const curlY = curl<Component::Y>(layout, a.view, dsts[1]);
-        auto const curlZ = curl<Component::Z>(layout, a.view, dsts[2]);
-        auto const dxAz  = partial<Direction::X>(layout, a.view[2], dsts[1]);
-        auto const dxAy  = partial<Direction::X>(layout, a.view[1], dsts[2]);
+        auto const curlX = curl<Component::X>(layout, a.view);
+        auto const curlY = curl<Component::Y>(layout, a.view);
+        auto const curlZ = curl<Component::Z>(layout, a.view);
+        auto const dxAz  = partial<Direction::X>(layout, a.view[2]);
+        auto const dxAy  = partial<Direction::X>(layout, a.view[1]);
 
-        for (auto const& idx : ghostBox(layout, dsts[0]))
+        for (auto const& idx : ghostBox(layout, curlX.centering()))
         {
             EXPECT_EQ(curlX(idx), 0.);
             EXPECT_FALSE(std::signbit(curlX(idx)));
         }
-        for (auto const& idx : ghostBox(layout, dsts[1]))
+        for (auto const& idx : ghostBox(layout, curlY.centering()))
         {
             EXPECT_EQ(curlY(idx), -dxAz(idx));
             EXPECT_EQ(std::signbit(curlY(idx)), std::signbit(-dxAz(idx)));
         }
-        for (auto const& idx : ghostBox(layout, dsts[2]))
+        for (auto const& idx : ghostBox(layout, curlZ.centering()))
         {
             EXPECT_EQ(curlZ(idx), dxAy(idx));
             EXPECT_EQ(std::signbit(curlZ(idx)), std::signbit(dxAy(idx)));
@@ -571,16 +587,14 @@ TYPED_TEST(NonSimulatedDirections, nonSimulatedDirectionsAreZero)
 }
 
 
-TYPED_TEST(TransverseMismatch, transverseMismatchThrows)
+TYPED_TEST(DifferentialOperators, collocatedVectorThrows)
 {
-    using Model               = TypeParam::Model;
-    static constexpr auto dim = TestFixture::dim;
-    auto const& layout        = this->layout;
+    using Model        = TypeParam::Model;
+    auto const& layout = this->layout;
 
-    OwnedVecField<Model> b{layout, TypeParam::faceVector};
-    auto const& Bx   = b.view(Component::X);
-    auto const nodal = ConstArray<QtyCentering, dim>(QtyCentering::primal);
-    EXPECT_THROW(partial<Direction::X>(layout, Bx, nodal), std::runtime_error);
+    OwnedVecField<Model> v{layout, TypeParam::nodalVector};
+    EXPECT_THROW(curl<Component::Y>(layout, v.view), std::runtime_error);
+    EXPECT_THROW(div(layout, v.view), std::runtime_error);
 }
 
 
@@ -590,32 +604,23 @@ TYPED_TEST(DifferentialOperators, operandWithoutDataThrows)
     auto const& layout = this->layout;
 
     typename Model::Field_t f{"f", TypeParam::nodalScalar};
-    auto dst = layout.centering(f);
-    dst[0]   = QtyCentering::dual;
-    EXPECT_THROW(partial<Direction::X>(layout, f, dst), std::runtime_error);
+    EXPECT_THROW(partial<Direction::X>(layout, f), std::runtime_error);
 }
 
 
-TYPED_TEST(DifferentialOperators, arrayAndFieldDestinationsAgree)
+TYPED_TEST(DifferentialOperators, componentArrayAndVecFieldAgree)
 {
     using Model        = TypeParam::Model;
     auto const& layout = this->layout;
 
     OwnedVecField<Model> e{layout, TypeParam::edgeVector};
     fillWave(layout, e.view);
-    OwnedVecField<Model> b{layout, TypeParam::faceVector};
-    auto const& Bx = b.view(Component::X);
-
-    auto const fromField = curl<Component::X>(layout, e.view, Bx);
-    auto const fromArray = curl<Component::X>(layout, e.view, layout.centering(Bx));
-    for (auto const& idx : ghostBox(layout, layout.centering(Bx)))
-        EXPECT_EQ(std::bit_cast<std::uint64_t>(fromField(idx)),
-                  std::bit_cast<std::uint64_t>(fromArray(idx)));
 
     std::array const components{e.view[0], e.view[1], e.view[2]};
-    auto const fromComponents = curl<Component::X>(layout, components, Bx);
-    for (auto const& idx : ghostBox(layout, layout.centering(Bx)))
-        EXPECT_EQ(std::bit_cast<std::uint64_t>(fromField(idx)),
+    auto const fromVecField   = curl<Component::X>(layout, e.view);
+    auto const fromComponents = curl<Component::X>(layout, components);
+    for (auto const& idx : ghostBox(layout, fromVecField.centering()))
+        EXPECT_EQ(std::bit_cast<std::uint64_t>(fromVecField(idx)),
                   std::bit_cast<std::uint64_t>(fromComponents(idx)));
 }
 

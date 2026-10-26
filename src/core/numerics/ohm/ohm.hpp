@@ -72,9 +72,9 @@ private:
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPeX = grad<Component::X>(layout_, Pe, Exnew);
-        auto const gradPeY = grad<Component::Y>(layout_, Pe, Eynew);
-        auto const gradPeZ = grad<Component::Z>(layout_, Pe, Eznew);
+        auto const gradPeX = grad<Component::X>(layout_, Pe);
+        auto const gradPeY = grad<Component::Y>(layout_, Pe);
+        auto const gradPeZ = grad<Component::Z>(layout_, Pe);
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
