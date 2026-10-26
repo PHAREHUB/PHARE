@@ -11,7 +11,6 @@
 
 #include <array>
 #include <cstddef>
-#include <utility>
 #include <stdexcept>
 
 namespace PHARE::core::detail
@@ -19,9 +18,7 @@ namespace PHARE::core::detail
 template<std::size_t d, typename Array, std::size_t dim>
 double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
 {
-    return [&]<std::size_t... i>(std::index_sequence<i...>) {
-        return array((i == d ? idx[i] + shift : idx[i])...);
-    }(std::make_index_sequence<dim>{});
+    return for_N_fold<dim>([&](auto... i) { return array((i == d ? idx[i] + shift : idx[i])...); });
 }
 
 template<Component c>
