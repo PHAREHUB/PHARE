@@ -10,5 +10,5 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  phare_mpi_python3_exec(121 1 test-mhd_multidimensional_convergence multidimensional_convergence.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(121 4 test-mhd_multidimensional_convergence multidimensional_convergence.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()

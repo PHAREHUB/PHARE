@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.run import Run
 
 # It scans every reconstruction in one run, each compiled as its own permutation in res/sim/all.txt.
