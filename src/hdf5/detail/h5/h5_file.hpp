@@ -121,6 +121,7 @@ public:
         createGroupsToDataSet(path);
         HighFive::DataSetCreateProps props;
         props.add(HighFive::Chunking{chunk});
+        H5Pset_fill_time(props.getId(), H5D_FILL_TIME_NEVER);
         return h5file_.createDataSet(path, dataspace, HighFive::create_datatype<Type>(), props);
     }
 

@@ -36,7 +36,14 @@ See :doc:`performance_analyses` for details on configuring and analysing scope t
 ``PHARE_H5_CHUNK_SIZE``
 -------------------------
 
-HDF5 dataset chunk size, in elements. Defaults to ``1024``. Affects VTKHDF diagnostics.
+HDF5 dataset chunk size, in elements. Defaults to ``1024``. Affects the step and box index
+datasets of VTKHDF diagnostics.
+
+``PHARE_VTKHDF_CHUNK_BYTES``
+------------------------------
+
+HDF5 chunk size, in bytes, of the field datasets (``PointData``) of VTKHDF diagnostics.
+Defaults to ``1048576`` (1 MiB). A chunk holds whole rows (all components of a point).
 
 ``PHARE_SIM_MON``
 -------------------
