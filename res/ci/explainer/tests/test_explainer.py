@@ -3,9 +3,14 @@
 run: python3 -m unittest discover -s res/ci/explainer/tests
 """
 
+import contextlib
+import io
 import os
+import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -13,6 +18,7 @@ import agent
 import ci
 import comment
 import excerpt
+import explain
 import triage
 
 
@@ -227,6 +233,14 @@ class Comment(unittest.TestCase):
         self.assertIn("&lt;cstdint>", text)  # shown as <cstdint>, not read as a tag
         self.assertNotIn("<cstdint>", text)
 
+    def test_no_html_through_lookalike_code(self):
+        # GitHub renders both as a link: an escaped backtick, and ``` that opens no block
+        for trick in (
+            '\\`<a href="//evil.example">x</a>`',
+            '```<a href="//evil.example">x</a>`',
+        ):
+            self.assertNotIn("<a", comment.clean(trick))
+
     def test_render_has_marker_counts_and_fix(self):
         report = agent.parse(REPORT)
         others = [
@@ -243,7 +257,7 @@ class Comment(unittest.TestCase):
             "Written by m.",
         )
         self.assertTrue(text.startswith(comment.marker(1)))
-        self.assertIn("2 red**, 1 from this PR, 1 not", text)
+        self.assertIn("2 red**: 1 explained below, 1 put on the CI by the rules.", text)
         self.assertIn("**Fix**, to paste into your coding agent:", text)
         self.assertIn("hit the build time limit", text)
 
@@ -262,6 +276,52 @@ class Comment(unittest.TestCase):
             "",
         )
         self.assertIn("not explained: too many", text)
+        self.assertIn("1 red**: 1 not explained.", text)
+
+    def test_reference_links_and_www_addresses_are_removed(self):
+        text = comment.clean(
+            "see [the fix][r] or www.evil.example, `E[i][j]`\n\n[r]: //example.invalid\n   [s]: http://x.y"
+        )
+        self.assertIn("see [the fix][r] or (link removed) `E[i][j]`", text)
+        self.assertNotIn("example.invalid", text)
+        self.assertNotIn("x.y", text)
+
+    def test_failures_without_a_test_name_are_not_merged(self):
+        unknown = triage.Verdict("unknown", "unknown", "red")
+        self.assertNotEqual(
+            explain.failure_key(unknown, "segfault in a"),
+            explain.failure_key(unknown, "out of memory in b"),
+        )
+        compile_error = triage.Verdict("compile", "pr", "compile error")
+        self.assertEqual(  # gcc and clang builds print the same file differently
+            explain.failure_key(compile_error, "src/core/a.hpp:196:5: error: x"),
+            explain.failure_key(compile_error, "../src/core/a.hpp:196:12: error: y"),
+        )
+        named = triage.Verdict("test", "pr", "test failure", ("test-gridlayout",))
+        self.assertEqual(
+            explain.failure_key(named, "gcc words it so"),
+            explain.failure_key(named, "clang words it otherwise"),
+        )
+
+    def test_the_agent_gets_no_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            (repo / "a.txt").write_text("a")
+            (repo / "leak").symlink_to("/etc/hostname")
+            (repo / "up").symlink_to("..")
+
+            def git(*args):
+                subprocess.run(
+                    ["git", "-C", str(repo), *args], check=True, capture_output=True
+                )
+
+            git("init", "-q")
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x")
+            dest = Path(tmp) / "src"
+            explain.snapshot(repo, "HEAD")(dest)
+            self.assertEqual(sorted(p.name for p in dest.iterdir()), ["a.txt"])
 
 
 def status(context, state, build_id=1):
@@ -326,6 +386,70 @@ class Ci(unittest.TestCase):
         )
         self.assertTrue(ci.done(body, sha, "red", [1]))
         self.assertFalse(ci.done(body, sha, "red", [1, 2]))
+
+    def test_a_red_build_passing_on_rerun_is_redone(self):
+        sha = "b" * 40
+        two = [dict(build("x"), id=101), dict(build("x"), id=102)]
+        body = comment.render(
+            1,
+            sha,
+            [(two, triage.Verdict("compile", "pr", "compile error"), None)],
+            [],
+            "",
+        )
+        self.assertTrue(ci.done(body, sha, "red", [101, 102]))
+        self.assertFalse(ci.done(body, sha, "red", [102]))
+        self.assertFalse(ci.done("**CI on `bbbbbbb`: 1 red** (102)", sha, "red", [102]))
+
+    def test_nothing_posted_once_the_pr_moved_on(self):
+        calls = []
+
+        def api(path, method="GET", body=None):
+            calls.append(method)
+            return {"state": "open", "head": {"sha": "c" * 40}, "labels": []}
+
+        real, ci.api = ci.api, api
+        try:
+            ci.post(1, "b" * 40, "text")
+        finally:
+            ci.api = real
+        self.assertEqual(calls, ["GET"])
+
+    def test_posted_while_the_commit_is_the_head(self):
+        calls = []
+
+        def api(path, method="GET", body=None):
+            calls.append((method, path))
+            return (
+                []
+                if "comments" in path
+                else {"state": "open", "head": {"sha": "b" * 40}, "labels": []}
+            )
+
+        real, ci.api = ci.api, api
+        try:
+            ci.post(1, "b" * 40, "text")
+        finally:
+            ci.api = real
+        self.assertEqual(calls[-1], ("POST", "issues/1/comments"))
+
+    def test_no_comment_when_every_red_was_canceled(self):
+        statuses = [status("gh_pr_gcc (Phare)", "failure", 7)]
+        real = ci.api, ci.tc.build
+        ci.api = lambda path, *_: {"statuses": statuses}
+        ci.tc.build = lambda i: {
+            "id": i,
+            "pr": 1,
+            "status": "UNKNOWN",
+            "status_text": "Canceled",
+        }
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out):
+                ci.check("b" * 40)
+        finally:
+            ci.api, ci.tc.build = real
+        self.assertIn("action=none", out.getvalue())
 
 
 if __name__ == "__main__":

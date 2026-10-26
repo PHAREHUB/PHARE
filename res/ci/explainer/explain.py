@@ -5,6 +5,8 @@ sort() turns red builds into distinct failures; explain() runs the agent on one 
 folder holding the excerpt, the PR's diff and the code of the built commit.
 """
 
+import os
+import re
 import subprocess
 from collections import defaultdict
 
@@ -59,6 +61,12 @@ def snapshot(repo, sha):
             ["git", "-C", str(repo), "archive", sha], check=True, capture_output=True
         ).stdout
         subprocess.run(["tar", "-x", "-C", str(dest)], input=archive, check=True)
+        # a PR's symlink would let the agent read outside its folder (the sandbox checks paths, not
+        # link targets); PHARE has none of its own
+        for root, dirs, files in os.walk(dest):
+            for name in dirs + files:
+                if os.path.islink(path := os.path.join(root, name)):
+                    os.unlink(path)
 
     return write
 
@@ -71,8 +79,10 @@ def failure_key(verdict, text):
         first = next(
             (line for line in text.splitlines() if triage.COMPILE_ERROR.match(line)), ""
         )
-        return ("compile", ":".join(first.split(":")[:2]))
-    return (verdict.kind, verdict.tests)
+        path, line = (first.split(":") + ["", ""])[:2]
+        return ("compile", re.sub(r"^(\.\.?/)+", "", path) + ":" + line)
+    # no test name: only the same excerpt is the same failure
+    return (verdict.kind, verdict.tests or text)
 
 
 def sort(builds, log_of):

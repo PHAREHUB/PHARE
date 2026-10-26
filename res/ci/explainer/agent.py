@@ -139,6 +139,8 @@ def text_of(events):
 
 def run(workdir, model=MODEL, timeout=600):
     """(report or None, raw JSON events); events are kept even on timeout, to see where it got stuck."""
+    # absolute: it is both --dir and cwd, where a relative path would be read twice
+    workdir = Path(workdir).resolve()
     env = {
         k: v
         for k, v in os.environ.items()

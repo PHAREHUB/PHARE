@@ -23,7 +23,8 @@ status, always with master's workflow and scripts.
    already reported, and, during the trial, PRs without the `ci-explain` label.
 2. `ci.py explain`: the agent, in a job with a read-only token. At most 4 distinct failures per
    commit. Its inputs and raw output stay 14 days as the workflow artifact `ci-explainer`.
-3. `ci.py post` / `ci.py green`: the only job allowed to write; one comment per PR, edited.
+3. `ci.py post` / `ci.py green`: the only job allowed to write; one comment per PR, edited, and only
+   if the commit is still the PR's head (an explanation takes minutes).
 
 Run by hand: Actions → ci-explainer → Run workflow, with the PR head's full sha.
 

@@ -103,7 +103,7 @@ jobs:
           path: out
       - run: |
           if [ "$ACTION" = red ]; then
-            python3 res/ci/explainer/ci.py post "$PR" out/comment.md
+            python3 res/ci/explainer/ci.py post "$PR" "$SHA" out/comment.md
           else
             python3 res/ci/explainer/ci.py green "$PR" "$SHA"
           fi

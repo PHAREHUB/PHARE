@@ -72,13 +72,19 @@ def failed_tests(lines):
     return tuple(names)
 
 
+def canceled(build):
+    return build["status"] == "UNKNOWN" or bool(
+        re.search(r"\bCanceled\b", build["status_text"])
+    )
+
+
 def classify(build, lines):
     """build: dict from tc.flatten; lines: clean(log).
 
     Order matters: a build can carry a harmless infra warning and still fail on a real test, so
     what the PR broke is looked for before what the CI broke."""
     text = build["status_text"]
-    if build["status"] == "UNKNOWN" or re.search(r"\bCanceled\b", text):
+    if canceled(build):
         return Verdict(
             "canceled", "ci", "canceled (usually a newer push replaced this build)"
         )

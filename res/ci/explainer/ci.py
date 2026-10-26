@@ -7,7 +7,7 @@ when none of TeamCity's statuses on the commit is pending any more.
 
 usage: ci.py check SHA                    prints action=red|green|none, pr=N, builds=ID,ID
        ci.py explain PR SHA BUILDS OUT    writes OUT/comment.md (BUILDS: red build ids, comma-separated)
-       ci.py post PR FILE                 creates or edits the explainer's comment on the PR
+       ci.py post PR SHA FILE             creates or edits the explainer's comment, if SHA is still the head
        ci.py green PR SHA                 edits it to say the reds are gone
 
 GitHub is read with GITHUB_TOKEN (post and green need pull-requests: write; without a token,
@@ -26,6 +26,7 @@ import agent
 import comment
 import explain
 import tc
+import triage
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "PHAREHUB/PHARE")
 API = f"https://api.github.com/repos/{REPO}"
@@ -85,25 +86,29 @@ def our_comment(pr):
 
 
 def done(body, sha, action, red=()):
-    """Does the comment already say this about this commit, naming every red build?
-    (TeamCity sends some statuses twice; a re-run build gets a new id.)"""
+    """Does the comment already say this about this commit, with exactly these red builds?
+    (TeamCity sends some statuses twice; a re-run build gets a new id, a passing re-run drops one.)"""
     head = f"**CI on `{sha[:7]}`: "
     said_green = (head + "no red build") in body
-    return (
-        head in body
-        and said_green == (action == "green")
-        and all(f"({i})" in body for i in red)
+    tag = comment.BUILDS.search(body)
+    reported = {int(i) for i in tag[1].split(",") if i} if tag else None
+    return head in body and said_green == (action == "green") and reported == set(red)
+
+
+def current(pr, sha):
+    """Is sha still the head of the open PR, with the trial label? Asked again before posting:
+    an explanation takes minutes, and a newer commit's comment must not be overwritten."""
+    pull = api(f"pulls/{pr}")
+    label = os.environ.get("EXPLAIN_LABEL", "")
+    return not (
+        pull["state"] != "open"
+        or pull["head"]["sha"] != sha  # pushed again since: the new commit will come
+        or (label and label not in {lab["name"] for lab in pull["labels"]})
     )
 
 
 def wanted(pr, sha, action, red):
-    pull = api(f"pulls/{pr}")
-    label = os.environ.get("EXPLAIN_LABEL", "")
-    if (
-        pull["state"] != "open"
-        or pull["head"]["sha"] != sha  # pushed again since: the new commit will come
-        or (label and label not in {lab["name"] for lab in pull["labels"]})
-    ):
+    if not current(pr, sha):
         return False
     old = our_comment(pr)
     if old is None:
@@ -127,7 +132,11 @@ def check(sha):
             )
         )
         pr = tc.build(any_build)["pr"]
-    if pr is None or not wanted(pr, sha, action, red):
+    if action == "red" and all(triage.canceled(tc.build(i)) for i in red):
+        action = (
+            "none"  # canceled on purpose (newer push, CI-only PR): nothing to explain
+        )
+    if action == "none" or pr is None or not wanted(pr, sha, action, red):
         action = "none"
     print(f"action={action}\npr={pr or ''}\nbuilds={','.join(map(str, red))}")
 
@@ -165,7 +174,12 @@ def explain_commit(pr, sha, ids, out):
     (out / "comment.md").write_text(text)
 
 
-def post(pr, body):
+def post(pr, sha, body):
+    if not current(pr, sha):
+        print(
+            f"{sha[:7]} is no longer the head of open PR {pr} with its label: nothing posted"
+        )
+        return
     old = our_comment(pr)
     if old is None:
         api(f"issues/{pr}/comments", "POST", {"body": body})
@@ -180,9 +194,9 @@ if __name__ == "__main__":
         case ["explain", pr, sha, ids, out]:
             Path(out).mkdir(parents=True, exist_ok=True)
             explain_commit(int(pr), sha, [int(i) for i in ids.split(",")], Path(out))
-        case ["post", pr, path]:
-            post(int(pr), Path(path).read_text())
+        case ["post", pr, sha, path]:
+            post(int(pr), sha, Path(path).read_text())
         case ["green", pr, sha]:
-            post(int(pr), comment.render_green(int(pr), sha))
+            post(int(pr), sha, comment.render_green(int(pr), sha))
         case _:
             sys.exit(__doc__)
