@@ -122,7 +122,9 @@ def defaultPopulationSettings(sim, density_fn, vbulk_fn):
     }
 
 
-def makeBasicModel(extra_pops={}):
+def makeBasicModel(extra_pops=None):
+    if extra_pops is None:
+        extra_pops = {}
     sim = ph.global_vars.sim
     _density_fn_periodic = globals()["density_" + str(sim.ndim) + "d_periodic"]
 
@@ -202,7 +204,7 @@ def diff_boxes(slice1, slice2, box, atol=None):
 
 
 class SimulatorTest(unittest.TestCase):
-    test_kwargs = ["rethrow"]
+    test_kwargs = ("rethrow",)
 
     def tearDown(self):
         self.clean_up_diags_dirs()

@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import datetime
 import unittest
@@ -123,7 +124,9 @@ simArgs = dict(
 )
 
 
-def dup(dic={}):
+def dup(dic=None):
+    if dic is None:
+        dic = {}
     args = copy.deepcopy(simArgs)
     args.update(dic)
     return args
@@ -459,10 +462,8 @@ class RestartsTest(SimulatorTest):
         local_out = sim.diag_options["options"]["dir"]
         for path_object in Path(local_out).iterdir():
             if path_object.is_dir():
-                try:
+                with contextlib.suppress(ValueError):
                     dirs.append(float(path_object.name))
-                except ValueError:
-                    ...  # skip
 
         dirs = sorted(dirs)
         for i, idx in enumerate(range(8, 11)):

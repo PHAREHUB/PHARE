@@ -20,7 +20,9 @@ interp_orders = [1, 2, 3]
 ppc = 10
 
 
-def permute_hybrid(boxes={}):
+def permute_hybrid(boxes=None):
+    if boxes is None:
+        boxes = {}
     return [
         dict(
             super_class=HybridAdvanceTest,
@@ -32,7 +34,9 @@ def permute_hybrid(boxes={}):
     ]
 
 
-def permute_mhd(boxes={}):
+def permute_mhd(boxes=None):
+    if boxes is None:
+        boxes = {}
     return [
         dict(
             super_class=MHDAdvanceTest,
@@ -43,7 +47,7 @@ def permute_mhd(boxes={}):
     ]
 
 
-def permute(boxes={}, hybrid=True, mhd=False):
+def permute(boxes=None, hybrid=True, mhd=False):
     return (permute_hybrid(boxes) if hybrid else []) + (
         permute_mhd(boxes) if mhd else []
     )

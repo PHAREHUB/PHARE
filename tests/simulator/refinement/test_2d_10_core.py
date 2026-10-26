@@ -22,7 +22,9 @@ L0_diags = "phare_outputs/test_x_homo_0"
 L0L1_diags = "phare_outputs/test_x_homo_1"
 
 
-def config(diag_outputs, model_init={}, refinement_boxes=None):
+def config(diag_outputs, model_init=None, refinement_boxes=None):
+    if model_init is None:
+        model_init = {}
     ph.global_vars.sim = None
 
     sim = ph.Simulation(
@@ -124,7 +126,9 @@ def get_hier(path):
     return get_time(path)
 
 
-def make_fig(hier, fig_name, ilvl, extra_collections=[]):
+def make_fig(hier, fig_name, ilvl, extra_collections=None):
+    if extra_collections is None:
+        extra_collections = []
     if cpp.mpi_rank() == 0:
         l0_in_l1 = [boxm.refine(p.box, 2) for p in hier.level(0).patches]
         collections = [

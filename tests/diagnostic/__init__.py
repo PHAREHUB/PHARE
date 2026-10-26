@@ -12,7 +12,7 @@ def all_timestamps(sim):
     return sim.time_stepper.time_step * np.arange(nbr_dump_step)
 
 
-def dump_all_diags(pops=[], flush_every=100, timestamps=None):
+def dump_all_diags(pops=(), flush_every=100, timestamps=None):
     import pyphare.pharein as ph
 
     sim = ph.global_vars.sim

@@ -3,6 +3,7 @@
 #
 
 import argparse
+import contextlib
 import sys
 from dataclasses import dataclass, field
 
@@ -233,7 +234,5 @@ if __name__ == "__main__":
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         if fn not in globals():
             raise ValueError("requested function does not exist")
-        try:
+        with contextlib.suppress(BrokenPipeError):
             globals()[fn]()
-        except BrokenPipeError:
-            ...

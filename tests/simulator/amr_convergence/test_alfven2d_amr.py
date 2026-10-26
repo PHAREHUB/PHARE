@@ -44,7 +44,7 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
     final_time = 1.0  # one period (v_A = 1, wavelength 1 along e1)
 
     # N=16 is preasymptotic; the band was calibrated on [32, 64, 128].
-    SPATIAL_NS = [32, 64, 128]
+    SPATIAL_NS = (32, 64, 128)
     SPATIAL_SIGMA = 0.32  # the historical dt = 0.2/N convention
     SPATIAL_ORDER_BAND = (1.70, 2.25)
 
@@ -54,7 +54,7 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
     # makes any dt-dependent C-F error stand out more. Same sigma set as the
     # whistler test.
     SWEEP_N = 64
-    SWEEP_SIGMAS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    SWEEP_SIGMAS = (0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
     MAX_AMR_SIGMA_DRIFT = 0.05
 
     def cfl_dt(self, N):
