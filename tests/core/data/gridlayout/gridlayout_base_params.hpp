@@ -36,17 +36,12 @@ struct GridLayoutTestParam
     std::shared_ptr<Grid_t> field;
 
 
-    template<typename Container, std::size_t... I>
-    auto makeIt_(Container allocSize, std::index_sequence<I...>)
-    {
-        return std::make_shared<Grid_t>("field", currentQuantity, (allocSize[I])...);
-    }
-
     template<typename Container>
     auto makeMyField_(Container allocSize)
     {
-        std::make_index_sequence<dim> idx;
-        return makeIt_(allocSize, idx);
+        return for_N_fold<dim>([&](auto... i) {
+            return std::make_shared<Grid_t>("field", currentQuantity, allocSize[i]...);
+        });
     }
 };
 
