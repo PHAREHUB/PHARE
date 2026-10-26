@@ -298,7 +298,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         [&](auto const& level) {
             auto const ilvl = level.getLevelNumber();
 
-            VTKFileWriter writer{diagnostic, this, info.offset_per_level[ilvl]};
+            VTKFileWriter writer{diagnostic, this, ilvl, info.offset_per_level[ilvl]};
 
             auto const write_quantity = [&](auto& layout, auto const&, auto const) {
                 if constexpr (solver::is_hybrid_model_v<Model_t>)
@@ -309,6 +309,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
             };
 
             modelView.visitHierarchy(write_quantity, ilvl, ilvl);
+            writer.flush();
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }
