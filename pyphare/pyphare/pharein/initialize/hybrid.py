@@ -5,7 +5,9 @@ def populateDict(sim):
     dp = DictPopulator()
 
     if sim.refinement == "tagging":
-        dp.add_string("simulation/AMR/refinement/tagging/hybrid_method", "default")
+        dp.add_string(
+            "simulation/AMR/refinement/tagging/hybrid_method", sim.tagging.method
+        )
 
     dp.add_string("simulation/algo/ion_updater/pusher/name", sim.particle_pusher)
 

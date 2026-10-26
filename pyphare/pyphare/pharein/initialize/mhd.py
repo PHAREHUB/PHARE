@@ -7,7 +7,9 @@ def populateDict(sim):
     dp.add_int("simulation/AMR/max_mhd_level", sim.max_mhd_level)
 
     if sim.refinement == "tagging":
-        dp.add_string("simulation/AMR/refinement/tagging/mhd_method", "default")
+        dp.add_string(
+            "simulation/AMR/refinement/tagging/mhd_method", sim.tagging.method
+        )
 
     _populate_algo(dp, sim)
     _populate_state(dp, sim)
