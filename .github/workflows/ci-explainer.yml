@@ -29,8 +29,10 @@ env:
   SHA: ${{ github.event.sha || inputs.sha }}
 
 concurrency:
-  # TeamCity's statuses of one commit arrive close together: one run at a time, the last one wins
-  group: ci-explainer-${{ github.event.sha || inputs.sha }}
+  # TeamCity's statuses of one commit arrive close together: one run at a time, the last one wins.
+  # Only events `check` acts on share that group: a skipped one (pending, docs, ...) would otherwise
+  # replace, and so cancel, the waiting run that carries the last result.
+  group: ci-explainer-${{ (github.event_name == 'workflow_dispatch' || (github.event.state != 'pending' && endsWith(github.event.context, ' (Phare)'))) && (github.event.sha || inputs.sha) || github.run_id }}
   cancel-in-progress: false
 
 jobs:

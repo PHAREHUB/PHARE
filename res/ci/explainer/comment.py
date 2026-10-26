@@ -7,6 +7,9 @@ One comment per PR, edited on each new commit: the hidden marker lets ci.py find
 
 import re
 
+CODE = re.compile(
+    r"(```.*?```|`[^`\n]*`)", re.S
+)  # fenced blocks and inline spans: shown as written
 MAX_REPORT = 1500  # characters per agent report, after cleaning
 SKIPPED = object()  # report of a failure the agent was not run on
 
@@ -16,8 +19,12 @@ def marker(pr):
 
 
 def clean(report):
-    """Agent text made safe to post: no @-mentions, no links, no HTML, bounded length."""
-    text = re.sub(r"<[^>\n]+>", "", report)  # HTML tags, comments
+    """Agent text made safe to post: no @-mentions, no links, no HTML, bounded length.
+    '<' is escaped, not removed, outside code: `std::vector<double>` and #include <cstdint> survive."""
+    text = "".join(
+        part if CODE.fullmatch(part) else part.replace("<", "&lt;")
+        for part in CODE.split(report)
+    )
     text = re.sub(
         r"\[([^\]]*)\]\([^)]*\)", r"\1", text
     )  # markdown links: keep the words

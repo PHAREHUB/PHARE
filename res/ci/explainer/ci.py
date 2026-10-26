@@ -84,14 +84,19 @@ def our_comment(pr):
         page += 1
 
 
-def done(body, sha, action):
-    """Does the comment already say this about this commit? (TeamCity sends some statuses twice.)"""
+def done(body, sha, action, red=()):
+    """Does the comment already say this about this commit, naming every red build?
+    (TeamCity sends some statuses twice; a re-run build gets a new id.)"""
     head = f"**CI on `{sha[:7]}`: "
     said_green = (head + "no red build") in body
-    return head in body and said_green == (action == "green")
+    return (
+        head in body
+        and said_green == (action == "green")
+        and all(f"({i})" in body for i in red)
+    )
 
 
-def wanted(pr, sha, action):
+def wanted(pr, sha, action, red):
     pull = api(f"pulls/{pr}")
     label = os.environ.get("EXPLAIN_LABEL", "")
     if (
@@ -103,7 +108,7 @@ def wanted(pr, sha, action):
     old = our_comment(pr)
     if old is None:
         return action == "red"  # green with no comment: nothing to correct
-    return not done(old["body"], sha, action)
+    return not done(old["body"], sha, action, red)
 
 
 def check(sha):
@@ -122,7 +127,7 @@ def check(sha):
             )
         )
         pr = tc.build(any_build)["pr"]
-    if pr is None or not wanted(pr, sha, action):
+    if pr is None or not wanted(pr, sha, action, red):
         action = "none"
     print(f"action={action}\npr={pr or ''}\nbuilds={','.join(map(str, red))}")
 

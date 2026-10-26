@@ -95,6 +95,15 @@ class Triage(unittest.TestCase):
         )
         self.assertEqual((verdict.kind, verdict.owner), ("timeout", "ci"))
 
+    def test_exit_code_with_no_failed_test_found_goes_to_the_agent(self):
+        verdict = triage.classify(
+            build(
+                "Tests passed: 1621; exit code 8 (Step: run mpi test (Command Line))"
+            ),
+            log("[10:00:00] :\t [Step 6/14] something the rules don't parse"),
+        )
+        self.assertEqual((verdict.kind, verdict.owner), ("unknown", "unknown"))
+
     def test_report_parse_failure_with_no_failed_test_is_a_false_red(self):
         verdict = triage.classify(
             build("Tests passed: 1610; error message: Failed to parse 1 report (new)"),
@@ -209,6 +218,15 @@ class Comment(unittest.TestCase):
         self.assertNotIn("Owner:", text)
         self.assertIn("here", text)
 
+    def test_clean_keeps_cpp_angle_brackets_but_no_html(self):
+        text = comment.clean(
+            "What: `std::vector<int>` and #include <cstdint>\n```\ntemplate<typename T>\n```"
+        )
+        self.assertIn("`std::vector<int>`", text)
+        self.assertIn("template<typename T>", text)
+        self.assertIn("&lt;cstdint>", text)  # shown as <cstdint>, not read as a tag
+        self.assertNotIn("<cstdint>", text)
+
     def test_render_has_marker_counts_and_fix(self):
         report = agent.parse(REPORT)
         others = [
@@ -296,6 +314,18 @@ class Ci(unittest.TestCase):
         self.assertTrue(ci.done(green, sha, "green"))
         self.assertFalse(ci.done(green, sha, "red"))
         self.assertFalse(ci.done(red, "c" * 40, "red"))
+
+    def test_a_new_red_build_on_the_same_commit_is_redone(self):
+        sha = "b" * 40
+        body = comment.render(
+            1,
+            sha,
+            [([build("x")], triage.Verdict("compile", "pr", "compile error"), None)],
+            [],
+            "",
+        )
+        self.assertTrue(ci.done(body, sha, "red", [1]))
+        self.assertFalse(ci.done(body, sha, "red", [1, 2]))
 
 
 if __name__ == "__main__":

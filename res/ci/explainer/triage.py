@@ -109,7 +109,8 @@ def classify(build, lines):
             "ci",
             "hit the build time limit; re-run, and tell the CI maintainers if it repeats",
         )
-    if text.startswith("Tests passed:"):
+    # a step's exit code means something failed: the rules just didn't find what (agent, tail excerpt)
+    if text.startswith("Tests passed:") and "exit code" not in text.lower():
         return Verdict(
             "false_red",
             "ci",
