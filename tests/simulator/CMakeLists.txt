@@ -27,6 +27,7 @@ if(HighFive)
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  add_no_mpi_python3_test(tagging_quantities test_tagging_quantities.py ${CMAKE_CURRENT_BINARY_DIR})
 
   if(testMPI)
     phare_mpi_python3_exec(9 3 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
