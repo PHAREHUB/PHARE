@@ -29,16 +29,21 @@ def builds_tag(ids):
     return f"<!-- builds:{','.join(map(str, sorted(ids)))} -->"
 
 
+def escape_html(text):
+    """'<' escaped, not removed, outside code: `std::vector<double>` and #include <cstdint> survive."""
+    parts, end = [], 0
+    for code in CODE.finditer(text):
+        parts += [text[end : code.start()].replace("<", "&lt;"), code[0]]
+        end = code.end()
+    return "".join(parts) + text[end:].replace("<", "&lt;")
+
+
 def clean(report):
     """Agent text made safe to post: no @-mentions, no links, no HTML, bounded length.
-    '<' is escaped, not removed, outside code: `std::vector<double>` and #include <cstdint> survive."""
-    parts, end = [], 0
-    for code in CODE.finditer(report):
-        parts += [report[end : code.start()].replace("<", "&lt;"), code[0]]
-        end = code.end()
-    text = "".join(parts) + report[end:].replace("<", "&lt;")
+    HTML is escaped last, on the exact text posted: an edit made after it (a cut, a removed
+    address) could take a code span's closing backtick and leave its '<' as live HTML."""
     text = re.sub(
-        r"\[([^\]]*)\]\([^)]*\)", r"\1", text
+        r"\[([^\]]*)\]\([^)]*\)", r"\1", report
     )  # markdown links: keep the words
     # reference links: without their "[r]: url" line, [words][r] is plain text (and a[i][j] stays)
     text = re.sub(r"^ {0,3}\[[^\]]+\]:.*$", "", text, flags=re.M)
@@ -48,12 +53,14 @@ def clean(report):
     text = "\n".join(
         line for line in text.splitlines() if not line.startswith("Owner:")
     )
-    return text if len(text) <= MAX_REPORT else text[:MAX_REPORT] + " [...]"
+    if len(text) > MAX_REPORT:
+        text = text[:MAX_REPORT] + " [...]"
+    return escape_html(text)
 
 
 def layout(report):
     """'What: x' -> '**What** x'; the fix prompt stays a quote block."""
-    text = re.sub(r"^(What|Why):\s*", r"**\1** ", report, flags=re.M)
+    text = re.sub(r"^(What|Why):[ \t]*", r"**\1** ", report, flags=re.M)
     return re.sub(
         r"^Fix prompt:\s*$",
         "**Fix**, to paste into your coding agent:",
@@ -92,7 +99,7 @@ def render(pr, sha, explained, others, signature):
         )
         lines += [
             f"#### {verdict.reason}: {where}",
-            layout(clean(report))
+            clean(layout(report))
             if isinstance(report, str)
             else "_(not explained: too many distinct failures on this commit)_"
             if report is SKIPPED

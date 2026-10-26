@@ -238,6 +238,10 @@ class Comment(unittest.TestCase):
         for trick in (
             '\\`<a href="//evil.example">x</a>`',
             '```<a href="//evil.example">x</a>`',
+            # a removed address must not take the closing backtick with it
+            '`<a href="//evil.example">x</a> http://y`',
+            # nor the cut of a long answer
+            "x" * (comment.MAX_REPORT - 10) + '`<a href="//evil.example">x</a>`',
         ):
             self.assertNotIn("<a", comment.clean(trick))
 
