@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <functional>
 #include <type_traits>
 
@@ -782,18 +783,17 @@ namespace core
 
 
 
-        template<auto func, typename Field>
-        NO_DISCARD static typename Field::type project(Field const& field,
-                                                       MeshIndex<dimension> index)
+        template<auto src, auto dst, typename Field>
+        NO_DISCARD static Field::type project(Field const& field, MeshIndex<dimension> index)
+            requires(has_physicalQuantity_v<Field>)
         {
-            auto constexpr wps = func();
+            PHARE_DEBUG_DO(
+                constexpr auto expected = centering(src);
+                if (centering(field) != expected) throw std::runtime_error(
+                    "GridLayout::project: field centering does not match the source quantity: "
+                    + field.name());)
 
-            typename Field::type result = 0.;
-
-            for (auto const& wp : wps)
-                result += wp.coef * field(index + wp.indexes);
-
-            return result;
+            return core::project<centering(src), centering(dst)>(field, index);
         }
 
 
@@ -1000,169 +1000,6 @@ namespace core
         {
             return toCenteredBox(box, centering(qty));
         }
-
-        /**
-         * @brief momentsToEx return the indexes and associated coef to compute the linear
-         * interpolation necessary to project moments onto Ex.
-         */
-        NO_DISCARD auto static constexpr momentsToEx() { return implT::momentsToEx(); }
-
-
-        /**
-         * @brief momentsToEy return the indexes and associated coef to compute the linear
-         * interpolation necessary to project moments onto Ey.
-         */
-        NO_DISCARD auto static constexpr momentsToEy() { return implT::momentsToEy(); }
-
-
-        /**
-         * @brief momentsToEz return the indexes and associated coef to compute the linear
-         * interpolation necessary to project moments onto Ez.
-         */
-        NO_DISCARD auto static constexpr momentsToEz() { return implT::momentsToEz(); }
-
-
-
-        /**
-         * @brief BxToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Bx onto moments.
-         */
-        NO_DISCARD auto static constexpr BxToMoments() { return implT::BxToMoments(); }
-
-
-        /**
-         * @brief ByToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project By onto moments.
-         */
-        NO_DISCARD auto static constexpr ByToMoments() { return implT::ByToMoments(); }
-
-
-        /**
-         * @brief BzToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Bz onto moments.
-         */
-        NO_DISCARD auto static constexpr BzToMoments() { return implT::BzToMoments(); }
-
-
-
-
-        /**
-         * @brief ExToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Ex onto moments.
-         */
-        NO_DISCARD auto static constexpr ExToMoments() { return implT::ExToMoments(); }
-
-
-
-        /**
-         * @brief EyToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Ey onto moments.
-         */
-        NO_DISCARD auto static constexpr EyToMoments() { return implT::EyToMoments(); }
-
-
-
-        /**
-         * @brief EzToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Ez onto moments.
-         */
-        NO_DISCARD auto static constexpr EzToMoments() { return implT::EzToMoments(); }
-
-
-        /**
-         * @brief JxToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Jx onto moments.
-         */
-        NO_DISCARD auto static constexpr JxToMoments() { return implT::JxToMoments(); }
-
-
-        /**
-         * @brief JyToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Jy onto moments.
-         */
-        NO_DISCARD auto static constexpr JyToMoments() { return implT::JyToMoments(); }
-
-
-        /**
-         * @brief JzToMoments return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Jz onto moments.
-         */
-        NO_DISCARD auto static constexpr JzToMoments() { return implT::JzToMoments(); }
-
-        NO_DISCARD auto static constexpr BxToEx() { return implT::BxToEx(); }
-
-        /**
-         * @brief ByToEx return the indexes and associated coef to compute the linear
-         * interpolation necessary to project By onto Ex.
-         */
-        NO_DISCARD auto static constexpr ByToEx() { return implT::ByToEx(); }
-
-
-        /**
-         * @brief BzToEx return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Bz onto Ex.
-         */
-        NO_DISCARD auto static constexpr BzToEx() { return implT::BzToEx(); }
-
-
-
-        /**
-         * @brief BxToEy return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Bx onto Ey.
-         */
-        NO_DISCARD auto static constexpr BxToEy() { return implT::BxToEy(); }
-
-
-        NO_DISCARD auto static constexpr ByToEy() { return implT::ByToEy(); }
-
-        /**
-         * @brief BzToEy return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Bz onto Ey.
-         */
-        NO_DISCARD auto static constexpr BzToEy() { return implT::BzToEy(); }
-
-
-
-        /**
-         * @brief BxToEz return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Bx onto Ez.
-         */
-        NO_DISCARD auto static constexpr BxToEz() { return implT::BxToEz(); }
-
-
-
-        /**
-         * @brief ByToEz return the indexes and associated coef to compute the linear
-         * interpolation necessary to project By onto Ez.
-         */
-        NO_DISCARD auto static constexpr ByToEz() { return implT::ByToEz(); }
-
-        NO_DISCARD auto static constexpr BzToEz() { return implT::BzToEz(); }
-
-
-
-        /**
-         * @brief JxToEx return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Jx onto Ex.
-         */
-        NO_DISCARD auto static constexpr JxToEx() { return implT::JxToEx(); }
-
-
-
-        /**
-         * @brief JyToEy return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Jy onto Ey.
-         */
-        NO_DISCARD auto static constexpr JyToEy() { return implT::JyToEy(); }
-
-
-
-        /**
-         * @brief JzToEz return the indexes and associated coef to compute the linear
-         * interpolation necessary to project Jz onto Ez.
-         */
-        NO_DISCARD auto static constexpr JzToEz() { return implT::JzToEz(); }
-
 
 
         auto AMRBoxFor(auto const& field) const { return toCenteredBox(AMRBox_, centering(field)); }

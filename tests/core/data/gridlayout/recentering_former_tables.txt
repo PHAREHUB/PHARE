@@ -1,0 +1,174 @@
+hybrid momentsToEx 1 p d 2 0 0.5 1 0.5
+hybrid BxToMoments 1 p p 1 0 1
+hybrid ExToMoments 1 d p 2 -1 0.5 0 0.5
+hybrid JxToMoments 1 d p 2 -1 0.5 0 0.5
+hybrid momentsToEy 1 p p 1 0 1
+hybrid ByToMoments 1 d p 2 -1 0.5 0 0.5
+hybrid EyToMoments 1 p p 1 0 1
+hybrid JyToMoments 1 p p 1 0 1
+hybrid momentsToEz 1 p p 1 0 1
+hybrid BzToMoments 1 d p 2 -1 0.5 0 0.5
+hybrid EzToMoments 1 p p 1 0 1
+hybrid JzToMoments 1 p p 1 0 1
+hybrid BxToEx 1 p d 2 0 0.5 1 0.5
+hybrid BxToEy 1 p p 1 0 1
+hybrid BxToEz 1 p p 1 0 1
+hybrid ByToEx 1 d d 1 0 1
+hybrid ByToEy 1 d p 2 -1 0.5 0 0.5
+hybrid ByToEz 1 d p 2 -1 0.5 0 0.5
+hybrid BzToEx 1 d d 1 0 1
+hybrid BzToEy 1 d p 2 -1 0.5 0 0.5
+hybrid BzToEz 1 d p 2 -1 0.5 0 0.5
+hybrid JxToEx 1 d d 1 0 1
+hybrid JyToEy 1 p p 1 0 1
+hybrid JzToEz 1 p p 1 0 1
+mhd BxToEx 1 p d 2 0 0.5 1 0.5
+mhd BxToEy 1 p p 1 0 1
+mhd BxToEz 1 p p 1 0 1
+mhd ByToEx 1 d d 1 0 1
+mhd ByToEy 1 d p 2 -1 0.5 0 0.5
+mhd ByToEz 1 d p 2 -1 0.5 0 0.5
+mhd BzToEx 1 d d 1 0 1
+mhd BzToEy 1 d p 2 -1 0.5 0 0.5
+mhd BzToEz 1 d p 2 -1 0.5 0 0.5
+mhd cellCenterToEdgeX 1 d d 1 0 1
+mhd cellCenterToEdgeY 1 d p 2 -1 0.5 0 0.5
+mhd cellCenterToEdgeZ 1 d p 2 -1 0.5 0 0.5
+mhd faceXToCellCenter 1 p d 2 0 0.5 1 0.5
+mhd faceYToCellCenter 1 d d 1 0 1
+mhd faceZToCellCenter 1 d d 1 0 1
+mhd edgeYToFaceX 1 p p 1 0 1
+mhd edgeZToFaceX 1 p p 1 0 1
+mhd edgeXToFaceY 1 d d 1 0 1
+mhd edgeZToFaceY 1 p d 2 0 0.5 1 0.5
+mhd edgeXToFaceZ 1 d d 1 0 1
+mhd edgeYToFaceZ 1 p d 2 0 0.5 1 0.5
+mhd ByToFaceX 1 d p 2 -1 0.5 0 0.5
+mhd BzToFaceX 1 d p 2 -1 0.5 0 0.5
+mhd BxToFaceY 1 p d 2 0 0.5 1 0.5
+mhd BzToFaceY 1 d d 1 0 1
+mhd BxToFaceZ 1 p d 2 0 0.5 1 0.5
+mhd ByToFaceZ 1 d d 1 0 1
+mhd edgeXToCellCenter 1 d d 1 0 1
+mhd edgeYToCellCenter 1 p d 2 0 0.5 1 0.5
+mhd edgeZToCellCenter 1 p d 2 0 0.5 1 0.5
+mhd BxToMoments 1 p p 1 0 1
+mhd ByToMoments 1 d p 2 -1 0.5 0 0.5
+mhd BzToMoments 1 d p 2 -1 0.5 0 0.5
+mhd cellCenterToFullPrimal 1 d p 2 -1 0.5 0 0.5
+hybrid momentsToEx 2 pp dp 2 0 0 0.5 1 0 0.5
+hybrid BxToMoments 2 pd pp 2 0 -1 0.5 0 0 0.5
+hybrid ExToMoments 2 dp pp 2 -1 0 0.5 0 0 0.5
+hybrid JxToMoments 2 dp pp 2 -1 0 0.5 0 0 0.5
+hybrid momentsToEy 2 pp pd 2 0 0 0.5 0 1 0.5
+hybrid ByToMoments 2 dp pp 2 -1 0 0.5 0 0 0.5
+hybrid EyToMoments 2 pd pp 2 0 -1 0.5 0 0 0.5
+hybrid JyToMoments 2 pd pp 2 0 -1 0.5 0 0 0.5
+hybrid momentsToEz 2 pp pp 1 0 0 1
+hybrid BzToMoments 2 dd pp 4 -1 -1 0.25 -1 0 0.25 0 -1 0.25 0 0 0.25
+hybrid EzToMoments 2 pp pp 1 0 0 1
+hybrid JzToMoments 2 pp pp 1 0 0 1
+hybrid BxToEx 2 pd dp 4 0 -1 0.25 0 0 0.25 1 -1 0.25 1 0 0.25
+hybrid BxToEy 2 pd pd 1 0 0 1
+hybrid BxToEz 2 pd pp 2 0 -1 0.5 0 0 0.5
+hybrid ByToEx 2 dp dp 1 0 0 1
+hybrid ByToEy 2 dp pd 4 -1 0 0.25 -1 1 0.25 0 0 0.25 0 1 0.25
+hybrid ByToEz 2 dp pp 2 -1 0 0.5 0 0 0.5
+hybrid BzToEx 2 dd dp 2 0 -1 0.5 0 0 0.5
+hybrid BzToEy 2 dd pd 2 -1 0 0.5 0 0 0.5
+hybrid BzToEz 2 dd pp 4 -1 -1 0.25 -1 0 0.25 0 -1 0.25 0 0 0.25
+hybrid JxToEx 2 dp dp 1 0 0 1
+hybrid JyToEy 2 pd pd 1 0 0 1
+hybrid JzToEz 2 pp pp 1 0 0 1
+mhd BxToEx 2 pd dp 4 0 -1 0.25 0 0 0.25 1 -1 0.25 1 0 0.25
+mhd BxToEy 2 pd pd 1 0 0 1
+mhd BxToEz 2 pd pp 2 0 -1 0.5 0 0 0.5
+mhd ByToEx 2 dp dp 1 0 0 1
+mhd ByToEy 2 dp pd 4 -1 0 0.25 -1 1 0.25 0 0 0.25 0 1 0.25
+mhd ByToEz 2 dp pp 2 -1 0 0.5 0 0 0.5
+mhd BzToEx 2 dd dp 2 0 -1 0.5 0 0 0.5
+mhd BzToEy 2 dd pd 2 -1 0 0.5 0 0 0.5
+mhd BzToEz 2 dd pp 4 -1 -1 0.25 -1 0 0.25 0 -1 0.25 0 0 0.25
+mhd cellCenterToEdgeX 2 dd dp 2 0 -1 0.5 0 0 0.5
+mhd cellCenterToEdgeY 2 dd pd 2 -1 0 0.5 0 0 0.5
+mhd cellCenterToEdgeZ 2 dd pp 4 -1 -1 0.25 -1 0 0.25 0 -1 0.25 0 0 0.25
+mhd faceXToCellCenter 2 pd dd 2 0 0 0.5 1 0 0.5
+mhd faceYToCellCenter 2 dp dd 2 0 0 0.5 0 1 0.5
+mhd faceZToCellCenter 2 dd dd 1 0 0 1
+mhd edgeYToFaceX 2 pd pd 1 0 0 1
+mhd edgeZToFaceX 2 pp pd 2 0 0 0.5 0 1 0.5
+mhd edgeXToFaceY 2 dp dp 1 0 0 1
+mhd edgeZToFaceY 2 pp dp 2 0 0 0.5 1 0 0.5
+mhd edgeXToFaceZ 2 dp dd 2 0 0 0.5 0 1 0.5
+mhd edgeYToFaceZ 2 pd dd 2 0 0 0.5 1 0 0.5
+mhd ByToFaceX 2 dp pd 4 -1 0 0.25 -1 1 0.25 0 0 0.25 0 1 0.25
+mhd BzToFaceX 2 dd pd 2 -1 0 0.5 0 0 0.5
+mhd BxToFaceY 2 pd dp 4 0 -1 0.25 0 0 0.25 1 -1 0.25 1 0 0.25
+mhd BzToFaceY 2 dd dp 2 0 -1 0.5 0 0 0.5
+mhd BxToFaceZ 2 pd dd 2 0 0 0.5 1 0 0.5
+mhd ByToFaceZ 2 dp dd 2 0 0 0.5 0 1 0.5
+mhd edgeXToCellCenter 2 dp dd 2 0 0 0.5 0 1 0.5
+mhd edgeYToCellCenter 2 pd dd 2 0 0 0.5 1 0 0.5
+mhd edgeZToCellCenter 2 pp dd 4 0 0 0.25 0 1 0.25 1 0 0.25 1 1 0.25
+mhd BxToMoments 2 pd pp 2 0 -1 0.5 0 0 0.5
+mhd ByToMoments 2 dp pp 2 -1 0 0.5 0 0 0.5
+mhd BzToMoments 2 dd pp 4 -1 -1 0.25 -1 0 0.25 0 -1 0.25 0 0 0.25
+mhd cellCenterToFullPrimal 2 dd pp 4 -1 -1 0.25 -1 0 0.25 0 -1 0.25 0 0 0.25
+hybrid momentsToEx 3 ppp dpp 2 0 0 0 0.5 1 0 0 0.5
+hybrid BxToMoments 3 pdd ppp 4 0 -1 -1 0.25 0 -1 0 0.25 0 0 -1 0.25 0 0 0 0.25
+hybrid ExToMoments 3 dpp ppp 2 -1 0 0 0.5 0 0 0 0.5
+hybrid JxToMoments 3 dpp ppp 2 -1 0 0 0.5 0 0 0 0.5
+hybrid momentsToEy 3 ppp pdp 2 0 0 0 0.5 0 1 0 0.5
+hybrid ByToMoments 3 dpd ppp 4 -1 0 -1 0.25 -1 0 0 0.25 0 0 -1 0.25 0 0 0 0.25
+hybrid EyToMoments 3 pdp ppp 2 0 -1 0 0.5 0 0 0 0.5
+hybrid JyToMoments 3 pdp ppp 2 0 -1 0 0.5 0 0 0 0.5
+hybrid momentsToEz 3 ppp ppd 2 0 0 0 0.5 0 0 1 0.5
+hybrid BzToMoments 3 ddp ppp 4 -1 -1 0 0.25 -1 0 0 0.25 0 -1 0 0.25 0 0 0 0.25
+hybrid EzToMoments 3 ppd ppp 2 0 0 -1 0.5 0 0 0 0.5
+hybrid JzToMoments 3 ppd ppp 2 0 0 -1 0.5 0 0 0 0.5
+hybrid BxToEx 3 pdd dpp 8 0 -1 -1 0.125 0 -1 0 0.125 0 0 -1 0.125 0 0 0 0.125 1 -1 -1 0.125 1 -1 0 0.125 1 0 -1 0.125 1 0 0 0.125
+hybrid BxToEy 3 pdd pdp 2 0 0 -1 0.5 0 0 0 0.5
+hybrid BxToEz 3 pdd ppd 2 0 -1 0 0.5 0 0 0 0.5
+hybrid ByToEx 3 dpd dpp 2 0 0 -1 0.5 0 0 0 0.5
+hybrid ByToEy 3 dpd pdp 8 -1 0 -1 0.125 -1 0 0 0.125 -1 1 -1 0.125 -1 1 0 0.125 0 0 -1 0.125 0 0 0 0.125 0 1 -1 0.125 0 1 0 0.125
+hybrid ByToEz 3 dpd ppd 2 -1 0 0 0.5 0 0 0 0.5
+hybrid BzToEx 3 ddp dpp 2 0 -1 0 0.5 0 0 0 0.5
+hybrid BzToEy 3 ddp pdp 2 -1 0 0 0.5 0 0 0 0.5
+hybrid BzToEz 3 ddp ppd 8 -1 -1 0 0.125 -1 -1 1 0.125 -1 0 0 0.125 -1 0 1 0.125 0 -1 0 0.125 0 -1 1 0.125 0 0 0 0.125 0 0 1 0.125
+hybrid JxToEx 3 dpp dpp 1 0 0 0 1
+hybrid JyToEy 3 pdp pdp 1 0 0 0 1
+hybrid JzToEz 3 ppd ppd 1 0 0 0 1
+mhd BxToEx 3 pdd dpp 8 0 -1 -1 0.125 0 -1 0 0.125 0 0 -1 0.125 0 0 0 0.125 1 -1 -1 0.125 1 -1 0 0.125 1 0 -1 0.125 1 0 0 0.125
+mhd BxToEy 3 pdd pdp 2 0 0 -1 0.5 0 0 0 0.5
+mhd BxToEz 3 pdd ppd 2 0 -1 0 0.5 0 0 0 0.5
+mhd ByToEx 3 dpd dpp 2 0 0 -1 0.5 0 0 0 0.5
+mhd ByToEy 3 dpd pdp 8 -1 0 -1 0.125 -1 0 0 0.125 -1 1 -1 0.125 -1 1 0 0.125 0 0 -1 0.125 0 0 0 0.125 0 1 -1 0.125 0 1 0 0.125
+mhd ByToEz 3 dpd ppd 2 -1 0 0 0.5 0 0 0 0.5
+mhd BzToEx 3 ddp dpp 2 0 -1 0 0.5 0 0 0 0.5
+mhd BzToEy 3 ddp pdp 2 -1 0 0 0.5 0 0 0 0.5
+mhd BzToEz 3 ddp ppd 8 -1 -1 0 0.125 -1 -1 1 0.125 -1 0 0 0.125 -1 0 1 0.125 0 -1 0 0.125 0 -1 1 0.125 0 0 0 0.125 0 0 1 0.125
+mhd cellCenterToEdgeX 3 ddd dpp 4 0 -1 -1 0.25 0 -1 0 0.25 0 0 -1 0.25 0 0 0 0.25
+mhd cellCenterToEdgeY 3 ddd pdp 4 -1 0 -1 0.25 -1 0 0 0.25 0 0 -1 0.25 0 0 0 0.25
+mhd cellCenterToEdgeZ 3 ddd ppd 4 -1 -1 0 0.25 -1 0 0 0.25 0 -1 0 0.25 0 0 0 0.25
+mhd faceXToCellCenter 3 pdd ddd 2 0 0 0 0.5 1 0 0 0.5
+mhd faceYToCellCenter 3 dpd ddd 2 0 0 0 0.5 0 1 0 0.5
+mhd faceZToCellCenter 3 ddp ddd 2 0 0 0 0.5 0 0 1 0.5
+mhd edgeYToFaceX 3 pdp pdd 2 0 0 0 0.5 0 0 1 0.5
+mhd edgeZToFaceX 3 ppd pdd 2 0 0 0 0.5 0 1 0 0.5
+mhd edgeXToFaceY 3 dpp dpd 2 0 0 0 0.5 0 0 1 0.5
+mhd edgeZToFaceY 3 ppd dpd 2 0 0 0 0.5 1 0 0 0.5
+mhd edgeXToFaceZ 3 dpp ddp 2 0 0 0 0.5 0 1 0 0.5
+mhd edgeYToFaceZ 3 pdp ddp 2 0 0 0 0.5 1 0 0 0.5
+mhd ByToFaceX 3 dpd pdd 4 -1 0 0 0.25 -1 1 0 0.25 0 0 0 0.25 0 1 0 0.25
+mhd BzToFaceX 3 ddp pdd 4 -1 0 0 0.25 -1 0 1 0.25 0 0 0 0.25 0 0 1 0.25
+mhd BxToFaceY 3 pdd dpd 4 0 -1 0 0.25 0 0 0 0.25 1 -1 0 0.25 1 0 0 0.25
+mhd BzToFaceY 3 ddp dpd 4 0 -1 0 0.25 0 -1 1 0.25 0 0 0 0.25 0 0 1 0.25
+mhd BxToFaceZ 3 pdd ddp 4 0 0 -1 0.25 0 0 0 0.25 1 0 -1 0.25 1 0 0 0.25
+mhd ByToFaceZ 3 dpd ddp 4 0 0 -1 0.25 0 0 0 0.25 0 1 -1 0.25 0 1 0 0.25
+mhd edgeXToCellCenter 3 dpp ddd 4 0 0 0 0.25 0 0 1 0.25 0 1 0 0.25 0 1 1 0.25
+mhd edgeYToCellCenter 3 pdp ddd 4 0 0 0 0.25 0 0 1 0.25 1 0 0 0.25 1 0 1 0.25
+mhd edgeZToCellCenter 3 ppd ddd 4 0 0 0 0.25 0 1 0 0.25 1 0 0 0.25 1 1 0 0.25
+mhd BxToMoments 3 pdd ppp 4 0 -1 -1 0.25 0 -1 0 0.25 0 0 -1 0.25 0 0 0 0.25
+mhd ByToMoments 3 dpd ppp 4 -1 0 -1 0.25 -1 0 0 0.25 0 0 -1 0.25 0 0 0 0.25
+mhd BzToMoments 3 ddp ppp 4 -1 -1 0 0.25 -1 0 0 0.25 0 -1 0 0.25 0 0 0 0.25
+mhd cellCenterToFullPrimal 3 ddd ppp 8 -1 -1 -1 0.125 -1 -1 0 0.125 -1 0 -1 0.125 -1 0 0 0.125 0 -1 -1 0.125 0 -1 0 0.125 0 0 -1 0.125 0 0 0 0.125

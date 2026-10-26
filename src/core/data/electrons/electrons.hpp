@@ -86,9 +86,12 @@ public:
         layout.evalOnBox(Ne, [&](auto const&... args) {
             auto arr = std::array{args...};
 
-            auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, arr);
-            auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, arr);
-            auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, arr);
+            auto const JxOnVx = GridLayout::template project<HybridQuantity::Scalar::Jx,
+                                                             HybridQuantity::Scalar::Vx>(Jx, arr);
+            auto const JyOnVy = GridLayout::template project<HybridQuantity::Scalar::Jy,
+                                                             HybridQuantity::Scalar::Vy>(Jy, arr);
+            auto const JzOnVz = GridLayout::template project<HybridQuantity::Scalar::Jz,
+                                                             HybridQuantity::Scalar::Vz>(Jz, arr);
 
             Vex(arr) = (Fx(arr) - JxOnVx) / Ne(arr);
             Vey(arr) = (Fy(arr) - JyOnVy) / Ne(arr);

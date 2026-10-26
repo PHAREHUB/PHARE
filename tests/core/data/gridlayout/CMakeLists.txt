@@ -51,3 +51,18 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 add_python3_test(grid_yee grid_yee.py ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-recentering-stencil test_recentering_stencil.cpp)
+
+target_include_directories(test-recentering-stencil PRIVATE
+  ${GTEST_INCLUDE_DIRS}
+  )
+
+target_compile_definitions(test-recentering-stencil PRIVATE PHARE_FORCE_DEBUG_DO
+  PHARE_RECENTERING_REFERENCE="${CMAKE_CURRENT_SOURCE_DIR}/recentering_former_tables.txt")
+
+target_link_libraries(test-recentering-stencil PRIVATE
+  phare_core
+  ${GTEST_LIBS})
+
+add_no_mpi_phare_test(test-recentering-stencil ${CMAKE_CURRENT_BINARY_DIR})
