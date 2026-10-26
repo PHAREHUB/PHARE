@@ -2,6 +2,7 @@
 #include "simulator/simulator_def.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/field/recentered_field.hpp"
+#include "core/utilities/algorithm.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
@@ -229,6 +230,39 @@ TYPED_TEST(RecenteredFieldProject, MatchesProjectOnHybridPairs)
         expectMatchesProjectFrom<dim, Ez, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
         expectMatchesProjectFrom<dim, rh, Bx, By, Bz, Ex, Ey, Ez, rh>(layout);
     }
+}
+
+
+template<std::size_t dim, auto qty>
+void expectFortranPrimalMatchesProject(YeeLayout<dim> const& layout)
+{
+    Grid_t<dim> src{"src", layout, qty, 0.};
+    fill<dim>(src, smooth<dim>);
+    Grid_t<dim> dst{"dst", layout, HybridQuantity::Scalar::rho, 0.};
+
+    convert_to_fortran_primal(*dst, *src, layout);
+
+    auto const lcl_box = layout.AMRToLocal(layout.AMRBoxFor(*dst));
+    auto const view    = make_array_view<false>((*dst).data(), *lcl_box.shape());
+    for (auto const& lix : lcl_box)
+        EXPECT_EQ(view(*(lix - lcl_box.lower)),
+                  (project<YeeLayout<dim>::centering(qty), ConstArray<QtyCentering, dim>(primal)>(
+                      *src, lix)))
+            << static_cast<int>(qty);
+}
+
+TYPED_TEST(RecenteredFieldProject, FortranPrimalConversionMatchesProject)
+{
+    auto constexpr dim = TypeParam::value;
+    auto const layout  = TestGridLayout<YeeLayout<dim>>::make(nCells);
+    using Scalar       = HybridQuantity::Scalar;
+    expectFortranPrimalMatchesProject<dim, Scalar::Bx>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::By>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Bz>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Ex>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Ey>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::Ez>(layout);
+    expectFortranPrimalMatchesProject<dim, Scalar::rho>(layout);
 }
 
 

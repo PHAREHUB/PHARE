@@ -9,10 +9,13 @@
 #include "core/data/field/field.hpp"
 #include "core/data/field/recentered_field.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
+#include <array>
+#include <tuple>
 #include <string>
 #include <algorithm>
 #include <stdexcept>
@@ -106,10 +109,18 @@ auto& convert_to_fortran_primal(  // DOES NOT WORK ON GHOST BOX!
 
     else
     {
-        RecenteredField const primal_src{src, ConstArray<QtyCentering, dim>(QtyCentering::primal),
-                                         layout};
-        for (auto const [lix, lix0] : boxes_iterator(lcl_box, lcl_zero_box))
-            dst_view(lix0) = primal_src(*lix);
+        auto const isDual = std::apply(
+            [](auto... dual) { return Constexprifier{dual...}; },
+            generate_from([](auto c) { return c == QtyCentering::dual; }, layout.centering(src)));
+
+        isDual([&]<bool... dual>() {
+            constexpr std::array source{(dual ? QtyCentering::dual : QtyCentering::primal)...};
+            constexpr auto destination = ConstArray<QtyCentering, dim>(QtyCentering::primal);
+            CompileTimeRecenteredField<source, destination, Field<dim, Ts...>> const primal_src{
+                src, layout};
+            for (auto const [lix, lix0] : boxes_iterator(lcl_box, lcl_zero_box))
+                dst_view(lix0) = primal_src(*lix);
+        });
     }
 
     return dst;
