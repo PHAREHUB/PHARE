@@ -23,8 +23,8 @@ def plot_field_data(fd, **kwargs):
             y,
             data.T,
             cmap=kwargs.get("cmap", "Spectral_r"),
-            vmin=kwargs.get("vmin", None),
-            vmax=kwargs.get("vmax", None),
+            vmin=kwargs.get("vmin"),
+            vmax=kwargs.get("vmax"),
         )
         ax.set_aspect(kwargs.get("aspect", "equal"))
         ax.set_xlabel(kwargs.get("xlabel", "x"))
