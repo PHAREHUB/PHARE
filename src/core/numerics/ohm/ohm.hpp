@@ -72,21 +72,19 @@ private:
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPeX = grad<Component::X>(layout_, Pe);
-        auto const gradPeY = grad<Component::Y>(layout_, Pe);
-        auto const gradPeZ = grad<Component::Z>(layout_, Pe);
+        auto const gradPe = grad(layout_, Pe);
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPeX, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPeY, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPeZ, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
         });
     }
 

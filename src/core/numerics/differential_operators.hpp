@@ -104,36 +104,57 @@ private:
 };
 
 
-template<Component c, std::size_t dim>
-class Curl
+namespace detail
 {
-    static constexpr auto i = detail::vector_component_index<c>();
-    static constexpr auto j = (i + 1) % NBR_COMPO;
-    static constexpr auto k = (i + 2) % NBR_COMPO;
-
-public:
-    template<typename GridLayout, typename VecField>
-    Curl(GridLayout const& layout, VecField const& v)
-        : dj_vk_{layout, v[k]}
-        , dk_vj_{layout, v[j]}
+    template<Component c, std::size_t dim>
+    class CurlComponent
     {
-        if (dj_vk_.centering() != dk_vj_.centering())
-            throw std::runtime_error("curl: the two derivatives land on different centerings");
-    }
+        static constexpr auto i = vector_component_index<c>();
+        static constexpr auto j = (i + 1) % NBR_COMPO;
+        static constexpr auto k = (i + 2) % NBR_COMPO;
 
-    NO_DISCARD std::array<QtyCentering, dim> centering() const { return dj_vk_.centering(); }
+    public:
+        template<typename GridLayout, typename VecField>
+        CurlComponent(GridLayout const& layout, VecField const& v)
+            : dj_vk_{layout, v[k]}
+            , dk_vj_{layout, v[j]}
+        {
+            if (dj_vk_.centering() != dk_vj_.centering())
+                throw std::runtime_error("curl: the two derivatives land on different centerings");
+        }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const idx) const
-    {
-        if constexpr (j >= dim && k < dim)
-            return -dk_vj_(idx);
-        else
-            return dj_vk_(idx) - dk_vj_(idx);
-    }
+        NO_DISCARD std::array<QtyCentering, dim> centering() const { return dj_vk_.centering(); }
 
-private:
-    Partial<static_cast<Direction>(j), dim> dj_vk_;
-    Partial<static_cast<Direction>(k), dim> dk_vj_;
+        NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+        {
+            if constexpr (j >= dim && k < dim)
+                return -dk_vj_(idx);
+            else
+                return dj_vk_(idx) - dk_vj_(idx);
+        }
+
+    private:
+        Partial<static_cast<Direction>(j), dim> dj_vk_;
+        Partial<static_cast<Direction>(k), dim> dk_vj_;
+    };
+} // namespace detail
+
+
+template<std::size_t dim>
+struct Curl
+{
+    detail::CurlComponent<Component::X, dim> x;
+    detail::CurlComponent<Component::Y, dim> y;
+    detail::CurlComponent<Component::Z, dim> z;
+};
+
+
+template<std::size_t dim>
+struct Grad
+{
+    Partial<Direction::X, dim> x;
+    Partial<Direction::Y, dim> y;
+    Partial<Direction::Z, dim> z;
 };
 
 
@@ -172,16 +193,16 @@ auto partial(GridLayout const& layout, Src const& src)
     return Partial<dir, GridLayout::dimension>{layout, src};
 }
 
-template<Component c, typename GridLayout, typename VecField>
+template<typename GridLayout, typename VecField>
 auto curl(GridLayout const& layout, VecField const& v)
 {
-    return Curl<c, GridLayout::dimension>{layout, v};
+    return Curl<GridLayout::dimension>{{layout, v}, {layout, v}, {layout, v}};
 }
 
-template<Component c, typename GridLayout, typename Src>
+template<typename GridLayout, typename Src>
 auto grad(GridLayout const& layout, Src const& src)
 {
-    return partial<static_cast<Direction>(detail::vector_component_index<c>())>(layout, src);
+    return Grad<GridLayout::dimension>{{layout, src}, {layout, src}, {layout, src}};
 }
 
 template<typename GridLayout, typename VecField>

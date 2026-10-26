@@ -42,16 +42,17 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        auto const curlX = curl<Component::X>(layout_, E);
-        auto const curlY = curl<Component::Y>(layout_, E);
-        auto const curlZ = curl<Component::Z>(layout_, E);
+        auto const curlE = curl(layout_, E);
 
-        layout_.evalOnBox(
-            Bxnew, [&](auto const&... ijk) { Bxnew(ijk...) = Bx(ijk...) - dt_ * curlX({ijk...}); });
-        layout_.evalOnBox(
-            Bynew, [&](auto const&... ijk) { Bynew(ijk...) = By(ijk...) - dt_ * curlY({ijk...}); });
-        layout_.evalOnBox(
-            Bznew, [&](auto const&... ijk) { Bznew(ijk...) = Bz(ijk...) - dt_ * curlZ({ijk...}); });
+        layout_.evalOnBox(Bxnew, [&](auto const&... ijk) {
+            Bxnew(ijk...) = Bx(ijk...) - dt_ * curlE.x({ijk...});
+        });
+        layout_.evalOnBox(Bynew, [&](auto const&... ijk) {
+            Bynew(ijk...) = By(ijk...) - dt_ * curlE.y({ijk...});
+        });
+        layout_.evalOnBox(Bznew, [&](auto const&... ijk) {
+            Bznew(ijk...) = Bz(ijk...) - dt_ * curlE.z({ijk...});
+        });
     }
 
 
