@@ -11,6 +11,8 @@
 #include "tagger.hpp"
 #include "concrete_tagger.hpp"
 #include "default_tagger_strategy.hpp"
+#include "lohner_per_direction_tagger_strategy.hpp"
+#include "lohner_cross_derivatives_tagger_strategy.hpp"
 
 #include <string>
 #include <memory>
@@ -33,6 +35,8 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 {
     using HT  = ConcreteTagger<Model>;
     using HTS = DefaultTaggerStrategy<Model>;
+    using LPD = LohnerPerDirectionTaggerStrategy<Model>;
+    using LCD = LohnerCrossDerivativesTaggerStrategy<Model>;
 
     if constexpr (solver::is_hybrid_model_v<Model>)
     {
@@ -40,6 +44,10 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 
         if (methodName == "default")
             return std::make_unique<HT>(std::make_unique<HTS>(dict));
+        if (methodName == "lohner-per-direction")
+            return std::make_unique<HT>(std::make_unique<LPD>(dict));
+        if (methodName == "lohner-cross-derivatives")
+            return std::make_unique<HT>(std::make_unique<LCD>(dict));
     }
     else if constexpr (solver::is_mhd_model_v<Model>)
     {
@@ -47,6 +55,10 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 
         if (methodName == "default")
             return std::make_unique<HT>(std::make_unique<HTS>(dict));
+        if (methodName == "lohner-per-direction")
+            return std::make_unique<HT>(std::make_unique<LPD>(dict));
+        if (methodName == "lohner-cross-derivatives")
+            return std::make_unique<HT>(std::make_unique<LCD>(dict));
     }
     else
         static_assert(core::dependent_false_v<Model>);

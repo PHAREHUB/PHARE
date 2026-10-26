@@ -54,6 +54,7 @@ Where to start
    user_guide/mhd_inputs
    user_guide/boundary_conditions
    user_guide/amr
+   user_guide/amr_tagging
    user_guide/diagnostics
    user_guide/running
    user_guide/restarts
