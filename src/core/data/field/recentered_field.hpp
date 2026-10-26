@@ -1,9 +1,11 @@
 #ifndef PHARE_CORE_DATA_FIELD_RECENTERED_FIELD_HPP
 #define PHARE_CORE_DATA_FIELD_RECENTERED_FIELD_HPP
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -17,7 +19,10 @@ namespace PHARE::core
  * Values are computed when read by linear interpolation. Nothing is allocated.
  *
  * Primal -> dual is valid on every index. Dual -> primal is not valid on the outermost
- * primal ghost node of each side.
+ * primal ghost node of each side (asserted in debug builds).
+ *
+ * Centerings are compared on every read: meant for reading whole fields (diagnostics,
+ * tagging), not for solver loops, which use the compile-time GridLayout::project.
  *
  * Holds a copy of the Field (pointer and shape): rebuild it once the field is set on
  * another patch.
@@ -39,19 +44,19 @@ public:
     }
 
     template<typename... Indexes>
-    value_type operator()(Indexes... indexes) const
+    NO_DISCARD value_type operator()(Indexes... indexes) const
         requires(sizeof...(Indexes) == dimension && (std::is_integral_v<Indexes> && ...))
     {
         return (*this)(
             std::array<std::uint32_t, dimension>{static_cast<std::uint32_t>(indexes)...});
     }
 
-    value_type operator()(std::array<std::uint32_t, dimension> const& index) const
+    NO_DISCARD value_type operator()(std::array<std::uint32_t, dimension> const& index) const
     {
         return averageFrom_<0>(index);
     }
 
-    auto const& centering() const { return destination_; }
+    NO_DISCARD auto const& centering() const { return destination_; }
 
 private:
     /// recursive helper to compute the tensor product of the 1D recentering operation
@@ -74,7 +79,10 @@ private:
             if (source_[d] == QtyCentering::primal)
                 upper[d] += 1;
             else
+            {
+                assert(node[d] > 0 and node[d] < field_.shape()[d]);
                 lower[d] -= 1;
+            }
             return 0.5 * (averageFrom_<d + 1>(lower) + averageFrom_<d + 1>(upper));
         }
     }
