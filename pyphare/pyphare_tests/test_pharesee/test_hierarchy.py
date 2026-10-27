@@ -459,6 +459,9 @@ class PatchHierarchyTest(unittest.TestCase):
         data, _ = flat_finest_field(N, "value", time=time)
         self.assertFalse(np.isnan(data).any())
 
+        finest = N.finest(time)
+        self.assertFalse(np.isnan(finest[finest.box]).any())
+
     def test_all(self):
         """
         DO NOT RUN MULTIPLE SIMULATIONS!

@@ -516,24 +516,39 @@ def make_interpolator(data, coords, interp):
         raise ValueError("make_interpolator is not yet 3d")
 
 
-def finest_coords_for(domain, dl, qty, nbrGhosts):
+def finest_coords_for(domain, dl, qty, nbrGhosts, origin=None):
     """Return coordinate arrays for the finest-level output grid."""
     from pyphare.core.gridlayout import yeeCoordsFor
 
     dim = len(dl)
+    if origin is None:
+        origin = [0] * dim
 
     if dim == 1:
-        nx = 1 + int(domain[0] / dl[0])
-        return (yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x"),)
+        nx = int(np.round(domain[0] / dl[0]))
+        return (
+            yeeCoordsFor(origin, nbrGhosts[0], dl, [nx], qty, "x", withGhosts=True),
+        )
 
     elif dim == 2:
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
+        nCells = [int(np.round(d / dl_i)) for d, dl_i in zip(domain, dl)]
+        x = yeeCoordsFor(origin, nbrGhosts[0], dl, nCells, qty, "x", withGhosts=True)
+        y = yeeCoordsFor(origin, nbrGhosts[1], dl, nCells, qty, "y", withGhosts=True)
         return (x, y)
 
     else:
         raise ValueError("finest_coords_for is not yet 3d")
+
+
+def GetDomainSize(hier):
+    root_cell_width = hier.level(0).cell_width
+    domain_box = hier.domain_box
+    return (domain_box.upper + 1) * root_cell_width
+
+
+def GetDl(hier, time, level="finest"):
+    level = hier.finest_level(time) if level == "finest" else level
+    return hier.level(level, time).cell_width
 
 
 def overlap_mask_1d(x, dl, level, qty):
@@ -712,3 +727,68 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                 tmp_y = np.concatenate((tmp_y, finest_y))
 
     return final_data, np.stack((tmp_x, tmp_y), axis=1)
+
+
+def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
+    """
+    Interpolate a hierarchy onto a uniform finest-level grid, returning UniformGrids.
+
+    box: optional Box with physical coordinates to restrict the output domain.
+         If None, uses hier.selection_box if one is set (and it differs from the
+         full domain_box), otherwise the full domain is used.
+    """
+
+    from pyphare.core.box import Box
+    from pyphare.pharesee.hierarchy import uniformgrid as uniform
+
+    if isinstance(box, (list, tuple)):
+        raise TypeError(
+            "interpolate_hierarchy takes a single box; call it once per box"
+        )
+
+    times = hier.times()
+    if len(times) > 1:
+        raise ValueError("interpolate_hierarchy does not support multiple times")
+    time = times[0]
+
+    if 0 not in hier.levels(time):
+        raise ValueError("interpolate_hierarchy only supports coarse timesteps")
+
+    dl = GetDl(hier, time)
+
+    if box is None and hier.selection_box is not None:
+        candidate = hier.selection_box.get(time)
+        if candidate is not None and candidate != hier.domain_box:
+            box = candidate
+
+    nlevels = len(hier.levels(time))
+
+    if box is not None:
+        origin = np.array(box.lower, dtype=float)
+        domain = np.array(box.upper - box.lower, dtype=float)
+        n_cells = np.round(domain / dl).astype(int)
+        layout_box = Box(np.zeros(hier.ndim, dtype=int), n_cells - 1)
+    else:
+        origin = np.zeros(hier.ndim)
+        domain = GetDomainSize(hier)
+        layout_box = hier.level_domain_box(nlevels - 1)
+
+    ref_patch = hier.levels(time)[0].patches[0]
+    layout = ref_patch.layout.copy_as(box=layout_box, origin=list(origin), dl=dl)
+
+    datas = {}
+    for qty in [quantity] if quantity else hier.quantities():
+        nbrGhosts = ref_patch[qty].ghosts_nbr
+        data, coords = flat_finest_field(hier, qty, time=time)
+        interpolator = make_interpolator(data, coords, interp)
+        finest_coords = finest_coords_for(domain, dl, qty, nbrGhosts, origin)
+        mesh = np.meshgrid(*finest_coords, indexing="ij")
+        datas[qty] = uniform.UniformGrid(
+            layout=layout,
+            field_name=ref_patch[qty].name,
+            data=interpolator(*mesh),
+            ghosts_nbr=nbrGhosts,
+            centering=ref_patch[qty].centerings,
+        )
+
+    return uniform.UniformGrids(datas)

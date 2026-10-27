@@ -22,6 +22,7 @@ class PatchHierarchy:
         domain_box,
         data_files=None,
         selection_box=None,
+        ephemerals=None,  # time based computed data cache, e.g. interpolated data
     ):
         self.time_hier = {format_timestamp(t): lvls for t, lvls in time_hier.items()}
         times = list(self.time_hier.keys())
@@ -44,6 +45,7 @@ class PatchHierarchy:
         else:
             self.data_files = {}
 
+        self.ephemerals = ephemerals
         self.update()
 
     @staticmethod
@@ -56,6 +58,16 @@ class PatchHierarchy:
         selection_box = listify(selection_box)
         assert len(times) == len(selection_box)
         return {format_timestamp(t): box for t, box in zip(times, selection_box)}
+
+    def finest(self, time=None, qty=None, interp="nearest"):
+        """
+        Returns the UniformGrid of qty, or of the only quantity
+         OR a UniformGrids, a container of UniformGrid, of all quantities
+        """
+        from . import func
+
+        finest = func.GetFinest(self, time, qty, interp)
+        return next(iter(finest.values())) if len(finest) == 1 else finest
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
