@@ -211,11 +211,11 @@ public:
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
-            auto const* row = corner + ix * xStride;
-            double Yinterp  = 0.;
+            auto const* yLine = corner + ix * xStride;
+            double Yinterp    = 0.;
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                Yinterp += row[iy] * yWeights[iy];
+                Yinterp += yLine[iy] * yWeights[iy];
             }
             fieldAtParticle += Yinterp * xWeights[ix];
         }
@@ -264,11 +264,11 @@ public:
             double Yinterp = 0.;
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                auto const* row = corner + ix * xStride + iy * yStride;
-                double Zinterp  = 0.;
+                auto const* zLine = corner + ix * xStride + iy * yStride;
+                double Zinterp    = 0.;
                 for (auto iz = 0u; iz < order_size; ++iz)
                 {
-                    Zinterp += row[iz] * zWeights[iz];
+                    Zinterp += zLine[iz] * zWeights[iz];
                 }
                 Yinterp += Zinterp * yWeights[iy];
             }
@@ -410,15 +410,15 @@ private:
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
-            auto const row = ix * xStride;
-            auto const xw  = deposit * xWeights[ix];
+            auto const yLine = ix * xStride;
+            auto const xw    = deposit * xWeights[ix];
             for (auto iy = 0u; iy < order_size; ++iy)
             {
                 auto const w = xw * yWeights[iy];
-                rho[row + iy] += w;
-                fx[row + iy] += w * vx;
-                fy[row + iy] += w * vy;
-                fz[row + iy] += w * vz;
+                rho[yLine + iy] += w;
+                fx[yLine + iy] += w * vx;
+                fy[yLine + iy] += w * vy;
+                fz[yLine + iy] += w * vz;
             }
         }
     }
@@ -493,15 +493,15 @@ private:
             auto const xw = deposit * xWeights[ix];
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                auto const row = ix * xStride + iy * yStride;
-                auto const xyw = xw * yWeights[iy];
+                auto const zLine = ix * xStride + iy * yStride;
+                auto const xyw   = xw * yWeights[iy];
                 for (auto iz = 0u; iz < order_size; ++iz)
                 {
                     auto const w = xyw * zWeights[iz];
-                    rho[row + iz] += w;
-                    fx[row + iz] += w * vx;
-                    fy[row + iz] += w * vy;
-                    fz[row + iz] += w * vz;
+                    rho[zLine + iz] += w;
+                    fx[zLine + iz] += w * vx;
+                    fy[zLine + iz] += w * vy;
+                    fz[zLine + iz] += w * vz;
                 }
             }
         }
@@ -593,12 +593,12 @@ public:
         auto const& [Ex, Ey, Ez] = Em.E();
         auto const& [Bx, By, Bz] = Em.B();
 
-        pEx = meshToParticle_.template operator()<GridLayout, Scalar::Ex>(Ex, indexWeights);
-        pEy = meshToParticle_.template operator()<GridLayout, Scalar::Ey>(Ey, indexWeights);
-        pEz = meshToParticle_.template operator()<GridLayout, Scalar::Ez>(Ez, indexWeights);
-        pBx = meshToParticle_.template operator()<GridLayout, Scalar::Bx>(Bx, indexWeights);
-        pBy = meshToParticle_.template operator()<GridLayout, Scalar::By>(By, indexWeights);
-        pBz = meshToParticle_.template operator()<GridLayout, Scalar::Bz>(Bz, indexWeights);
+        pEx = meshToParticle<Scalar::Ex>(Ex, layout, indexWeights);
+        pEy = meshToParticle<Scalar::Ey>(Ey, layout, indexWeights);
+        pEz = meshToParticle<Scalar::Ez>(Ez, layout, indexWeights);
+        pBx = meshToParticle<Scalar::Bx>(Bx, layout, indexWeights);
+        pBy = meshToParticle<Scalar::By>(By, layout, indexWeights);
+        pBz = meshToParticle<Scalar::Bz>(Bz, layout, indexWeights);
 
         return particle_EB;
     }
@@ -698,6 +698,13 @@ protected:
 
     Starts primal_startIndex_;
     Weights primal_weights_;
+
+private:
+    template<auto quantity, typename GridLayout>
+    NO_DISCARD auto meshToParticle(auto const& field, GridLayout const&, auto const& indexWeights)
+    {
+        return meshToParticle_.template operator()<GridLayout, quantity>(field, indexWeights);
+    }
 };
 
 template<std::size_t dim, std::size_t interpOrder>

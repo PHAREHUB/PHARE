@@ -12,18 +12,18 @@
 //  and the fused __restrict deposit, as a baseline for the production Interpolator
 //  index and weight computation is the production one (Interpolator::indexAndWeights_)
 
-namespace PHARE::core::bench
+namespace PHARE::core::bench::previous
 {
 
 // a field index computed per stencil point
 
 template<std::size_t dim>
-class PreviousMeshToParticle
+class MeshToParticle
 {
 };
 
 template<>
-class PreviousMeshToParticle<2>
+class MeshToParticle<2>
 {
 public:
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
@@ -53,7 +53,7 @@ public:
 };
 
 template<>
-class PreviousMeshToParticle<3>
+class MeshToParticle<3>
 {
 public:
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
@@ -91,12 +91,12 @@ public:
 
 
 template<std::size_t dim>
-class PreviousParticleToMesh
+class ParticleToMesh
 {
 };
 
 template<>
-class PreviousParticleToMesh<2>
+class ParticleToMesh<2>
 {
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
@@ -123,7 +123,7 @@ public:
 };
 
 template<>
-class PreviousParticleToMesh<3>
+class ParticleToMesh<3>
 {
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
@@ -159,9 +159,9 @@ public:
  * MeshToParticle/ParticleToMesh: one ParticleToMesh call per field (density and 3 flux).
  */
 template<std::size_t dim, std::size_t interpOrder>
-class PreviousInterpolator : public Interpolator<dim, interpOrder>
+class Interpolator : public core::Interpolator<dim, interpOrder>
 {
-    using Super = Interpolator<dim, interpOrder>;
+    using Super = core::Interpolator<dim, interpOrder>;
     using Super::dual_startIndex_;
     using Super::dual_weights_;
     using Super::primal_startIndex_;
@@ -190,12 +190,12 @@ public:
         auto const& [Ex, Ey, Ez] = Em.E();
         auto const& [Bx, By, Bz] = Em.B();
 
-        pEx = meshToParticle_.template operator()<GridLayout, Scalar::Ex>(Ex, indexWeights);
-        pEy = meshToParticle_.template operator()<GridLayout, Scalar::Ey>(Ey, indexWeights);
-        pEz = meshToParticle_.template operator()<GridLayout, Scalar::Ez>(Ez, indexWeights);
-        pBx = meshToParticle_.template operator()<GridLayout, Scalar::Bx>(Bx, indexWeights);
-        pBy = meshToParticle_.template operator()<GridLayout, Scalar::By>(By, indexWeights);
-        pBz = meshToParticle_.template operator()<GridLayout, Scalar::Bz>(Bz, indexWeights);
+        pEx = meshToParticle<Scalar::Ex>(Ex, layout, indexWeights);
+        pEy = meshToParticle<Scalar::Ey>(Ey, layout, indexWeights);
+        pEz = meshToParticle<Scalar::Ez>(Ez, layout, indexWeights);
+        pBx = meshToParticle<Scalar::Bx>(Bx, layout, indexWeights);
+        pBy = meshToParticle<Scalar::By>(By, layout, indexWeights);
+        pBz = meshToParticle<Scalar::Bz>(Bz, layout, indexWeights);
 
         return particle_EB;
     }
@@ -229,15 +229,28 @@ public:
     }
 
 private:
-    PreviousMeshToParticle<dim> meshToParticle_;
-    PreviousParticleToMesh<dim> particleToMesh_;
+    MeshToParticle<dim> meshToParticle_;
+    ParticleToMesh<dim> particleToMesh_;
+
+    // own copy, core::Interpolator's would use its meshToParticle_
+    template<auto quantity, typename GridLayout>
+    NO_DISCARD auto meshToParticle(auto const& field, GridLayout const&, auto const& indexWeights)
+    {
+        return meshToParticle_.template operator()<GridLayout, quantity>(field, indexWeights);
+    }
 };
+
+} // namespace PHARE::core::bench::previous
+
+
+namespace PHARE::core::bench
+{
 
 
 // bench versions: 0 = previous (frozen copy), 1 = production Interpolator
 template<std::size_t dim, std::size_t interpOrder, int version>
 using Interpolator_t = std::tuple_element_t<
-    version, std::tuple<PreviousInterpolator<dim, interpOrder>, Interpolator<dim, interpOrder>>>;
+    version, std::tuple<previous::Interpolator<dim, interpOrder>, Interpolator<dim, interpOrder>>>;
 
 } // namespace PHARE::core::bench
 

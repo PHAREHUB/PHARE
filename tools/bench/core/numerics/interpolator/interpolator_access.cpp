@@ -14,9 +14,9 @@
 
 
 // MeshToParticle and ParticleToMesh timed separately, per version:
-//  0 = PreviousInterpolator (frozen copy of the per point field access, per field deposit)
+//  0 = previous::Interpolator (frozen copy of the per point field access, per field deposit)
 //  1 = production Interpolator (stride based field access, fused __restrict deposit)
-//  2D/3D only: in 1D the stencil is already a single contiguous row
+//  2D/3D only: in 1D the stencil is already a single contiguous line
 //  before timing, production is checked to produce the same values as the previous version
 //  sorted = particles ordered by iCell (lexicographic, so following the C ordered field
 //   memory), otherwise left in their random dispersed order
