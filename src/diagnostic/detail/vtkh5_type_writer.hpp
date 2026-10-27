@@ -105,12 +105,15 @@ struct HierarchyData
 
     auto static flatten_boxes(auto const& boxes_per_rank)
     {
+        auto constexpr empty_box = core::ConstArray<int, boxValsIn3D>(0);
+
         std::vector<std::array<int, boxValsIn3D>> data;
+        data.reserve(
+            core::sum_from(boxes_per_rank, [](auto const& boxes) { return boxes.size(); }));
         for (auto const& boxes : boxes_per_rank)
             for (auto const& box : boxes)
             {
-                auto& flat = data.emplace_back();
-                flat.fill(0);
+                auto& flat = data.emplace_back(empty_box);
                 for (std::size_t i = 0; i < dim; ++i)
                 {
                     flat[0 + i * 2] = box.lower[i];
@@ -296,13 +299,13 @@ public:
     VTKFileWriter(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter,
                   int const level, std::size_t const offset);
 
-    void writeField(auto const& field, auto const& layout);
+    void appendFieldPatchData(auto const& field, auto const& layout);
 
     template<std::size_t rank = 2>
-    void writeTensorField(auto const& tf, auto const& layout);
+    void appendTensorFieldPatchData(auto const& tf, auto const& layout);
 
     // one writer per level per dump, it holds the rows reserved for this rank on that level
-    void flush();
+    void writeLevel();
 
 private:
     auto local_box(auto const& layout) const
@@ -310,10 +313,11 @@ private:
         return layout.AMRToLocal(layout.AMRBoxFor(primal_qty));
     }
 
-    void reserve(std::size_t const n_cols)
+    void reserve(std::size_t const nDataComponents)
     {
-        if (rows.empty())
-            rows.reserve(HierData::INSTANCE().level_rank_data_size[level][mpi::rank()] * n_cols);
+        if (levelDataOnRank.empty())
+            levelDataOnRank.reserve(HierData::INSTANCE().level_rank_data_size[level][mpi::rank()]
+                                    * nDataComponents);
     }
 
     DiagnosticProperties const& diagnostic;
@@ -322,7 +326,7 @@ private:
     int const level;
     std::size_t const start_offset;
     std::size_t data_offset = start_offset;
-    std::vector<FloatType> rows;
+    std::vector<FloatType> levelDataOnRank;
     ModelView& modelView = typewriter->h5Writer_.modelView();
 };
 
@@ -391,9 +395,10 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto const& layout)
+void H5TypeWriter<Writer>::VTKFileWriter::appendFieldPatchData(auto const& field,
+                                                               auto const& layout)
 {
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField");
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::appendFieldPatchData");
 
     auto const& frimal = core::convert_to_fortran_primal(modelView.tmpField(), field, layout);
     auto const size    = local_box(layout).size();
@@ -401,16 +406,17 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto con
 
     reserve(1);
     for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
-        rows.insert(rows.end(), data, data + size);
+        levelDataOnRank.insert(levelDataOnRank.end(), data, data + size);
     data_offset += size * HierData::X_TIMES;
 }
 
 
 template<typename Writer>
 template<std::size_t rank>
-void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto const& layout)
+void H5TypeWriter<Writer>::VTKFileWriter::appendTensorFieldPatchData(auto const& tf,
+                                                                     auto const& layout)
 {
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField");
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::appendTensorFieldPatchData");
 
     auto static constexpr N = core::detail::tensor_field_dim_from_rank<rank>();
     auto const& frimal
@@ -418,9 +424,9 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto 
     auto const size = local_box(layout).size();
 
     reserve(N);
-    auto const first = rows.size();
-    rows.resize(first + size * N * HierData::X_TIMES);
-    auto out = rows.data() + first;
+    auto const first = levelDataOnRank.size();
+    levelDataOnRank.resize(first + size * N * HierData::X_TIMES);
+    auto out = levelDataOnRank.data() + first;
     for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
         for (std::size_t p = 0; p < size; ++p, out += N)
             for (std::uint32_t c = 0; c < N; ++c)
@@ -430,9 +436,9 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto 
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileWriter::flush()
+void H5TypeWriter<Writer>::VTKFileWriter::writeLevel()
 {
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::flush");
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeLevel");
 
     auto const n_rows = data_offset - start_offset;
     if (n_rows == 0)
@@ -441,12 +447,12 @@ void H5TypeWriter<Writer>::VTKFileWriter::flush()
     // the rows reserved come from the level AMRBoxes, the rows written come from the
     //  patch layouts: two independent counts of the same thing. If they disagree, the
     //  next rank, or the next step, is indexed onto rows nobody wrote
-    PHARE_DEBUG_DO(assert(n_rows == HierData::INSTANCE().level_rank_data_size[level][mpi::rank()]);)
+    assert(n_rows == HierData::INSTANCE().level_rank_data_size[level][mpi::rank()]);
 
     auto ds           = h5file.getDataSet(level_data_path(level));
     auto const n_cols = ds.getDimensions()[1];
-    assert(rows.size() == n_rows * n_cols);
-    ds.select({start_offset, 0}, {n_rows, n_cols}).write_raw(rows.data());
+    assert(levelDataOnRank.size() == n_rows * n_cols);
+    ds.select({start_offset, 0}, {n_rows, n_cols}).write_raw(levelDataOnRank.data());
 }
 
 

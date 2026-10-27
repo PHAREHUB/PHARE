@@ -98,17 +98,17 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
                 if (isActiveDiag(diagnostic, "/", "EM_B"))
                 {
                     auto& B = this->h5Writer_.modelView().getB();
-                    writer.template writeTensorField<1>(B, layout);
+                    writer.template appendTensorFieldPatchData<1>(B, layout);
                 }
                 if (isActiveDiag(diagnostic, "/", "EM_E"))
                 {
                     auto& E = this->h5Writer_.modelView().getE();
-                    writer.template writeTensorField<1>(E, layout);
+                    writer.template appendTensorFieldPatchData<1>(E, layout);
                 }
             };
 
             modelView.visitHierarchy(write_quantity, ilvl, ilvl);
-            writer.flush();
+            writer.writeLevel();
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }
