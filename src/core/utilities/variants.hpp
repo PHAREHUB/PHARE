@@ -80,15 +80,14 @@ auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
     using Tuple               = std::tuple<Args...>;
     auto constexpr tuple_size = std::tuple_size_v<Tuple>;
 
-    auto ptr_or_null = visit_ptr_overloads<Args...>();
-
     auto pointer_tuple = for_N<tuple_size>([&](auto i) mutable {
         using Type = std::tuple_element_t<i, Tuple>;
 
+        // only an element of Type itself, and never one an earlier tuple entry took
         for (std::size_t idx = start; idx < variants.size(); ++idx)
-            if (auto ptr = std::visit(ptr_or_null, variants[idx]))
+            if (auto ptr = std::visit(visit_ptr_overloads<Type>(), variants[idx]))
             {
-                ++start;
+                start = idx + 1;
                 return reinterpret_cast<Type*>(ptr);
             }
         return static_cast<Type*>(nullptr);
@@ -132,16 +131,15 @@ std::size_t index_in_variants(auto& variants, Type const& arg)
 template<typename Type>
 auto& get_from_variants(auto& variants, Type& arg)
 {
-    std::size_t start = 0;
-
-    while (start < variants.size())
+    try
     {
-        if (auto& res = get_as_ref_or_throw<Type>(variants, start); res.name() == arg.name())
-            return res;
-        ++start;
+        return get_from_variants_if<Type>(
+            variants, [&](auto const& res) { return res.name() == arg.name(); });
     }
-
-    throw std::runtime_error("Required name not found in variants: " + arg.name());
+    catch (std::runtime_error const&)
+    {
+        throw std::runtime_error("Required name not found in variants: " + arg.name());
+    }
 }
 
 
