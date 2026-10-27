@@ -752,7 +752,7 @@ namespace amr
         // B, rho, rhoV and Etot of each state, keyed by the state's B name
         GhostRefinerPool stateGhostsRefiners_{resourcesManager_};
 
-        // model B on the root level only: the initial equalize in fillRootGhosts
+        // model B, root level only, for the one-time equalization in fillRootGhosts
         VecFieldGhostMaxRefinerPool magMaxRefiners_{resourcesManager_};
 
         // B, rho, rhoV and Etot of the model state on new and regridded levels

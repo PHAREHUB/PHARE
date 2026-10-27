@@ -35,7 +35,7 @@ LevelValues regridLevel2(MHDSimulator& sim, double const regridTime, bool const 
         hierarchy.removePatchLevel(2);
 
     std::vector<int> const tagBuffer(hierarchy.getMaxNumberOfLevels(), 1);
-    sim.getIntegrator()->griddingAlgorithm()->regridAllFinerLevels(1, tagBuffer, 0, regridTime);
+    sim.integrator_->griddingAlgorithm()->regridAllFinerLevels(1, tagBuffer, 0, regridTime);
 
     LevelValues values;
     for (auto& patch : *hierarchy.getPatchLevel(2))

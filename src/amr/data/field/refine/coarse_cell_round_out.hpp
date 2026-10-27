@@ -24,9 +24,7 @@ namespace PHARE::amr
  * Hence the invariant: the region a magnetic prolongation runs over must be a union of whole
  * coarse cells, so that every touch-up input is in the region and was written. SAMRAI fill
  * boxes do not satisfy it: a recursive schedule's coarse-interpolation temporary plus its ring of
- * d_max_stencil_width = 1 cell always cuts a coarse cell in half. The round-out's inputs past the
- * temporary's edge are copied from same-level data where it exists (copiesWholeCoarseCells), and
- * gathered from the coarse level elsewhere.
+ * d_max_stencil_width = 1 cell always cuts a coarse cell in half.
  *
  * A cell box is a union of whole coarse cells in a direction iff its lower index is even and its
  * upper index is odd. The corresponding field box, per direction, is
@@ -110,13 +108,13 @@ NO_DISCARD bool isWholeCoarseCells(SAMRAI::hier::Box const& box)
 
 
 /**
- * @brief Must copies of this quantity into a coarse-interpolation temporary cover whole coarse
- * cells? True for the B components.
+ * @brief True if copies of this quantity into a coarse-interpolation temporary must cover whole
+ * coarse cells: the B components.
  *
- * The touch-up on a temporary reads whole coarse cells, and the temporary's edge can cut one. Its
- * faces beyond the edge are then gathered from the next coarser level, while a neighbouring
- * temporary covering them holds same-level copies, and the two touch-ups disagree on the shared
- * fine faces. Copying whole coarse cells supplies those faces wherever same-level data exists.
+ * The touch-up on a temporary reads whole coarse cells, and the temporary's edge can cut one.
+ * Copied up to that edge only, the faces past it are gathered from the next coarser level while a
+ * neighbouring temporary holds same-level copies of them, and the two touch-ups disagree on the
+ * shared fine faces.
  */
 template<typename PhysicalQuantity>
 NO_DISCARD constexpr bool copiesWholeCoarseCells(PhysicalQuantity const qty)
