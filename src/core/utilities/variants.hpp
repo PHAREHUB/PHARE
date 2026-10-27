@@ -80,18 +80,19 @@ auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
     using Tuple               = std::tuple<Args...>;
     auto constexpr tuple_size = std::tuple_size_v<Tuple>;
 
-    auto ptr_or_null = visit_ptr_overloads<Args...>();
-
-    auto pointer_tuple = for_N<tuple_size>([&](auto i) mutable {
+    // void for_N is a comma fold, so entries are visited in order, which "start" relies on
+    std::tuple<Args*...> pointer_tuple{};
+    for_N<tuple_size>([&](auto i) {
         using Type = std::tuple_element_t<i, Tuple>;
 
+        // only an element of Type itself, and never one an earlier tuple entry took
         for (std::size_t idx = start; idx < variants.size(); ++idx)
-            if (auto ptr = std::visit(ptr_or_null, variants[idx]))
+            if (auto ptr = std::visit(visit_ptr_overloads<Type>(), variants[idx]))
             {
-                ++start;
-                return reinterpret_cast<Type*>(ptr);
+                start                      = idx + 1;
+                std::get<i>(pointer_tuple) = reinterpret_cast<Type*>(ptr);
+                return;
             }
-        return static_cast<Type*>(nullptr);
     });
 
     for_N<tuple_size>([&](auto i) {
@@ -104,19 +105,31 @@ auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
 }
 
 
+// first element of Type from index start for which pred(element) is true
+template<typename Type>
+auto& get_from_variants_if(auto& variants, auto&& pred, std::size_t const start = 0)
+{
+    for (std::size_t idx = start; idx < variants.size(); ++idx)
+        if (auto ptr = std::visit(visit_ptr_overloads<Type>(), variants[idx]))
+            if (auto& res = *reinterpret_cast<Type*>(ptr); pred(res))
+                return res;
+
+    throw std::runtime_error("No element in variants for type matching predicate");
+}
+
+
 template<typename Type>
 auto& get_from_variants(auto& variants, Type& arg)
 {
-    std::size_t start = 0;
-
-    while (start < variants.size())
+    try
     {
-        if (auto& res = get_as_ref_or_throw<Type>(variants, start); res.name() == arg.name())
-            return res;
-        ++start;
+        return get_from_variants_if<Type>(
+            variants, [&](auto const& res) { return res.name() == arg.name(); });
     }
-
-    throw std::runtime_error("Required name not found in variants: " + arg.name());
+    catch (std::runtime_error const&)
+    {
+        throw std::runtime_error("Required name not found in variants: " + arg.name());
+    }
 }
 
 

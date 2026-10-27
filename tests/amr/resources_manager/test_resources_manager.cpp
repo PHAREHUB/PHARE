@@ -364,6 +364,12 @@ TEST(usingResources, test_variants_helpers)
         auto& B = get_as_ref_or_throw<VecFieldResource>(resources);
         EXPECT_EQ(&B, &std::get<VecFieldResource>(resources[1]));
     }
+    { // a leading element of another requested type must not be taken, nor cast
+        std::vector<Resources> mixed{VecFieldResource{}, FieldResource{}, VecFieldResource{}};
+        auto&& [rho, B] = get_as_tuple_or_throw<FieldResource, VecFieldResource>(mixed);
+        EXPECT_EQ(&rho, &std::get<FieldResource>(mixed[1]));
+        EXPECT_EQ(&B, &std::get<VecFieldResource>(mixed[2]));
+    }
 }
 
 
