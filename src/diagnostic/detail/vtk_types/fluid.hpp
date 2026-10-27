@@ -235,24 +235,24 @@ void FluidDiagnosticWriter<H5Writer>::HybridFluidWriter::operator()(auto const& 
     std::string const tree{"/ions/"};
 
     if (isActiveDiag(diagnostic, tree, "charge_density"))
-        file_writer.writeField(ions.chargeDensity(), layout);
+        file_writer.appendFieldPatchData(ions.chargeDensity(), layout);
     else if (isActiveDiag(diagnostic, tree, "mass_density"))
-        file_writer.writeField(ions.massDensity(), layout);
+        file_writer.appendFieldPatchData(ions.massDensity(), layout);
     else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-        file_writer.template writeTensorField<1>(ions.velocity(), layout);
+        file_writer.template appendTensorFieldPatchData<1>(ions.velocity(), layout);
     else if (isActiveDiag(diagnostic, tree, "charge_flux"))
-        file_writer.template writeTensorField<1>(ions.chargeFlux(), layout);
+        file_writer.template appendTensorFieldPatchData<1>(ions.chargeFlux(), layout);
     else
     {
         for (auto& pop : ions)
         {
             auto const pop_tree = tree + "pop/" + pop.name() + "/";
             if (isActiveDiag(diagnostic, pop_tree, "density"))
-                file_writer.writeField(pop.particleDensity(), layout);
+                file_writer.appendFieldPatchData(pop.particleDensity(), layout);
             else if (isActiveDiag(diagnostic, pop_tree, "charge_density"))
-                file_writer.writeField(pop.chargeDensity(), layout);
+                file_writer.appendFieldPatchData(pop.chargeDensity(), layout);
             else if (isActiveDiag(diagnostic, pop_tree, "flux"))
-                file_writer.template writeTensorField<1>(pop.flux(), layout);
+                file_writer.template appendTensorFieldPatchData<1>(pop.flux(), layout);
         }
     }
 }
@@ -273,15 +273,15 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
     std::string const tree{"/mhd/"};
 
     if (isActiveDiag(diagnostic, tree, "rho"))
-        file_writer.writeField(rho, layout);
+        file_writer.appendFieldPatchData(rho, layout);
     else if (isActiveDiag(diagnostic, tree, "rhoV"))
-        file_writer.template writeTensorField<1>(rhoV, layout);
+        file_writer.template appendTensorFieldPatchData<1>(rhoV, layout);
     else if (isActiveDiag(diagnostic, tree, "Etot"))
-        file_writer.writeField(Etot, layout);
+        file_writer.appendFieldPatchData(Etot, layout);
     else if (isActiveDiag(diagnostic, tree, "P"))
-        file_writer.writeField(P, layout);
+        file_writer.appendFieldPatchData(P, layout);
     else if (isActiveDiag(diagnostic, tree, "V"))
-        file_writer.template writeTensorField<1>(V, layout);
+        file_writer.template appendTensorFieldPatchData<1>(V, layout);
 }
 
 
@@ -309,7 +309,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
             };
 
             modelView.visitHierarchy(write_quantity, ilvl, ilvl);
-            writer.flush();
+            writer.writeLevel();
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }
