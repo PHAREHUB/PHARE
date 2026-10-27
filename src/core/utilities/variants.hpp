@@ -80,17 +80,19 @@ auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
     using Tuple               = std::tuple<Args...>;
     auto constexpr tuple_size = std::tuple_size_v<Tuple>;
 
-    auto pointer_tuple = for_N<tuple_size>([&](auto i) mutable {
+    // void for_N is a comma fold, so entries are visited in order, which "start" relies on
+    std::tuple<Args*...> pointer_tuple{};
+    for_N<tuple_size>([&](auto i) {
         using Type = std::tuple_element_t<i, Tuple>;
 
         // only an element of Type itself, and never one an earlier tuple entry took
         for (std::size_t idx = start; idx < variants.size(); ++idx)
             if (auto ptr = std::visit(visit_ptr_overloads<Type>(), variants[idx]))
             {
-                start = idx + 1;
-                return reinterpret_cast<Type*>(ptr);
+                start                      = idx + 1;
+                std::get<i>(pointer_tuple) = reinterpret_cast<Type*>(ptr);
+                return;
             }
-        return static_cast<Type*>(nullptr);
     });
 
     for_N<tuple_size>([&](auto i) {
