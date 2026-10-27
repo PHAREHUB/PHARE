@@ -3,15 +3,14 @@ import numpy as np
 
 from ...core import box as boxm
 from ...core.box import Box
-from ...core.phare_utilities import deep_copy, listify, refinement_ratio
+from ...core.phare_utilities import (
+    deep_copy,
+    format_timestamp,
+    listify,
+    refinement_ratio,
+)
 from .patch import Patch
 from .patchlevel import PatchLevel
-
-
-def format_timestamp(timestamp):
-    if isinstance(timestamp, str):
-        return timestamp
-    return f"{timestamp:.10f}"
 
 
 class PatchHierarchy:
