@@ -1,0 +1,113 @@
+# Explains red TeamCity builds on the PR, in one comment written by a free AI model.
+# Advisory only: it never fails, blocks or re-runs anything.
+#
+# TeamCity reports each PR build as a commit status. GitHub runs this workflow on every status,
+# with the workflow and scripts of master (a PR can't change what runs here). `check` acts only
+# once none of TeamCity's statuses on the commit is pending.
+#
+# Three jobs, so that the job reading the PR's code holds no write token:
+#   check    reads statuses and the PR: red, green (a previous comment to correct) or nothing
+#   explain  the AI reads the log excerpt, the diff and the code; it can't edit, run or browse
+#   post     creates or edits the one explainer comment of the PR
+# Trial: only PRs labelled EXPLAIN_LABEL. Empty it to explain every PR.
+
+name: ci-explainer
+
+on:
+  status:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "PR head commit to explain (full sha)"
+        required: true
+
+permissions: {}
+
+env:
+  EXPLAIN_LABEL: ci-explain
+  OPENCODE_VERSION: 1.18.32
+  SHA: ${{ github.event.sha || inputs.sha }}
+
+concurrency:
+  # TeamCity's statuses of one commit arrive close together: one run at a time, the last one wins.
+  # Only events `check` acts on share that group: a skipped one (pending, docs, ...) would otherwise
+  # replace, and so cancel, the waiting run that carries the last result.
+  group: ci-explainer-${{ (github.event_name == 'workflow_dispatch' || (github.event.state != 'pending' && endsWith(github.event.context, ' (Phare)'))) && (github.event.sha || inputs.sha) || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.event_name == 'workflow_dispatch' || (github.event.state != 'pending' && endsWith(github.event.context, ' (Phare)'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+      statuses: read
+    outputs:
+      action: ${{ steps.check.outputs.action }}
+      pr: ${{ steps.check.outputs.pr }}
+      builds: ${{ steps.check.outputs.builds }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: res/ci/explainer
+          persist-credentials: false
+      - id: check
+        run: python3 res/ci/explainer/ci.py check "$SHA" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  explain:
+    needs: check
+    if: needs.check.outputs.action == 'red'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the diff needs the merge base with master
+          persist-credentials: false
+      - run: npm install --global "opencode-ai@$OPENCODE_VERSION" # zizmor: ignore[adhoc-packages] exact version pinned above
+      - run: python3 res/ci/explainer/ci.py explain "$PR" "$SHA" "$BUILDS" out
+        env:
+          PR: ${{ needs.check.outputs.pr }}
+          BUILDS: ${{ needs.check.outputs.builds }}
+          CI_EXPLAINER_MODEL: ${{ vars.CI_EXPLAINER_MODEL }} # Settings → Variables; unset = agent.py's default
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-explainer
+          retention-days: 14
+          path: |
+            out/comment.md
+            out/work/*/context.md
+            out/work/*/raw.txt
+
+  post:
+    needs: [check, explain]
+    if: always() && (needs.check.outputs.action == 'green' || needs.explain.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: res/ci/explainer
+          persist-credentials: false
+      - if: needs.check.outputs.action == 'red'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ci-explainer
+          path: out
+      - run: |
+          if [ "$ACTION" = red ]; then
+            python3 res/ci/explainer/ci.py post "$PR" "$SHA" out/comment.md
+          else
+            python3 res/ci/explainer/ci.py green "$PR" "$SHA"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ACTION: ${{ needs.check.outputs.action }}
+          PR: ${{ needs.check.outputs.pr }}
