@@ -798,7 +798,7 @@ namespace amr
         GhostRefinerPool magFluxesZGhostRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
-        // root level only: the initial B equalize in fillRootGhosts
+        // root level only, for the one-time B equalization in fillRootGhosts
         VecFieldGhostMaxRefinerPool magMaxModelRefiners_{resourcesManager_};
 
         InitRefinerPool densityInitRefiners_{resourcesManager_};

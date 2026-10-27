@@ -12,7 +12,7 @@ ph.Simulation(
     time_step_nbr=10,
     cells=cells,
     dl=(1.0 / cells[0], 1.0 / cells[1]),
-    # level 2 two level-1 cells inside level 1, so its ghosts reach level 1 only
+    # level 2 sits two level-1 cells inside level 1, so its ghosts reach level 1 only
     refinement_boxes={"L0": {"B0": Box2D(10, 29)}, "L1": {"B0": Box2D(22, 57)}},
     smallest_patch_size=6,
     largest_patch_size=10,

@@ -79,7 +79,6 @@ public:
     NO_DISCARD auto& getHybridModel() { return hyb_.model_; }
     NO_DISCARD auto& getMHDModel() { return mhd_.model_; }
     NO_DISCARD auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
-    NO_DISCARD auto& getIntegrator() { return integrator_; }
 
     NO_DISCARD std::string to_str() override;
 
@@ -138,7 +137,11 @@ private:
     std::unique_ptr<std::ofstream> log_out{log_file()};
     std::streambuf* coutbuf = nullptr;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
+
+protected:
     std::unique_ptr<Integrator> integrator_;
+
+private:
 
     std::vector<std::string> modelNames_;
     std::vector<PHARE::amr::MessengerDescriptor> descriptors_;

@@ -17,6 +17,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 
 
+#include <tuple>
 #include <type_traits>
 
 using namespace PHARE::core;
@@ -37,6 +38,12 @@ T srcFunc(T v, Args... args)
     // ASSERT_GT(n, 1);
     // ASSERT_LE(n, 3);
     return v + 10 * srcFunc(args...); // t + 10*x + 100*y + 1000*z
+}
+
+template<typename T, std::size_t dim>
+T srcFunc(T v, PHARE::core::Point<T, dim> const& position)
+{
+    return std::apply([&](auto... x) { return srcFunc(v, x...); }, position.toArray());
 }
 
 
@@ -366,8 +373,6 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
 
 TYPED_TEST(aFieldLinearTimeInterpolate, interpolatesTheWholeOverlapOfAShiftedSource)
 {
-    static constexpr auto dim = typename TypeParam::first_type{}();
-
     double const interpolateTime = 0.2;
     this->destNew->setTime(interpolateTime);
 
@@ -382,22 +387,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, interpolatesTheWholeOverlapOfAShiftedSou
     for (auto const [amr_idx, lcl_idx] : layout.domain_amr_lcl_idx(destField))
     {
         auto const position = layout.fieldNodeCoordinates(destField, amr_idx);
-
-        if constexpr (dim == 1)
-        {
-            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX]), destField(lcl_idx));
-        }
-        if constexpr (dim == 2)
-        {
-            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX], position[dirY]),
-                             destField(lcl_idx));
-        }
-        if constexpr (dim == 3)
-        {
-            EXPECT_DOUBLE_EQ(
-                srcFunc(interpolateTime, position[dirX], position[dirY], position[dirZ]),
-                destField(lcl_idx));
-        }
+        EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position), destField(lcl_idx));
     }
 }
 

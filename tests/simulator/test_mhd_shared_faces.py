@@ -34,7 +34,7 @@ diag_dir = "phare_outputs/mhd_shared_faces"
 refinement_boxes = {"L0": {"B0": Box2D(10, 29)}, "L1": {"B0": Box2D(21, 58)}}
 
 
-# x stays periodic, so is the Orszag-Tang profile along it
+# x stays periodic, and so does the Orszag-Tang profile along it
 y_boundaries = {"ylower": {"type": "reflective"}, "yupper": {"type": "open"}}
 
 

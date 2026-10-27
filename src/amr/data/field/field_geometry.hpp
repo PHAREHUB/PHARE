@@ -114,7 +114,6 @@ namespace amr
          * it, and for algorithms registered without a fill pattern. A quantity in
          * copiesWholeCoarseCells has its fill box and source mask rounded out to whole coarse
          * cells (coarse_cell_round_out.hpp), so its refiners must keep passing a PHARE pattern.
-         * The mask lies inside the source patch box, and stays inside it once rounded.
          */
         std::shared_ptr<SAMRAI::hier::BoxOverlap> calculateOverlap(
             SAMRAI::hier::BoxGeometry const& destinationGeometry,
