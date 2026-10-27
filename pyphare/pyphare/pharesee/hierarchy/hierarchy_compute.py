@@ -54,7 +54,7 @@ def _compute_copy_do(patch_data, λ):
 def drop_ghosts(patch, **kwargs):
     pd_attrs = []
     ghosts_nbr = [0] * patch.box.ndim
-    for name, pd in patch.patch_datas.items():
+    for pd in patch.patch_datas.values():
         data = pd[patch.box] if any(pd.ghosts_nbr) else pd[:]
         pd_attrs.append(pd.copy_as(data, ghosts_nbr=ghosts_nbr))
     return tuple(pd_attrs)
@@ -92,7 +92,7 @@ def _compute_copy_op(patch, op, accessor, operand, reverse=False):
 
     data = DataAccessor(accessor, operand)
     return tuple(
-        _compute_copy_do(pd, lambda ds: _(ds, data[name]))
+        _compute_copy_do(pd, lambda ds, name=name: _(ds, data[name]))
         for name, pd in patch.patch_datas.items()
     )
 
