@@ -6,7 +6,7 @@ concurrency:
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review] # ready_for_review: run once a draft is marked ready
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft] # run when marked ready, cancel when back to draft
     # no build for PRs that only touch CI, docs or markdown; later patterns win
     paths:
       - '**'
