@@ -329,8 +329,6 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
     auto& rho  = modelView.getRho();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();
-    auto& P    = modelView.getP();
-    auto& V    = modelView.getV();
 
     std::string const tree{"/mhd/"};
 
@@ -341,9 +339,9 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
     else if (isActiveDiag(diagnostic, tree, "Etot"))
         file_writer.writeField(Etot, layout);
     else if (isActiveDiag(diagnostic, tree, "P"))
-        file_writer.writeField(P, layout);
+        file_writer.writeField(modelView.getP(), layout);
     else if (isActiveDiag(diagnostic, tree, "V"))
-        file_writer.template writeTensorField<1>(V, layout);
+        file_writer.template writeTensorField<1>(modelView.getV(), layout);
 }
 
 
@@ -393,16 +391,16 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
     auto maxLvl     = writer->h5Writer_.maxLevel;
 
     auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
     auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();
 
+    // V and P are temporaries, which only exist if requested, see requestTemporaries_
     std::string tree{"/mhd/"};
 
     if (isActiveDiag(diagnostic, tree, "V"))
     {
+        auto& V = modelView.getV();
         modelView.visitHierarchy(
             [&](GridLayout& layout, std::string, std::size_t) {
                 core::ToPrimitiveConverter<GridLayout> toPrim{layout};
@@ -412,6 +410,7 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
     }
     else if (isActiveDiag(diagnostic, tree, "P"))
     {
+        auto& P = modelView.getP();
         modelView.visitHierarchy(
             [&](GridLayout& layout, std::string, std::size_t) {
                 auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
