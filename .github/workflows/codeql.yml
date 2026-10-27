@@ -8,6 +8,7 @@ on:
   push:
     branches: [ "master" ]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review] # ready_for_review: run once a draft is marked ready
     branches: [ "master" ]
     # no analysis for PRs that only touch CI, docs or markdown; later patterns win
     paths:
@@ -24,6 +25,7 @@ on:
 
 jobs:
   analyze:
+    if: ${{ !github.event.pull_request.draft }} # draft PRs run only the gate
     name: Analyze
     runs-on: ubuntu-latest
     container: ghcr.io/pharchive/phare_dep/ubuntu:24.04

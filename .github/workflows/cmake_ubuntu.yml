@@ -6,6 +6,7 @@ concurrency:
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review] # ready_for_review: run once a draft is marked ready
     # no build for PRs that only touch CI, docs or markdown; later patterns win
     paths:
       - '**'
@@ -19,6 +20,7 @@ on:
 
 jobs:
   build:
+    if: ${{ !github.event.pull_request.draft }} # draft PRs run only the gate
     runs-on: ${{ matrix.os }}
     container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
     strategy:

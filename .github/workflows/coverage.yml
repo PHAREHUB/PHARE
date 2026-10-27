@@ -9,6 +9,7 @@ concurrency:
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review] # ready_for_review: run once a draft is marked ready
     # no coverage for PRs that only touch CI, docs or markdown; later patterns win
     paths:
       - '**'
@@ -28,6 +29,7 @@ permissions:
 
 jobs:
   cpp:
+    if: ${{ !github.event.pull_request.draft }} # draft PRs run only the gate
     runs-on: ubuntu-latest
     container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
     timeout-minutes: 360
@@ -76,7 +78,7 @@ jobs:
   #  Codecov action needs, and a failed upload can be re-run without the build
   upload:
     needs: cpp
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.cpp.result != 'skipped' }}
     runs-on: ubuntu-latest
 
     steps:
