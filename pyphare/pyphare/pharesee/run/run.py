@@ -7,10 +7,7 @@ from pyphare.core.phare_utilities import listify, refinement_ratio
 from pyphare.logger import getLogger
 from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
 from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
-from pyphare.pharesee.hierarchy.hierarchy_utils import (
-    compute_hier_from,
-    flat_finest_field,
-)
+from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 
 from .utils import (
     _compute_current,
@@ -19,6 +16,8 @@ from .utils import (
     _compute_pressure,
     _compute_to_primal,
     _get_rank,
+    finest_coords_for,
+    flat_finest_field,
     make_interpolator,
 )
 
@@ -69,9 +68,9 @@ class Run:
     # TODO maybe transform that so multiple times can be accepted
     def _get(self, hierarchy, time, merged, interp):
         """
-        if merged=True, will return an interpolator and a tuple of 1d arrays
-        with the coordinates of the finest grid where the interpolator
-        can be calculated (that is the return of flat_finest_field)
+        if merged=True, returns {qty: (interpolator, finest_coords)} where
+        interpolator is a callable scipy interpolator and finest_coords is a
+        tuple of 1d coordinate arrays at the finest grid resolution.
         """
         if merged:
             domain = self.GetDomainSize()
@@ -85,8 +84,9 @@ class Run:
             merged_qties = {}
             for qty in hierarchy.quantities():
                 data, coords = flat_finest_field(hierarchy, qty, time=time)
-                merged_qties[qty] = make_interpolator(
-                    data, coords, interp, domain, dl, qty, nbrGhosts
+                merged_qties[qty] = (
+                    make_interpolator(data, coords, interp),
+                    finest_coords_for(domain, dl, qty, nbrGhosts),
                 )
             return merged_qties
         else:
