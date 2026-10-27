@@ -262,10 +262,10 @@ def computed_and_expected(ndim, quantity, time=0.0):
     if quantity == "mass":
         h = r.GetMassDensity(time)
         func = {1: ions_mass_density_func1d, 2: ions_mass_density_func2d}[ndim]
-        return h, hierarchy_from(hier=h, func=func, masses=masses, densities=densities)
+        return h, hierarchy_from(hier=h, from_func=func, masses=masses, densities=densities)
     h = r.GetNi(time)
     func = {1: ions_charge_density_func1d, 2: ions_charge_density_func2d}[ndim]
-    return h, hierarchy_from(hier=h, func=func, charges=charges, densities=densities)
+    return h, hierarchy_from(hier=h, from_func=func, charges=charges, densities=densities)
 
 
 def patch_sigmas(h, H, time=0.0):
