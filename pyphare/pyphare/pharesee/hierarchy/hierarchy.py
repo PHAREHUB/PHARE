@@ -124,7 +124,7 @@ class PatchHierarchy:
             ) from e
         return self._sim
 
-    def __call__(self, qty=None, **kwargs):
+    def __call__(self, qty=None, time=None, **kwargs):
         # take slice/slab of 1/2d array from 2/3d array
         def cuts(c, coord):
             return c > coord.min() and c < coord.max()
@@ -145,9 +145,9 @@ class PatchHierarchy:
                 return coord[mask], data[mask]
 
         def domain_coords(patch, qty):
-            pd = patch.patch_datas[qty]
-            nbrGhosts = pd.ghosts_nbr[0]
-            return pd.x[nbrGhosts:-nbrGhosts], pd.y[nbrGhosts:-nbrGhosts]
+            from .patchdata import local_domain_coords
+
+            return local_domain_coords(patch.patch_datas[qty])
 
         if len(kwargs) < 1 or len(kwargs) > 3:
             raise ValueError("Error - must provide coordinates")
@@ -171,11 +171,10 @@ class PatchHierarchy:
         extractor = Extractor()
         datas = []
         coords = []
-        levels = self.levels()
-        ilvls = list(levels.keys())[::-1]
+        ilvls = list(self.levels(time).keys())[::-1]
 
         for ilvl in ilvls:
-            lvl = levels[ilvl]
+            lvl = self.level(ilvl, time)
             for patch in lvl.patches:
                 slice_coord = domain_coords(patch, qty)[slice_dim]
                 cst_coord = domain_coords(patch, qty)[cst_dim]
@@ -422,9 +421,14 @@ class PatchHierarchy:
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pdat = patch.patch_datas[qty]
+                nbrGhosts = pdat.ghosts_nbr
+                if nbrGhosts[0] > 0:
+                    val = pdat[patch.box]
+                    x = pdat.x[nbrGhosts[0] : -nbrGhosts[0]]
+                else:
+                    val = pdat.dataset[:]
+                    x = pdat.x
                 label = f"L{lvl_nbr}P{ip}"
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")

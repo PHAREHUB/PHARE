@@ -1,6 +1,7 @@
 import numpy as np
 
 from pyphare.core.gridlayout import yee_centering
+from pyphare.pharesee.hierarchy.patchdata import local_domain_coords
 
 
 def _current1d(by, bz, xby, xbz):
@@ -342,10 +343,8 @@ def slices_to_primal(pdname, **kwargs):
 
 def _compute_to_primal(patchdatas, patch_id, **kwargs):
     """
-    datasets have NaN in their ghosts... might need to be properly filled
-    with their neighbors already properly projected on primal
+    Drops ghost layer!
     """
-
     reference_name = next(iter(kwargs.values()))
     reference_pd = patchdatas[reference_name]
     ndim = reference_pd.box.ndim
@@ -364,27 +363,19 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
             if pd.centerings[i] == "dual":
                 ds_shape[i] += 1
 
-        # should be something else than nan values when the ghosts cells
-        # will be filled with correct values coming from the neighbors
-        ds_all_primal = np.full(ds_shape, np.nan)
         ds_ = np.zeros(ds_shape)
 
-        # inner is the slice containing the points that are updated
-        # in the all_primal dataset
-        # chunks is a tupls of all the slices coming from the initial dataset
-        # that are needed to calculate the average for the all_primal dataset
         inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
 
         for chunk in chunks:
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-        ds_all_primal[inner] = ds_[inner]
 
         pd_attrs.append(
             {
                 "name": name,
-                "data": ds_all_primal,
+                "data": ds_[inner],
                 "centering": centerings,
-                "ghosts_nbr": [nb_ghosts] * ndim,
+                "ghosts_nbr": [0] * ndim,
             }
         )
 
@@ -423,7 +414,7 @@ def _get_rank(patchdatas, patch_id, **kwargs):
                 "name": "rank",
                 "data": data,
                 "centering": [centering] * 2,
-                # "ghosts_nbr": reference_pd.ghosts_nbr,
+                "ghosts_nbr": reference_pd.ghosts_nbr,
             },
         )
     else:
@@ -560,15 +551,14 @@ def overlap_mask_1d(x, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr
-
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-
+        (fine_x,) = local_domain_coords(pdata)
         fine_dl = pdata.dl
         local_dl = dl
 
         if fine_dl[0] < local_dl[0]:
-            xmin, xmax = fine_x.min(), fine_x.max()
+            # fine patches have no ghosts here, so their boundary points are included
+            tol = 0.5 * fine_dl[0]
+            xmin, xmax = fine_x.min() - tol, fine_x.max() + tol
 
             overlaped_idx = np.where((x > xmin) & (x < xmax))[0]
 
@@ -597,17 +587,15 @@ def overlap_mask_2d(x, y, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr
-
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-        fine_y = pdata.y[ghosts_nbr[1] - 1 : -ghosts_nbr[1] + 1]
-
+        fine_x, fine_y = local_domain_coords(pdata)
         fine_dl = pdata.dl
         local_dl = dl
 
         if (fine_dl[0] < local_dl[0]) and (fine_dl[1] < local_dl[1]):
-            xmin, xmax = fine_x.min(), fine_x.max()
-            ymin, ymax = fine_y.min(), fine_y.max()
+            # fine patches have no ghosts here, so their boundary points are included
+            tolx, toly = 0.5 * fine_dl[0], 0.5 * fine_dl[1]
+            xmin, xmax = fine_x.min() - tolx, fine_x.max() + tolx
+            ymin, ymax = fine_y.min() - toly, fine_y.max() + toly
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
             xf = xv.flatten()
@@ -657,16 +645,9 @@ def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - neghosts
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0] : -needed_points[0]]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
+            pdata = patch[qty]
+            data = pdata[pdata.box]
+            (x,) = local_domain_coords(pdata)
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -697,20 +678,9 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[
-                needed_points[0] : -needed_points[0],
-                needed_points[1] : -needed_points[1],
-            ]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-            y = pdata.y[needed_points[1] : -needed_points[1]]
+            pdata = patch[qty]
+            data = pdata[pdata.box]
+            x, y = local_domain_coords(pdata)
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 

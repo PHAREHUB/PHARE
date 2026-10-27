@@ -11,7 +11,7 @@ from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patch import Patch
-from .patchdata import FieldData, ParticleData
+from .patchdata import FieldData, ParticleData, align_ghosts
 from .patchlevel import PatchLevel
 
 field_qties = {
@@ -185,9 +185,12 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
     new_patch_datas = {}
     datas = compute(patchdatas, patch_id=id, **kwargs)
     for data in datas:
+        pd_layout = layout
+        if "ghosts_nbr" in data:
+            pd_layout = layout.copy_as(ghosts_nbr=data["ghosts_nbr"])
         extra = {k: data[k] for k in ("ghosts_nbr",) if k in data}
         pd = FieldData(
-            layout, data["name"], data["data"], centering=data["centering"], **extra
+            pd_layout, data["name"], data["data"], centering=data["centering"], **extra
         )
         new_patch_datas[data["name"]] = pd
     return new_patch_datas
@@ -200,6 +203,12 @@ def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     for ip, current_patch in enumerate(ref_patches):
         layout = current_patch.layout
         patch_datas = extract_patchdatas(hierarchies, ilvl, t, ip)
+        if len(hierarchies) > 1:
+            pdatas = list(patch_datas.values())
+            aligned = align_ghosts(pdatas)
+            if aligned is not pdatas:
+                patch_datas = dict(zip(patch_datas.keys(), aligned))
+                layout = aligned[0].layout
         new_patch_datas = new_patchdatas_from(
             compute, patch_datas, layout, id=current_patch.id, **kwargs
         )

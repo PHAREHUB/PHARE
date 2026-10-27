@@ -6,6 +6,7 @@ import numpy as np
 from pyphare.core.phare_utilities import listify, refinement_ratio
 from pyphare.logger import getLogger
 from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
+from pyphare.pharesee.hierarchy import hierarchy_compute as hc
 from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 
@@ -66,7 +67,7 @@ class Run:
         return _get_hier(hier)
 
     # TODO maybe transform that so multiple times can be accepted
-    def _get(self, hierarchy, time, merged, interp):
+    def _get(self, hierarchy, time, merged, interp, drop_ghosts=False):
         """
         if merged=True, returns {qty: (interpolator, finest_coords)} where
         interpolator is a callable scipy interpolator and finest_coords is a
@@ -90,7 +91,11 @@ class Run:
                 )
             return merged_qties
         else:
-            return hierarchy
+            return (
+                compute_hier_from(hc.drop_ghosts, hierarchy)
+                if drop_ghosts
+                else hierarchy
+            )
 
     def GetTags(self, time, merged=False, **kwargs):
         hier = self._get_hierarchy(time, "tags.h5")
@@ -118,19 +123,19 @@ class Run:
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
-        return ScalarField.FROM(self._get(hier, time, merged, interp))
+        return ScalarField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetNi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
-        return ScalarField.FROM(self._get(hier, time, merged, interp))
+        return ScalarField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
-        return ScalarField.FROM(self._get(hier, time, merged, interp))
+        return ScalarField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
-        return VectorField.FROM(self._get(hier, time, merged, interp))
+        return VectorField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetChargeFlux(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_charge_flux.h5", **kwargs)
@@ -138,12 +143,13 @@ class Run:
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
-        return VectorField.FROM(self._get(hier, time, merged, interp))
+        return VectorField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(
             time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
         )
+        M = compute_hier_from(hc.drop_ghosts, M)
         V = self.GetFlux(time, pop_name, **kwargs)
         N = self.GetN(time, pop_name, **kwargs)
         P = compute_hier_from(
@@ -156,8 +162,10 @@ class Run:
 
     def GetPi(self, time, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(time, "ions_momentum_tensor.h5", **kwargs)
+        M = compute_hier_from(hc.drop_ghosts, M)
         massDensity = self.GetMassDensity(time, **kwargs)
         Vi = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        Vi = compute_hier_from(hc.drop_ghosts, Vi)
         Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
         return self._get(Pi, time, merged, interp)  # should later be a TensorField
 
@@ -169,7 +177,7 @@ class Run:
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)
 
-        h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
+        h = compute_hier_from(hc.drop_ghosts, hier)
         return ScalarField.FROM(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
