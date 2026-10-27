@@ -150,7 +150,6 @@ protected:
     std::unique_ptr<Integrator> integrator_;
 
 private:
-
     std::vector<std::string> modelNames_;
     std::vector<PHARE::amr::MessengerDescriptor> descriptors_;
     MessengerFactory messengerFactory_{{}};
