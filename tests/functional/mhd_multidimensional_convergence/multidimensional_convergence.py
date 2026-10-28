@@ -254,32 +254,29 @@ def run_convergence(reconstruction, limiter):
         # Simulator(sim).run().reset()
         if sim.dry_run:
             return
-        if cpp.mpi_rank() == 0:
-            run = Run(diag_dir)
-            error = compute_error(run, final_time, Nx, Dx)
-            dx_values.append(Dx)
-            N_values.append(N_base)
-            errors.append(error)
+        run = Run(diag_dir)
+        error = compute_error(run, final_time, Nx, Dx)
+        dx_values.append(Dx)
+        N_values.append(N_base)
+        errors.append(error)
         N_base *= 2
-
-    if cpp.mpi_rank() > 0:
-        return
 
     dx_values = np.array(dx_values)
     slope, intercept = np.polyfit(np.log(dx_values), np.log(errors), 1)
     expected = expected_orders[reconstruction]
 
-    fitted_line = np.exp(intercept) * dx_values**slope
-    plt.figure(figsize=(10, 6))
-    plt.loglog(dx_values, errors, "o-", label=f"Data (Slope: {slope:.2f})")
-    plt.loglog(dx_values, fitted_line, "--", label="Fitted Line")
-    plt.xlabel("Δx", fontsize=16)
-    plt.ylabel("Error (L1 Norm)", fontsize=16)
-    plt.title(f"{mode} - {reconstruction}", fontsize=20)
-    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=20)
-    plt.savefig(f"{diag_dir}/convergence_{reconstruction}.png", dpi=200)
-    plt.close()
+    if cpp.mpi_rank() == 0:
+        fitted_line = np.exp(intercept) * dx_values**slope
+        plt.figure(figsize=(10, 6))
+        plt.loglog(dx_values, errors, "o-", label=f"Data (Slope: {slope:.2f})")
+        plt.loglog(dx_values, fitted_line, "--", label="Fitted Line")
+        plt.xlabel("Δx", fontsize=16)
+        plt.ylabel("Error (L1 Norm)", fontsize=16)
+        plt.title(f"{mode} - {reconstruction}", fontsize=20)
+        plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+        plt.legend(fontsize=20)
+        plt.savefig(f"{diag_dir}/convergence_{reconstruction}.png", dpi=200)
+        plt.close()
 
     relative_error = abs(slope - expected) / abs(expected)
     assert (
