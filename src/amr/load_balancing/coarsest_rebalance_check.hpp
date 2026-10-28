@@ -63,7 +63,7 @@ public:
         steps_to_next_check_ = interval_ - 1;
 
         if (!rebalance)
-            interval_ = std::min(interval_ * info_.next_rebalance_backoff_multiplier,
+            interval_ = std::min(interval_ * at_least_one(info_.next_rebalance_backoff_multiplier),
                                  at_least_one(info_.max_next_rebalance));
 
         return rebalance;

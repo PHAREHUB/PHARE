@@ -9,14 +9,14 @@ using namespace PHARE::amr;
 
 namespace
 {
-LoadBalancerDetails details(bool const on_init)
+LoadBalancerDetails details(bool const on_init, std::size_t const backoff_multiplier = 2)
 {
     return {.active                            = true,
             .automatic                         = true,
             .on_init                           = on_init,
             .mode                              = "nppc",
             .tolerance                         = 0.05,
-            .next_rebalance_backoff_multiplier = 2,
+            .next_rebalance_backoff_multiplier = backoff_multiplier,
             .next_rebalance                    = 10,
             .max_next_rebalance                = 50};
 }
@@ -87,6 +87,14 @@ TEST(CoarsestRebalanceCheck, backOffRestartsFromNextRebalanceAfterARebalance)
     // 0 and 10 balanced so the intervals grew 10, 20, 30 rebalances so they restart at 10
     EXPECT_EQ(steps.checked, (std::vector<std::size_t>{0, 10, 30, 40, 50, 70}));
     EXPECT_EQ(steps.rebalanced, (std::vector<std::size_t>{30}));
+}
+
+TEST(CoarsestRebalanceCheck, zeroBackOffMultiplierKeepsTheInterval)
+{
+    CoarsestRebalanceCheck check{details(/*on_init=*/true, /*backoff_multiplier=*/0)};
+    auto const steps = advance(check, 31, {balanced});
+
+    EXPECT_EQ(steps.checked, (std::vector<std::size_t>{0, 10, 20, 30}));
 }
 
 TEST(CoarsestRebalanceCheck, toleranceIsRelativeToTheAverageLoad)
