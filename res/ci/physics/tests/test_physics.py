@@ -3,6 +3,7 @@
 run: python3 -m unittest discover -s res/ci/physics/tests
 """
 
+import base64
 import contextlib
 import io
 import json
@@ -10,6 +11,7 @@ import os
 import re
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -29,6 +31,7 @@ import history
 import judge
 import metrics
 import page
+import publish
 import tc
 
 
@@ -1233,6 +1236,12 @@ class JudgeTest(unittest.TestCase):
         )
         self.assertEqual(meta["agent_status"], "unavailable")
         self.assertEqual(meta["agent_reason"], "PermissionError before the agent ran")
+        caps = {d["name"]: 6 for d in decks.job(decks.load(), "mhd")}
+        part = publish.read_part(self.last_out, "mhd", caps)
+        self.assertEqual(part["agent"], "")  # the agent never ran
+        deck = next(d for d in part["summary"]["decks"] if d["name"] == "convergence")
+        rec = history.test_record(deck, decks.job(decks.load(), "mhd")[0], part, None)
+        self.assertEqual(rec["status"], "own check failed")
         with unittest.mock.patch.object(
             judge, "last_block", side_effect=RuntimeError("boom")
         ):
@@ -1581,6 +1590,738 @@ class PageTest(unittest.TestCase):
         self.assertIn("not recorded in the history", out)
         self.assertIn("manual run 03:15", out)
         self.assertEqual(out.count('class="dot '), 1)
+
+
+SHA_ABC, SHA_DEF = "abc".ljust(40, "0"), "def".ljust(40, "0")
+META = {
+    "build_id": 5,
+    "build_type_id": "BT",
+    "model": "m",
+    "opencode_version": "1",
+    "agent_status": "ok",
+}
+
+
+# a meta.json written by hostile code in the functional job's pod (review Q44)
+EVIL_META = {
+    "build_id": 5,
+    "sha": "../../issues/1/comments",
+    "opencode_version": '1.18.32<img src="//evil.example/v.png">',
+    "agent_status": "ok",
+    "agent_reason": None,
+    "not_given": ['<img src="//evil.example/n.png">'],
+}
+
+
+TC_BASE = "https://hephaistos.lpp.polytechnique.fr/teamcity"
+TONIGHT = "20261028T010012+0000"  # 02:00 in Paris, same day
+YESTERDAY = "20261027T010012+0000"
+SECRET = "ghp_SECRET123"
+
+
+def tc_build(i, type_, start=TONIGHT, default=True, trigger="schedule", sha=SHA_ABC):
+    return {
+        "id": i,
+        "buildTypeId": type_,
+        "startDate": start,
+        "defaultBranch": default,
+        "triggered": {"type": trigger},
+        "revisions": {"revision": [{"version": sha}]},
+    }
+
+
+def tc_nightly(*upstream):
+    return list(upstream) or [
+        tc_build(11, HYB_TYPE),
+        tc_build(12, MHD_TYPE),
+    ]
+
+
+def fake_teamcity(
+    upstream,
+    own_start=TONIGHT,
+    head_trigger="schedule",
+    heads=(9,),
+    head_default=True,
+    own_default=True,
+    head_broken=False,
+):
+    """A get for the TeamCity reads of publish: the page writer is build 5, the head 9."""
+    urls = []
+
+    def get(url, *a, **k):
+        urls.append(url)
+        if "/artifacts/children/" in url:
+            return b"[]"
+        if "snapshotDependency:(from:" in url:
+            return json.dumps(
+                {"build": [{"id": h, "buildTypeId": "T_head"} for h in heads]}
+            ).encode()
+        if "snapshotDependency:(to:" in url:
+            return json.dumps({"build": upstream}).encode()
+        i = int(re.search(r"builds/id:(\d+)\?", url).group(1))
+        if i == 9 and head_broken:
+            return b"{}"
+        start, trigger = (own_start, "schedule") if i == 5 else (TONIGHT, head_trigger)
+        default = own_default if i == 5 else head_default
+        return json.dumps(
+            tc_build(i, "T_x", start, trigger=trigger, default=default)
+        ).encode()
+
+    get.urls = urls
+    return get
+
+
+def down(url, *a, **k):
+    raise OSError("down")
+
+
+class PublishTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.d = Path(tmp.name)
+        self.site = self.d / "site"
+        self.site.mkdir()
+        env = unittest.mock.patch.dict(
+            os.environ, {"TEAMCITY_BUILD_PROPERTIES_FILE": str(self.d / "none")}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("NIGHTLY_PAGE_TOKEN", None)
+
+    def write_job(self, job, decks_in, agent="", meta=None, status=None):
+        j = self.d / "in" / job
+        j.mkdir(parents=True, exist_ok=True)
+        (j / "meta.json").write_text(
+            json.dumps(
+                dict(
+                    META,
+                    build_type_id=HYB_TYPE,
+                    build_id=11,
+                    opencode_version="1.18.32",
+                )
+                | (meta or {})
+            )
+        )
+        decks_out = [
+            {
+                "name": n,
+                "figures": [f"{n}__a.png"],
+                "numbers": {"gamma": 0.09},
+                "status": status,
+            }
+            for n in decks_in
+        ]
+        (j / "summary.json").write_text(
+            json.dumps({"decks_exit_code": 0, "decks": decks_out})
+        )
+        (j / "agent.md").write_text(agent)
+
+    def write_both(self, hybrid_meta=None, mhd_meta=None):
+        self.write_job(
+            "hybrid",
+            ("ion_ion_beam1d", "td1d"),
+            "### ion_ion_beam1d\nVerdict: looks right\nall good\n",
+            hybrid_meta,
+        )
+        self.write_job(
+            "mhd",
+            ("convergence", "orszag_tang"),
+            "### convergence\nVerdict: suspicious\norder 1 not 3\n"
+            "### orszag_tang\nVerdict: looks right\nfine\n",
+            mhd_meta,
+        )
+
+    def edit_summary(self, job, change):
+        p = self.d / "in" / job / "summary.json"
+        s = json.loads(p.read_text())
+        change(s)
+        p.write_text(json.dumps(s))
+
+    def main(self, get, extra=(), runner=None, jobs="hybrid,mhd", own=True):
+        argv = ["--in", str(self.d / "in"), "--jobs", jobs, "--site", str(self.site)]
+        argv += ["--own-build-id", "5"] if own else []
+        out = io.StringIO()
+        kwargs = {"run": runner} if runner else {}
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            rc = publish.main(argv + list(extra), get=get, **kwargs)
+        self.printed = out.getvalue()
+        return rc
+
+    def index(self):
+        return (self.site / "index.html").read_text()
+
+    def nights(self, name="history.json"):
+        return json.loads((self.site / name).read_text())["nights"]
+
+    def test_writes_index_and_history(self):
+        self.write_both()
+        self.write_job(
+            "mhd",
+            ("convergence", "orszag_tang"),
+            "### convergence\nVerdict: suspicious\norder 1 not 3\n"
+            "### orszag_tang\nVerdict: own check failed\n",  # only the scripts can say so
+        )
+        get = fake_teamcity(tc_nightly())
+        self.assertEqual(self.main(get), 0)
+        (night,) = self.nights()
+        self.assertEqual(night["date"], "2026-10-28")
+        self.assertEqual(night["run"]["sha"], SHA_ABC)
+        self.assertIs(night["run"]["manual"], False)
+        self.assertEqual(
+            night["run"]["builds"],
+            {
+                "hybrid": {"id": 11, "type": HYB_TYPE, "start": "2026-10-28"},
+                "mhd": {"id": 12, "type": MHD_TYPE, "start": "2026-10-28"},
+            },
+        )
+        status = {n: r["status"] for n, r in night["tests"].items()}
+        self.assertEqual(
+            status,
+            {
+                "ion_ion_beam1d": "looks right",
+                "td1d": "not judged",
+                "convergence": "suspicious",
+                "orszag_tang": "cannot tell",
+            },
+        )
+        self.assertEqual(night["tests"]["ion_ion_beam1d"]["key"], 0.09)
+        html = self.index()
+        self.assertIn("order 1 not 3", html)  # the abnormal test shows the model's text
+        self.assertIn(
+            f"{TC_BASE}/guestAuth/repository/download/{HYB_TYPE}/11:id/"
+            "physics-out/hybrid/figures/ion_ion_beam1d__a.png",
+            html,
+        )
+        self.assertFalse((self.site / "history.pending.json").exists())
+        self.assertEqual(self.printed, "")
+
+    def test_reused_upstream_build_keeps_tonights_date(self):
+        self.write_both()
+        old = tc_build(11, HYB_TYPE, YESTERDAY, trigger="user")
+        get = fake_teamcity(tc_nightly(old, tc_build(12, MHD_TYPE)))
+        self.main(get)
+        (night,) = self.nights()
+        self.assertEqual(night["date"], "2026-10-28")
+        self.assertIs(night["run"]["manual"], False)
+        self.assertEqual(night["run"]["builds"]["hybrid"]["start"], "2026-10-27")
+
+    def test_one_night_per_date_and_a_manual_one_never_replaces_a_scheduled_one(self):
+        self.write_both()
+        self.main(fake_teamcity(tc_nightly(), head_trigger="user"))
+        (night,) = self.nights()
+        self.assertEqual(
+            (night["run"]["manual"], night["run"]["time"]), (True, "02:00")
+        )
+        self.assertIn("manual run 02:00", self.index())
+        self.main(fake_teamcity(tc_nightly()))  # the scheduled night replaces it
+        self.main(fake_teamcity(tc_nightly(), head_trigger="user"))
+        # an unreadable head: unknown trigger, so manual
+        self.main(fake_teamcity(tc_nightly(), head_broken=True))
+        (night,) = self.nights()
+        self.assertIs(night["run"]["manual"], False)
+        self.assertIn("not recorded in the history", self.index())
+
+    def test_teamcity_is_asked_once_per_build(self):
+        self.write_both()
+        get = fake_teamcity(tc_nightly(), heads=())  # no head: the writer is the start
+        self.main(get)
+        own = [u for u in get.urls if "builds/id:5?" in u]
+        self.assertEqual(len(own), 1)
+        asked = [u for u in get.urls if "/artifacts/children/" in u]
+        self.assertTrue(asked)
+        self.assertEqual(len(asked), len(set(asked)))
+
+    def test_the_commit_comes_from_teamcity(self):
+        self.write_both(hybrid_meta={"sha": SHA_DEF})
+        self.main(fake_teamcity(tc_nightly()))
+        self.assertEqual(self.nights()[0]["run"]["sha"], SHA_ABC)
+        self.assertIn("differs from TeamCity", self.index())
+        disagree = tc_nightly(
+            tc_build(11, HYB_TYPE), tc_build(12, MHD_TYPE, sha=SHA_DEF)
+        )
+        self.main(fake_teamcity(disagree))
+        self.assertIsNone(self.nights()[0]["run"]["sha"])
+
+    def test_the_builds_are_found_from_the_writer_and_its_pipeline_head(self):
+        self.write_both()
+        props = self.d / "props"
+        props.write_text("teamcity.build.id=5\n")
+        # undone by setUp's patch.dict
+        os.environ["TEAMCITY_BUILD_PROPERTIES_FILE"] = str(props)
+        get = fake_teamcity(tc_nightly(), heads=(8, 9))
+        self.main(get, own=False)
+        urls = "\n".join(get.urls)
+        self.assertIn("snapshotDependency:(from:(id:5))", urls)
+        self.assertIn("snapshotDependency:(to:(id:9))", urls)  # the newest head
+        self.assertEqual(len(self.nights()[0]["run"]["builds"]), 2)
+        self.assertIn("other pipeline heads found: 8", self.index())
+        get = fake_teamcity(tc_nightly(), heads=(8, 9))
+        self.main(get, ["--head-build-id", "77"])
+        urls = "\n".join(get.urls)
+        self.assertNotIn("snapshotDependency:(from:", urls)
+        self.assertIn("snapshotDependency:(to:(id:77))", urls)
+
+    def test_without_teamcity_the_night_is_today_and_manual_with_no_builds(self):
+        self.write_both()
+        self.assertEqual(self.main(down), 0)
+        (night,) = self.nights()
+        self.assertRegex(night["date"], r"\d{4}-\d{2}-\d{2}")
+        self.assertEqual(night["run"]["builds"], {})
+        self.assertIsNone(night["run"]["sha"])
+        self.assertIs(night["run"]["manual"], True)  # an unknown trigger is manual
+
+    def test_no_tzdata_means_utc_and_a_note(self):
+        self.write_both()
+        with unittest.mock.patch.object(publish, "ZoneInfo", side_effect=KeyError("x")):
+            self.main(fake_teamcity(tc_nightly()))
+        self.assertIn("UTC", self.index())
+        self.assertEqual(self.nights()[0]["date"], "2026-10-28")
+
+    def test_never_a_gate(self):
+        """An internal error: exit 0, one printed line, yesterday's page left as it was."""
+        self.write_both()
+        (self.site / "index.html").write_text("yesterday")
+        with unittest.mock.patch.object(
+            page, "render", side_effect=RuntimeError("boom")
+        ):
+            self.assertEqual(self.main(fake_teamcity(tc_nightly())), 0)
+        self.assertEqual(self.index(), "yesterday")
+        self.assertEqual(len(self.printed.strip().splitlines()), 1)
+        self.assertIn("boom", self.printed)
+        self.assertFalse((self.site / "history.json").exists())
+        self.assertEqual(self.main(down, ["--nope"]), 0)  # bad arguments
+
+    def test_unreadable_history_is_not_overwritten(self):
+        self.write_both()
+        (self.site / "history.json").write_text("{not json")
+        get = fake_teamcity(tc_nightly())
+        self.assertEqual(self.main(get), 0)
+        self.assertEqual((self.site / "history.json").read_text(), "{not json")
+        (night,) = self.nights("history.pending.json")
+        self.assertEqual(night["date"], "2026-10-28")
+        self.assertIn("history.json has problems: 1 nights kept aside", self.index())
+        # fixed by hand: the next run merges what was kept aside, and deletes it
+        history.dump([], self.site / "history.json")
+        self.main(get)
+        self.assertEqual([n["date"] for n in self.nights()], ["2026-10-28"])
+        self.assertFalse((self.site / "history.pending.json").exists())
+
+    def test_notes_from_the_parts(self):
+        self.write_both(
+            hybrid_meta={
+                "agent_status": "unavailable",
+                "agent_reason": "timeout",
+                "unavailable_nights": 3,
+                "opencode_version": "1.19.0",
+                "not_given": ["a.png"],
+            }
+        )
+
+        def change(s):
+            s["decks"][0]["freshness"] = "unknown"
+            s["decks"][0]["numbers"] = {"bad key": 1}
+
+        self.edit_summary("hybrid", change)
+        self.main(fake_teamcity(tc_nightly()))
+        html = self.index()
+        for note in (
+            "agent unavailable 3 nights in a row (hybrid)",
+            "freshness unknown: figures may be from an earlier run (hybrid)",
+            "OpenCode 1.19.0 differs from the pinned 1.18.32",
+            "not given to the agent (symlink or not a regular file): a.png",
+            "number ion_ion_beam1d.bad key",
+        ):
+            self.assertIn(note, html)
+
+    def test_hostile_input_renders_no_foreign_link(self):
+        """The pod's meta.json, summary.json and agent.md, and a hand-edited history.json,
+        are untrusted: every src and href on the page goes to TeamCity, GitHub or an anchor."""
+        evil = "https://evil.example/x.png"
+        prev = history.night(
+            "2026-10-27",
+            {
+                "sha": SHA_ABC,
+                "manual": False,
+                "time": "01:00",
+                "builds": {"mhd": {"id": 12, "type": MHD_TYPE, "start": "2026-10-27"}},
+            },
+            {
+                "convergence": {
+                    "status": '<a href="//evil.example">x</a>',
+                    "job": "mhd",
+                    "reason": f'"><img src="{evil}" onload="x">',
+                },
+                "orszag_tang": {"status": 'x y" onload="alert(1)', "job": "mhd"},
+            },
+        )
+        # nights with a bad build id, type or start are dropped whole, never linked
+        bad_builds = [
+            {"id": "13ZZbad", "type": MHD_TYPE, "start": "2026-10-20"},
+            {"id": 13, "type": "ZZbad/../x", "start": "2026-10-20"},
+            {"id": 13, "type": MHD_TYPE, "start": "0000ZZbad"},
+        ]
+        nights = []
+        for i, b in enumerate(bad_builds + [None] * 3):
+            n = dict(
+                prev,
+                date=f"2026-10-2{i}",
+                tests={"convergence": {"status": "looks right", "job": "mhd"}},
+            )
+            n["run"] = dict(
+                prev["run"], builds={"mhd": b or prev["run"]["builds"]["mhd"]}
+            )
+            nights.append(n)
+        history.dump(nights + [prev], self.site / "history.json")
+        self.write_both()
+        self.write_job(
+            "mhd",
+            ("convergence", "orszag_tang"),
+            f'### convergence\nVerdict: suspicious\n<img src={evil}>\n<a href="{evil}">x</a>',
+            EVIL_META
+            | {"sha": SHA_DEF, "build_id": f'5"><img src="{evil}'}
+            | {"agent_reason": f'<img src="{evil}">'},
+        )
+
+        def change(s):
+            s["decks"][0]["figures"] = [
+                f'convergence__x.png"><img src="{evil}',
+                "convergence__ok.svg",
+                "convergence__ok.png",
+            ]
+            s["decks"][1]["status"] = f'extract error "><img src="{evil}">'
+            s["decks"].append({"name": f'<a href="{evil}">click</a>', "figures": []})
+
+        self.edit_summary("mhd", change)
+        self.main(fake_teamcity(tc_nightly()))
+        html = self.index()
+        links = re.findall(r'(?:src|href)="([^"]*)"', html)
+        self.assertTrue(links)
+        for url in links:
+            self.assertTrue(
+                url.startswith(
+                    (TC_BASE + "/", "https://github.com/PHAREHUB/PHARE/", "#")
+                ),
+                url,
+            )
+        for raw in (
+            "<img src=https",
+            '<img src="https://evil',
+            'onload="',
+            '<a href="//evil',
+        ):
+            self.assertNotIn(raw, html)
+        self.assertEqual(html.count("<script>"), 1)
+        self.assertNotIn("ZZbad", html)
+        self.assertIn("history.json: dropped 3 bad night(s)", html)
+        self.assertIn("convergence__ok.png", "".join(links))
+        self.assertNotIn("convergence__ok.svg", "".join(links))
+
+    def test_clean_part_meta(self):
+        meta = EVIL_META | {
+            "build_id": '5"><img src="//evil.example/b.png">',
+            "agent_status": 'ok"><img src="//evil.example/s.png">',
+            "unavailable_nights": '9"><img src="//evil.example/u.png">',
+            "sha": "A" * 40,  # not lower-case hex
+            "agent_reason": "r" * 500,
+            "not_given": ["n" * 500] + [f"f{i}" for i in range(30)],
+        }
+        out = publish.clean_part({"job": "mhd", "meta": meta, "summary": {}}, {})
+        clean = out["meta"]
+        self.assertEqual(
+            [
+                clean[k]
+                for k in ("build_id", "sha", "agent_status", "unavailable_nights")
+            ],
+            [None, None, None, 0],
+        )
+        self.assertEqual(clean["opencode_version"], "unknown")
+        self.assertEqual(len(clean["agent_reason"]), 200)
+        self.assertEqual(
+            (len(clean["not_given"]), len(clean["not_given"][0])), (20, 200)
+        )
+        self.assertTrue([d for d in out["dropped"] if "not_given" in d])
+        good = META | {"sha": SHA_ABC, "opencode_version": "1.19.0-beta.2"}
+        clean = publish.clean_part({"job": "mhd", "meta": good, "summary": {}}, {})[
+            "meta"
+        ]
+        self.assertEqual(
+            [clean[k] for k in ("build_id", "sha", "opencode_version", "agent_status")],
+            [5, SHA_ABC, "1.19.0-beta.2", "ok"],
+        )
+
+    def test_clean_part_decks(self):
+        figures = [
+            "ion_ion_beam1d__a.png",
+            "ion_ion_beam1d__b.mp4",
+            "ion_ion_beam1d__a.svg",
+            "td1d__x.png",  # another deck's prefix
+            'ion_ion_beam1d__c.png"><img',
+            5,
+        ] + [f"ion_ion_beam1d__{i}.png" for i in range(3)]
+        numbers = {
+            "gamma": 0.1,
+            "ok": True,
+            "n_int": 3,
+            "bad key!": 1,
+            "n": float("nan"),
+            "inf": float("inf"),
+            "huge": 10**400,
+            "s": "x",
+            "k" * 41: 1,
+        }
+        summary = {
+            "decks_exit_code": "1",
+            "decks": [
+                {
+                    "name": "ion_ion_beam1d",
+                    "figures": figures,
+                    "numbers": numbers,
+                    "status": "s" * 500,
+                    "freshness": "f" * 500,
+                    "deck_passed": "yes",
+                },
+                {"name": "td1d", "numbers": [1], "status": 5, "deck_passed": False},
+                {"name": "td1d"},  # a second time
+                {"name": "other"},  # not a deck of this job
+                "x",
+            ],
+        }
+        out = publish.clean_part(
+            {"job": "hybrid", "meta": META, "summary": summary},
+            {"ion_ion_beam1d": 3, "td1d": 6},
+        )
+        ib, td = out["summary"]["decks"]
+        self.assertEqual(
+            ib["figures"],
+            ["ion_ion_beam1d__a.png", "ion_ion_beam1d__b.mp4", "ion_ion_beam1d__0.png"],
+        )
+        self.assertEqual(ib["numbers"], {"gamma": 0.1, "ok": True, "n_int": 3})
+        self.assertEqual(
+            (len(ib["status"]), len(ib["freshness"]), ib["deck_passed"]),
+            (200, 200, None),
+        )
+        self.assertEqual(
+            (td["figures"], td["numbers"], td["status"], td["deck_passed"]),
+            ([], {}, None, False),
+        )
+        self.assertIsNone(out["summary"]["decks_exit_code"])
+        dropped = " | ".join(out["dropped"])
+        for bad in (
+            "figure ion_ion_beam1d__a.svg",
+            "figure td1d__x.png",
+            "figure ion_ion_beam1d__1.png over max_figures",
+            "number ion_ion_beam1d.bad key!",
+            "numbers of td1d",
+            "status of td1d",
+            "deck other",
+        ):
+            self.assertIn(bad, dropped)
+
+    def test_a_part_without_readable_meta_and_summary_is_missing(self):
+        with tempfile.TemporaryDirectory() as t:
+            j = Path(t)
+            for broken in ("meta.json", "summary.json"):
+                for text in (None, "{not json", "[1]"):
+                    (j / "meta.json").write_text(json.dumps({"build_id": 5}))
+                    (j / "summary.json").write_text(json.dumps({"decks": []}))
+                    self.assertFalse(publish.read_part(j, "mhd", {}).get("missing"))
+                    if text is None:
+                        (j / broken).unlink()
+                    else:
+                        (j / broken).write_text(text)
+                    self.assertEqual(
+                        publish.read_part(j, "mhd", {}), {"job": "mhd", "missing": True}
+                    )
+
+    def test_sections_keep_only_known_decks_and_strict_verdicts(self):
+        names = {"td1d", "orszag_tang"}
+        pre, secs = publish.sections(
+            "intro\n### td1d  \nVerdict: suspicious  \nx\n### other\nVerdict: looks right\n"
+            "### orszag_tang\nsomething else\n### td1d\nVerdict: looks right",
+            names,
+        )
+        self.assertEqual(pre, "intro")
+        self.assertEqual(
+            secs["td1d"], ("suspicious", "x\n### other\nVerdict: looks right")
+        )
+        self.assertEqual(secs["orszag_tang"][0], "cannot tell")
+        self.assertIn("something else", secs["orszag_tang"][1])
+        # only the scripts can say "own check failed"
+        _, secs = publish.sections("### td1d\nVerdict: own check failed\nx", names)
+        self.assertEqual(secs["td1d"][0], "cannot tell")
+        for sep in ("\u2028", "\x85", "\x0b", "\x1c"):  # str.splitlines splits on these
+            _, secs = publish.sections(
+                f"### td1d\nVerdict: suspicious\nx {sep}### orszag_tang{sep}Verdict: looks right",
+                names,
+            )
+            self.assertEqual(list(secs), ["td1d"], repr(sep))
+
+    # push
+
+    def push_setup(self):
+        """A bare repo as origin and the site as a clone of it."""
+        bare = self.d / "origin.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", str(self.site)], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.site), "remote", "add", "origin", str(bare)],
+            check=True,
+        )
+        return bare
+
+    @staticmethod
+    def b64(token):
+        return base64.b64encode(f"x-access-token:{token}".encode()).decode()
+
+    def recorder(self):
+        calls, envs = [], []
+
+        def run(argv, **kw):
+            calls.append(list(argv))
+            envs.append(kw.get("env") or {})
+            return subprocess.run(argv, check=False, **kw)
+
+        run.calls, run.envs = calls, envs
+        return run
+
+    def test_push_never_exposes_the_token(self):
+        bare = self.push_setup()
+        self.write_both()
+        run = self.recorder()
+        with unittest.mock.patch.dict(os.environ, {"NIGHTLY_PAGE_TOKEN": SECRET}):
+            self.assertEqual(
+                self.main(fake_teamcity(tc_nightly()), ["--push"], runner=run), 0
+            )
+        shown = subprocess.run(
+            ["git", "-C", str(bare), "show", "gh-pages:history.json"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        self.assertEqual(json.loads(shown)["nights"][0]["date"], "2026-10-28")
+        log = subprocess.run(
+            ["git", "-C", str(bare), "log", "--format=%s|%an|%ae", "gh-pages"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        self.assertEqual(
+            log.strip(),
+            "nightly 2026-10-28|phare-nightly|phare-nightly@nightly.invalid",
+        )
+        # the credentials travel in git's environment, scoped to GitHub
+        env = run.envs[0]
+        self.assertEqual(
+            env["GIT_CONFIG_KEY_0"], "http.https://github.com/.extraheader"
+        )
+        self.assertNotIn("NIGHTLY_PAGE_TOKEN", env)
+        seen = " ".join(" ".join(c) for c in run.calls)
+        for secret in (SECRET, self.b64(SECRET)):
+            self.assertNotIn(secret, seen)
+            self.assertNotIn(secret, self.printed)
+            self.assertNotIn(secret, (self.site / ".git/config").read_text())
+            self.assertNotIn(secret, (bare / "config").read_text())
+        self.assertEqual(
+            [c[3] for c in run.calls if c[0] == "git"],
+            ["add", "diff", "commit", "push"],
+        )
+        # a second run with nothing new commits nothing but still pushes
+        run.calls.clear()
+        with unittest.mock.patch.dict(os.environ, {"NIGHTLY_PAGE_TOKEN": SECRET}):
+            self.main(fake_teamcity(tc_nightly()), ["--push"], runner=run)
+        self.assertNotIn("commit", [c[3] for c in run.calls])
+
+    def fake_run(self, returncode=0, stdout="", stderr=""):
+        calls = []
+
+        def run(argv, **kw):
+            calls.append((list(argv), kw.get("env") or {}))
+            rc = 1 if argv[3:5] == ["diff", "--cached"] else returncode
+            return subprocess.CompletedProcess(argv, rc, stdout, stderr)
+
+        run.calls = calls
+        return run
+
+    def test_a_failed_push_is_one_line_and_exit_zero(self):
+        self.write_both()
+        leak = f"denied {SECRET} and {self.b64(SECRET)}"
+        run = self.fake_run(returncode=1, stdout=leak, stderr=leak)
+        with unittest.mock.patch.dict(os.environ, {"NIGHTLY_PAGE_TOKEN": SECRET}):
+            self.assertEqual(
+                self.main(fake_teamcity(tc_nightly()), ["--push"], runner=run), 0
+            )
+        lines = self.printed.strip().splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertIn("denied ***", lines[0])
+        for secret in (SECRET, self.b64(SECRET)):
+            self.assertNotIn(secret, self.printed)
+        self.assertIn("PHARE nightly physics", self.index())
+
+    def test_push_refusals(self):
+        """Only a night whose every known build is on the default branch reaches the page."""
+        self.write_both()
+        off = {"default": False}
+        cases = {
+            "a job build off the default branch": (
+                fake_teamcity([tc_build(11, HYB_TYPE, **off), tc_build(12, MHD_TYPE)]),
+                [],
+                SECRET,
+            ),
+            "no build of a decks.yml job": (
+                fake_teamcity([tc_build(13, "Other_virtual_build_V__1")]),
+                [],
+                SECRET,
+            ),
+            # the job builds are master builds, reused by a branch-run pipeline
+            "the head off the default branch": (
+                fake_teamcity(tc_nightly(), head_default=False),
+                [],
+                SECRET,
+            ),
+            "the writer off the default branch": (
+                fake_teamcity(tc_nightly(), own_default=False),
+                [],
+                SECRET,
+            ),
+            "TeamCity down": (down, [], SECRET),
+            "no token": (fake_teamcity(tc_nightly()), [], None),
+            "local figures": (
+                fake_teamcity(tc_nightly()),
+                ["--figure-base", "../physics-out"],
+                SECRET,
+            ),
+        }
+        for why, (get, extra, token) in cases.items():
+            with self.subTest(why):
+                run = self.fake_run()
+                env = {"NIGHTLY_PAGE_TOKEN": token} if token else {}
+                with unittest.mock.patch.dict(os.environ, env):
+                    self.assertEqual(self.main(get, ["--push", *extra], runner=run), 0)
+                self.assertEqual(run.calls, [])
+                self.assertEqual(len(self.printed.strip().splitlines()), 1)
+                self.assertIn("push refused", self.printed)
+        # the local preview links its figures without any TeamCity build
+        self.main(fake_teamcity(tc_nightly()), ["--figure-base", "../in"], own=False)
+        self.assertIn('src="../in/hybrid/figures/ion_ion_beam1d__a.png"', self.index())
+
+    def test_an_unreadable_pending_file_is_set_aside_and_pushed(self):
+        self.write_both()
+        (self.site / "history.pending.json").write_text("{not json")
+        run = self.fake_run()
+        with unittest.mock.patch.dict(os.environ, {"NIGHTLY_PAGE_TOKEN": SECRET}):
+            self.main(fake_teamcity(tc_nightly()), ["--push"], runner=run)
+        self.assertFalse((self.site / "history.pending.json").exists())
+        broken = "history.pending.broken-2026-10-28.json"
+        self.assertEqual((self.site / broken).read_text(), "{not json")
+        self.assertEqual(len(self.nights()), 1)  # history.json is still written
+        self.assertIn("set aside", self.index())
+        files = run.calls[0][0][6:]  # git -C site add -A -- <files>
+        self.assertEqual(
+            sorted(files),
+            sorted(["index.html", "history.json", "history.pending.json", broken]),
+        )
 
 
 if __name__ == "__main__":
