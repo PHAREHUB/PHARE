@@ -78,6 +78,7 @@ def _parse_level_info(level):
         level = level[:-1]
     bits = [s for s in level.strip().split(" ") if s]
     ilvl = bits[0].split(":")[1]
+    particles = 0  # MHD levels have none
     for bit in bits:
         needle = "parts("
         if bit.startswith(needle):
