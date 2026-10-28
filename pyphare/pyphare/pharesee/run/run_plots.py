@@ -33,7 +33,7 @@ def finest_field_plot(run_path, qty, **kwargs):
     r = Run(run_path)
 
     time = kwargs.get("time")
-    dim = r.GetDl("finest", time).shape[0]
+    dim = r.GetDl().shape[0]
     interp = kwargs.get("interp", "nearest")
 
     if qty in ["Bx", "By", "Bz"]:
