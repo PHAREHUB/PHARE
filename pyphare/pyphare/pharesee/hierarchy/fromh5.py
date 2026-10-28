@@ -341,7 +341,6 @@ def new_from_h5(filepath, times, **kwargs):
     hier = PatchHierarchy(
         time_hier,
         domain_box,
-        refinement_ratio,
         h5f,
         selection_box=selection_box,
     )
