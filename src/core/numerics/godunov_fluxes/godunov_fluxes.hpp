@@ -190,11 +190,6 @@ private:
         // E and the CT edge-B buffers are point values living on edges; each product is formed
         // on the edge it lives on, then projected onto the flux face across the single axis
         // separating the two locations (primal -> dual in every case).
-        //
-        // directionalInterp returns the identity stencil for an axis the simulation does not
-        // have, which is what collapses the lower dimensional cases: in 2D Ey already sits on
-        // the x-face, and in 1D both products already sit on the x-face.
-        using InterpDir = typename GridLayout::implT::InterpDir;
 
         // Same as GridLayout::project, but for an expression rather than a stored field: the
         // integrand is a product of two fields, and since both are point values the product
@@ -214,12 +209,12 @@ private:
         auto const& Ey = E(Component::Y);
         auto const& Ez = E(Component::Z);
 
+        using implT = GridLayout::implT;
+
         if constexpr (direction == Direction::X)
         {
-            constexpr auto zEdgeToXFace
-                = GridLayout::implT::template directionalInterp<dirY, InterpDir::PrimalToDual>();
-            constexpr auto yEdgeToXFace
-                = GridLayout::implT::template directionalInterp<dirZ, InterpDir::PrimalToDual>();
+            constexpr auto zEdgeToXFace = implT::edgeZToFaceX();
+            constexpr auto yEdgeToXFace = implT::edgeYToFaceX();
 
             auto const& By_at_Ez = ct_state.getBy_at_Ez();
             auto const& Bz_at_Ey = ct_state.getBz_at_Ey();
@@ -233,10 +228,8 @@ private:
         }
         else if constexpr (direction == Direction::Y)
         {
-            constexpr auto zEdgeToYFace
-                = GridLayout::implT::template directionalInterp<dirX, InterpDir::PrimalToDual>();
-            constexpr auto xEdgeToYFace
-                = GridLayout::implT::template directionalInterp<dirZ, InterpDir::PrimalToDual>();
+            constexpr auto zEdgeToYFace = implT::edgeZToFaceY();
+            constexpr auto xEdgeToYFace = implT::edgeXToFaceY();
 
             auto const& Bx_at_Ez = ct_state.getBx_at_Ez();
             auto const& Bz_at_Ex = ct_state.getBz_at_Ex();
@@ -250,10 +243,8 @@ private:
         }
         else if constexpr (direction == Direction::Z)
         {
-            constexpr auto xEdgeToZFace
-                = GridLayout::implT::template directionalInterp<dirY, InterpDir::PrimalToDual>();
-            constexpr auto yEdgeToZFace
-                = GridLayout::implT::template directionalInterp<dirX, InterpDir::PrimalToDual>();
+            constexpr auto xEdgeToZFace = implT::edgeXToFaceZ();
+            constexpr auto yEdgeToZFace = implT::edgeYToFaceZ();
 
             auto const& By_at_Ex = ct_state.getBy_at_Ex();
             auto const& Bx_at_Ey = ct_state.getBx_at_Ey();
