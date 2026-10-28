@@ -146,14 +146,14 @@ struct UserDefinedSetup
 
     double maxErrorOnB0(double time = evalTime)
     {
-        return maxErrorAgainstCurl(externalField.B0, timeProfile(time));
+        return maxErrorAgainstCurl(externalField.B0(), timeProfile(time));
     }
 
     double toleranceOnB0(double time = evalTime) { return baseTolerance * timeProfile(time); }
 
     double maxErrorOnTimeDerivative(double time = evalTime)
     {
-        return maxErrorAgainstCurl(externalField.dB0dt, timeProfileDerivative(time));
+        return maxErrorAgainstCurl(externalField.dB0dt(), timeProfileDerivative(time));
     }
 
     double toleranceOnTimeDerivative(double time = evalTime)
@@ -166,7 +166,7 @@ struct UserDefinedSetup
     {
         double maxAbs = 0.;
         for_N<3>([&](auto i) {
-            auto& field = externalField.dB0dt(static_cast<Component>(decltype(i)::value));
+            auto& field = externalField.dB0dt()(static_cast<Component>(decltype(i)::value));
             for (auto const& v : field)
                 maxAbs = std::max(maxAbs, std::abs(v));
         });

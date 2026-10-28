@@ -2,14 +2,20 @@
 #define PHARE_CORE_MODELS_EXTERNAL_FIELD_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 
+#include <cstddef>
+#include <stdexcept>
 #include <string>
-#include <tuple>
+#include <vector>
 
 namespace PHARE::core
 {
 /**
  * @brief The external magnetic field and its time derivative.
+ *
+ * Holds no vecfield, and so registers and allocates nothing, when no external field is
+ * declared: B0() and dB0dt() then throw.
  *
  * @tparam VecFieldT vecfield implementation
  *
@@ -23,33 +29,64 @@ public:
 
     static constexpr std::size_t dimension = VecFieldT::dimension;
 
-    explicit ExternalField(std::string const& name)
-        : B0{name + "_B0", tensor_type::B}
-        , dB0dt{name + "_dB0dt", tensor_type::B}
+    ExternalField(std::string const& name, bool const enabled)
     {
+        if (enabled)
+        {
+            fields_.emplace_back(name + "_B0", tensor_type::B);
+            fields_.emplace_back(name + "_dB0dt", tensor_type::B);
+        }
     }
+
+    NO_DISCARD bool isEnabled() const { return !fields_.empty(); }
+
+    NO_DISCARD VecFieldT& B0() { return field_(0); }
+    NO_DISCARD VecFieldT const& B0() const { return field_(0); }
+
+    NO_DISCARD VecFieldT& dB0dt() { return field_(1); }
+    NO_DISCARD VecFieldT const& dB0dt() const { return field_(1); }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return core::isUsable(B0, dB0dt); }
-
-    NO_DISCARD bool isSettable() const { return core::isSettable(B0, dB0dt); }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    NO_DISCARD bool isUsable() const
     {
-        return std::forward_as_tuple(B0, dB0dt);
+        return core::all(fields_, [](auto const& field) { return field.isUsable(); });
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(B0, dB0dt); }
+    NO_DISCARD bool isSettable() const
+    {
+        return core::all(fields_, [](auto const& field) { return field.isSettable(); });
+    }
+
+    NO_DISCARD std::vector<VecFieldT>& getRunTimeResourcesViewList() { return fields_; }
+    NO_DISCARD std::vector<VecFieldT> const& getRunTimeResourcesViewList() const { return fields_; }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    VecFieldT B0;
-    VecFieldT dB0dt;
+private:
+    VecFieldT& field_(std::size_t const i)
+    {
+        throwIfDisabled_();
+        return fields_[i];
+    }
+
+    VecFieldT const& field_(std::size_t const i) const
+    {
+        throwIfDisabled_();
+        return fields_[i];
+    }
+
+    void throwIfDisabled_() const
+    {
+        if (!isEnabled())
+            throw std::runtime_error("no external field was declared");
+    }
+
+    std::vector<VecFieldT> fields_;
 };
 
 } // namespace PHARE::core

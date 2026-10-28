@@ -4,11 +4,11 @@ import numpy as np
 from ddt import data, ddt, unpack
 
 from pyphare.pharein import global_vars, simulation
+from pyphare.pharein.diagnostics import ElectromagDiagnostics
 from pyphare.pharein.external_field import (
     DipoleExternalField,
     ExternalField,
     UserDefinedExternalField,
-    ZeroExternalField,
     resolve_external_field,
 )
 
@@ -66,6 +66,7 @@ _timed = {
 
 _invalid_declarations = [
     (2, {"type": "quadrupole"}),  # unknown type
+    (2, {"type": "zero"}),
     (2, {"position": (0.5, 1.5)}),  # no type
     (1, _dipole),  # a dipole makes no sense in 1D
     (3, _dipole),  # both vectors must have ndim components
@@ -138,14 +139,8 @@ class RecordingPopulator:
 @ddt
 class TestExternalFieldResolution(unittest.TestCase):
     def test_absent_gives_no_external_field(self):
-        self.assertIsInstance(resolve_external_field(2), ZeroExternalField)
-        self.assertIsInstance(
-            resolve_external_field(2, external_field=None), ZeroExternalField
-        )
-        self.assertIsInstance(
-            resolve_external_field(2, external_field={"type": "zero"}),
-            ZeroExternalField,
-        )
+        self.assertIsNone(resolve_external_field(2))
+        self.assertIsNone(resolve_external_field(2, external_field=None))
 
     def test_dipole_is_resolved(self):
         ef = resolve_external_field(
@@ -273,20 +268,6 @@ class TestExternalFieldResolution(unittest.TestCase):
 
 
 class TestExternalFieldPopulateDict(unittest.TestCase):
-    def test_zero_writes_only_its_type(self):
-        dp = RecordingPopulator()
-        ZeroExternalField().populate_dict(dp, 2)
-
-        self.assertEqual(
-            dp.written,
-            {
-                "simulation/external_field/type": (
-                    "ExternalFieldUpdaterType",
-                    "zero",
-                )
-            },
-        )
-
     def test_dipole_writes_its_vectors_component_wise(self):
         dp = RecordingPopulator()
         DipoleExternalField((0.5, 1.5), (0.0, 1.0), 0.0).populate_dict(dp, 2)
@@ -382,7 +363,7 @@ class TestSimulationExternalField(unittest.TestCase):
         sim = simulation.Simulation(
             time_step=0.001, time_step_nbr=10, cells=(20, 20), dl=(0.1, 0.1)
         )
-        self.assertIsInstance(sim.external_field, ZeroExternalField)
+        self.assertIsNone(sim.external_field)
 
     def test_simulation_accepts_a_dipole(self):
         sim = simulation.Simulation(
@@ -408,6 +389,24 @@ class TestSimulationExternalField(unittest.TestCase):
             external_field={"type": "user-defined", "potential": (None, None, az_2d)},
         )
         self.assertIsInstance(sim.external_field, UserDefinedExternalField)
+
+    def test_b0_diagnostics_require_an_external_field(self):
+        simulation.Simulation(
+            time_step=0.001, time_step_nbr=10, cells=(20, 20), dl=(0.1, 0.1)
+        )
+        with self.assertRaises(RuntimeError):
+            ElectromagDiagnostics(quantity="B0", write_timestamps=[0.0])
+
+    def test_b0_diagnostics_with_an_external_field(self):
+        simulation.Simulation(
+            time_step=0.001,
+            time_step_nbr=10,
+            cells=(20, 20),
+            dl=(0.1, 0.1),
+            external_field={"type": "user-defined", "potential": (None, None, az_2d)},
+        )
+        diag = ElectromagDiagnostics(quantity="B0", write_timestamps=[0.0])
+        self.assertEqual(diag.quantity, "/EM_B0")
 
 
 if __name__ == "__main__":
