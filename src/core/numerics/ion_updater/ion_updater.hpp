@@ -547,8 +547,9 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositDomain_(
         return;
 
     using Accessor_t = std::remove_reference_t<decltype(accessor)>;
-    MultiBoris<Accessor_t, Interpolator_t>{dt_, accessor}.template move<MultiBorisMode::COPY>(
-        boxings);
+    MultiBoris<Accessor_t, Interpolator_t> multi_boris{dt_, accessor};
+    multi_boris.template move<MultiBorisMode::COPY>(boxings);
+    multi_boris.check_move_error();
 }
 
 
@@ -564,7 +565,9 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
     using Accessor_t = std::remove_reference_t<decltype(accessor)>;
     {
         PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::multi_boris");
-        MultiBoris<Accessor_t, Interpolator_t>{dt_, accessor}.move(boxings);
+        MultiBoris<Accessor_t, Interpolator_t> multi_boris{dt_, accessor};
+        multi_boris.move(boxings);
+        multi_boris.check_move_error();
     }
 
     static constexpr bool per_tile_deposit
@@ -714,13 +717,16 @@ void FlatParallelIonUpdater<ParticleArray_t, GridLayout>::updatePopulations(
 }
 
 
-template<typename ParticleArray_t, typename GridLayout>
-using IonUpdaterFor_t
-    = std::conditional_t<ParticleArray_t::layout_mode == LayoutMode::AoSMapped,
-                         IonUpdater<ParticleArray_t, GridLayout>,
-                         std::conditional_t<is_tiled(ParticleArray_t::layout_mode),
-                                            ParallelIonUpdater<ParticleArray_t, GridLayout>,
-                                            FlatParallelIonUpdater<ParticleArray_t, GridLayout>>>;
+namespace detail
+{
+    template<typename ParticleArray_t, typename GridLayout>
+    using HostIonUpdaterFor_t = std::conditional_t<
+        ParticleArray_t::layout_mode == LayoutMode::AoSMapped,
+        IonUpdater<ParticleArray_t, GridLayout>,
+        std::conditional_t<is_tiled(ParticleArray_t::layout_mode),
+                           ParallelIonUpdater<ParticleArray_t, GridLayout>,
+                           FlatParallelIonUpdater<ParticleArray_t, GridLayout>>>;
+} // namespace detail
 
 
 } // namespace PHARE::core
@@ -796,6 +802,7 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositDomain_(
         in.streamer.join();
         in.streamer.dump_times(detail::timings_dir_str + "/updateAndDepositDomain.txt");
     }
+    in.check_move_error();
 }
 
 
@@ -898,6 +905,7 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
         in.streamer.join();
         in.streamer.dump_times(detail::timings_dir_str + "/updateAndDepositAll.txt");
     }
+    in.check_move_error();
 
 
 #if PHARE_DEBUG
@@ -925,6 +933,21 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
 } // namespace PHARE::core::mkn_xyz
 
 #endif // PHARE_HAVE_MKN_GPU
+
+
+namespace PHARE::core
+{
+template<typename ParticleArray_t, typename GridLayout>
+using IonUpdaterFor_t =
+#if PHARE_HAVE_MKN_GPU
+    std::conditional_t<ParticleArray_t::alloc_mode == AllocatorMode::GPU_UNIFIED
+                           and ParticleArray_t::layout_mode != LayoutMode::AoSMapped,
+                       mkn_xyz::ParallelIonUpdater<ParticleArray_t, GridLayout>,
+                       detail::HostIonUpdaterFor_t<ParticleArray_t, GridLayout>>;
+#else
+    detail::HostIonUpdaterFor_t<ParticleArray_t, GridLayout>;
+#endif
+} // namespace PHARE::core
 
 
 #endif // ION_UPDATER_HPP

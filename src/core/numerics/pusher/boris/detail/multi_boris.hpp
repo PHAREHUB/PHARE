@@ -68,9 +68,27 @@ struct MultiBoris
     template<MultiBorisMode mode>
     void move_pooled(auto const& boxings);
 
+    boris::MoveError* move_error() { return move_errors_.data(); }
+
+    void check_move_error() const
+    {
+        auto const& error = move_errors_[0];
+        if (error.flag)
+        {
+            std::stringstream ss;
+            ss << "Particle moved 2 cells with delta/vel: " << error.delta << "/" << error.vel;
+            throw DictionaryException{}("cause", ss.str());
+        }
+    }
+
     double const dt;
     ModelAccessor& accessor;
 
+private:
+    using MoveErrors_t = PHARE::Vector<boris::MoveError, ParticleArray_t::alloc_mode>;
+    typename MoveErrors_t::vector_t move_errors_ = MoveErrors_t::make(1);
+
+public:
     auto static mesh(std::array<double, dim> const& ms, double const& ts)
     {
         std::array<double, dim> halfDtOverDl;
@@ -791,6 +809,7 @@ struct MultiBorisFunctors
         , coef1{pop.charge() * (0.5 * in.dt / pop.mass())}
         , halfdt{in.mesh(view.layout.meshSize(), in.dt)}
         , particles{parts}
+        , move_error{in.move_error()}
     {
         check_particles(parts);
         check_particles_views(parts);
@@ -986,7 +1005,7 @@ struct MultiBorisFunctors
             Interpolator_t interp;
             boris::accelerate(particle, interp.m2p(particle, em, layout), coef1);
         }
-        particle.iCell() = boris::advance<alloc_mode>(particle, halfdt);
+        particle.iCell() = boris::advance<alloc_mode>(particle, halfdt, move_error);
 
         if constexpr (boris_mode == MultiBorisMode::REF)
             move_check(pt, pidx, particle); // pt was built in per_tile, before advance() ran
@@ -997,7 +1016,7 @@ struct MultiBorisFunctors
         static constexpr auto alloc_mode             = Particles_t::alloc_mode;
         auto const& [particle, layout, pt, pidx, em] = std::forward_as_tuple(args...);
 
-        particle.iCell() = boris::advance<alloc_mode>(particle, halfdt);
+        particle.iCell() = boris::advance<alloc_mode>(particle, halfdt, move_error);
 
         if constexpr (particle_type == ParticleType::Domain)
             per_particle_still_in_ghost_box(args...);
@@ -1156,6 +1175,7 @@ struct MultiBorisFunctors
     double const coef1;
     std::array<double, dim> halfdt;
     Particles_t& particles;
+    boris::MoveError* move_error;
 };
 
 } // namespace PHARE::core

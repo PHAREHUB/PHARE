@@ -43,11 +43,16 @@ like.
   deposit kernel and the flat tile deposit are not even compiled for the device.
 - Proper fix: AoSTS `GPU_UNIFIED` permutations in `test_multi_updater.cpp`.
 
-### No CFL check on the GPU
-- `src/core/numerics/pusher/boris/basics.hpp` (`advance`, `advance_noavx`)
-- The |delta| > 2 check only exists for `AllocatorMode::CPU`, a particle moving more than one cell
-  per half step on the device goes unnoticed.
-- Proper fix: a device error flag set by the kernels and checked on the host after the stream syncs.
+### CFL check on the GPU: done except the fused flat kernel
+- `src/core/numerics/pusher/boris/basics.hpp` (`MoveError`, `advance(p, halfdt, error)`),
+  `multi_boris.hpp` (`MultiBoris::move_error()/check_move_error()`, functor member `move_error`),
+  `ion_updater.hpp` (every updater calls `check_move_error()` after its moves / stream joins)
+- With an error record `advance` records the first |delta| > 2 (any allocator, `compare_and_swap`)
+  and returns the particle's own cell; the host throws a `DictionaryException` after the step.
+  Without a record the CPU path still throws `MoveTwoCellException`.
+- Left: `on_tiles_push_deposit` (static, flat tiles, HW only) does not get the record yet.
+- Test: `tests/core/numerics/pusher/test_boris_move_error.cpp` (4/4 on ROCm, incl. a kernel).
+  Not yet run under the mkn CPU emulation (`mkn.sh`), nor the CMake build.
 
 ### CPU emulation runs no shared memory kernels
 - `src/core/numerics/pusher/boris/detail/multi_boris.hpp` (`on_tiles_push_deposit`),
@@ -77,6 +82,19 @@ like.
 - Tiled fields are reduced into a temporary untiled grid, the boundary condition is applied there,
   and the result is scattered back into every tile. Allocates per call and is host only.
 - Proper fix: apply boundary conditions per tile on the tile's ghost region.
+
+## Session state 2026-10-28 (uncommitted on tiling_gpu)
+
+- `throw_exception` (`src/core/def.hpp`) now branches on `PHARE_DEVICE_PASS`: before, every HIP/CUDA
+  build compiled host throws to `PHARE_ASSERT(false)`, silently disabling them.
+- `IonUpdaterFor_t` (end of `ion_updater.hpp`) now picks `mkn_xyz::ParallelIonUpdater` for
+  `GPU_UNIFIED` (not AoSMapped) when `PHARE_HAVE_MKN_GPU`; the host choice is
+  `detail::HostIonUpdaterFor_t`; `solver_ppc.hpp` just uses `IonUpdaterFor_t`.
+- Verified: ROCm `test_multi_updater` 42/42 and `test_boris_move_error` 4/4. To run: the emulation
+  build (`mkn.sh`, needs `bin/core` rebuilt for CPU) for both tests, and a CMake build for
+  `solver_ppc.hpp` / the new pusher test target.
+- Seen once: a huge-dt `updatePopulations` (dt=1e3) on AoSPCTS CPU `parallel` died silently instead
+  of throwing (test since removed); worth a look.
 
 ## Housekeeping
 

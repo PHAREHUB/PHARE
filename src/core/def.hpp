@@ -86,7 +86,7 @@ namespace PHARE
 template<typename Exception, typename... Args>
 inline void throw_exception([[maybe_unused]] Args&&... args) _PHARE_ALL_FN_
 {
-#if defined(__HIPCC__) || defined(__CUDACC__)
+#if PHARE_DEVICE_PASS
     PHARE_ASSERT(false);
 #else
     throw Exception{std::forward<Args>(args)...};

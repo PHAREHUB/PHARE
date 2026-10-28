@@ -2,6 +2,7 @@
 #define PHARE_CORE_PUSHER_BORIS_BASICS_HPP
 
 #include "core/def.hpp"
+#include "core/operators.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/particles/arrays/particle_array_soavx.hpp"
 // #include "core/data/particles/particle.hpp"
@@ -26,17 +27,35 @@ struct MoveTwoCellException : std::exception
     double delta, vel;
 };
 
+struct MoveError
+{
+    int flag     = 0;
+    double delta = 0, vel = 0;
+};
+
 
 template<auto alloc, typename Particle_t, typename Float, std::size_t dim>
-auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl) _PHARE_ALL_FN_
+auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl,
+                    MoveError* const error = nullptr) _PHARE_ALL_FN_
 {
     auto newCell = p.iCell();
     for (std::size_t iDim = 0; iDim < dim; ++iDim)
     {
         Float delta = p.delta()[iDim] + static_cast<Float>(halfDtOverDl[iDim] * p.v()[iDim]);
-        if constexpr (alloc == AllocatorMode::CPU)
-            if (std::abs(delta) > 2)
+        if (std::abs(delta) > 2)
+        {
+            if (error)
+            {
+                if (Operators<int, true, true>::compare_and_swap(&error->flag, 0, 1) == 0)
+                {
+                    error->delta = delta;
+                    error->vel   = p.v()[iDim];
+                }
+                return p.iCell();
+            }
+            else if constexpr (alloc == AllocatorMode::CPU)
                 throw_exception<MoveTwoCellException>(delta, p.v()[iDim]);
+        }
 
         Float iCell     = std::floor(delta);
         p.delta()[iDim] = delta - iCell;
@@ -385,8 +404,7 @@ auto avx_ad_acc_ad(Particles_t& ps, Args&... args) _PHARE_ALL_FN_
                   and std::decay_t<decltype(interpolator)>::interp_order == 1)
     {
         auto const em_view = [&]() { // take as array of views
-            auto const emv
-                = em.template as<Electromag_vt>([](auto const& cptr) { return *cptr; });
+            auto const emv = em.template as<Electromag_vt>([](auto const& cptr) { return *cptr; });
             return std::array{emv.E[0], emv.E[1], emv.E[2], emv.B[0], emv.B[1], emv.B[2]};
         }();
 
