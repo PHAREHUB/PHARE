@@ -5,6 +5,17 @@
 
 #define NO_DISCARD [[nodiscard]]
 
+// inline regardless of the compiler's heuristics, for small hot kernels whose inlining
+//  otherwise flips with unrelated changes elsewhere in the translation unit
+//  PHARE_LAMBDA_ALWAYS_INLINE goes after a lambda's parameter list
+#if defined(__GNUC__) || defined(__clang__)
+#define PHARE_LAMBDA_ALWAYS_INLINE __attribute__((always_inline))
+#define PHARE_ALWAYS_INLINE __attribute__((always_inline)) inline
+#else
+#define PHARE_LAMBDA_ALWAYS_INLINE
+#define PHARE_ALWAYS_INLINE inline
+#endif
+
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
 #define PHARE_DEBUG_DO(...) __VA_ARGS__
 #else
