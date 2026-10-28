@@ -30,6 +30,6 @@
   cmake "${CWD}" -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
         -DCMAKE_BUILD_TYPE=Debug -DdevMode=ON -DwithKokkos=ON -DwithGpu=ON ${BACKEND} \
         -DCMAKE_CXX_FLAGS="-O2 -DPHARE_DIAG_DOUBLES=1" ${SAMRAI_ROOT:+-DSAMRAI_ROOT=${SAMRAI_ROOT}}
-  cmake --build . --target amper_gpu_kokkos -j ${THREADS:-$(nproc)}
-  ctest -R amper_gpu_kokkos --output-on-failure
+  cmake --build . --target test-field-solvers-gpu -j ${THREADS:-$(nproc)}
+  ctest -R test-field-solvers-gpu --output-on-failure
 )

@@ -52,9 +52,8 @@ public:
                 layout_.evalOnBiggerBox(Jc, amount, fn);
         };
 
-        using Field_t    = std::remove_cvref_t<decltype(Jx)>::Super;
         auto const curlB = curl(layout_, B);
-        Field_t jx = Jx, jy = Jy, jz = Jz;
+        basic::Field jx = Jx, jy = Jy, jz = Jz;
 
         eval(Jx,
              [=] _PHARE_ALL_FN_(auto const&... ijk) mutable { jx(ijk...) = curlB.x({ijk...}); });

@@ -36,13 +36,34 @@ like.
 - Only flat tiles (AoSTS, AoSMapped) have `on_tiles_push_deposit`, AoSPCTS goes through
   `move_rest` with a separate deposit.
 
+### Flat tile GPU kernels are never exercised
+- `src/core/numerics/pusher/boris/detail/multi_boris.hpp` (`on_tiles_push_deposit`),
+  `src/core/numerics/ion_updater/ion_updater.hpp` (`mkn_xyz::ParallelIonUpdater`, flat deposit)
+- No simulation, test or bench builds AoSTS/AoSMapped with `GPU_UNIFIED`, so the fused push +
+  deposit kernel and the flat tile deposit are not even compiled for the device.
+- Proper fix: AoSTS `GPU_UNIFIED` permutations in `test_multi_updater.cpp`.
+
+### No CFL check on the GPU
+- `src/core/numerics/pusher/boris/basics.hpp` (`advance`, `advance_noavx`)
+- The |delta| > 2 check only exists for `AllocatorMode::CPU`, a particle moving more than one cell
+  per half step on the device goes unnoticed.
+- Proper fix: a device error flag set by the kernels and checked on the host after the stream syncs.
+
+### CPU emulation build throws at the first push
+- `src/core/numerics/pusher/boris/detail/multi_boris.hpp` ("NEEDS GPU IMPL!")
+- With mkn's CPU fallthrough (`MKN_GPU_CPU=1`) the `GPU_UNIFIED` modules are built and reported as
+  supported, but the in place push throws and the deposit kernels are empty.
+- Proper fix: run the kernels through the CPU fallthrough, or do not report `GPU_UNIFIED` support
+  in that build.
+
 ## Tiling
 
 ### 3D GPU tile size is a fixed default
 - `src/core/data/tiles/tiling_options.hpp` (`TilingOptions::defaults_for`)
 - `GPU_UNIFIED` in 3D defaults to `max_tile_size = 6` so a tile's ghost box of field nodes fits
-  the GPU kernels' shared memory (`ds * 4 * 8` + warp buffer, asserted < 65000). Sized for
-  interp order 1 only.
+  the GPU kernels' shared memory (`ds * 4 * 8` + warp buffer, checked against the device limit at
+  launch, see `DeviceLauncher::check_shared_mem_`). Sized for interp order 1 only, interp >= 2 in
+  3D does not fit.
 - Proper fix: derive the max tile size from the ghost width (interp order) and the device's
   shared memory limit.
 
@@ -54,17 +75,44 @@ like.
   and the result is scattered back into every tile. Allocates per call and is host only.
 - Proper fix: apply boundary conditions per tile on the tile's ghost region.
 
-## Field solvers
+## Housekeeping
 
-### Faraday and Ohm have no device kernels
-- `src/core/numerics/faraday/faraday.hpp`, `src/core/numerics/ohm/ohm.hpp`
-- Their kernels are `[&]` capturing host lambdas over master's `curl(layout_, E)` /
-  `grad(layout_, Pe)` (#1468), so `GPU_UNIFIED` field solves run on the host. Ampere is done:
-  `curl` is `_PHARE_ALL_FN_` and its lambdas copy `basic::Field` views of J.
-- Proper fix: same as Ampere, copy `basic::Field` views into `[=] _PHARE_ALL_FN_` lambdas, and make
-  `grad` and Ohm's `ideal_`/`pressure_`/... device callable.
+Not GPU shortcuts, but found reviewing #1416 and not to be forgotten.
 
+### Dependencies unpinned and backends enabled by header presence
+- `res/cmake/dep/*` (mkn.kul, mkn.gpu from master, Kokkos and KokkosTools from develop, magic_enum
+  from HEAD), `src/core/def/kokkos_tools.hpp` and friends (`__has_include`)
+- An installed Kokkos, RAJA, Umpire or mkn.gpu header turns that backend on whatever the CMake
+  options say.
+- Proper fix: pin each dependency to a tag/commit, enable backends from CMake options only.
 
+### Unregistered tests
+- 29 test sources are built by neither CMake nor `mkn.yaml`: the GPU ones (`test_*gpu*.cpp`,
+  `test_raja_main.cpp`, `test_gpu_atomics*.cpp`, `test_gpu_map.cpp`, `test_gpu_mpi_main.cpp`,
+  `faraday/ohm test_gpu_main.cpp` now covered by `tests/core/numerics/gpu`), the
+  `boundary_condition/test_field_boundary_conditions_*.cpp`, `test_field_evolution.cpp`,
+  `test_fields_flush_schedules.cpp`, `test_hybrid_level_initializer.cpp`, `test_geom.cpp` and
+  `tests/diagnostic/test_diagnostics_{1d,2d}_{cmp,ref}.cpp`.
+- Proper fix: register what still passes, delete what is superseded.
+
+### Dead code
+- `src/core/data/particles/mapper/` (bisection mappers, included nowhere, duplicates
+  `CellFlattener`)
+- `src/amr/solvers/threaded_solver_ppc.hpp` (609 lines) and `solver_ppc_threading_sorted.hpp`,
+  `src/core/numerics/pusher/pusher.hpp`, included nowhere
+- `.off` files: `magnetic_field_coarsener.hpp.off`, `interpolating.hpp.off`, `test_tagging.py.off`
+
+### Personal paths in mkn.py
+- `mkn.py`: `$HOME/git/phare/mkn`, `/home/deegan/intel/vtune/...`, `/opt/intel/oneapi/...`
+- Proper fix: environment variables with defaults, or move it out of the repository.
+
+### Pasted transcript below
+- The SoAVX benchmark notes below the separator end in a pasted session transcript.
+- Proper fix: keep the numbers and the conclusion, drop the transcript.
+
+### 2D+ validations
+- `doc/tiles.md` "what remains to be done": "2d+ validations (possible numeric issue)", not
+  investigated yet.
 
 ##############################
 

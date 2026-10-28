@@ -288,16 +288,19 @@ struct MultiBorisBackend
                 Particle_t p = parts[pidx]; // register copy — original untouched
 
                 p.iCell() = boris::advance<alloc_mode_v>(p, halfdt);
+                if (isIn(p.iCell(), particles.ghost_box()))
                 {
-                    Interpolator_t interp;
-                    boris::accelerate(p, interp.m2p(p, em, tile_layout), coef1);
-                }
-                p.iCell() = boris::advance<alloc_mode_v>(p, halfdt);
+                    {
+                        Interpolator_t interp;
+                        boris::accelerate(p, interp.m2p(p, em, tile_layout), coef1);
+                    }
+                    p.iCell() = boris::advance<alloc_mode_v>(p, halfdt);
 
-                if (isIn(p.iCell(), filter_box) and !isIn(p.iCell(), exclude_boxes))
-                {
-                    int const slot = atomicAdd(&buf_count, 1);
-                    part_buf[slot] = p;
+                    if (isIn(p.iCell(), filter_box) and !isIn(p.iCell(), exclude_boxes))
+                    {
+                        int const slot = atomicAdd(&buf_count, 1);
+                        part_buf[slot] = p;
+                    }
                 }
             }
 
@@ -531,14 +534,14 @@ void MultiBorisBackend<layout, ModelAccessor, Interpolator>::move_gpu_copy(
 
     for (auto& pop : ions)
     {
-        auto const coef1      = pop.charge() * (0.5 * in.dt / pop.mass());
-        auto const halfdt     = in.mesh(view.layout.meshSize(), in.dt);
+        auto const coef1     = pop.charge() * (0.5 * in.dt / pop.mass());
+        auto const halfdt    = in.mesh(view.layout.meshSize(), in.dt);
         auto const nlgb      = in.gpu_nlgb[i];
         auto const domain    = in.gpu_domain[i];
         auto const non_owned = in.gpu_non_owned[i];
-        auto rhop             = pop.particleDensity();
-        auto flux             = *pop.flux();
-        auto const ds         = static_cast<std::uint32_t>(ions.chargeDensity().max_tile_size());
+        auto rhop            = pop.particleDensity();
+        auto flux            = *pop.flux();
+        auto const ds        = static_cast<std::uint32_t>(ions.chargeDensity().max_tile_size());
 
         auto const launch = [&](auto parts, auto const filter_box, auto const exclude_boxes) {
             if (parts().size() == 0)

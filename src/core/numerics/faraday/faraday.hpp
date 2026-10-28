@@ -32,16 +32,18 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        auto const curlE = curl(layout_, E);
+        auto const curlE      = curl(layout_, E);
+        basic::Field const bx = Bx, by = By, bz = Bz;
+        basic::Field bxnew = Bxnew, bynew = Bynew, bznew = Bznew;
 
-        layout_.evalOnBox(Bxnew, [&](auto const&... ijk) {
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * curlE.x({ijk...});
+        layout_.evalOnBox(Bxnew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            bxnew(ijk...) = bx(ijk...) - dt * curlE.x({ijk...});
         });
-        layout_.evalOnBox(Bynew, [&](auto const&... ijk) {
-            Bynew(ijk...) = By(ijk...) - dt_ * curlE.y({ijk...});
+        layout_.evalOnBox(Bynew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            bynew(ijk...) = by(ijk...) - dt * curlE.y({ijk...});
         });
-        layout_.evalOnBox(Bznew, [&](auto const&... ijk) {
-            Bznew(ijk...) = Bz(ijk...) - dt_ * curlE.z({ijk...});
+        layout_.evalOnBox(Bznew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            bznew(ijk...) = bz(ijk...) - dt * curlE.z({ijk...});
         });
     }
 

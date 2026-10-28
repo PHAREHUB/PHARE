@@ -210,18 +210,19 @@ auto div(GridLayout const& layout, VecField const& v)
 
 template<typename GridLayout, typename Src>
 NO_DISCARD double laplacian(GridLayout const& layout, Src const& f,
-                            MeshIndex<GridLayout::dimension> const idx)
+                            MeshIndex<GridLayout::dimension> const idx) _PHARE_ALL_FN_
 {
     static_assert(Src::dimension == GridLayout::dimension,
                   "field and layout dimensions must match");
 
-    return sum(for_N_make_array<GridLayout::dimension>([&](auto ic) {
+    auto const term = [&] _PHARE_ALL_FN_(auto ic) {
         constexpr auto d = ic();
         auto const inv   = layout.inverseMeshSize(static_cast<Direction>(d));
         return inv * inv
                * (detail::shifted<d>(f, idx, 1) - 2.0 * detail::shifted<d>(f, idx, 0)
                   + detail::shifted<d>(f, idx, -1));
-    }));
+    };
+    return for_N_fold<GridLayout::dimension>([&](auto... ic) { return (term(ic) + ...); });
 }
 
 } // namespace PHARE::core

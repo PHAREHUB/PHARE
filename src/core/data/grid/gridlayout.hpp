@@ -150,14 +150,14 @@ namespace core
 
 
 
-        NO_DISCARD double inverseMeshSize(Direction direction) const noexcept
+        NO_DISCARD double inverseMeshSize(Direction direction) const noexcept _PHARE_ALL_FN_
         {
             return inverseMeshSize_[static_cast<std::uint32_t>(direction)];
         }
 
 
 
-        NO_DISCARD std::array<double, dimension> inverseMeshSize() const noexcept
+        NO_DISCARD std::array<double, dimension> inverseMeshSize() const noexcept _PHARE_ALL_FN_
         {
             return inverseMeshSize_;
         }

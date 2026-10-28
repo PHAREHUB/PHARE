@@ -64,41 +64,40 @@ private:
     void solve_(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                 VecField const& J, VecField& Enew) const
     {
-        using Pack = OhmPack<VecField, Field>;
-
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPe = grad(layout_, Pe);
+        auto const decay = [](auto const& vf) {
+            basic::Field const x = vf(Component::X), y = vf(Component::Y), z = vf(Component::Z);
+            return basic::TensorField<std::remove_const_t<decltype(x)>, 1>{x, y, z};
+        };
 
-        layout_.evalOnBox(Exnew, [&](auto&... args) {
-            this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
+        auto const gradPe     = grad(layout_, Pe);
+        basic::Field const ni = n;
+        auto const ve = decay(Ve), b = decay(B), j = decay(J);
+        auto e          = decay(Enew);
+        auto const self = *this;
+
+        layout_.evalOnBox(Exnew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            self.template E_Eq_<Component::X, isResistive, isHyperResistive>(e, ni, ve, b, j,
+                                                                             gradPe.x, ijk...);
         });
-        layout_.evalOnBox(Eynew, [&](auto&... args) {
-            this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
+        layout_.evalOnBox(Eynew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            self.template E_Eq_<Component::Y, isResistive, isHyperResistive>(e, ni, ve, b, j,
+                                                                             gradPe.y, ijk...);
         });
-        layout_.evalOnBox(Eznew, [&](auto&... args) {
-            this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
+        layout_.evalOnBox(Eznew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            self.template E_Eq_<Component::Z, isResistive, isHyperResistive>(e, ni, ve, b, j,
+                                                                             gradPe.z, ijk...);
         });
     }
 
-    template<typename VecField, typename Field>
-    struct OhmPack
-    {
-        VecField& Exyz;
-        Field const& n;
-        VecField const &Ve, &B, &J;
-    };
 
-
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
-             typename... IDXs>
-    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename VecField, typename Field,
+             typename GradPe, typename... IDXs>
+    void E_Eq_(VecField& E, Field const& n, VecField const& Ve, VecField const& B,
+               VecField const& J, GradPe const& gradPe, IDXs const&... ijk) const _PHARE_ALL_FN_
     {
-        auto const& [E, n, Ve, B, J] = pack;
-        auto& Exyz                   = E(Tag);
+        auto& Exyz = E(Tag);
 
         static_assert(Components::check<Tag>());
 

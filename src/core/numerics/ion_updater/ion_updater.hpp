@@ -492,15 +492,13 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::post_move_sync_finalize_(a
 
 // only writes the moments of tile t, domain and patch ghosts of a tile in the same task
 template<typename ParticleArray_t, typename GridLayout>
-void ParallelIonUpdater<ParticleArray_t, GridLayout>::deposit_tile_(auto& view,
-                                                                    std::size_t const t)
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::deposit_tile_(auto& view, std::size_t const t)
 {
     Interpolating_t interp;
     for (auto& pop : std::get<0>(view.args))
     {
         interp.particleToMesh_tile(t, pop.domainParticles(), pop.particleDensity(), pop.flux());
-        interp.particleToMesh_tile(t, pop.patchGhostParticles(), pop.particleDensity(),
-                                   pop.flux());
+        interp.particleToMesh_tile(t, pop.patchGhostParticles(), pop.particleDensity(), pop.flux());
     }
 }
 
@@ -858,18 +856,22 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
                 }
                 else
                 {
-                    std::uint32_t const ds = ions.chargeDensity().max_tile_size();
-                    auto const domain      = *pop.domainParticles();
-                    using Launcher         = gpu::ChunkLauncher<false>;
-                    Launcher launcher{1, 0};
-                    launcher.b.x = kernel::warp_size();
-                    launcher.g.x = domain().size();
-                    launcher.ds  = ds * 4 * 8;
-                    auto pdensity = pop.particleDensity();
-                    auto flux     = *pop.flux();
-                    launcher.stream(in.streamer.streams[i], [=] __device__() mutable {
-                        Interpolating_t::template on_tiles<Tile_vt>(domain, flux, pdensity);
-                    });
+                    std::uint32_t const ds   = ions.chargeDensity().max_tile_size();
+                    auto const deposit_tiles = [&](auto& particles) {
+                        auto const parts = *particles;
+                        using Launcher   = gpu::ChunkLauncher<false>;
+                        Launcher launcher{1, 0};
+                        launcher.b.x  = kernel::warp_size();
+                        launcher.g.x  = parts().size();
+                        launcher.ds   = ds * 4 * 8;
+                        auto pdensity = pop.particleDensity();
+                        auto flux     = *pop.flux();
+                        launcher.stream(in.streamer.streams[i], [=] __device__() mutable {
+                            Interpolating_t::template on_tiles<Tile_vt>(parts, flux, pdensity);
+                        });
+                    };
+                    deposit_tiles(pop.domainParticles());
+                    deposit_tiles(pop.patchGhostParticles());
                 }
             }
         };
