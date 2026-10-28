@@ -9,9 +9,9 @@
 using namespace PHARE::core;
 
 
-TEST(ExternalField, disabledExposesNoResources)
+TEST(ExternalFieldState, disabledExposesNoResources)
 {
-    ExternalField<VecFieldMHD<2>> externalField{"ext", false};
+    ExternalFieldState<VecFieldMHD<2>> externalField{"ext", false};
 
     EXPECT_FALSE(externalField.isEnabled());
     EXPECT_TRUE(externalField.getRunTimeResourcesViewList().empty());
@@ -21,9 +21,9 @@ TEST(ExternalField, disabledExposesNoResources)
 }
 
 
-TEST(ExternalField, enabledExposesB0AndItsTimeDerivative)
+TEST(ExternalFieldState, enabledExposesB0AndItsTimeDerivative)
 {
-    ExternalField<VecFieldMHD<2>> externalField{"ext", true};
+    ExternalFieldState<VecFieldMHD<2>> externalField{"ext", true};
     auto& resources = externalField.getRunTimeResourcesViewList();
 
     EXPECT_TRUE(externalField.isEnabled());
