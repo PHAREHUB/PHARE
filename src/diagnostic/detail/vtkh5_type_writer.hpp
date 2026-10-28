@@ -150,7 +150,9 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
     std::string static inline const step_level = base + "/Steps/Level";
     auto static inline const level_data_path
         = [](auto const ilvl) { return level_base + std::to_string(ilvl) + "/PointData/data"; };
-    std::size_t static inline const data_chunk_bytes
+    std::size_t static constexpr steps_chunk_size   = 1024;
+    std::size_t static constexpr amr_box_chunk_size = 1024;
+    std::size_t static inline const data_chunk_size_bytes
         = core::get_env_as("PHARE_VTKHDF_CHUNK_BYTES", std::size_t{1} << 20);
 
 
@@ -248,7 +250,7 @@ private:
     std::size_t initAnyFieldLevel(auto const ilvl)
     {
         auto const chunk_rows
-            = std::max<std::size_t>(1, data_chunk_bytes / (N * sizeof(FloatType)));
+            = std::max<std::size_t>(1, data_chunk_size_bytes / (N * sizeof(FloatType)));
         h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(ilvl), chunk_rows, N);
         initFileLevel(ilvl);
         resize_boxes(ilvl);
@@ -266,7 +268,7 @@ private:
     //  they are created and appended to here only, never inline: one place to be 64 bit in
     void create_step_offsets(std::string const& path)
     {
-        h5file.create_resizable_1d_data_set<VTKOffsetType>(path);
+        h5file.create_resizable_1d_data_set<VTKOffsetType>(path, steps_chunk_size);
     }
 
     void append_step_offset(std::string const& path, std::size_t const offset)
@@ -341,7 +343,7 @@ H5TypeWriter<Writer>::VTKFileInitializer::VTKFileInitializer(DiagnosticPropertie
 {
     {
         PHARE_LOG_SCOPE(3, "VTKFileInitializer::VTKFileInitializer::0");
-        h5file.create_resizable_1d_data_set<FloatType>(base + "/Steps/Values");
+        h5file.create_resizable_1d_data_set<FloatType>(base + "/Steps/Values", steps_chunk_size);
         auto steps_group = h5file.file().getGroup(base + "/Steps");
         if (!steps_group.hasAttribute("NSteps"))
             steps_group.template createAttribute<int>("NSteps", HighFive::DataSpace::From(0))
@@ -463,8 +465,8 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl)
 
     auto const lvl = std::to_string(ilvl);
 
-    h5file.create_resizable_2d_data_set<int, boxValsIn3D>(
-        level_base + lvl + "/AMRBox", hdf5::h5::detail::CHUNK_SIZE, boxValsIn3D);
+    h5file.create_resizable_2d_data_set<int, boxValsIn3D>(level_base + lvl + "/AMRBox",
+                                                          amr_box_chunk_size, boxValsIn3D);
     create_step_offsets(step_level + lvl + "/AMRBoxOffset");
     create_step_offsets(step_level + lvl + "/NumberOfAMRBox");
     create_step_offsets(step_level + lvl + "/PointDataOffset/data");
