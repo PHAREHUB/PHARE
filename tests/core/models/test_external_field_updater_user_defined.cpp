@@ -119,7 +119,7 @@ struct UserDefinedSetup
 
     TestGridLayout<GridLayout_t> layout{cells};
 
-    UsableExternalField<dim> externalField{"external", layout};
+    UsableExternalFieldState<dim> externalField{"external", layout};
 
     Updater_t updater{makeUpdater()};
 
@@ -286,7 +286,7 @@ TEST(UserDefinedExternalField, rejectsAUserFunctionReturningTheWrongNumberOfValu
           };
 
     TestGridLayout<Setup_t::GridLayout_t> layout{Setup_t::cells};
-    UsableExternalField<2> externalField{"external", layout};
+    UsableExternalFieldState<2> externalField{"external", layout};
 
     for (auto const& f : {tooShort, noValues})
     {

@@ -105,7 +105,7 @@ struct DipoleSetup
 
     TestGridLayout<GridLayout_t> layout{cells};
 
-    UsableExternalField<dim> externalField{"external", layout};
+    UsableExternalFieldState<dim> externalField{"external", layout};
 
     Updater_t updater{position(), moment(), /*radius=*/0.};
 
@@ -235,8 +235,8 @@ struct FiniteRadiusSetup
 
     TestGridLayout<typename Point_t::GridLayout_t> layout{cells};
 
-    UsableExternalField<dim> finite{"finite", layout};
-    UsableExternalField<dim> point{"point", layout};
+    UsableExternalFieldState<dim> finite{"finite", layout};
+    UsableExternalFieldState<dim> point{"point", layout};
 
     FiniteRadiusSetup()
     {
