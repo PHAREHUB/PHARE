@@ -4,6 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/enum_table.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
@@ -59,7 +60,6 @@ public:
         std::array<QtyCentering, NBR_COMPO> const Ey = {{data.primal, data.dual, data.primal}};
         std::array<QtyCentering, NBR_COMPO> const Ez = {{data.primal, data.primal, data.dual}};
 
-
         std::array<QtyCentering, NBR_COMPO> const Jx = {{data.dual, data.primal, data.primal}};
         std::array<QtyCentering, NBR_COMPO> const Jy = {{data.primal, data.dual, data.primal}};
         std::array<QtyCentering, NBR_COMPO> const Jz = {{data.primal, data.primal, data.dual}};
@@ -79,10 +79,13 @@ public:
 
         std::array<QtyCentering, NBR_COMPO> const P = {{data.primal, data.primal, data.primal}};
 
-        auto const hybridQtyCentering = std::array{Bx, By, Bz, Ex, Ey,  Ez,  Jx,  Jy,  Jz,  Rho,
-                                                   Vx, Vy, Vz, P,  Mxx, Mxy, Mxz, Myy, Myz, Mzz};
-        static_assert(hybridQtyCentering.size()
-                      == static_cast<std::size_t>(HybridQuantity::Scalar::count));
+        using Qty                     = HybridQuantity::Scalar;
+        auto const hybridQtyCentering = make_enum_table<Qty, std::array<QtyCentering, NBR_COMPO>>({
+            {Qty::Bx, Bx},   {Qty::By, By},   {Qty::Bz, Bz},   {Qty::Ex, Ex},   {Qty::Ey, Ey},
+            {Qty::Ez, Ez},   {Qty::Jx, Jx},   {Qty::Jy, Jy},   {Qty::Jz, Jz},   {Qty::rho, Rho},
+            {Qty::Vx, Vx},   {Qty::Vy, Vy},   {Qty::Vz, Vz},   {Qty::P, P},     {Qty::Mxx, Mxx},
+            {Qty::Mxy, Mxy}, {Qty::Mxz, Mxz}, {Qty::Myy, Myy}, {Qty::Myz, Myz}, {Qty::Mzz, Mzz},
+        });
 
         return hybridQtyCentering;
     }

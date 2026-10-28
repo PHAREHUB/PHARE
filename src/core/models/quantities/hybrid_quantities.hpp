@@ -2,6 +2,7 @@
 #define PHARE_CORE_HYBRID_HYBRID_QUANTITIES_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/enum_table.hpp"
 
 #include <array>
 #include <cstdint>
@@ -40,13 +41,12 @@ public:
     enum class Vector : std::uint16_t { B = 0, E, J, V, count };
     enum class Tensor : std::uint16_t { M = 0, count };
 
-    static constexpr auto vector_components = std::to_array<std::array<Scalar, 3>>({
-        {Scalar::Bx, Scalar::By, Scalar::Bz}, // B
-        {Scalar::Ex, Scalar::Ey, Scalar::Ez}, // E
-        {Scalar::Jx, Scalar::Jy, Scalar::Jz}, // J
-        {Scalar::Vx, Scalar::Vy, Scalar::Vz}, // V
+    static constexpr auto vector_components = make_enum_table<Vector, std::array<Scalar, 3>>({
+        {Vector::B, {Scalar::Bx, Scalar::By, Scalar::Bz}},
+        {Vector::E, {Scalar::Ex, Scalar::Ey, Scalar::Ez}},
+        {Vector::J, {Scalar::Jx, Scalar::Jy, Scalar::Jz}},
+        {Vector::V, {Scalar::Vx, Scalar::Vy, Scalar::Vz}},
     });
-    static_assert(vector_components.size() == static_cast<std::size_t>(Vector::count));
 
     static constexpr auto all_primal_field = Scalar::rho;
 

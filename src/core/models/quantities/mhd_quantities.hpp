@@ -2,6 +2,7 @@
 #define PHARE_CORE_MHD_MHD_QUANTITIES_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/enum_table.hpp"
 
 #include <array>
 #include <cstdint>
@@ -70,18 +71,18 @@ public:
     };
     enum class Tensor : std::uint16_t { count = 0 };
 
-    static constexpr auto vector_components = std::to_array<std::array<Scalar, 3>>({
-        {Scalar::Vx, Scalar::Vy, Scalar::Vz},                                  // V
-        {Scalar::Bx, Scalar::By, Scalar::Bz},                                  // B
-        {Scalar::rhoVx, Scalar::rhoVy, Scalar::rhoVz},                         // rhoV
-        {Scalar::Ex, Scalar::Ey, Scalar::Ez},                                  // E
-        {Scalar::Jx, Scalar::Jy, Scalar::Jz},                                  // J
-        {Scalar::VecFluxX_x, Scalar::VecFluxY_x, Scalar::VecFluxZ_x},          // VecFlux_x
-        {Scalar::VecFluxX_y, Scalar::VecFluxY_y, Scalar::VecFluxZ_y},          // VecFlux_y
-        {Scalar::VecFluxX_z, Scalar::VecFluxY_z, Scalar::VecFluxZ_z},          // VecFlux_z
-        {Scalar::VecAllPrimalX, Scalar::VecAllPrimalY, Scalar::VecAllPrimalZ}, // VecAllPrimal
+    static constexpr auto vector_components = make_enum_table<Vector, std::array<Scalar, 3>>({
+        {Vector::V, {Scalar::Vx, Scalar::Vy, Scalar::Vz}},
+        {Vector::B, {Scalar::Bx, Scalar::By, Scalar::Bz}},
+        {Vector::rhoV, {Scalar::rhoVx, Scalar::rhoVy, Scalar::rhoVz}},
+        {Vector::E, {Scalar::Ex, Scalar::Ey, Scalar::Ez}},
+        {Vector::J, {Scalar::Jx, Scalar::Jy, Scalar::Jz}},
+        {Vector::VecFlux_x, {Scalar::VecFluxX_x, Scalar::VecFluxY_x, Scalar::VecFluxZ_x}},
+        {Vector::VecFlux_y, {Scalar::VecFluxX_y, Scalar::VecFluxY_y, Scalar::VecFluxZ_y}},
+        {Vector::VecFlux_z, {Scalar::VecFluxX_z, Scalar::VecFluxY_z, Scalar::VecFluxZ_z}},
+        {Vector::VecAllPrimal,
+         {Scalar::VecAllPrimalX, Scalar::VecAllPrimalY, Scalar::VecAllPrimalZ}},
     });
-    static_assert(vector_components.size() == static_cast<std::size_t>(Vector::count));
 
     static constexpr auto all_primal_field = Scalar::ScalarAllPrimal;
 

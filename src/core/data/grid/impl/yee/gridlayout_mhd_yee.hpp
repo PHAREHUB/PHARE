@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/enum_table.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 
@@ -123,41 +124,43 @@ public:
         std::array<QtyCentering, NBR_COMPO> const VecAllPrimalZ
             = {{data.primal, data.primal, data.primal}};
 
-        auto const _QtyCentering = std::array{Rho,
-                                              Vx,
-                                              Vy,
-                                              Vz,
-                                              Bx,
-                                              By,
-                                              Bz,
-                                              P,
-                                              Etot,
-                                              rhoVx,
-                                              rhoVy,
-                                              rhoVz,
-                                              Ex,
-                                              Ey,
-                                              Ez,
-                                              Jx,
-                                              Jy,
-                                              Jz,
-                                              ScalarFlux_x,
-                                              ScalarFlux_y,
-                                              ScalarFlux_z,
-                                              VecFluxX_x,
-                                              VecFluxY_x,
-                                              VecFluxZ_x,
-                                              VecFluxX_y,
-                                              VecFluxY_y,
-                                              VecFluxZ_y,
-                                              VecFluxX_z,
-                                              VecFluxY_z,
-                                              VecFluxZ_z,
-                                              ScalarAllPrimal,
-                                              VecAllPrimalX,
-                                              VecAllPrimalY,
-                                              VecAllPrimalZ};
-        static_assert(_QtyCentering.size() == static_cast<std::size_t>(MHDQuantity::Scalar::count));
+        using Qty                = MHDQuantity::Scalar;
+        auto const _QtyCentering = make_enum_table<Qty, std::array<QtyCentering, NBR_COMPO>>({
+            {Qty::rho, Rho},
+            {Qty::Vx, Vx},
+            {Qty::Vy, Vy},
+            {Qty::Vz, Vz},
+            {Qty::Bx, Bx},
+            {Qty::By, By},
+            {Qty::Bz, Bz},
+            {Qty::P, P},
+            {Qty::Etot, Etot},
+            {Qty::rhoVx, rhoVx},
+            {Qty::rhoVy, rhoVy},
+            {Qty::rhoVz, rhoVz},
+            {Qty::Ex, Ex},
+            {Qty::Ey, Ey},
+            {Qty::Ez, Ez},
+            {Qty::Jx, Jx},
+            {Qty::Jy, Jy},
+            {Qty::Jz, Jz},
+            {Qty::ScalarFlux_x, ScalarFlux_x},
+            {Qty::ScalarFlux_y, ScalarFlux_y},
+            {Qty::ScalarFlux_z, ScalarFlux_z},
+            {Qty::VecFluxX_x, VecFluxX_x},
+            {Qty::VecFluxY_x, VecFluxY_x},
+            {Qty::VecFluxZ_x, VecFluxZ_x},
+            {Qty::VecFluxX_y, VecFluxX_y},
+            {Qty::VecFluxY_y, VecFluxY_y},
+            {Qty::VecFluxZ_y, VecFluxZ_y},
+            {Qty::VecFluxX_z, VecFluxX_z},
+            {Qty::VecFluxY_z, VecFluxY_z},
+            {Qty::VecFluxZ_z, VecFluxZ_z},
+            {Qty::ScalarAllPrimal, ScalarAllPrimal},
+            {Qty::VecAllPrimalX, VecAllPrimalX},
+            {Qty::VecAllPrimalY, VecAllPrimalY},
+            {Qty::VecAllPrimalZ, VecAllPrimalZ},
+        });
 
         return _QtyCentering;
     }
