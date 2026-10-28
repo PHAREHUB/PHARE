@@ -88,13 +88,6 @@ class ExternalField:
 
 
 @dataclass
-class ZeroExternalField(ExternalField):
-    """Zero external field: B0 and its time derivative stay zero."""
-
-    type = "zero"
-
-
-@dataclass
 class DipoleExternalField(ExternalField):
     """
     A static magnetic dipole of moment 'moment' placed at 'position',
@@ -300,11 +293,8 @@ def _resolve_dict_user_defined_external_field(external_field, *, ndim):
 
 
 def _resolve_dict_external_field(external_field, *, ndim):
-    valid_types = ("zero", "dipole", "user-defined")
+    valid_types = ("dipole", "user-defined")
     type_ = external_field.get("type")
-    if type_ == "zero":
-        _check_keys(external_field, {"type"}, type_)
-        return ZeroExternalField()
     if type_ == "dipole":
         _check_keys(external_field, {"type", "position", "moment", "radius"}, type_)
         if ndim == 1:
@@ -330,9 +320,6 @@ def _resolve_dict_external_field(external_field, *, ndim):
 
 
 def _resolve_instance_external_field(external_field, *, ndim):
-    if type(external_field) is ZeroExternalField:
-        return external_field
-
     if type(external_field) is DipoleExternalField:
         return _resolve_dict_external_field(
             {
@@ -368,12 +355,13 @@ def _resolve_instance_external_field(external_field, *, ndim):
 
 def resolve_external_field(ndim, **kwargs):
     """
-    Resolve the public 'external_field' Simulation option into a validated ExternalField.
+    Resolve the public 'external_field' Simulation option into a validated ExternalField,
+    or None when no external field is declared.
     """
     external_field = kwargs.get("external_field")
 
     if external_field is None:
-        return ZeroExternalField()
+        return None
 
     if isinstance(external_field, ExternalField):
         return _resolve_instance_external_field(external_field, ndim=ndim)

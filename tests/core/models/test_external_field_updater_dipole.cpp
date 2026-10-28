@@ -117,7 +117,7 @@ struct DipoleSetup
         double maxError = 0.;
         for_N<3>([&](auto i) {
             constexpr auto component = static_cast<Component>(decltype(i)::value);
-            auto& field              = externalField.B0(component);
+            auto& field              = externalField.B0()(component);
             layout.evalOnGhostBox(field, [&](auto... ijk) {
                 auto const x = layout.fieldNodeCoordinates(field, layout.localToAMR(Point{ijk...}));
                 auto const expected = expectedB<dim>(x, position(), moment());
@@ -132,7 +132,7 @@ struct DipoleSetup
     {
         double maxAbs = 0.;
         for_N<3>([&](auto i) {
-            auto& field = externalField.dB0dt(static_cast<Component>(decltype(i)::value));
+            auto& field = externalField.dB0dt()(static_cast<Component>(decltype(i)::value));
             for (auto const& v : field)
                 maxAbs = std::max(maxAbs, std::abs(v));
         });
@@ -258,8 +258,8 @@ struct FiniteRadiusSetup
     {
         for_N<3>([&](auto i) {
             constexpr auto component = static_cast<Component>(decltype(i)::value);
-            auto& field              = finite.B0(component);
-            auto& pointField         = point.B0(component);
+            auto& field              = finite.B0()(component);
+            auto& pointField         = point.B0()(component);
             layout.evalOnGhostBox(field, [&](auto... ijk) {
                 auto const x = layout.fieldNodeCoordinates(field, layout.localToAMR(Point{ijk...}));
                 fn(std::size_t{i}, field(ijk...), pointField(ijk...), distance(x));

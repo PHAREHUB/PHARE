@@ -63,14 +63,14 @@ public:
 
     template<typename GridLayout>
     UsableExternalField(std::string const& name, GridLayout const& layout)
-        : Super{name}
+        : Super{name, true}
         , b0_{name + "_B0", layout, MHDQuantity::Vector::B}
         , dB0dt_{name + "_dB0dt", layout, MHDQuantity::Vector::B}
         , tmpVec_{name + "_tmpVec", layout, MHDQuantity::Vector::VecAllPrimal}
         , scratch_{view_as(tmpVec_.super(), MHDQuantity::Vector::E, layout)}
     {
-        b0_.set_on(this->B0);
-        dB0dt_.set_on(this->dB0dt);
+        b0_.set_on(this->B0());
+        dB0dt_.set_on(this->dB0dt());
     }
 
     Super& super() { return *this; }

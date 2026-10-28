@@ -5,7 +5,6 @@
 #include "core/models/external_field_updater_defs.hpp"
 #include "core/models/external_field_updater_dipole.hpp"
 #include "core/models/external_field_updater_user_defined.hpp"
-#include "core/models/external_field_updater_zero.hpp"
 
 #include "initializer/data_provider.hpp"
 #include "initializer/dict_utils.hpp"
@@ -25,7 +24,6 @@ class ExternalFieldUpdaterFactory
 private:
     using Interface   = IExternalFieldUpdater<VecFieldT, GridLayoutT>;
     using Dipole      = ExternalFieldUpdaterDipole<VecFieldT, GridLayoutT>;
-    using Zero        = ExternalFieldUpdaterZero<VecFieldT, GridLayoutT>;
     using UserDefined = ExternalFieldUpdaterUserDefined<VecFieldT, GridLayoutT>;
 
 public:
@@ -37,8 +35,6 @@ public:
     static constexpr std::size_t N         = VecFieldT::size();
 
     ExternalFieldUpdaterFactory() = delete;
-
-    static std::unique_ptr<Interface> createZero() { return std::make_unique<Zero>(); }
 
     static std::unique_ptr<Interface> createDipole(initializer::PHAREDict const& dict)
     {
@@ -67,11 +63,12 @@ public:
 
     static std::unique_ptr<Interface> create(initializer::PHAREDict const& dict)
     {
-        auto const type = cppdict::get_value(dict, "type", ExternalFieldUpdaterType::Zero);
+        if (!dict.contains("type"))
+            throw std::runtime_error("external field requires a 'type'");
+        auto const type = static_cast<ExternalFieldUpdaterType>(dict["type"].template to<int>());
 
         switch (type)
         {
-            case ExternalFieldUpdaterType::Zero: return createZero();
             case ExternalFieldUpdaterType::Dipole: return createDipole(dict);
             case ExternalFieldUpdaterType::UserDefined: return createUserDefined(dict);
         }
