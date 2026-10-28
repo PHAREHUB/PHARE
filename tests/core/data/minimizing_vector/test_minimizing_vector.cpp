@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 
 #include "core/data/vector.hpp"
+#include "core/data/field/field_scratch.hpp"
 
 using namespace PHARE::core;
 
@@ -214,6 +215,29 @@ TEST(MinimizingVector, reserveAndClearShrinks)
         v.reserve_and_clear(100);
 
     EXPECT_LT(v.capacity(), large_cap);
+}
+
+
+TEST(FieldScratch, isOneInstance)
+{
+    EXPECT_EQ(&field_scratch(), &field_scratch());
+}
+
+
+TEST(FieldScratch, capacityGrowsAndIsZeroAfterRelease)
+{
+    release_field_scratch();
+    EXPECT_EQ(field_scratch().capacity(), 0u);
+
+    field_scratch().get_no_copy(1000);
+    EXPECT_GE(field_scratch().capacity(), 1000u);
+
+    field_scratch().reserve_and_clear(5000);
+    EXPECT_GE(field_scratch().capacity(), 5000u);
+
+    release_field_scratch();
+    EXPECT_EQ(field_scratch().size(), 0u);
+    EXPECT_EQ(field_scratch().capacity(), 0u);
 }
 
 
