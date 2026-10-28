@@ -87,9 +87,9 @@ public:
         ConstrainedTransport_t{level, model,
                                constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
 
-        PoyntingCorrection_t{level, model, fVMethodInfo_}(ct_, state, fluxes);
-
         bc.fillElectricGhosts(state.E, level, newTime);
+
+        PoyntingCorrection_t{level, model, fVMethodInfo_}(ct_, state, fluxes);
     }
 
     void registerResources(MHDModel& model)
