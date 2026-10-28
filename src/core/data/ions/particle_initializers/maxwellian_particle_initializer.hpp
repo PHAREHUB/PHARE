@@ -1,10 +1,12 @@
 #ifndef PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 #define PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 
+#include <cmath>
 #include <memory>
 #include <random>
 #include <cassert>
 #include <functional>
+#include <stdexcept>
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
@@ -55,6 +57,8 @@ public:
         , rngSeed_{seed}
         , over_alloc_factor_{over_alloc_factor}
     {
+        if (!std::isfinite(over_alloc_factor_) or over_alloc_factor_ < 0)
+            throw std::runtime_error("over_alloc_factor must be finite and non-negative");
     }
 
 
@@ -182,7 +186,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
 
     auto const expected_size = std::accumulate(n, n + ndCellIndices.size(), std::size_t{0},
                                                [&](auto const& sum, auto const& density_value) {
-                                                   return (density_value > densityCutOff_)
+                                                   return (density_value >= densityCutOff_)
                                                               ? sum + nbrParticlePerCell_
                                                               : sum;
                                                });
