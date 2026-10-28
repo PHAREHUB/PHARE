@@ -96,12 +96,6 @@ Fluid Diagnostics
    format. All quantities are interpolated to mesh nodes (point values),
    and the files are readily readable by ParaView.
 
-   Each MPI rank writes its data in one contiguous block per level. On a Lustre
-   file system, files created in a directory with the default striping (often
-   2 OSTs) cap the write bandwidth at a few OSTs: for large runs, set the
-   striping of the diagnostics directory before the run, e.g.
-   ``lfs setstripe -c 16 <diag_dir>``.
-
 Particle Diagnostics
 ----------------------
 
