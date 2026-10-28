@@ -20,14 +20,7 @@ struct NdArrayViewer
     template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
     static inline std::size_t idx(NCells const& nCells, Indexes<Index, dim> const& indexes)
     {
-        if constexpr (dim == 1)
-            return idx(nCells, indexes[0]);
-
-        else if constexpr (dim == 2)
-            return idx(nCells, indexes[0], indexes[1]);
-
-        else if constexpr (dim == 3)
-            return idx(nCells, indexes[0], indexes[1], indexes[2]);
+        return for_N_fold<dim>([&](auto... d) { return idx(nCells, indexes[d]...); });
     }
 
     static inline std::size_t idx(auto const& /*nCells*/, std::size_t const i) { return i; }
