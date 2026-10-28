@@ -71,11 +71,15 @@ namespace solver
 
 
         /**
-         * @brief Compute the external magnetic field B0 on every patch of the level.
+         * @brief Compute the external magnetic field B0 on every patch of the level, a no-op
+         * when no external field is declared.
          *
          * Always does the work, whether or not the field depends on time: this is what
-         * initialization, new level creation and regridding need, since B0 is not part of
-         * the messenger info and is therefore never refined, copied or time interpolated.
+         * initialization, new level creation, regridding and restarts need, since B0 is not part
+         * of the messenger info and is therefore never refined, copied or time interpolated. On
+         * restart it is recomputed from the restart's configuration rather than read back.
+         *
+         * B0 must already be allocated on the level.
          */
         virtual void initializeExternalField(level_t& level, double time) = 0;
 
