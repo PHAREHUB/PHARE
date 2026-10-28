@@ -3,13 +3,17 @@
 run: python3 -m unittest discover -s res/ci/physics/tests
 """
 
+import contextlib
+import io
 import json
 import os
+import re
 import shutil
 import stat
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 import unittest.mock
 import urllib.error
@@ -22,6 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import decks
 import extract
 import history
+import judge
 import metrics
 import tc
 
@@ -754,6 +759,484 @@ class TcTest(unittest.TestCase):
         )
         for exc in (http(500), urllib.error.URLError("x"), TimeoutError()):
             self.assertIsNone(tc.physics_out_exists(self.BASE, 9, "h", raiser(exc)))
+
+
+AGENT_OK = """some chatter the agent added
+<<<REPORT
+### convergence
+Verdict: looks right
+Slopes 1.0, 2.0, 3.1, 5.0, 4.9 against expected 1, 2, 3, 5, 5.
+REPORT>>>
+more chatter
+"""
+AGENT_BLOCK = (
+    "### convergence\nVerdict: looks right\n"
+    "Slopes 1.0, 2.0, 3.1, 5.0, 4.9 against expected 1, 2, 3, 5, 5."
+)
+
+
+def fake_opencode(dirname, stdout, rc=0, version="1.18.32", stderr=""):
+    return script(
+        Path(dirname, "opencode"),
+        f"import sys\n"
+        f"if sys.argv[1:2] == ['--version']:\n    print({version!r}); sys.exit(0)\n"
+        f"sys.stdout.write({stdout!r})\n"
+        f"sys.stderr.write({stderr!r})\nsys.exit({rc})\n",
+    )
+
+
+class JudgeTest(unittest.TestCase):
+    def work(self):
+        """(a temporary dir, a work dir inside it holding PROMPT.md)."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        work = Path(tmp.name, "work")
+        work.mkdir()
+        (work / "PROMPT.md").write_text("x")
+        return Path(tmp.name), work
+
+    def test_version_is_one_word_from_the_version_output(self):
+        for printed, want in (
+            ("opencode 1.18.32\n", "1.18.32"),
+            ("v1.19.0-beta.2 (abc)", "1.19.0-beta.2"),
+            ("no version here", "unknown"),
+            ("", "unknown"),
+        ):
+            self.assertEqual(judge.parse_version(printed), want, printed)
+
+    def test_history_reads_finished_default_branch_nights_and_survives_errors(self):
+        urls = []
+
+        def get(url):
+            urls.append(url)
+            if "/app/rest/builds?" in url:
+                return json.dumps({"build": [{"id": 9}, {"id": 8}, {"id": 7}]}).encode()
+            if "/8:id/" in url:
+                return json.dumps({"decks": []}).encode()
+            raise OSError("404")
+
+        h = judge.fetch_history("http://x", "bt", "mhd", 9, 7, get=get)
+        # not 9 (tonight), not 7 (no summary.json)
+        self.assertEqual([e["build_id"] for e in h], [8])
+        for part in (
+            "branch:(default:true)",
+            "personal:false",
+            "canceled:false",
+            "failedToStart:false",
+            "state:finished",
+        ):
+            self.assertIn(part, urls[0])
+
+        def down(url):
+            raise OSError("unreachable")
+
+        self.assertEqual(
+            judge.fetch_history("http://x", "bt", "mhd", 5, 7, get=down), []
+        )
+
+    def test_the_agent_runs_read_only_in_its_work_dir(self):
+        """What opencode is given: its config file, its arguments, its environment."""
+        tmp, work = self.work()
+        exe = script(
+            tmp / "opencode",
+            "import json, os, sys\n"
+            "config = json.load(open(os.environ['OPENCODE_CONFIG']))\n"
+            "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:], "
+            "'config': config}))\n",
+        )
+
+        def run():
+            out, why = judge.run_agent(exe, work, "m/x", 30)
+            self.assertIsNone(why)
+            return json.loads(out)
+
+        self.assertNotIn("-f", run()["argv"])  # no figures, no -f
+        (work / "figures").mkdir()
+        for n in ("d__b.png", "d__a.png", "d__c.mp4"):
+            (work / "figures" / n).write_bytes(b"x")
+        seen = run()
+        argv, config = seen["argv"], seen["config"]
+        self.assertEqual(argv[:2], ["run", "--pure"])
+        self.assertEqual(argv[argv.index("-m") + 1], "m/x")
+        self.assertEqual(argv[argv.index("--dir") + 1], str(work))
+        self.assertLess(argv.index("x"), argv.index("-f"))  # the message comes first
+        pngs = [str(work / "figures" / n) for n in ("d__a.png", "d__b.png")]
+        self.assertEqual(argv[argv.index("-f") + 1 :], pngs)  # -f takes the rest
+        self.assertEqual(config["model"], "m/x")
+        self.assertIs(config["lsp"], False)
+        self.assertIs(config["formatter"], False)
+        perm = config["permission"]
+        self.assertEqual(
+            {k for k, v in perm.items() if v != "deny"},
+            {"read", "glob", "grep", "list"},
+        )
+        for k in (
+            "edit",
+            "bash",
+            "task",
+            "external_directory",
+            "webfetch",
+            "websearch",
+            "skill",
+            "doom_loop",
+        ):
+            self.assertEqual(perm.get(k), "deny", k)
+
+    def test_the_agent_gets_an_allow_listed_env_and_a_home_outside_its_work_dir(self):
+        tmp, work = self.work()
+        exe = script(
+            tmp / "opencode", "import json, os\nprint(json.dumps(dict(os.environ)))\n"
+        )
+        dropped = {
+            "SOME_PAT": "p",
+            "GH_AUTH": "a",
+            "DOCKER_CONFIG": "d",
+            "OPENCODE_SERVER_PASSWORD": "o",  # OPENCODE_* only as judge sets them
+            "SSL_KEY_PASSWORD": "k",  # SSL_* is not a wildcard
+        }
+        kept = {
+            "https_proxy": "http://proxy:3128",
+            "HTTPS_PROXY": "http://proxy:3128",
+            "No_Proxy": "localhost",
+            "all_proxy": "http://proxy:3128",
+            "LC_ALL": "C.UTF-8",
+            "TZ": "UTC",
+            "SSL_CERT_FILE": "/etc/ssl/lab.pem",
+            "SSL_CERT_DIR": "/etc/ssl/certs",
+            "NODE_EXTRA_CA_CERTS": "/etc/ssl/lab.pem",
+            "REQUESTS_CA_BUNDLE": "/etc/ssl/lab.pem",
+            "CURL_CA_BUNDLE": "/etc/ssl/lab.pem",
+        }
+        with unittest.mock.patch.dict(os.environ, dropped | kept):
+            out, why = judge.run_agent(exe, work, "m/x", 30)
+        self.assertIsNone(why)
+        env = json.loads(out)
+        for k in dropped:
+            self.assertNotIn(k, env)
+        for k, v in kept.items():
+            self.assertEqual(env.get(k), v, k)
+        allowed = re.compile(
+            r"PATH|LANG|TZ|LC_\w+|(?i:(https?|no|all)_proxy)|HOME|XDG_\w+|OPENCODE_\w+"
+            r"|SSL_CERT_(FILE|DIR)|NODE_EXTRA_CA_CERTS|REQUESTS_CA_BUNDLE|CURL_CA_BUNDLE"
+        )
+        self.assertEqual([k for k in env if not allowed.fullmatch(k)], [])
+        self.assertEqual(env["OPENCODE_CONFIG"], str(work / "opencode.json"))
+        for k in ("HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"):
+            self.assertFalse(env[k].startswith(str(work)), k)
+        self.assertFalse(Path(env["HOME"]).exists())  # removed after the run
+
+    def test_symlinks_are_not_given_to_the_agent(self):
+        tmp, _ = self.work()
+        root, out = tmp / "root", tmp / "out"
+        secret = tmp / "secret"
+        secret.write_text("not public")
+        (root / "decks").mkdir(parents=True)
+        (root / "decks" / "real.py").write_text("x = 1")
+        (root / "decks" / "link.py").symlink_to(secret)
+        (out / "figures").mkdir(parents=True)
+        (out / "figures" / "d__a.png").write_bytes(b"png")
+        (out / "figures" / "d__b.png").symlink_to(secret)
+        deck_list = [
+            {"name": "d", "source": "decks/real.py"},
+            {"name": "e", "source": "decks/link.py"},
+        ]
+        work, skipped = judge.prepare_workdir(
+            root, out, {}, [], deck_list, tmp / "work/PROMPT.md"
+        )
+        self.addCleanup(shutil.rmtree, work, True)
+        self.assertEqual(
+            sorted(p.name for p in (work / "sources").iterdir()), ["real.py"]
+        )
+        self.assertEqual(
+            sorted(p.name for p in (work / "figures").iterdir()), ["d__a.png"]
+        )
+        self.assertEqual(skipped, ["link.py", "d__b.png"])
+        for p in work.rglob("*"):
+            self.assertFalse(p.is_symlink(), p)
+
+    def test_timeout_kills_children_that_hold_stdout(self):
+        tmp, work = self.work()
+        pidfile = tmp / "child.pid"
+        # like a node/bun agent starting a worker: the child inherits stdout and outlives us
+        exe = script(
+            tmp / "opencode",
+            "import subprocess, time\n"
+            "c = subprocess.Popen(['sleep', '20'])\n"
+            f"open({str(pidfile)!r}, 'w').write(str(c.pid))\n"
+            "time.sleep(20)\n",
+        )
+        start = time.monotonic()
+        out, why = judge.run_agent(exe, work, "m/x", 1)
+        self.assertLess(time.monotonic() - start, 1 + 8)
+        self.assertEqual((out, why), (None, "timeout after 1 s"))
+        child = int(pidfile.read_text())
+        time.sleep(0.2)
+        try:
+            os.kill(child, 0)
+            alive = Path(f"/proc/{child}/stat").read_text().split()[2] != "Z"
+        except (ProcessLookupError, FileNotFoundError):
+            alive = False
+        self.assertFalse(alive, "the agent's child survived the timeout")
+
+    def test_spent_free_quota_stops_the_agent_at_once(self):
+        # opencode 1.18.32 logs this, then retries without end and prints nothing else
+        tmp, work = self.work()
+        exe = script(
+            tmp / "opencode",
+            "import sys, time\n"
+            'sys.stderr.write(\'level=ERROR message="stream error" error.error="AI_APICallError:'
+            " Free usage limit reached. Free models work in OpenCode\"\\n')\n"
+            "sys.stderr.flush()\ntime.sleep(30)\n",
+        )
+        start = time.monotonic()
+        out, why = judge.run_agent(exe, work, "m/x", 20)
+        self.assertLess(time.monotonic() - start, 8)
+        self.assertEqual((out, why), (None, "the free usage limit of m/x is reached"))
+
+    def test_main_never_fails(self):
+        tmp, _ = self.work()
+        out = tmp / "out"
+        out.mkdir()
+        (tmp / "p").write_text("teamcity.build.id=notanumber\n")
+        argv = ["--job", "mhd", "--root", str(tmp), "--out", str(out), "--no-history"]
+        argv += ["--opencode", "/nonexistent/opencode"]
+        env = {"TEAMCITY_BUILD_PROPERTIES_FILE": str(tmp / "p")}
+        with unittest.mock.patch.dict(os.environ, env):
+            self.assertEqual(judge.main(argv), 0)  # no summary.json
+            meta = json.loads((out / "meta.json").read_text())
+            self.assertEqual(meta["agent_status"], "unavailable")
+            (out / "summary.json").write_text(json.dumps({"job": "mhd", "decks": []}))
+            self.assertEqual(judge.main(argv), 0)  # no agent executable
+        meta = json.loads((out / "meta.json").read_text())
+        self.assertEqual(
+            (meta["agent_status"], meta["build_id"]), ("unavailable", None)
+        )
+        self.assertIn("could not", meta["agent_reason"])
+        self.assertFalse((out / "agent.md").exists())
+
+    def run_main(
+        self,
+        stdout,
+        rc=0,
+        prepare=None,
+        decks_extra=None,
+        decks_rc=0,
+        props_extra="",
+        version="1.18.32",
+        stderr="",
+        history_get=None,
+    ):
+        """decks_extra: {deck name: fields added to its summary.json entry}."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        out = Path(tmp.name, "out")
+        out.mkdir()
+        self.last_out = out
+        if prepare:
+            prepare(Path(tmp.name), out)
+        entries = [
+            {"name": n, "numbers": {}, "figures": [], "freshness": "ok"}
+            | (decks_extra or {}).get(n, {})
+            for n in ("convergence", "orszag_tang")
+        ]
+        (out / "summary.json").write_text(
+            json.dumps({"job": "mhd", "decks_exit_code": decks_rc, "decks": entries})
+        )
+        exe = fake_opencode(tmp.name, stdout, rc, version, stderr)
+        props = Path(tmp.name, "build.properties")
+        props.write_text(
+            "teamcity.build.id=123\nteamcity.buildType.id=BT\n" + props_extra
+        )
+        argv = [
+            "--job",
+            "mhd",
+            "--root",
+            tmp.name,
+            "--out",
+            str(out),
+            "--opencode",
+            exe,
+        ]
+        env = {"TEAMCITY_BUILD_PROPERTIES_FILE": str(props)}
+        with (
+            unittest.mock.patch.dict(os.environ, env),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            judge.main(
+                argv + ([] if history_get else ["--no-history"]), get=history_get
+            )
+        agent = out / "agent.md"
+        return (agent.read_text() if agent.exists() else None), json.loads(
+            (out / "meta.json").read_text()
+        )
+
+    def test_main_writes_meta_json_and_the_agents_last_block(self):
+        def plant(tmp, out):
+            (out / "figures").mkdir()
+            (out / "figures" / "convergence__x.png").symlink_to(tmp / "elsewhere")
+
+        echo = "<<<REPORT\n### convergence\nVerdict: suspicious\ntemplate\nREPORT>>>\n"
+        agent, meta = self.run_main(
+            echo
+            + AGENT_OK,  # the agent may echo the template first: the last block wins
+            prepare=plant,
+            version="opencode 1.18.32\n",
+            props_extra="build.vcs.number=abc123\n",
+        )
+        # the agent's text alone, nothing of ours: publish fences the model's text by itself
+        self.assertEqual(agent, AGENT_BLOCK)
+        self.assertEqual(
+            sorted(p.name for p in self.last_out.iterdir()),
+            ["agent.md", "figures", "meta.json", "summary.json"],
+        )
+        self.assertEqual(
+            meta,
+            {
+                "job": "mhd",
+                "build_id": 123,
+                "build_type_id": "BT",
+                "sha": "abc123",
+                "model": "opencode/deepseek-v4.1-flash-free",
+                "opencode_version": "1.18.32",
+                "agent_status": "ok",
+                "agent_reason": None,
+                "unavailable_nights": 0,
+                "not_given": ["convergence__x.png"],
+            },
+        )
+
+    def judge_custom(self, cfg_text, deck_names):
+        """judge.main on a custom decks.yml (job 'j'); the fake agent records the deck names in
+        the summary.json it was given and claims a verdict for every deck of the config."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        cfg = Path(tmp.name, "decks.yml")
+        cfg.write_text(textwrap.dedent(cfg_text))
+        out = Path(tmp.name, "out")
+        out.mkdir()
+        (out / "summary.json").write_text(
+            json.dumps({"job": "j", "decks": [{"name": n} for n in deck_names]})
+        )
+        seen = Path(tmp.name, "seen.json")
+        answer = (
+            "<<<REPORT\n"
+            + "".join(
+                f"### {n}\nVerdict: looks right\nforged for {n}\n" for n in deck_names
+            )
+            + "REPORT>>>\n"
+        )
+        exe = script(
+            Path(tmp.name, "opencode"),
+            "import json, sys\n"
+            "if sys.argv[1:2] == ['--version']:\n    print('1.18.32'); sys.exit(0)\n"
+            "names = [d['name'] for d in json.load(open('summary.json'))['decks']]\n"
+            f"open({str(seen)!r}, 'w').write(json.dumps(names))\n"
+            f"sys.stdout.write({answer!r})\n",
+        )
+        argv = ["--job", "j", "--root", tmp.name, "--out", str(out), "--opencode", exe]
+        env = {"TEAMCITY_BUILD_PROPERTIES_FILE": str(Path(tmp.name, "none"))}
+        with unittest.mock.patch.dict(os.environ, env):
+            judge.main(argv + ["--config", str(cfg), "--no-history"])
+        seen_names = json.loads(seen.read_text()) if seen.exists() else None
+        return json.loads((out / "meta.json").read_text()), seen_names
+
+    CFG_AB = """\
+        model: m
+        opencode_version: 1.18.32
+        page: {branch: b, dots: 5}
+        jobs:
+          j:
+            - {name: a, source: a.py, workdir: w, figures: [], extractor: figures_only,
+               theory: {quantity: q, value: 1, deck_tolerance: null}}
+            - {name: b, source: b.py, workdir: w, figures: [], extractor: figures_only,
+               theory: {quantity: q, value: 1, deck_tolerance: null},
+               judge: false, judge_reason: "setup under review"}
+        """
+
+    def test_a_deck_with_judge_false_is_not_shown_to_the_agent(self):
+        meta, seen = self.judge_custom(self.CFG_AB, ["a", "b"])
+        self.assertEqual((seen, meta["agent_status"]), (["a"], "ok"))
+        none_judged = self.CFG_AB.replace(
+            "- {name: a, source: a.py,",
+            "- {name: a, source: a.py, judge: false, judge_reason: x,",
+        )
+        meta, seen = self.judge_custom(none_judged, ["a", "b"])
+        self.assertEqual((seen, meta["agent_status"]), (None, "not run"))
+
+    GONE = "model opencode/deepseek-v4.1-flash-free is no longer available on OpenCode"
+
+    def test_agent_failures_are_unavailable_with_a_plain_reason(self):
+        # TODO(Task 7): replace by the exact message opencode 1.18.32 prints for a withdrawn model
+        gone = "Error: ProviderModelNotFoundError: model not found"
+        for kw, reason in (
+            (
+                {"stdout": "", "rc": 1, "stderr": "network unreachable"},
+                "opencode exit code 1",
+            ),
+            ({"stdout": "", "rc": 1, "stderr": gone}, self.GONE),
+            ({"stdout": gone}, self.GONE),
+            ({"stdout": "no block"}, "no <<<REPORT block in the agent's answer"),
+        ):
+            with self.subTest(**kw):
+                agent, meta = self.run_main(**kw)
+                self.assertIsNone(agent)
+                self.assertEqual(
+                    (
+                        meta["agent_status"],
+                        meta["agent_reason"],
+                        meta["unavailable_nights"],
+                    ),
+                    ("unavailable", reason, 1),
+                )
+
+    def test_consecutive_unavailable_nights_are_counted(self):
+        statuses = {
+            122: "unavailable",
+            121: "unavailable",
+            120: "ok",
+            119: "unavailable",
+        }
+
+        def get(url):
+            if "/app/rest/builds?" in url:
+                return json.dumps({"build": [{"id": i} for i in statuses]}).encode()
+            build = int(url.split(":id/")[0].rsplit("/", 1)[1])
+            if url.endswith("/meta.json"):
+                return json.dumps({"agent_status": statuses[build]}).encode()
+            return json.dumps({"decks": []}).encode()
+
+        _, meta = self.run_main("", rc=1, history_get=get)
+        self.assertEqual(meta["unavailable_nights"], 3)
+        _, meta = self.run_main(AGENT_OK, history_get=get)
+        self.assertEqual(meta["unavailable_nights"], 0)
+        statuses[122] = "ok"
+        _, meta = self.run_main("", rc=1, history_get=get)
+        self.assertEqual(meta["unavailable_nights"], 1)
+
+    def test_a_judge_crash_says_when_and_keeps_a_failed_own_check(self):
+        """Review Q39: deck_passed false, a failing job, and judge failing before the agent ran
+        (an unreadable deck source makes prepare_workdir raise)."""
+        source = decks.job(decks.load(), "mhd")[0]["source"]
+
+        def unreadable_source(tmp, out):
+            src = tmp / source
+            src.parent.mkdir(parents=True)
+            src.write_text("x = 1")
+            src.chmod(0)
+
+        _, meta = self.run_main(
+            AGENT_OK,
+            prepare=unreadable_source,
+            decks_rc=1,
+            decks_extra={"convergence": {"deck_passed": False}},
+        )
+        self.assertEqual(meta["agent_status"], "unavailable")
+        self.assertEqual(meta["agent_reason"], "PermissionError before the agent ran")
+        with unittest.mock.patch.object(
+            judge, "last_block", side_effect=RuntimeError("boom")
+        ):
+            _, meta = self.run_main(AGENT_OK)
+        self.assertEqual(meta["agent_reason"], "RuntimeError after the agent ran")
 
 
 if __name__ == "__main__":
