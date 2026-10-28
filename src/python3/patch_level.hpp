@@ -193,7 +193,7 @@ public:
     {
         std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
 
-        auto& B0 = model_.externalField.B0();
+        auto& B0 = model_.externalFieldManager.field().B0();
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             auto compo = PHARE::core::Components::componentMap().at(componentName);

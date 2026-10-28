@@ -26,3 +26,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 
+
+add_executable(test-external-field-manager test_external_field_manager.cpp)
+
+target_include_directories(test-external-field-manager PRIVATE
+  ${GTEST_INCLUDE_DIRS}
+  )
+
+target_link_libraries(test-external-field-manager PRIVATE
+  phare_amr
+  phare_initializer
+  ${GTEST_LIBS})
+
+add_no_mpi_phare_test(test-external-field-manager ${CMAKE_CURRENT_BINARY_DIR})

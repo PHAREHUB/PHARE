@@ -6,11 +6,9 @@
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
-#include "core/models/external_field.hpp"
-#include "core/models/external_field_updater.hpp"
-#include "core/models/external_field_updater_factory.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/external_field_manager.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
@@ -43,20 +41,16 @@ public:
     using grid_type                   = Grid_t;
     using resources_manager_type      = amr::ResourcesManager<gridlayout_type, Grid_t>;
     using boundary_manager_type       = core::BoundaryManager<gridlayout_type, field_type>;
-    using external_field_type         = core::ExternalField<vecfield_type>;
-    using external_field_updater_type = core::IExternalFieldUpdater<vecfield_type, gridlayout_type>;
-    using external_field_factory_type
-        = core::ExternalFieldUpdaterFactory<vecfield_type, gridlayout_type>;
+    using external_field_manager_type = ExternalFieldManager<vecfield_type, gridlayout_type>;
 
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
     state_type state;
-    external_field_type externalField;
+    external_field_manager_type externalFieldManager;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
     double gamma_; //!< heat capacity ratio
-    std::unique_ptr<external_field_updater_type> externalFieldUpdater;
 
     // diagnostics buffers
     vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
@@ -77,7 +71,7 @@ public:
         resourcesManager->allocate(P_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
-        resourcesManager->allocate(externalField, patch, allocateTime);
+        resourcesManager->allocate(externalFieldManager.field(), patch, allocateTime);
     }
 
 
@@ -92,12 +86,9 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
-        , externalField{model_name, dict.contains("external_field")}
+        , externalFieldManager{model_name, dict}
         , resourcesManager{_resourcesManager}
         , gamma_{dict["mhd_state"]["to_conservative_init"]["heat_capacity_ratio"]}
-        , externalFieldUpdater{dict.contains("external_field")
-                                   ? external_field_factory_type::create(dict["external_field"])
-                                   : nullptr}
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
@@ -122,21 +113,12 @@ public:
 
     void initializeExternalField(level_t& level, double time) override
     {
-        if (!externalFieldUpdater)
-            return;
-
-        for (auto const& patch : resourcesManager->enumerate(level, externalField, tmpVec_))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto scratch      = core::view_as(tmpVec_, vecfield_type::tensor_t::E, layout);
-            (*externalFieldUpdater)(externalField, scratch, layout, time);
-        }
+        externalFieldManager.initialize(*resourcesManager, level, tmpVec_, time);
     }
 
     void updateExternalField(level_t& level, double time) override
     {
-        if (externalFieldUpdater and externalFieldUpdater->isTimeDependent())
-            initializeExternalField(level, time);
+        externalFieldManager.update(*resourcesManager, level, tmpVec_, time);
     }
 
     ~MHDModel() override = default;
@@ -146,18 +128,21 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return core::isUsable(state, externalField); }
+    NO_DISCARD bool isUsable() const { return core::isUsable(state, externalFieldManager.field()); }
 
-    NO_DISCARD bool isSettable() const { return core::isSettable(state, externalField); }
+    NO_DISCARD bool isSettable() const
+    {
+        return core::isSettable(state, externalFieldManager.field());
+    }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(state, externalField);
+        return std::forward_as_tuple(state, externalFieldManager.field());
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(state, externalField);
+        return std::forward_as_tuple(state, externalFieldManager.field());
     }
 
     //-------------------------------------------------------------------------

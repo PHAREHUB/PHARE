@@ -162,7 +162,7 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
         auto path = hi5.getPatchPath(iLevel, patchID) + "/";
         checkVF(layout, path, "EM_B", hybridModel.state.electromag.B);
         checkVF(layout, path, "EM_E", hybridModel.state.electromag.E);
-        checkVF(layout, path, "EM_B0", hybridModel.externalField.B0());
+        checkVF(layout, path, "EM_B0", hybridModel.externalFieldManager.field().B0());
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
