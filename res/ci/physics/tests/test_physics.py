@@ -12,6 +12,7 @@ import tempfile
 import textwrap
 import unittest
 import unittest.mock
+import urllib.error
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +23,7 @@ import decks
 import extract
 import history
 import metrics
+import tc
 
 
 def script(path, body):
@@ -644,6 +646,114 @@ class HistoryTest(unittest.TestCase):
             s = history.state(n, "t", True)
             self.assertEqual(s["status"], "unknown status no output")
             self.assertTrue(s["abnormal"])  # neutral: carries over the suspicious run
+
+
+HYB_TYPE = "Phare_Next_NightlyV1gcc_virtual_hybrid_functional_V__1"
+MHD_TYPE = "Phare_Next_NightlyV1gcc_virtual_mhd_functional_V__1"
+
+
+class TcTest(unittest.TestCase):
+    BASE = "http://tc"
+    SHA = "b" * 40
+
+    def fake(self, payload):
+        seen = []
+
+        def get(url, *a, **k):
+            seen.append(url)
+            return json.dumps(payload).encode()
+
+        get.seen = seen
+        return get
+
+    def test_upstream_builds_parses_and_filters(self):
+        def b(i, t, sha):
+            return {
+                "id": i,
+                "buildTypeId": t,
+                "startDate": "20261028T010012+0000",
+                "defaultBranch": True,
+                "triggered": {"type": "schedule"},
+                "revisions": {"revision": [{"version": sha}]},
+            }
+
+        get = self.fake(
+            {
+                "build": [
+                    b(1, HYB_TYPE, self.SHA),
+                    b(2, "x/../y", self.SHA),
+                    b(3, "T_mhd", "abc"),
+                ]
+            }
+        )
+        out = tc.upstream_builds(self.BASE, 7, get)
+        self.assertEqual([x["id"] for x in out], [1, 3])
+        self.assertEqual(out[0]["sha"], self.SHA)
+        self.assertIsNone(out[1]["sha"])
+        self.assertEqual(out[0]["start"].isoformat(), "2026-10-28T01:00:12+00:00")
+        self.assertIs(out[0]["default_branch"], True)
+        self.assertEqual(out[0]["triggered"], "schedule")
+        self.assertTrue(
+            get.seen[0].startswith(f"{self.BASE}/guestAuth/app/rest/builds?")
+        )
+        self.assertIn("snapshotDependency:(to:(id:7)),defaultFilter:false", get.seen[0])
+
+    def test_head_of_picks_the_newest_head(self):
+        get = self.fake(
+            {
+                "build": [
+                    {"id": 101179, "buildTypeId": "Phare_Next_NightlyV1gcc"},
+                    {"id": 101249, "buildTypeId": "Phare_Next_NightlyV1gcc"},
+                    {"id": 101300, "buildTypeId": "Phare_Next_NightlyV1gcc_virtual_x"},
+                ]
+            }
+        )
+        self.assertEqual(tc.head_of(self.BASE, 101183, get), (101249, [101179]))
+        self.assertIn("snapshotDependency:(from:(id:101183))", get.seen[0])
+
+    def test_bad_answers_give_nothing(self):
+        for payload in ([], [1], "x", {}, {"build": 3}, {"build": [1, "a"]}):
+            get = self.fake(payload)
+            self.assertEqual(tc.upstream_builds(self.BASE, 1, get), [])
+            self.assertEqual(tc.head_of(self.BASE, 1, get), (None, []))
+            self.assertIsNone(tc.build_info(self.BASE, 1, get))
+        info = {"id": 5, "buildTypeId": "T_x", "startDate": "20261028T010012+0000"}
+        b = tc.build_info(self.BASE, 5, self.fake(info))
+        # absent is not the default branch, and not a schedule
+        self.assertEqual(
+            (b["default_branch"], b["sha"], b["triggered"]), (False, None, None)
+        )
+        for triggered in (5, "schedule", [1], {"type": 3}, {}):
+            b = tc.build_info(self.BASE, 5, self.fake(info | {"triggered": triggered}))
+            self.assertIsNone(b["triggered"], triggered)
+
+    def test_physics_out_exists_codes(self):
+        url = []
+
+        def ok(u, timeout=30, headers=None):
+            url.append((u, timeout))
+            return b"[]"
+
+        self.assertIs(tc.physics_out_exists(self.BASE, 9, "hybrid", ok), True)
+        self.assertEqual(url[0][1], 10)
+        self.assertTrue(
+            url[0][0].endswith("/builds/id:9/artifacts/children/physics-out/hybrid")
+        )
+
+        def raiser(exc):
+            def get(u, timeout=30, headers=None):
+                raise exc
+
+            return get
+
+        def http(code):
+            return urllib.error.HTTPError("u", code, "m", {}, None)
+
+        self.assertIs(
+            tc.physics_out_exists(self.BASE, 9, "h", raiser(http(404))), False
+        )
+        for exc in (http(500), urllib.error.URLError("x"), TimeoutError()):
+            self.assertIsNone(tc.physics_out_exists(self.BASE, 9, "h", raiser(exc)))
 
 
 if __name__ == "__main__":
