@@ -49,12 +49,15 @@ like.
   per half step on the device goes unnoticed.
 - Proper fix: a device error flag set by the kernels and checked on the host after the stream syncs.
 
-### CPU emulation build throws at the first push
-- `src/core/numerics/pusher/boris/detail/multi_boris.hpp` ("NEEDS GPU IMPL!")
-- With mkn's CPU fallthrough (`MKN_GPU_CPU=1`) the `GPU_UNIFIED` modules are built and reported as
-  supported, but the in place push throws and the deposit kernels are empty.
-- Proper fix: run the kernels through the CPU fallthrough, or do not report `GPU_UNIFIED` support
-  in that build.
+### CPU emulation runs no shared memory kernels
+- `src/core/numerics/pusher/boris/detail/multi_boris.hpp` (`on_tiles_push_deposit`),
+  `src/core/numerics/interpolator/interpolating.hpp` (`on_tiles` and friends)
+- With mkn's CPU fallthrough (`MKN_GPU_CPU=1`, `mkn.sh`) the AoSPCTS `GPU_UNIFIED` kernels and the
+  field solvers run on the pseudo GPU (`test_multi_updater`, `test_field_solvers`), but the kernels
+  using `extern __shared__` stay behind `PHARE_HAVE_MKN_GPU_HW`: there is no dynamic shared memory
+  on the pseudo GPU.
+- Proper fix: a per launch shared memory buffer in mkn.gpu's CPU backend, sized from the launch's
+  `ds`, and kernels taking their shared memory from it instead of `extern __shared__`.
 
 ## Tiling
 

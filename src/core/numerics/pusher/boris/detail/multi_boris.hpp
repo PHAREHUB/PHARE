@@ -808,7 +808,7 @@ struct MultiBorisFunctors
 
     void on_gpu_tiles([[maybe_unused]] auto& in, [[maybe_unused]] auto const i)
     {
-#if !PHARE_HAVE_GPU
+#if !PHARE_HAVE_MKN_GPU
         throw std::runtime_error("NEEDS GPU IMPL!");
 #else
         if constexpr (Particles_t::layout_mode == LayoutMode::AoSPCTS)
@@ -821,7 +821,7 @@ struct MultiBorisFunctors
     // AoSPCTS: block = (tile, cell), block threads stride the cell's particles
     void on_gpu_tile_cells([[maybe_unused]] auto& in, [[maybe_unused]] auto const i)
     {
-#if PHARE_HAVE_GPU
+#if PHARE_HAVE_MKN_GPU
         using Launcher = gpu::TileCellLauncher<false>;
 
         auto const max_cells = Launcher::max_cells(pps);
@@ -848,7 +848,7 @@ struct MultiBorisFunctors
     // flat tiles: block = tile, warp of threads striding the tile's particles
     void on_gpu_flat_tiles([[maybe_unused]] auto& in, [[maybe_unused]] auto const i)
     {
-#if PHARE_HAVE_GPU
+#if PHARE_HAVE_MKN_GPU
         using Launcher = gpu::ChunkLauncher<false>;
         Launcher launcher{1, 0};
         launcher.b.x           = kernel::warp_size();

@@ -284,7 +284,7 @@ public:
     static void on_tile_cells(auto& particles, auto& Flux, auto& Rhop, std::size_t const threads,
                               double coef = 1.) _PHARE_DEV_FN_
     {
-#if PHARE_HAVE_MKN_GPU_HW
+#if PHARE_HAVE_MKN_GPU
         static_assert(atomic_ops, "GPU must be atomic");
         using TensorField_t = basic::TensorField<typename Field_t::value_type, 1>;
 
@@ -301,7 +301,7 @@ public:
         auto& pdensity      = rhop_tile();
         for (std::size_t pid = Launcher::thread_idx(); pid < parts.size(); pid += threads)
             Interpolator_t{}.particleToMesh(parts[pid], pdensity, flux, layout, coef);
-#endif // PHARE_HAVE_MKN_GPU_HW
+#endif // PHARE_HAVE_MKN_GPU
     }
 
     template<bool in_box = false, typename Particles, typename GridLayout, typename VecField,

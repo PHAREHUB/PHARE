@@ -488,7 +488,7 @@ PHARE_WITH_MKN_GPU(
    ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
 )
 
-PHARE_WITH_GPU(
+PHARE_WITH_MKN_GPU(
    ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
    ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
    ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
