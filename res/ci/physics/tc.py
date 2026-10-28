@@ -114,6 +114,21 @@ def artifact_sources(base, build_id, get=None):
     return [b for b in found if b]
 
 
+def last_finished(base, build_type_id, get=None):
+    """The last finished build of a build type on the default branch, or None."""
+    if not isinstance(build_type_id, str) or not history.BUILD_TYPE.fullmatch(
+        build_type_id
+    ):
+        return None
+    url = (
+        f"{base}/guestAuth/app/rest/builds?locator=buildType:(id:{build_type_id}),"
+        "branch:(default:true),state:finished,defaultFilter:false,count:1"
+        f"&fields=build({FIELDS})"
+    )
+    found = [b for b in map(_build, _build_list(url, get)) if b]
+    return found[0] if found else None
+
+
 def build_info(base, build_id, get=None):
     url = f"{base}/guestAuth/app/rest/builds/id:{int(build_id)}?fields={FIELDS}"
     return _build(get_json(url, get))

@@ -213,13 +213,18 @@ def jobs_tonight(base, cfg, own, a, get, notes):
     or None), all from TeamCity. A failed read gives no builds, never an error. A night
     whose trigger cannot be read is manual: only a schedule makes a scheduled night.
     A page writer outside the pipeline has no head: its job builds are the ones it
-    downloaded, and the head is the newest one depending on them."""
+    downloaded, else (TeamCity names none when nothing was downloaded) each job's last
+    finished build, and the head is the newest one depending on them."""
     try:
         head, sources = a.head_build_id, []
         if head is None and own is not None:
             head, others = tc.head_of(base, own, get)
             if head is None:
                 sources = tc.artifact_sources(base, own, get)
+                seen = {b["type"] for b in sources}
+                for t in cfg["teamcity"].get("job_types", {}).values():
+                    b = None if t in seen else tc.last_finished(base, t, get)
+                    sources += [b] if b else []
                 if sources:
                     newest = max(b["id"] for b in sources)
                     head, others = tc.head_of(base, newest, get)

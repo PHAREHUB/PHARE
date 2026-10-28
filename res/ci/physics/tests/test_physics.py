@@ -720,12 +720,23 @@ class TcTest(unittest.TestCase):
         self.assertEqual(tc.head_of(self.BASE, 101183, get), (101249, [101179]))
         self.assertIn("snapshotDependency:(from:(id:101183))", get.seen[0])
 
+    def test_last_finished_asks_for_the_default_branch(self):
+        b = {"id": 4, "buildTypeId": HYB_TYPE, "startDate": "20261028T010012+0000"}
+        get = self.fake({"build": [b]})
+        self.assertEqual(tc.last_finished(self.BASE, HYB_TYPE, get)["id"], 4)
+        self.assertIn(
+            f"locator=buildType:(id:{HYB_TYPE}),branch:(default:true),state:finished,",
+            get.seen[0],
+        )
+        self.assertIsNone(tc.last_finished(self.BASE, HYB_TYPE, self.fake({})))
+
     def test_bad_answers_give_nothing(self):
         for payload in ([], [1], "x", {}, {"build": 3}, {"build": [1, "a"]}):
             get = self.fake(payload)
             self.assertEqual(tc.upstream_builds(self.BASE, 1, get), [])
             self.assertEqual(tc.head_of(self.BASE, 1, get), (None, []))
             self.assertIsNone(tc.build_info(self.BASE, 1, get))
+        self.assertIsNone(tc.last_finished(self.BASE, "x/../y", get))
         for deps in (3, [], {}, {"build": 3}, {"build": [1, {"id": "x"}]}):
             get = self.fake({"id": 5, "artifact-dependencies": deps})
             self.assertEqual(tc.artifact_sources(self.BASE, 5, get), [])
@@ -1649,9 +1660,11 @@ def fake_teamcity(
     own_default=True,
     head_broken=False,
     sources=None,
+    last=(),
 ):
     """A get for the TeamCity reads of publish: the page writer is build 5, the head 9.
-    With sources, the writer is outside the pipeline and downloaded those builds."""
+    With sources, the writer is outside the pipeline and downloaded those builds; last
+    are the job builds TeamCity gives as last finished."""
     urls = []
 
     def get(url, *a, **k):
@@ -1662,6 +1675,10 @@ def fake_teamcity(
             return b'{"build": []}'
         if sources is not None and "artifact-dependencies" in url:
             return json.dumps({"artifact-dependencies": {"build": sources}}).encode()
+        m = re.search(r"locator=buildType:\(id:(\w+)\)", url)
+        if m:
+            found = [b for b in last if b["buildTypeId"] == m.group(1)]
+            return json.dumps({"build": found}).encode()
         if "snapshotDependency:(from:" in url:
             return json.dumps(
                 {"build": [{"id": h, "buildTypeId": "T_head"} for h in heads]}
@@ -1883,6 +1900,17 @@ class PublishTest(unittest.TestCase):
         run = self.nights()[0]["run"]
         self.assertEqual(sorted(b["id"] for b in run["builds"].values()), [11, 12])
         self.assertFalse(run["manual"])  # the head, 9, ran on schedule
+
+    def test_a_writer_that_downloaded_nothing_takes_the_last_job_builds(self):
+        self.write_both()
+        for downloaded in ([], [tc_build(11, HYB_TYPE)]):
+            get = fake_teamcity([], sources=downloaded, last=tc_nightly())
+            self.main(get)
+            urls = "\n".join(get.urls)
+            self.assertIn(f"buildType:(id:{MHD_TYPE})", urls)
+            self.assertEqual(f"buildType:(id:{HYB_TYPE})" in urls, not downloaded)
+            run = self.nights()[0]["run"]
+            self.assertEqual(sorted(b["id"] for b in run["builds"].values()), [11, 12])
 
     def test_without_teamcity_the_night_is_today_and_manual_with_no_builds(self):
         self.write_both()

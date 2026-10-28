@@ -9,6 +9,9 @@ page:  # the static nightly page: branch it is pushed to (on the clone's origin)
   dots: 90
 teamcity:
   url: https://hephaistos.lpp.polytechnique.fr/teamcity
+  job_types:  # each job's build type: the page writer takes its last finished build when it downloaded none
+    hybrid: Phare_Next_NightlyV1gcc_virtual_hybrid_functional_V__1
+    mhd: Phare_Next_NightlyV1gcc_virtual_mhd_functional_V__1
 jobs:
   hybrid:
     - name: ion_ion_beam1d
