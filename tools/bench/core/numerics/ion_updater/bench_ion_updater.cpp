@@ -34,12 +34,6 @@ bool static const premain = []() {
     return true;
 }();
 
-template<typename ParticleArray, typename GridLayout>
-using IonUpdater_t = std::conditional_t<is_tiled(ParticleArray::layout_mode),
-                                        ParallelIonUpdater<ParticleArray, GridLayout>,
-                                        IonUpdater<ParticleArray, GridLayout>>;
-
-
 template<std::size_t dim>
 auto make_src_ions(auto const& layout)
 {
@@ -93,7 +87,7 @@ void update(benchmark::State& state)
     using EM_t            = UsableElectromag<TensorFieldOptions<Hybrid_t>{}>;
     using Patch_t         = aggregate_adapter<test::HybridPatch<Ions_t, EM_t>>;
     using ParticleArray_t = Ions_t::particle_array_type;
-    using Updater_t       = IonUpdater_t<ParticleArray_t, GridLayout_t>;
+    using Updater_t       = IonUpdaterFor_t<ParticleArray_t, GridLayout_t>;
     using Boxing_t        = Updater_t::Boxing_t;
 
     using SrcGridLayout_t = PHARE_Types<SimOpts{.dimension = opts.dimension}>::Hybrid::GridLayout_t;
@@ -115,7 +109,7 @@ void update(benchmark::State& state)
         n_particles += ions.populations[0].particles.domain_particles.size();
         state.ResumeTiming();
 
-        if constexpr (not is_tiled(opts.layout_mode))
+        if constexpr (opts.layout_mode == LayoutMode::AoSMapped)
             Updater_t{}.updatePopulations(ions, electromag, boxing, dt, updater_mode);
         else
         {
@@ -155,7 +149,7 @@ int main(int argc, char** argv)
     using namespace PHARE::core;
     using enum LayoutMode;
 
-    auto constexpr static layouts = std::array{AoSMapped, AoSTS, AoSPCTS, AoSCMTS};
+    auto constexpr static layouts = std::array{AoSMapped, AoS, AoSTS, AoSPCTS, AoSCMTS, SoA, SoAVX};
 
     for_N<3>([](auto d) {
         constexpr std::size_t dim = d() + 1;

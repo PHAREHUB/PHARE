@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/particles/arrays/particle_array_soavx.hpp"
 // #include "core/data/particles/particle.hpp"
 // #include "core/data/electromag/electromag.hpp"
 // #include "core/data/tensorfield/tensorfield.hpp"
@@ -135,8 +136,7 @@ void accelerate_noavx(Particles_t& ps, Args&... args) _PHARE_ALL_FN_
     static constexpr Float one                    = 1;
     static constexpr Float two                    = 2;
 
-    // index-based: SoA has no flat iterator
-    auto const& eb        = interp.m2p(ps, em, layout, pidx);
+    auto const& eb        = interp.m2p(SoAVXParticleView{ps, pidx}, em, layout);
     auto& [pE, pB]        = eb;
     auto& [pEx, pEy, pEz] = pE;
     auto& [pBx, pBy, pBz] = pB;
@@ -188,6 +188,14 @@ void accelerate_noavx(Particles_t& ps, Args&... args) _PHARE_ALL_FN_
 
 
 #if PHARE_HAVE_MKN_AVX
+
+} // namespace PHARE::core::boris
+
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+
+namespace PHARE::core::boris
+{
 
 
 
@@ -366,26 +374,31 @@ auto avx_ad_acc_ad(Particles_t& ps, Args&... args) _PHARE_ALL_FN_
 
     using Vecfield_t               = std::decay_t<decltype(em)>::vecfield_type;
     using Field_t                  = Vecfield_t::field_type;
-    using Electromag_vt            = basic::Electromag<basic::TensorField<Field_t>>;
+    using Electromag_vt            = basic::Electromag<basic::TensorField<Field_t, 1>>;
     using Float                    = std::decay_t<decltype(halfDtOverDl)>::value_type;
     auto constexpr static simdSize = mkn::avx::Span<Float>::N;
 
     auto const& siz = ps.size();
+    std::size_t i   = 0;
 
-    auto const em_view = [&]() { // take as array of views
-        auto const emv = em.template as<Electromag_vt>([](auto const& cptr) { return *cptr; });
-        return std::array{emv.E[0], emv.E[1], emv.E[2], emv.B[0], emv.B[1], emv.B[2]};
-    }();
-
-    auto const nDelts = for_N<Field_t::dimension, for_N_R_mode::make_array>(
-        [&](auto i) { return mkn::avx::Array<Float, simdSize>{halfDtOverDl[i]}; });
-
-    std::size_t i = 0;
-    for (; i < siz; i += simdSize)
+    if constexpr (Field_t::dimension == 3
+                  and std::decay_t<decltype(interpolator)>::interp_order == 1)
     {
-        advance_avx(ps, i, nDelts);
-        accelerate_avx(ps, i, em_view, interpolator, layout, coef1);
-        advance_avx(ps, i, nDelts);
+        auto const em_view = [&]() { // take as array of views
+            auto const emv
+                = em.template as<Electromag_vt>([](auto const& cptr) { return *cptr; });
+            return std::array{emv.E[0], emv.E[1], emv.E[2], emv.B[0], emv.B[1], emv.B[2]};
+        }();
+
+        auto const nDelts = for_N<Field_t::dimension, for_N_R_mode::make_array>(
+            [&](auto d) { return mkn::avx::Array<Float, simdSize>{halfDtOverDl[d]}; });
+
+        for (; i + simdSize <= siz; i += simdSize)
+        {
+            advance_avx(ps, i, nDelts);
+            accelerate_avx(ps, i, em_view, interpolator, layout, coef1);
+            advance_avx(ps, i, nDelts);
+        }
     }
 
     // do rest

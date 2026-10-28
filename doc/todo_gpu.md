@@ -53,3 +53,68 @@ like.
 - Tiled fields are reduced into a temporary untiled grid, the boundary condition is applied there,
   and the result is scattered back into every tile. Allocates per call and is host only.
 - Proper fix: apply boundary conditions per tile on the tile's ghost region.
+
+## Field solvers
+
+### Ampere, Faraday and Ohm have no device kernels
+- `src/core/numerics/ampere/ampere.hpp`, `src/core/numerics/faraday/faraday.hpp`,
+  `src/core/numerics/ohm/ohm.hpp`
+- The captureless `_PHARE_ALL_FN_` kernels (`JxEq_`, `BxEq_`, static `E_Eq_`, ...) were dropped
+  when rebasing onto master's shared `curl`/`grad` (#1468): they used `GridLayout::deriv` and
+  `laplacian`, which no longer exist. The solvers now evaluate `[&]` capturing host lambdas over
+  `curl(layout_, B)` / `grad(layout_, Pe)`, so `GPU_UNIFIED` field solves run on the host.
+- Proper fix: make `curl`/`grad` (and the recentered field reads they use) device callable, then
+  pass fields as lambda arguments again so `evalOnBox` can dispatch to the device.
+
+### for_N_fold is host only
+- `src/core/utilities/types.hpp` (`for_N_fold`), used by `for_N` and `NdArrayViewer::idx`
+- `for_N` is `_PHARE_ALL_FN_` but forwards to `for_N_fold`, whose immediately invoked lambda is not
+  annotated.
+- Proper fix: annotate `for_N_fold` and its inner lambda `_PHARE_ALL_FN_`.
+
+
+
+##############################
+
+SOAVX benchmark results
+
+
+AVX doesn't pay off any more now that the PR's kernels are in. Here's SoAVX without and with AVX, in millions of particles per second:
+
+┌────────────────┬────────┬──────┬─────────────────────────┐
+│     SoAVX      │ no AVX │ AVX  │         Change          │
+├────────────────┼────────┼──────┼─────────────────────────┤
+│ 1D domain_only │ 26.4   │ 28.4 │ noise                   │
+├────────────────┼────────┼──────┼─────────────────────────┤
+│ 1D all         │ 28.9   │ 31.7 │ +9%, at the noise floor │
+├────────────────┼────────┼──────┼─────────────────────────┤
+│ 2D domain_only │ 21.0   │ 21.8 │ noise                   │
+├────────────────┼────────┼──────┼─────────────────────────┤
+│ 2D all         │ 26.8   │ 26.5 │ none                    │
+├────────────────┼────────┼──────┼─────────────────────────┤
+│ 3D domain_only │ 11.1   │ 10.5 │ noise                   │
+├────────────────┼────────┼──────┼─────────────────────────┤
+│ 3D all         │ 10.0   │ 7.8  │ −22%                    │
+└────────────────┴────────┴──────┴─────────────────────────┘
+
+What it tells us:
+- The SIMD deposit is redundant now. In 2D, where it's the only AVX path running, it adds nothing. My SIMD deposit only vectorises the weight·coef·v products, and scatters with its own unfused per-corner indexing without __restrict. The PR's scalar fused deposit is now at least as fast.
+- The 3D SIMD push is a clear regression (−22%), as before the PR, and now against a faster scalar baseline. m2p_avx builds large Array<Array<…>> temporaries and reads the fields with scattered loads, which the stride-based scalar m2p beats.
+- The noise is large. Layouts AVX doesn't touch moved by up to 70% between the two runs (AoSTS 2D all went from 9.8 to 16.5). The bench warns that CPU scaling is enabled, and each configuration runs only 5 iterations, so treat anything under about 15% as noise.
+
+My recommendation: drop the AVX paths from SoAVX for now:
+- remove particleToMesh_avx from interpolating.hpp;
+- make avx_ad_acc_ad always use the scalar loop, or have the backend call the scalar per-index loop directly.
+
+SoAVX then runs the scalar fused path, which is what wins anyway. The pieces needed to compile with -w mkn.avx (the include and drift fixes, the loop-bound fix) can stay, since they're correct and harmless.
+
+If you'd rather keep a SIMD deposit, the version worth trying is SIMD weights fed into the PR's fused deposit_ instead of my scatter. Given these numbers, I'd expect it to gain little.
+
+To get firmer numbers, run with CPU scaling disabled (for example cpupower frequency-set -g performance) and more iterations (PHARE_PUSHES=20).
+
+Which do you want: drop the AVX paths, or try SIMD weights fed into the fused deposit_?
+
+✻ Worked for 13s · done 13:10
+
+❯ ok so since https://github.com/PHAREHUB/PHARE/pull/1504 SoAVX is redundant?
+

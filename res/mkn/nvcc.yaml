@@ -1,0 +1,37 @@
+property:
+  cxx.flags: -DPHARE_HAVE_MKN_GPU=1 --std=c++20 -gpu=cc80 -stdpar
+ ## cxx.flags: >-
+#  --std=c++20 -fPIC -fsized-deallocation -Wno-unknown-cuda-version
+#    -Xclang -fcuda-allow-variadic-functions
+#    -x cuda --cuda-gpu-arch=sm_80
+#    -DPHARE_HAVE_MKN_GPU=1
+  lnk.flags: -cuda -lcudart # -Wl,-z,defs -fuse-ld=gold
+
+local:
+  repo: /mkn/r
+  mod-repo: /mkn/m
+
+remote:
+  repo: git@github.com:mkn/
+  mod-repo: git@github.com:mkn-mod/
+
+# /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/compilers/bin/nvc++
+env: |
+  PATH=/opt/mpi/cuda/bin:${PATH}
+  OMPI_CXX=nvc++
+
+# /usr/local/cuda/targets/x86_64-linux/lib
+path: /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/cuda/12.3/targets/x86_64-linux/lib
+
+inc: /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/cuda/12.3/targets/x86_64-linux/include
+
+compiler:
+  mask:
+    g++:
+      mpicxx
+
+file:
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler:  mpicxx ${cxx.flags}
+    linker:  mpicxx ${lnk.flags}

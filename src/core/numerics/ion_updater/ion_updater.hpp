@@ -641,8 +641,27 @@ public:
 private:
     static void per_patch(auto& accessor, auto const& fn);
 
+    static void deposit(auto const& particles, auto& pop, auto const& layout);
+
     double dt_ = 0;
 };
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void FlatParallelIonUpdater<ParticleArray_t, GridLayout>::deposit(auto const& particles, auto& pop,
+                                                                  auto const& layout)
+{
+    Interpolator_t interp;
+    if constexpr (ParticleArray_t::layout_mode == LayoutMode::AoS)
+        interp(particles, pop.particleDensity(), pop.flux(), layout);
+    else if constexpr (ParticleArray_t::layout_mode == LayoutMode::SoAVX)
+        Interpolating<dimension, interp_order>{}.particleToMesh(particles, layout,
+                                                                pop.particleDensity(), pop.flux());
+    else
+        for (std::size_t i = 0; i < particles.size(); ++i)
+            interp.particleToMesh(SoAParticleView{particles, i}, pop.particleDensity(), pop.flux(),
+                                  layout);
+}
 
 
 template<typename ParticleArray_t, typename GridLayout>
@@ -686,13 +705,12 @@ void FlatParallelIonUpdater<ParticleArray_t, GridLayout>::updatePopulations(
 
     per_patch(accessor, [&](auto& view) {
         auto const& boxing = boxings.at(view.patchID());
-        Interpolator_t interp;
         for (auto& pop : std::get<0>(view.args))
         {
             core::post_move_sync(pop.domainParticles(), pop.patchGhostParticles(),
                                  pop.levelGhostParticles(), boxing);
-            interp(pop.domainParticles(), pop.particleDensity(), pop.flux(), view.layout);
-            interp(pop.patchGhostParticles(), pop.particleDensity(), pop.flux(), view.layout);
+            deposit(pop.domainParticles(), pop, view.layout);
+            deposit(pop.patchGhostParticles(), pop, view.layout);
         }
     });
 }

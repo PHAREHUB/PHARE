@@ -322,7 +322,9 @@ void particle_array_domain_is_valid(ParticleArray<o> const& particles, auto cons
         throw std::runtime_error("Invalid particles");
 
     // recurse once into the SPAN view so both storage sides are checked
-    if constexpr (o.storage_mode == StorageMode::VECTOR and o.layout_mode != LayoutMode::AoS)
+    if constexpr (o.storage_mode == StorageMode::VECTOR
+                  and not any_in(o.layout_mode, LayoutMode::AoS, LayoutMode::SoA,
+                                 LayoutMode::SoAVX))
         particle_array_domain_is_valid(*particles, domain_box);
 }
 

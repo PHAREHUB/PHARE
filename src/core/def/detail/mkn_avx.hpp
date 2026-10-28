@@ -14,6 +14,7 @@
 #if PHARE_HAVE_MKN_AVX
 
 #include "mkn/avx.hpp"
+#include "mkn/avx/array.hpp"
 #define PHARE_WITH_MKN_AVX(...) __VA_ARGS__
 
 #else

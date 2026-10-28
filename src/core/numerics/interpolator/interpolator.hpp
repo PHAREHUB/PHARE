@@ -845,7 +845,7 @@ public:
             Array<ArrayFp64, dim> fpiCells;
             for (std::size_t i = 0; i < N; ++i)
             {
-                auto const lCell = layout.AMRToLocal(iCells[i]);
+                auto const lCell = layout.AMRToLocal(Point{iCells[i]});
                 for (std::size_t d = 0; d < dim; ++d)
                     fpiCells[d][i] = lCell[d];
             }
@@ -870,7 +870,7 @@ public:
                     centered_starts[c][d][i]
                         = fpiCells[d][i] - computeStartLeftShift<centering>(delts[d][i]);
                 }
-                weightComputer_.template compute<ArrayFp64>( //
+                weightComputer_.compute( //
                     centered_pos[c][d], centered_starts[c][d], centered_weights[c][d]);
             }
         });

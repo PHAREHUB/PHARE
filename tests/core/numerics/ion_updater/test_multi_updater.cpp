@@ -319,8 +319,8 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
         diff *= 1e3; // atomics no order guaranteed
     else if constexpr (is_tiled(ParticleArray_t::layout_mode))
         diff *= 1e1; // p2m op order diff
-    else if constexpr (ParticleArray_t::layout_mode == AoS)
-        diff *= 1e1; // m2p inlining op order diff
+    else if constexpr (any_in(ParticleArray_t::layout_mode, AoS, SoA, SoAVX))
+        diff *= 1e1; // m2p inlining/simd op order diff
 
     check_particles<ParticleType::Domain>(layout, ref.populations[0].particles.domain_particles,
                                           cmp.populations[0].particles.domain_particles, diff,
@@ -466,6 +466,18 @@ using Permutations_t = testing::Types< // ! notice commas !
    ,TestParam<2, LayoutMode::AoS, AllocatorMode::CPU, UpdaterMode::all>
    ,TestParam<3, LayoutMode::AoS, AllocatorMode::CPU, UpdaterMode::domain_only>
    ,TestParam<3, LayoutMode::AoS, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<1, LayoutMode::SoA, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<1, LayoutMode::SoA, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<2, LayoutMode::SoA, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<2, LayoutMode::SoA, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<3, LayoutMode::SoA, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<3, LayoutMode::SoA, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<1, LayoutMode::SoAVX, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<1, LayoutMode::SoAVX, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<2, LayoutMode::SoAVX, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<2, LayoutMode::SoAVX, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<3, LayoutMode::SoAVX, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<3, LayoutMode::SoAVX, AllocatorMode::CPU, UpdaterMode::all>
 
 PHARE_WITH_MKN_GPU(
    ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>

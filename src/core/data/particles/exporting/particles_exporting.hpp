@@ -4,7 +4,7 @@
 #include "core/utilities/memory.hpp"
 #include "core/data/particles/exporting/detail/def_exporting.hpp"
 #include "core/data/particles/exporting/detail/aos_exporting.hpp"
-// #include "core/data/particles/exporting/detail/soa_exporting.hpp"
+#include "core/data/particles/exporting/detail/soa_exporting.hpp"
 
 namespace PHARE::core
 {

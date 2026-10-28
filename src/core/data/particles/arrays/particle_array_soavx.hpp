@@ -537,8 +537,8 @@ public:
 
         std::swap(weight_[a], weight_[b]);
         std::swap(iCell_[a], iCell_[b]);
-        std::swap(delta_[a], delta_[b]);
-        std::swap(v_[a], v_[b]);
+        for_N<dimension>([&](auto d) { std::swap(delta_[d][a], delta_[d][b]); });
+        for_N<3>([&](auto d) { std::swap(v_[d][a], v_[d][b]); });
     }
 
 
@@ -768,6 +768,29 @@ struct SoAVXParticles<OuterSuper>::iterator_impl
 };
 #endif // PHARE_HAVE_THRUST
 
+
+template<typename Arrays>
+struct SoAVXColumnView
+{
+    auto& operator[](std::size_t const d) const { return arrays[d][i]; }
+
+    Arrays& arrays;
+    std::size_t i;
+};
+
+template<typename SoAVXParticles_t>
+struct SoAVXParticleView
+{
+    static constexpr auto dimension = SoAVXParticles_t::dimension;
+
+    auto& weight() const { return particles.weight()[i]; }
+    auto& iCell() const { return particles.iCell(i); }
+    auto delta() const { return SoAVXColumnView{particles.delta(), i}; }
+    auto v() const { return SoAVXColumnView{particles.v(), i}; }
+
+    SoAVXParticles_t& particles;
+    std::size_t i;
+};
 
 
 } // namespace PHARE::core

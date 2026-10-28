@@ -187,8 +187,13 @@ public:
         {
             if constexpr (Particles::layout_mode == LayoutMode::SoAVX)
             {
-                for (auto const& it : particles)
-                    interp_.particleToMesh(it, rhoP, flux, layout, coef);
+#if PHARE_HAVE_MKN_AVX
+                if constexpr (interpOrder == 1)
+                    particleToMesh_avx(particles, layout, rhoP, flux, coef);
+                else
+#endif
+                    for (std::size_t i = 0; i < particles.size(); ++i)
+                        interp_.particleToMesh(SoAVXParticleView{particles, i}, rhoP, flux, layout, coef);
             }
             else
                 interp_(particles, rhoP, flux, layout, coef);
@@ -208,6 +213,68 @@ public:
         else
             throw std::runtime_error("fail");
     }
+
+#if PHARE_HAVE_MKN_AVX
+    template<typename Particles>
+    void particleToMesh_avx(Particles const& particles, auto const& layout, auto& rhoP, auto& flux,
+                            double const coef)
+    {
+        using GridLayout_t = std::decay_t<decltype(layout)>;
+        constexpr auto N   = mkn::avx::Span<double>::N;
+        using Arr          = mkn::avx::Array<double, N>;
+
+        auto const lower = grow(layout.AMRBox(), GridLayout_t::options.field_ghost_width).lower;
+        auto& [xFlux, yFlux, zFlux] = flux();
+        auto const fields           = std::forward_as_tuple(rhoP, xFlux, yFlux, zFlux);
+
+        auto const deposit = [&](auto const& cell, auto const& delta, auto const& values) {
+            for (std::uint32_t corner = 0; corner < (1u << dim); ++corner)
+            {
+                double w = 1;
+                std::array<std::uint32_t, dim> idx;
+                for (std::size_t d = 0; d < dim; ++d)
+                {
+                    std::uint32_t const upper = (corner >> d) & 1u;
+                    idx[d] = static_cast<std::uint32_t>(cell[d] - lower[d]) + upper;
+                    w *= upper ? delta[d] : 1 - delta[d];
+                }
+                for_N<4>([&](auto f) {
+                    std::apply([&](auto... i) -> auto& { return std::get<f>(fields)(i...); }, idx)
+                        += w * values[f];
+                });
+            }
+        };
+
+        auto const& weights = particles.weight();
+        auto const& vs      = particles.v();
+
+        std::size_t i = 0;
+        for (; i + N <= particles.size(); i += N)
+        {
+            Arr w{coef};
+            w *= mkn::avx::make_span<N>(weights.data(), i);
+
+            std::array<Arr, 3> wv;
+            for (std::size_t c = 0; c < 3; ++c)
+            {
+                wv[c] = w;
+                wv[c] *= mkn::avx::make_span<N>(vs[c].data(), i);
+            }
+
+            for (std::size_t k = 0; k < N; ++k)
+            {
+                std::array<double, dim> delta;
+                for (std::size_t d = 0; d < dim; ++d)
+                    delta[d] = particles.delta()[d][i + k];
+                deposit(particles.iCell(i + k), delta,
+                        std::array{w[k], wv[0][k], wv[1][k], wv[2][k]});
+            }
+        }
+
+        for (; i < particles.size(); ++i)
+            interp_.particleToMesh(SoAVXParticleView{particles, i}, rhoP, flux, layout, coef);
+    }
+#endif
 
     // AoSPCTS GPU deposit, launched with gpu::TileCellLauncher: block = (tile, cell), the block's
     // threads stride the cell's particles. Cells share field nodes, so the interpolator must be

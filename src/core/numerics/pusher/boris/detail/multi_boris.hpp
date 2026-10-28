@@ -8,6 +8,7 @@
 #include "core/data/electromag/electromag.hpp"
 #include "core/numerics/pusher/boris/basics.hpp"
 #include "core/data/particles/particle_array_def.hpp"
+#include "core/data/particles/arrays/particle_array_soa.hpp"
 #include "core/numerics/interpolator/interpolating.hpp"
 
 namespace PHARE::core
@@ -599,6 +600,19 @@ struct MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>
 
 
 template<typename ModelAccessor, typename Interpolator>
+struct MultiBorisBackend<LayoutMode::SoA, ModelAccessor, Interpolator>
+    : public MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>
+{
+};
+
+template<typename ModelAccessor, typename Interpolator>
+struct MultiBorisBackend<LayoutMode::SoAVX, ModelAccessor, Interpolator>
+    : public MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>
+{
+};
+
+
+template<typename ModelAccessor, typename Interpolator>
 template<MultiBorisMode mode>
 void MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>::move_sequential(
     MultiBoris_t& in, auto const& boxings)
@@ -679,8 +693,31 @@ template<auto type>
 void MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>::push_all(auto& particles,
                                                                                auto&&... args)
 {
-    for (auto& particle : particles)
-        push<type>(particle, args...);
+    if constexpr (Particles_t::layout_mode == LayoutMode::SoAVX)
+    {
+        auto&& [em, layout, boxing, halfdt, coef1, interp] = std::forward_as_tuple(args...);
+
+        if constexpr (type == ParticleType::Domain)
+            boris::avx_ad_acc_ad(particles, em, interp, layout, halfdt, coef1);
+        else
+            for (std::size_t i = 0; i < particles.size(); ++i)
+            {
+                boris::advance_noavx(particles, i, halfdt);
+                if (!isIn(particles.iCell(i), boxing.ghostBox))
+                    continue;
+                boris::accelerate_noavx(particles, i, em, interp, layout, coef1);
+                boris::advance_noavx(particles, i, halfdt);
+            }
+    }
+    else if constexpr (Particles_t::layout_mode == LayoutMode::SoA)
+        for (std::size_t i = 0; i < particles.size(); ++i)
+        {
+            SoAParticleView particle{particles, i};
+            push<type>(particle, args...);
+        }
+    else
+        for (auto& particle : particles)
+            push<type>(particle, args...);
 }
 
 
@@ -694,8 +731,15 @@ void MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>::push_copie
     auto& rhoP = pop.particleDensity();
     auto& flux = pop.flux();
 
-    for (auto particle : particles)
+    for (std::size_t i = 0; i < particles.size(); ++i)
     {
+        auto particle = [&]() {
+            if constexpr (Particles_t::layout_mode == LayoutMode::AoS)
+                return particles[i];
+            else
+                return particles.copy(i);
+        }();
+
         if (!push<type>(particle, args...))
             continue;
 
@@ -711,8 +755,6 @@ void MultiBorisBackend<LayoutMode::AoS, ModelAccessor, Interpolator>::push_copie
     }
 }
 
-
-// ── Per-tile functors (shared between CPU and GPU specialisations) ─────────────────────
 
 // ── Per-tile functors (shared between CPU and GPU, and every dispatch) ─────────────────
 // per-tile containers differ per layout (per-cell for AoSPCTS, flat cell-mapped for

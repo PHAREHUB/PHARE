@@ -260,10 +260,21 @@ void per_particle_iterate(Particles_t& particles, auto const&& fn)
 }
 
 template<typename Particles_t>
-    requires(any_in(Particles_t::layout_mode, LayoutMode::AoS, LayoutMode::SoA, LayoutMode::SoAVX))
+    requires(Particles_t::layout_mode == LayoutMode::AoS)
 void per_particle(Particles_t& particles, auto const&& fn)
 {
     per_particle_iterate(particles, std::move(fn));
+}
+
+template<typename Particles_t>
+    requires(any_in(Particles_t::layout_mode, LayoutMode::SoA, LayoutMode::SoAVX))
+void per_particle(Particles_t& particles, auto const&& fn)
+{
+    for (std::size_t i = 0; i < particles.size(); ++i)
+        if constexpr (Particles_t::layout_mode == LayoutMode::SoA)
+            fn(SoAParticleView{particles, i});
+        else
+            fn(SoAVXParticleView{particles, i});
 }
 
 template<typename Particles_t>
