@@ -6,8 +6,12 @@ class LoadBalancer:
     """
     LoadBalancer controls how simulation work (particles and cells) is
     redistributed across MPI ranks as the simulation runs, to keep ranks
-    evenly loaded on an evolving, adaptively-refined domain. Optional - if
-    none is created, L0 is never proactively rebalanced.
+    evenly loaded on an evolving, adaptively-refined domain. Optional - with
+    `refinement="tagging"` load balancing is always on, and if none is created
+    the defaults below are used. It is not supported with `refinement="boxes"`.
+
+    The proactive rebalancing of L0 described below only happens when L0 is
+    hybrid. An MHD L0 (`max_mhd_level` > 0) is never proactively rebalanced.
 
     Can be created any time after :class:`~pyphare.pharein.Simulation`, at
     most once per simulation.

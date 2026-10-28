@@ -1,5 +1,6 @@
 import os
 
+from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
 
@@ -80,23 +81,25 @@ def populate_amr(dp, sim):
 
 
 def populate_load_balancer(dp, sim):
+    # load balancing is always on with tagging, a declared LoadBalancer only overrides the
+    # defaults. With refinement boxes it is off unless declared, which is then an error
     base = "simulation/AMR/loadbalancing"
-    lb = sim.load_balancer
-    dp.add_bool(f"{base}/active", bool(lb))
-    if lb:
-        dp.add_string(f"{base}/mode", lb.mode)
-        dp.add_double(f"{base}/tolerance", lb.tol)
-        dp.add_bool(f"{base}/auto", lb.auto)
-        dp.add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
-        dp.add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
-        dp.add_size_t(
-            f"{base}/next_rebalance_backoff_multiplier",
-            lb.next_rebalance_backoff_multiplier,
-        )
+    declared = sim.load_balancer is not None
+    lb = sim.load_balancer or LoadBalancer(_register=False)
+    dp.add_bool(f"{base}/active", declared or sim.refinement == "tagging")
+    dp.add_string(f"{base}/mode", lb.mode)
+    dp.add_double(f"{base}/tolerance", lb.tol)
+    dp.add_bool(f"{base}/auto", lb.auto)
+    dp.add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
+    dp.add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
+    dp.add_size_t(
+        f"{base}/next_rebalance_backoff_multiplier",
+        lb.next_rebalance_backoff_multiplier,
+    )
 
-        # cadence based values
-        dp.add_size_t(f"{base}/every", lb.every)
-        dp.add_bool(f"{base}/on_init", lb.on_init)
+    # cadence based values
+    dp.add_size_t(f"{base}/every", lb.every)
+    dp.add_bool(f"{base}/on_init", lb.on_init)
 
 
 def populate_diagnostics(dp, sim, serialized_sim):
