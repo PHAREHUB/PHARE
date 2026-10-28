@@ -5,6 +5,29 @@
 
 #define NO_DISCARD [[nodiscard]]
 
+// for helpers called inside loops that must vectorise, where the inliner's cost model otherwise
+// keeps them out of line: PHARE_LAMBDA_ALWAYS_INLINE goes after a lambda's parameters,
+// PHARE_ALWAYS_INLINE before a function's return type
+#if defined(__GNUC__) || defined(__clang__)
+#define PHARE_LAMBDA_ALWAYS_INLINE __attribute__((always_inline))
+#define PHARE_ALWAYS_INLINE __attribute__((always_inline)) inline
+#else
+#define PHARE_LAMBDA_ALWAYS_INLINE
+#define PHARE_ALWAYS_INLINE inline
+#endif
+
+// on a loop that must vectorise, whose iterations are independent but which reads and writes
+// more arrays than the compiler checks for overlap at run time: lets it vectorise without those
+// checks. clang's only way to state the independence also requires vectorisation, so there a loop
+// it cannot vectorise is a -Wpass-failed warning.
+#if defined(__clang__)
+#define PHARE_VECTORIZE_IVDEP _Pragma("clang loop vectorize(assume_safety)")
+#elif defined(__GNUC__)
+#define PHARE_VECTORIZE_IVDEP _Pragma("GCC ivdep")
+#else
+#define PHARE_VECTORIZE_IVDEP
+#endif
+
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
 #define PHARE_DEBUG_DO(...) __VA_ARGS__
 #else

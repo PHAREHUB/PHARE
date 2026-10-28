@@ -62,13 +62,13 @@ private:
     static void vToRhoV_(Field const& rho, VecField const& V, VecField& rhoV,
                          MeshIndex<Field::dimension> index)
     {
-        auto const& Vx = V(Component::X);
-        auto const& Vy = V(Component::Y);
-        auto const& Vz = V(Component::Z);
+        auto const& Vx = V[Component::X];
+        auto const& Vy = V[Component::Y];
+        auto const& Vz = V[Component::Z];
 
-        auto& rhoVx = rhoV(Component::X);
-        auto& rhoVy = rhoV(Component::Y);
-        auto& rhoVz = rhoV(Component::Z);
+        auto& rhoVx = rhoV[Component::X];
+        auto& rhoVy = rhoV[Component::Y];
+        auto& rhoVz = rhoV[Component::Z];
 
         auto&& [x, y, z] = vToRhoV(rho(index), Vx(index), Vy(index), Vz(index));
         rhoVx(index)     = x;
@@ -81,13 +81,13 @@ private:
                             VecField const& B, Field const& P, Field& Etot,
                             MeshIndex<Field::dimension> index)
     {
-        auto const& Vx = V(Component::X);
-        auto const& Vy = V(Component::Y);
-        auto const& Vz = V(Component::Z);
+        auto const& Vx = V[Component::X];
+        auto const& Vy = V[Component::Y];
+        auto const& Vz = V[Component::Z];
 
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
+        auto const& Bx = B[Component::X];
+        auto const& By = B[Component::Y];
+        auto const& Bz = B[Component::Z];
 
 
 

@@ -26,17 +26,17 @@ public:
     {
         auto const fve = FiniteVolumeEulerPerField{layout_, dt};
 
-        auto& rhoVxnew = statenew.rhoV(Component::X);
-        auto& rhoVynew = statenew.rhoV(Component::Y);
-        auto& rhoVznew = statenew.rhoV(Component::Z);
+        auto& rhoVxnew = statenew.rhoV[Component::X];
+        auto& rhoVynew = statenew.rhoV[Component::Y];
+        auto& rhoVznew = statenew.rhoV[Component::Z];
 
-        auto const& rhoVx = state.rhoV(Component::X);
-        auto const& rhoVy = state.rhoV(Component::Y);
-        auto const& rhoVz = state.rhoV(Component::Z);
+        auto const& rhoVx = state.rhoV[Component::X];
+        auto const& rhoVy = state.rhoV[Component::Y];
+        auto const& rhoVz = state.rhoV[Component::Z];
 
-        auto const& rhoVx_fx = fluxes.rhoV_fx(Component::X);
-        auto const& rhoVy_fx = fluxes.rhoV_fx(Component::Y);
-        auto const& rhoVz_fx = fluxes.rhoV_fx(Component::Z);
+        auto const& rhoVx_fx = fluxes.rhoV_fx[Component::X];
+        auto const& rhoVy_fx = fluxes.rhoV_fx[Component::Y];
+        auto const& rhoVz_fx = fluxes.rhoV_fx[Component::Z];
 
         if constexpr (dimension == 1)
         {
@@ -49,9 +49,9 @@ public:
 
         if constexpr (dimension >= 2)
         {
-            auto const& rhoVx_fy = fluxes.rhoV_fy(Component::X);
-            auto const& rhoVy_fy = fluxes.rhoV_fy(Component::Y);
-            auto const& rhoVz_fy = fluxes.rhoV_fy(Component::Z);
+            auto const& rhoVx_fy = fluxes.rhoV_fy[Component::X];
+            auto const& rhoVy_fy = fluxes.rhoV_fy[Component::Y];
+            auto const& rhoVz_fy = fluxes.rhoV_fy[Component::Z];
 
             if constexpr (dimension == 2)
             {
@@ -63,9 +63,9 @@ public:
             }
             if constexpr (dimension == 3)
             {
-                auto const& rhoVx_fz = fluxes.rhoV_fz(Component::X);
-                auto const& rhoVy_fz = fluxes.rhoV_fz(Component::Y);
-                auto const& rhoVz_fz = fluxes.rhoV_fz(Component::Z);
+                auto const& rhoVx_fz = fluxes.rhoV_fz[Component::X];
+                auto const& rhoVy_fz = fluxes.rhoV_fz[Component::Y];
+                auto const& rhoVz_fz = fluxes.rhoV_fz[Component::Z];
 
                 fve(state.rho, statenew.rho, fluxes.rho_fx, fluxes.rho_fy, fluxes.rho_fz);
                 fve(rhoVx, rhoVxnew, rhoVx_fx, rhoVx_fy, rhoVx_fz);

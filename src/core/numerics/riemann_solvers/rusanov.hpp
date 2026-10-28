@@ -1,6 +1,7 @@
 #ifndef CORE_NUMERICS_RIEMANN_SOLVERS_RUSANOV_HPP
 #define CORE_NUMERICS_RIEMANN_SOLVERS_RUSANOV_HPP
 
+#include "core/def.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 
@@ -19,7 +20,7 @@ public:
     }
 
     template<auto direction>
-    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR)
+    PHARE_ALWAYS_INLINE auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR)
     {
         auto const hydro_speed = rusanov_speeds_<direction>(uL, uR);
 
@@ -33,7 +34,8 @@ public:
     }
 
     template<auto direction>
-    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR, auto const& jL, auto const& jR)
+    PHARE_ALWAYS_INLINE auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR,
+                                   auto const& jL, auto const& jR)
     {
         auto const speeds = rusanov_speeds_<direction>(uL, uR, jL, jR);
 
@@ -82,7 +84,7 @@ private:
     double const gamma_;
 
     template<auto direction>
-    auto rusanov_speeds_(auto const& uL, auto const& uR)
+    PHARE_ALWAYS_INLINE auto rusanov_speeds_(auto const& uL, auto const& uR)
     {
         auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
         auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
@@ -110,7 +112,8 @@ private:
     }
 
     template<auto direction>
-    auto rusanov_speeds_(auto const& uL, auto const& uR, auto const& jL, auto const& jR)
+    PHARE_ALWAYS_INLINE auto rusanov_speeds_(auto const& uL, auto const& uR, auto const& jL,
+                                             auto const& jR)
     {
         auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
         auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
@@ -145,18 +148,20 @@ private:
                                   uL.B.z, uR.B.z);
     }
 
-    auto rusanov_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
-                  auto const S) const
+    PHARE_ALWAYS_INLINE auto rusanov_(auto const& uL, auto const& uR, auto const& fL,
+                                      auto const& fR, auto const S) const
     {
         auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
 
-        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
-            return (std::get<i>(fL) + std::get<i>(fR)) * 0.5
-                   - S * (std::get<i>(uR) - std::get<i>(uL)) * 0.5;
-        });
+        // a direct pack expansion: a generic for_N here is left out of line in the face loop,
+        // which then stays scalar
+        return [&]<std::size_t... i>(std::index_sequence<i...>) PHARE_LAMBDA_ALWAYS_INLINE {
+            return std::make_tuple(((std::get<i>(fL) + std::get<i>(fR)) * 0.5
+                                    - S * (std::get<i>(uR) - std::get<i>(uL)) * 0.5)...);
+        }(std::make_index_sequence<N_elements>{});
     }
 
-    void uct_coefs_(auto const& uL, auto const& uR, auto const S)
+    PHARE_ALWAYS_INLINE void uct_coefs_(auto const& uL, auto const& uR, auto const S)
     {
         uct_coefs[0] = 0.5;
         uct_coefs[1] = 0.5;
@@ -165,7 +170,8 @@ private:
         vt           = vector_riemann_averaging(uL.V, uR.V);
     }
 
-    void uct_coefs_(auto const& uL, auto const& uR, auto const& jL, auto const& jR, auto const S)
+    PHARE_ALWAYS_INLINE void uct_coefs_(auto const& uL, auto const& uR, auto const& jL,
+                                        auto const& jR, auto const S)
     {
         uct_coefs_(uL, uR, S);
 
