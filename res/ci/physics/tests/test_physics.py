@@ -28,6 +28,7 @@ import extract
 import history
 import judge
 import metrics
+import page
 import tc
 
 
@@ -1237,6 +1238,349 @@ class JudgeTest(unittest.TestCase):
         ):
             _, meta = self.run_main(AGENT_OK)
         self.assertEqual(meta["agent_reason"], "RuntimeError after the agent ran")
+
+
+class PageTest(unittest.TestCase):
+    SHA_A, SHA_B = "a" * 40, "b" * 40
+    BASE = "https://tc.example/teamcity"
+
+    def cfg(self, dots=90, model="m1"):
+        return {
+            "model": model,
+            "teamcity": {"url": self.BASE},
+            "page": {"dots": dots},
+        }
+
+    def deck_cfg(self, names, **extra):
+        return {
+            "jobs": {
+                "hybrid": [
+                    dict(
+                        {
+                            "name": n,
+                            "theory": {
+                                "quantity": "q",
+                                "value": 0.09,
+                                "deck_tolerance": 0.02,
+                            },
+                            "key_number": "gamma",
+                        },
+                        **extra.get(n, {}),
+                    )
+                    for n in names
+                ]
+            }
+        }
+
+    def rec(self, status, **kw):
+        return dict(
+            {
+                "status": status,
+                "job": "hybrid",
+                "deck_passed": None,
+                "key": None,
+                "reason": None,
+            },
+            **kw,
+        )
+
+    def night(self, date, tests, sha=None, manual=False, build=7, start=None):
+        return {
+            "date": date,
+            "run": {
+                "sha": sha or self.SHA_A,
+                "manual": manual,
+                "time": "03:15",
+                "builds": {
+                    "hybrid": {"id": build, "type": "Hy", "start": start or date}
+                },
+            },
+            "tests": tests,
+        }
+
+    def part(self, names, sections=None, exit_code=0, figures=None):
+        return {
+            "job": "hybrid",
+            "missing": False,
+            "meta": {},
+            "summary": {
+                "decks_exit_code": exit_code,
+                "decks": [
+                    {"name": n, "figures": (figures or {}).get(n, [f"{n}__a.png"])}
+                    for n in names
+                ],
+            },
+            "sections": sections or {},
+        }
+
+    def render(
+        self,
+        hist,
+        names,
+        parts=None,
+        recorded=True,
+        notes=(),
+        tonight=None,
+        cfg=None,
+        deck_cfg=None,
+    ):
+        return page.render(
+            hist,
+            tonight or hist[-1],
+            recorded,
+            (cfg or self.cfg()) | (deck_cfg or self.deck_cfg(names)),
+            parts if parts is not None else [self.part(names)],
+            list(notes),
+            lambda job, build, name: (
+                build and f"https://fig.example/{build['id']}/{job}/{name}"
+            ),
+        )
+
+    def test_abnormal_tests_come_first_and_large_the_others_as_cards(self):
+        names = ["a", "b", "c", "d"]
+        hist = [
+            self.night(
+                "2026-10-28",
+                {
+                    "a": self.rec("looks right", key=0.0875, reason="fine"),
+                    "b": self.rec("suspicious", key=0.5),
+                    "c": self.rec("not judged", reason="why not"),
+                    "d": self.rec("not run"),
+                },
+            )
+        ]
+        parts = [
+            self.part(
+                names,
+                sections={n: ("looks right", f"theory of {n}") for n in names},
+                figures={n: [f"{n}__1.png", f"{n}__2.png"] for n in names},
+            )
+        ]
+        dc = self.deck_cfg(names, a={"own_check": "none"}, b={"own_check": "none"})
+        out = self.render(hist, names, parts, deck_cfg=dc)
+        self.assertEqual(
+            re.findall(r'<section id="(\w+)" class="(\w+) (\w+)"', out),
+            [
+                ("b", "test", "abnormal"),
+                ("a", "card", "nominal"),
+                ("c", "card", "neutral"),
+                ("d", "card", "notrun"),
+            ],
+        )
+        self.assertIn('<a class="tile abnormal" href="#b">', out)
+        quiet = out[out.index('<div class="quiet">') : out.index("<footer")]
+        loud = out[: out.index('<div class="quiet">')]
+        self.assertIn('class="big"', loud)
+        self.assertNotIn('class="big"', quiet)
+        self.assertIn("theory of b", loud)
+        self.assertNotIn("theory of a", out)  # no model text on a test that looks right
+        self.assertIn('<div class="analysis">theory of c</div>', quiet)
+        self.assertEqual(quiet.count("<img"), 3)  # a card shows its first figure only
+        for want in (
+            "gamma = 0.5",
+            "theory q: 0.09 ± 0.02",
+            "the test script checks nothing itself",
+        ):
+            self.assertIn(want, loud)
+        for want in (
+            "gamma = 0.0875",
+            "fine",
+            "why not",
+            'class="dots"',
+            "the test script checks nothing itself",
+        ):
+            self.assertIn(want, quiet)
+        self.assertNotIn("theory q", quiet)
+
+    def test_a_deck_not_judged_tonight_is_not_carried_over(self):
+        hist = [
+            self.night("2026-10-27", {"a": self.rec("suspicious")}),
+            self.night("2026-10-28", {"a": self.rec("not judged")}),
+        ]
+        out = self.render(
+            hist, ["a"], deck_cfg=self.deck_cfg(["a"], a={"judge": False})
+        )
+        self.assertIn('<a class="tile neutral" href="#a">', out)
+        self.assertNotIn("last judged", out)
+
+    def test_the_page_escapes_what_it_is_given(self):
+        """page.render escapes on its own, whatever clean_part or history.load let through."""
+        evil = '"><img src="//evil.example/x.png" onload="x"><a href="//evil.example">'
+        hist = [
+            self.night("2026-10-27", {"a": self.rec(evil, reason=evil)}),
+            self.night(
+                "2026-10-28",
+                {"a": self.rec("suspicious", reason=evil), "b": self.rec(evil)},
+                manual=True,
+            ),
+        ]
+        hist[1]["run"]["time"] = evil
+        figures = [f"a__{evil}.png", f"a__{evil}.mp4"]
+        parts = [
+            self.part(
+                ["a", "b"],
+                sections={"a": ("suspicious", evil)},
+                figures={"a": figures, "b": figures},
+            )
+        ]
+        out = self.render(
+            hist, ["a", "b"], parts, notes=[evil], cfg=self.cfg(model=evil)
+        )
+        links = re.findall(r'(?:src|href)="([^"]*)"', out)
+        self.assertTrue(links)
+        for url in links:
+            self.assertTrue(
+                url.startswith(
+                    (
+                        self.BASE + "/",
+                        "https://fig.example/",
+                        "https://github.com/",
+                        "#",
+                    )
+                ),
+                url,
+            )
+        for raw in ('<img src="//evil', 'onload="', '<a href="//evil'):
+            self.assertNotIn(raw, out)
+        self.assertEqual(out.count("<script>"), 1)
+
+    def test_model_text_cap(self):
+        hist = [self.night("2026-10-28", {"a": self.rec("suspicious")})]
+        parts = [self.part(["a"], sections={"a": ("suspicious", "y" * 10000)})]
+        out = self.render(hist, ["a"], parts)
+        run = max(len(m) for m in re.findall(r"y+(?: \[…\])?", out))
+        self.assertLessEqual(run, 4000 + len(" […]"))
+        self.assertIn("[…]", out)
+
+    def test_dots(self):
+        hist = [
+            self.night("2026-10-24", {"a": self.rec("looks right")}),  # beyond `dots`
+            self.night("2026-10-25", {}),  # no record that night: no dot
+            self.night("2026-10-26", {"a": self.rec("looks right")}),
+            self.night("2026-10-27", {"a": self.rec("looks right", expired=True)}),
+            self.night(
+                "2026-10-28", {"a": self.rec("suspicious")}, build=9, start="2026-10-27"
+            ),
+        ]
+        out = self.render(hist, ["a"], cfg=self.cfg(dots=4))
+        self.assertEqual(out.count('class="dot '), 3)
+        self.assertNotIn('title="2026-10-24', out)
+        self.assertIn(
+            f'<a class="dot s-ok" title="2026-10-26 · looks right" '
+            f'href="{self.BASE}/viewLog.html?buildId=7&amp;tab=artifacts">',
+            out,
+        )
+        self.assertIn('<span class="dot ring s-ok" title="2026-10-27', out)  # expired
+        self.assertRegex(
+            out,
+            r'class="dot s-suspicious" title="2026-10-28[^"]*reused from 2026-10-27',
+        )
+        self.assertLess(out.index("2026-10-26 ·"), out.index("2026-10-27 ·"))
+
+    def test_new_tonight_links_the_compare_view_between_two_known_commits(self):
+        A, B = self.SHA_A, self.SHA_B
+        for prev, now, link, pill in (
+            (
+                A,
+                B,
+                f"https://github.com/PHAREHUB/PHARE/compare/{A}...{B}",
+                "new tonight",
+            ),
+            (A, A, None, "new tonight, no new commit"),
+            (None, B, None, "new tonight"),
+        ):
+            hist = [
+                self.night("2026-10-27", {"a": self.rec("looks right")}),
+                self.night("2026-10-28", {"a": self.rec("suspicious")}, sha=now),
+            ]
+            hist[0]["run"]["sha"] = prev
+            out = self.render(hist, ["a"])
+            self.assertIn(pill, out)
+            if link:
+                self.assertIn(link, out)
+            else:
+                self.assertNotIn("compare/", out)
+
+    def test_carry_over_says_last_judged(self):
+        hist = [
+            self.night("2026-10-26", {"a": self.rec("suspicious")}),
+            self.night("2026-10-27", {"a": self.rec("suspicious")}),
+            self.night("2026-10-28", {"a": self.rec("cannot tell")}),
+        ]
+        out = self.render(hist, ["a"])
+        self.assertIn("since 2026-10-26", out)
+        self.assertIn("last judged 2026-10-27, 1 night ago", out)
+        hist[2]["tests"]["a"] = self.rec("suspicious")
+        self.assertNotIn("last judged", self.render(hist, ["a"]))
+
+    def test_movie_is_a_video(self):
+        hist = [self.night("2026-10-28", {"shock": self.rec("suspicious")})]
+        parts = [
+            self.part(
+                ["shock"],
+                figures={"shock": ["shock__x.mp4", "shock__y.png", "shock__z.png"]},
+            )
+        ]
+        out = self.render(hist, ["shock"], parts)
+        self.assertIn('<video controls preload="none"', out)
+        self.assertIn("https://fig.example/7/hybrid/shock__x.mp4", out)
+        self.assertIn('class="zoom" data-group="shock"', out)
+        self.assertEqual(out.count('loading="lazy"'), 2)
+        hist[0]["tests"]["shock"] = self.rec("looks right")  # a card shows one figure
+        out = self.render(hist, ["shock"], parts)
+        self.assertEqual(out.count("<video"), 1)
+        self.assertNotIn('class="zoom" data-group', out)
+
+    def test_unknown_build_draws_no_broken_figure(self):
+        hist = [self.night("2026-10-28", {"a": self.rec("looks right")})]
+        hist[0]["run"]["builds"] = {}
+        out = self.render(hist, ["a"])
+        self.assertNotIn('class="zoom"', out)
+        self.assertNotIn("https://fig.example", out)
+        self.assertIn("figures unavailable", out)
+
+    def test_failed_tests_step_banner(self):
+        hist = [
+            self.night(
+                "2026-10-28",
+                {"a": self.rec("own check unknown", own_check_unknown=True)},
+            )
+        ]
+        said = {"a": ("looks right", "the model's reading")}
+        out = self.render(hist, ["a"], [self.part(["a"], said, exit_code=3)])
+        self.assertIn("hybrid tests step failed (exit 3): own checks unknown", out)
+        self.assertIn('<div class="analysis">the model&#x27;s reading</div>', out)
+        self.assertEqual(out.count(">own check unknown</span>"), 1)
+        ok = self.render(hist, ["a"], [self.part(["a"], exit_code=None)])
+        self.assertNotIn("tests step failed", ok)
+
+    def test_counts_follow_the_table(self):
+        statuses = [
+            "own check failed",
+            "suspicious",
+            "looks right",
+            "cannot tell",
+            "not judged",
+            "no analysis",
+            "own check unknown",
+            "no data",
+            "not run",
+        ]
+        names = [f"t{i}" for i in range(9)]
+        hist = [
+            self.night("2026-10-28", {n: self.rec(s) for n, s in zip(names, statuses)})
+        ]
+        out = self.render(hist, names)
+        self.assertIn("2 to look at · 1 fine · 5 can't tell · 1 not run", out)
+
+    def test_unrecorded_manual_run_draws_tonight(self):
+        sched = self.night("2026-10-28", {"a": self.rec("looks right")})
+        manual = self.night("2026-10-28", {"a": self.rec("suspicious")}, manual=True)
+        out = self.render([sched], ["a"], recorded=False, tonight=manual)
+        self.assertIn('<a class="tile abnormal" href="#a">', out)
+        self.assertIn("not recorded in the history", out)
+        self.assertIn("manual run 03:15", out)
+        self.assertEqual(out.count('class="dot '), 1)
 
 
 if __name__ == "__main__":
