@@ -136,9 +136,8 @@ class MaxwellianFluidModel:
         )
         self.validated = False
         if should_validate:
-            # same result on every rank, and a strict failure stops the run anyway
-            if cpp.is_rank0():
-                self.validate(global_vars.sim)
+            # on every rank so a strict failure stops them all, rather than rank 0 alone
+            self.validate(global_vars.sim)
             self.validated = True
 
         global_vars.sim.set_model(self)
