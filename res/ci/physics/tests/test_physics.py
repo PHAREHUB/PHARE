@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import decks
 import extract
+import history
 import metrics
 
 
@@ -313,6 +314,336 @@ class ExtractTest(unittest.TestCase):
             names("build/tests/functional/ionIonBeam", "ion_ion_beam1d"),
             ["ionIonBeam.stdout", "ionIonBeam.stderr"],
         )
+
+
+class HistoryTest(unittest.TestCase):
+    SHA = "a" * 40
+
+    def part(
+        self, status="ok", agent="text", rc=0, passed=None, dstatus="ok", numbers=None
+    ):
+        deck = {
+            "name": "d",
+            "figures": [],
+            "deck_passed": passed,
+            "own_check": None,
+            "numbers": numbers or {},
+            "status": dstatus,
+            "freshness": "fresh",
+        }
+        return {
+            "job": "hybrid",
+            "meta": {"agent_status": status, "agent_reason": "quota", "sha": self.SHA},
+            "summary": {"decks_exit_code": rc, "decks": [deck]},
+            "agent": agent,
+        }
+
+    def rec(self, part=None, cfg=None, model=("looks right", "fine")):
+        part = part or self.part()
+        deck = (part.get("summary") or {}).get("decks", [None])[0]
+        return history.test_record(deck, cfg or {}, part, model)
+
+    def hist(self, *statuses, passed=None, manual=False):
+        out = []
+        for i, s in enumerate(statuses, 1):
+            rec = {"status": s, "job": "hybrid", "deck_passed": passed, "key": None}
+            run = {"sha": self.SHA, "manual": manual, "time": "01:00", "builds": {}}
+            out.append(history.night(f"2026-10-0{i}", run, {"t": rec}))
+        return out
+
+    def test_status_order(self):
+        """The first matching rule wins (history.test_record)."""
+        ok = ("looks right", "fine")
+        for part, cfg, model, want in (
+            (
+                self.part(passed=False, dstatus="output missing"),
+                {},
+                ok,
+                ("own check failed", None),
+            ),
+            (
+                {"job": "hybrid", "missing": True},
+                {},
+                ok,
+                ("not run", "the hybrid job left no results tonight"),
+            ),
+            (
+                self.part(dstatus="output missing"),
+                {},
+                ok,
+                ("not run", "output missing"),
+            ),
+            (
+                self.part(dstatus="extract error <b>"),
+                {},
+                ok,
+                ("no data", "extract error <b>"),
+            ),
+            (
+                self.part(dstatus="stale output ignored"),
+                {},
+                ok,
+                ("no data", "stale output ignored"),
+            ),
+            (
+                self.part(),
+                {"judge": False, "judge_reason": "why"},
+                ok,
+                ("not judged", "why"),
+            ),
+            (self.part(status="unavailable"), {}, ok, ("no analysis", "quota")),
+            (self.part(agent=""), {}, ok, ("no analysis", "quota")),
+            (self.part(), {}, ("suspicious", "x"), ("suspicious", None)),
+            (self.part(), {}, None, ("cannot tell", None)),
+            (self.part(), {}, ("bogus", "x"), ("cannot tell", None)),
+            (self.part(), {}, ("own check failed", "x"), ("cannot tell", None)),
+            (self.part(rc=1, passed=True), {}, ok, ("looks right", None)),
+        ):
+            r = self.rec(part, cfg, model)
+            self.assertEqual((r["status"], r["reason"]), want)
+        self.assertEqual(
+            history.test_record(None, {}, self.part(), ok)["status"], "not run"
+        )
+
+    def test_a_failed_tests_step_is_never_green(self):
+        for model in (("looks right", ""), ("cannot tell", ""), None, ("bogus", "")):
+            r = self.rec(self.part(rc=137), model=model)
+            self.assertEqual(
+                (r["status"], r["reason"]),
+                ("own check unknown", "tests step failed (exit 137)"),
+                model,
+            )
+        r = self.rec(self.part(rc=137), model=("suspicious", "x"))
+        self.assertEqual(
+            (r["status"], r.get("own_check_unknown")), ("suspicious", True)
+        )
+        r = self.rec(self.part(status="unavailable", rc=137))
+        self.assertEqual(
+            (r["status"], r.get("own_check_unknown")), ("no analysis", True)
+        )
+        self.assertNotIn("own_check_unknown", self.rec(self.part(status="unavailable")))
+
+    def test_since_new_tonight_and_prev_sha(self):
+        for statuses, since, new in (
+            (("looks right", "suspicious", "suspicious"), "2026-10-02", False),
+            (("looks right", "suspicious"), "2026-10-02", True),
+            (("suspicious",), "2026-10-01", False),  # a first night is not "new"
+            # neutral nights neither break nor extend a run
+            (
+                ("looks right", "suspicious", "not run", "suspicious"),
+                "2026-10-02",
+                False,
+            ),
+            (("looks right", "no analysis", "suspicious"), "2026-10-03", True),
+        ):
+            s = history.state(self.hist(*statuses), "t", True)
+            self.assertEqual(
+                (s["abnormal"], s["since"], s["new_tonight"]),
+                (True, since, new),
+                statuses,
+            )
+        h = self.hist("looks right", "looks right", "suspicious")
+        self.assertEqual(history.state(h, "t", True)["prev_sha"], self.SHA)
+        h[0]["run"]["sha"], h[1]["run"]["sha"] = "b" * 40, "c" * 40
+        self.assertEqual(history.state(h, "t", True)["prev_sha"], "c" * 40)
+        h[1]["run"]["sha"] = None
+        # the newest earlier night that has a sha
+        self.assertEqual(history.state(h, "t", True)["prev_sha"], "b" * 40)
+        h[0]["run"]["sha"] = None
+        self.assertIsNone(history.state(h, "t", True)["prev_sha"])
+
+    def test_carry_over_when_the_model_is_down(self):
+        s = history.state(
+            self.hist("suspicious", "no analysis", "no analysis"), "t", True
+        )
+        self.assertEqual(
+            (s["abnormal"], s["since"], s["last_judged"], s["nights_since_judged"]),
+            (True, "2026-10-01", "2026-10-01", 2),
+        )
+
+    def test_judge_false_rules(self):
+        # not judged tonight: a run the model started is dropped...
+        self.assertFalse(
+            history.state(self.hist("suspicious", "not judged"), "t", False)["abnormal"]
+        )
+        self.assertTrue(
+            history.state(self.hist("suspicious", "not judged"), "t", True)["abnormal"]
+        )
+        # ...and a run of failed own checks ends on a passing own check
+        h = self.hist("own check failed", "not judged")
+        h[1]["tests"]["t"]["deck_passed"] = True
+        self.assertFalse(history.state(h, "t", False)["abnormal"])
+        h = self.hist("suspicious", "no analysis")
+        h[1]["tests"]["t"]["deck_passed"] = True
+        self.assertTrue(history.state(h, "t", True)["abnormal"])
+
+    def test_one_night_per_date(self):
+        def n(date, manual, tag=None):
+            return history.night(date, {"sha": tag, "manual": manual}, {})
+
+        for old, new, kept, recorded in (
+            (
+                False,
+                True,
+                "old",
+                False,
+            ),  # a manual night never replaces a scheduled one
+            (True, False, "new", True),
+            (True, True, "new", True),
+            (False, False, "new", True),
+        ):
+            h, ok = history.add_night(
+                [n("2026-10-01", old, "old")], n("2026-10-01", new, "new")
+            )
+            self.assertEqual((len(h), h[0]["run"]["sha"], ok), (1, kept, recorded))
+        h = history.merge_pending(
+            [n("2026-10-01", False)],
+            [
+                n("2026-10-01", True),
+                n("2026-10-03", True),
+                n("2026-10-02", False),
+                n("2026-10-03", False),
+            ],
+        )
+        self.assertEqual(
+            [(x["date"], x["run"]["manual"]) for x in h],
+            [("2026-10-01", False), ("2026-10-02", False), ("2026-10-03", False)],
+        )
+
+    def test_key_number(self):
+        cfg = {"key_number": "gamma"}
+        for numbers, want in (
+            ({"gamma": 0.0875}, 0.0875),
+            ({"gamma": 1}, 1.0),
+            ({}, None),
+            ({"gamma": True}, None),
+            ({"gamma": "1"}, None),
+            ({"gamma": 10**400}, None),
+        ):
+            r = self.rec(self.part(numbers=numbers), cfg)
+            self.assertEqual(r["key"], want)
+            if want is not None:
+                self.assertIs(type(r["key"]), float)
+
+    def expiry_history(self, n=3):
+        out = []
+        for i in range(n):
+            builds = {
+                "hybrid": {"id": 100 + i, "type": "T_hybrid", "start": "2026-10-01"}
+            }
+            run = {"sha": self.SHA, "manual": False, "time": "01:00", "builds": builds}
+            rec = {"status": "looks right", "job": "hybrid", "key": None}
+            out.append(history.night(f"2026-10-{i + 1:02d}", run, {"t": rec}))
+        return out
+
+    def test_only_a_404_expires_a_night(self):
+        h = self.expiry_history(2)
+        h2, _ = history.expire(h, lambda b, j: None, True, 90)  # network error: unknown
+        self.assertFalse(any("expired" in n["tests"]["t"] for n in h2))
+        h3, _ = history.expire(h, lambda b, j: False, True, 90)
+        self.assertTrue(all(n["tests"]["t"]["expired"] is True for n in h3))
+        self.assertNotIn("expired", h[0]["tests"]["t"])  # the input is not changed
+        calls = []
+        history.expire(h3, lambda b, j: calls.append(b), True, 90)
+        self.assertEqual(calls, [])  # an expired night is not asked again
+
+    def test_canary_blocks_all_expiry(self):
+        builds = [(100, "hybrid"), (101, "mhd")]
+        self.assertFalse(history.canary(builds, lambda b, j: False))
+        self.assertFalse(history.canary(builds, lambda b, j: None))
+        self.assertTrue(history.canary(builds, lambda b, j: j == "mhd"))
+        self.assertFalse(history.canary([], lambda b, j: True))
+        h = self.expiry_history(2)
+        calls = []
+        h2, notes = history.expire(h, lambda b, j: calls.append(b) or False, False, 90)
+        self.assertEqual((calls, h2, len(notes)), ([], h, 1))
+        self.assertIsNot(h2, h)
+
+    def test_what_is_asked(self):
+        """Only the last `drawn` nights, each (build, job) once, never a job that is not a
+        plain name (it would go into a URL)."""
+        calls = []
+
+        def exists(b, j):
+            calls.append((b, j))
+            return True
+
+        history.expire(self.expiry_history(100), exists, True, 90)
+        self.assertEqual(sorted(b for b, _ in calls), list(range(110, 200)))
+        h = self.expiry_history(3)
+        for n in h:
+            n["run"]["builds"]["hybrid"]["id"] = 100  # a reused build
+        h[0]["tests"]["u"] = {"status": "looks right", "job": "../x"}
+        h[0]["run"]["builds"]["../x"] = {"id": 101, "type": "T", "start": "2026-10-01"}
+        calls.clear()
+        history.expire(h, exists, True, 90)
+        self.assertEqual(calls, [(100, "hybrid")])
+
+    def test_expire_stops_at_the_deadline(self):
+        h = self.expiry_history(5)
+        ticks = iter([0, 0, 1, 500, 500, 500])
+        calls = []
+
+        def exists(b, j):
+            calls.append(b)
+            return False
+
+        _, notes = history.expire(h, exists, True, 90, 120, clock=lambda: next(ticks))
+        self.assertLess(len(calls), 5)
+        self.assertTrue(any("deadline" in n for n in notes))
+
+    def test_load_validation(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "h.json"
+            self.assertEqual(history.load(p), ([], [], True))  # no file yet
+            good = self.hist("looks right", "suspicious", "suspicious")
+            history.dump(good, p)
+            self.assertEqual(history.load(p), (good, [], True))
+            bad = dict(good[0], date=5)
+            for text, kept in (
+                ("{not json", 0),
+                ("[]", 0),
+                (json.dumps({"version": 2, "nights": []}), 0),
+                (json.dumps({"version": 1, "nights": good + [bad]}), 3),
+                (json.dumps({"version": 1, "nights": [bad, bad, good[0]]}), 0),
+            ):
+                with self.subTest(text=text[:60]):
+                    p.write_text(text)
+                    n, notes, clean = history.load(p)
+                    self.assertEqual((len(n), clean, len(notes)), (kept, False, 1))
+            for field, value in (
+                ("job", ["x"]),
+                ("job", ".."),
+                ("job", "a/b"),
+                ("job", 3),
+                ("deck_passed", "yes"),
+                ("deck_passed", 1),
+                ("status", "s" * 41),
+                ("key", True),
+                ("key", "text"),
+                ("key", 10**400),  # a huge int is a bad record, not an error
+                ("reason", "r" * 201),
+                ("expired", 1),
+                ("own_check_unknown", "no"),
+            ):
+                with self.subTest(field=field, value=str(value)[:20]):
+                    h = self.hist("looks right", "suspicious")
+                    h[0]["tests"]["t"][field] = value
+                    history.dump(h, p)
+                    n, notes, clean = history.load(p)
+                    self.assertFalse(clean)
+                    self.assertEqual([len(x["tests"]) for x in n], [0, 1])
+                    self.assertIn("1 bad record", notes[0])
+
+    def test_unknown_status_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "h.json"
+            history.dump(self.hist("suspicious", "no output"), p)
+            n, _, clean = history.load(p)
+            self.assertTrue(clean)
+            s = history.state(n, "t", True)
+            self.assertEqual(s["status"], "unknown status no output")
+            self.assertTrue(s["abnormal"])  # neutral: carries over the suspicious run
 
 
 if __name__ == "__main__":
