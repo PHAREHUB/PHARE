@@ -50,19 +50,19 @@ initializer::SpaceTimeFunction<dim> spaceTimeFunction(Fn f)
 
 
 /**
- * @brief an ExternalField that owns the memory of its vecfields, for tests.
+ * @brief an ExternalFieldState that owns the memory of its vecfields, for tests.
  *
- * Mirrors what the resources manager does on a patch: the fields of an ExternalField are views,
- * whose buffers are set here from grids owned by this fixture.
+ * Mirrors what the resources manager does on a patch: the fields of an ExternalFieldState are
+ * views, whose buffers are set here from grids owned by this fixture.
  */
 template<std::size_t dim>
-class UsableExternalField : public ExternalField<VecFieldMHD<dim>>
+class UsableExternalFieldState : public ExternalFieldState<VecFieldMHD<dim>>
 {
 public:
-    using Super = ExternalField<VecFieldMHD<dim>>;
+    using Super = ExternalFieldState<VecFieldMHD<dim>>;
 
     template<typename GridLayout>
-    UsableExternalField(std::string const& name, GridLayout const& layout)
+    UsableExternalFieldState(std::string const& name, GridLayout const& layout)
         : Super{name, true}
         , b0_{name + "_B0", layout, MHDQuantity::Vector::B}
         , dB0dt_{name + "_dB0dt", layout, MHDQuantity::Vector::B}

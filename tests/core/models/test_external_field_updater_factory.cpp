@@ -82,7 +82,7 @@ struct UpdaterRun
 {
     TestGridLayout<GridLayout_t> layout{cells};
 
-    UsableExternalField<2> externalField{"external", layout};
+    UsableExternalFieldState<2> externalField{"external", layout};
 
     template<typename Updater>
     explicit UpdaterRun(Updater& updater, double time = 0.)

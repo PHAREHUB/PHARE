@@ -27,13 +27,13 @@ template<typename VecFieldT, typename GridLayoutT>
 class IExternalFieldUpdater
 {
 public:
-    using vecfield_type       = VecFieldT;
-    using field_type          = VecFieldT::field_type;
-    using value_type          = field_type::value_type;
-    using tensor_type         = VecFieldT::tensor_t;
-    using component_type      = VecFieldT::component_type;
-    using point_type          = Point<double, GridLayoutT::dimension>;
-    using external_field_type = ExternalField<VecFieldT>;
+    using vecfield_type  = VecFieldT;
+    using field_type     = VecFieldT::field_type;
+    using value_type     = field_type::value_type;
+    using tensor_type    = VecFieldT::tensor_t;
+    using component_type = VecFieldT::component_type;
+    using point_type     = Point<double, GridLayoutT::dimension>;
+    using state_type     = ExternalFieldState<VecFieldT>;
 
     static constexpr std::size_t dimension = GridLayoutT::dimension;
 
@@ -42,24 +42,24 @@ public:
     /**
      * @brief fill an external field at a given time
      *
-     * @param externalField the external field to fill
+     * @param state the external field state to fill
      * @param scratch E-centered work vecfield, holding the vector potential on output
      * @param layout the current grid layout
      * @param time the current time
      */
-    virtual void operator()(external_field_type& externalField, vecfield_type& scratch,
-                            GridLayoutT const& layout, double time)
+    virtual void operator()(state_type& state, vecfield_type& scratch, GridLayoutT const& layout,
+                            double time)
     {
         computePotential(scratch, time, layout);
-        curlOnGhostBox_(externalField.B0(), scratch, layout);
+        curlOnGhostBox_(state.B0(), scratch, layout);
         if (isTimeDependent())
         {
             computePotentialTimeDerivative(scratch, time, layout);
-            curlOnGhostBox_(externalField.dB0dt(), scratch, layout);
+            curlOnGhostBox_(state.dB0dt(), scratch, layout);
         }
         else
         {
-            externalField.dB0dt().zero();
+            state.dB0dt().zero();
         }
     }
 
