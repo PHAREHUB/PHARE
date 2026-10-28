@@ -12,9 +12,12 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import decks
+import metrics
 
 
 def script(path, body):
@@ -94,6 +97,26 @@ class DecksTest(unittest.TestCase):
         for kw in bad:
             with self.subTest(**kw), self.assertRaises(ValueError):
                 self.load(**kw)
+
+
+class MetricsTest(unittest.TestCase):
+    def test_growth_rate_summary(self):
+        s = metrics.growth_rate_summary(0.1, theory=0.09, tol=0.02)
+        # |fft[1]| of a circularly polarised mode carries no frequency: no omega
+        self.assertEqual(set(s), {"gamma", "abs_error", "within_deck_tolerance"})
+        self.assertAlmostEqual(s["abs_error"], 0.01)
+        self.assertTrue(s["within_deck_tolerance"])
+        self.assertFalse(
+            metrics.growth_rate_summary(0.2, 0.09, 0.02)["within_deck_tolerance"]
+        )
+
+    def test_exact_shift_gives_zero_error_and_wrong_shift_does_not(self):
+        L = 200.0
+        x = np.linspace(0, L, 400, endpoint=False)
+        f0 = np.tanh((x - 50) / 2) - np.tanh((x - 150) / 2)
+        f1 = np.interp(np.mod(x + 20.0, L), x, f0, period=L)  # moved by -20
+        self.assertLess(metrics.shifted_profile_error(x, f0, f1, -20.0, L), 1e-2)
+        self.assertGreater(metrics.shifted_profile_error(x, f0, f1, +20.0, L), 0.5)
 
 
 if __name__ == "__main__":
