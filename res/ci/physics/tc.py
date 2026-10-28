@@ -99,6 +99,21 @@ def upstream_builds(base, build_id, get=None):
     return [b for b in found if b]
 
 
+def artifact_sources(base, build_id, get=None):
+    """The builds whose files the given build downloaded (a page writer's job builds)."""
+    url = (
+        f"{base}/guestAuth/app/rest/builds/id:{int(build_id)}"
+        f"?fields=artifact-dependencies(build({FIELDS}))"
+    )
+    data = get_json(url, get)
+    deps = data.get("artifact-dependencies") if isinstance(data, dict) else None
+    items = deps.get("build") if isinstance(deps, dict) else None
+    if not isinstance(items, list):
+        return []
+    found = (_build(b) for b in items if isinstance(b, dict))
+    return [b for b in found if b]
+
+
 def build_info(base, build_id, get=None):
     url = f"{base}/guestAuth/app/rest/builds/id:{int(build_id)}?fields={FIELDS}"
     return _build(get_json(url, get))

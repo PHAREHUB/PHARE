@@ -211,11 +211,18 @@ def own_build_id(a):
 def jobs_tonight(base, cfg, own, a, get, notes):
     """(builds {job: build}, manual, the page writer's own build or None, the head build
     or None), all from TeamCity. A failed read gives no builds, never an error. A night
-    whose trigger cannot be read is manual: only a schedule makes a scheduled night."""
+    whose trigger cannot be read is manual: only a schedule makes a scheduled night.
+    A page writer outside the pipeline has no head: its job builds are the ones it
+    downloaded, and the head is the newest one depending on them."""
     try:
-        head = a.head_build_id
+        head, sources = a.head_build_id, []
         if head is None and own is not None:
             head, others = tc.head_of(base, own, get)
+            if head is None:
+                sources = tc.artifact_sources(base, own, get)
+                if sources:
+                    newest = max(b["id"] for b in sources)
+                    head, others = tc.head_of(base, newest, get)
             if others:
                 notes.append(
                     f"other pipeline heads found: {', '.join(map(str, others))}"
@@ -224,7 +231,7 @@ def jobs_tonight(base, cfg, own, a, get, notes):
         if start_from is None:
             raise ValueError("no build id")
         builds = {}
-        for b in tc.upstream_builds(base, start_from, get):
+        for b in sources or tc.upstream_builds(base, start_from, get):
             job = tc.job_of(b["type"], cfg)
             if job and (job not in builds or b["id"] > builds[job]["id"]):
                 builds[job] = b

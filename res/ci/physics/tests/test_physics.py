@@ -726,6 +726,9 @@ class TcTest(unittest.TestCase):
             self.assertEqual(tc.upstream_builds(self.BASE, 1, get), [])
             self.assertEqual(tc.head_of(self.BASE, 1, get), (None, []))
             self.assertIsNone(tc.build_info(self.BASE, 1, get))
+        for deps in (3, [], {}, {"build": 3}, {"build": [1, {"id": "x"}]}):
+            get = self.fake({"id": 5, "artifact-dependencies": deps})
+            self.assertEqual(tc.artifact_sources(self.BASE, 5, get), [])
         info = {"id": 5, "buildTypeId": "T_x", "startDate": "20261028T010012+0000"}
         b = tc.build_info(self.BASE, 5, self.fake(info))
         # absent is not the default branch, and not a schedule
@@ -1645,14 +1648,20 @@ def fake_teamcity(
     head_default=True,
     own_default=True,
     head_broken=False,
+    sources=None,
 ):
-    """A get for the TeamCity reads of publish: the page writer is build 5, the head 9."""
+    """A get for the TeamCity reads of publish: the page writer is build 5, the head 9.
+    With sources, the writer is outside the pipeline and downloaded those builds."""
     urls = []
 
     def get(url, *a, **k):
         urls.append(url)
         if "/artifacts/children/" in url:
             return b"[]"
+        if sources is not None and "snapshotDependency:(from:(id:5))" in url:
+            return b'{"build": []}'
+        if sources is not None and "artifact-dependencies" in url:
+            return json.dumps({"artifact-dependencies": {"build": sources}}).encode()
         if "snapshotDependency:(from:" in url:
             return json.dumps(
                 {"build": [{"id": h, "buildTypeId": "T_head"} for h in heads]}
@@ -1827,7 +1836,7 @@ class PublishTest(unittest.TestCase):
         self.write_both()
         get = fake_teamcity(tc_nightly(), heads=())  # no head: the writer is the start
         self.main(get)
-        own = [u for u in get.urls if "builds/id:5?" in u]
+        own = [u for u in get.urls if f"builds/id:5?fields={tc.FIELDS}" in u]
         self.assertEqual(len(own), 1)
         asked = [u for u in get.urls if "/artifacts/children/" in u]
         self.assertTrue(asked)
@@ -1862,6 +1871,18 @@ class PublishTest(unittest.TestCase):
         urls = "\n".join(get.urls)
         self.assertNotIn("snapshotDependency:(from:", urls)
         self.assertIn("snapshotDependency:(to:(id:77))", urls)
+
+    def test_a_writer_outside_the_pipeline_uses_the_builds_it_downloaded(self):
+        self.write_both()
+        get = fake_teamcity([], heads=(8, 9), sources=tc_nightly())
+        self.main(get)
+        urls = "\n".join(get.urls)
+        self.assertIn("builds/id:5?fields=artifact-dependencies(", urls)
+        self.assertIn("snapshotDependency:(from:(id:12))", urls)  # newest job build
+        self.assertNotIn("snapshotDependency:(to:", urls)
+        run = self.nights()[0]["run"]
+        self.assertEqual(sorted(b["id"] for b in run["builds"].values()), [11, 12])
+        self.assertFalse(run["manual"])  # the head, 9, ran on schedule
 
     def test_without_teamcity_the_night_is_today_and_manual_with_no_builds(self):
         self.write_both()
