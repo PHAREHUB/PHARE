@@ -736,7 +736,8 @@ void PCTileSetSpan<Particles>::sync(Args&&... args)
             auto const& [stream] = std::forward_as_tuple(args...);
             kernel::launch(stream, particles_.size(), [=] _PHARE_ALL_FN_() mutable {
                 view.template sync_tile_add_new<type>(kernel::idx());
-                __syncthreads();
+            });
+            kernel::launch(stream, particles_.size(), [=] _PHARE_ALL_FN_() mutable {
                 view.template sync_tile_rm_left<type>(kernel::idx());
             });
         })

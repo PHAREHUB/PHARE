@@ -13,7 +13,10 @@
 #include "mkn/gpu.hpp"
 #include "mkn/gpu/stream.hpp"
 
+#include <limits>
+#include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace PHARE::core::gpu
 {
@@ -27,6 +30,26 @@ using Vec_t = std::vector<T, mkn::gpu::ManagedAllocator<T>>;
 
 // mkn::gpu launches are asynchronous, _sync waits for the stream (or device) after each launch
 //  Mode: mkn::gpu::Guess (grid/block from a problem size) or mkn::gpu::Fixed (caller provided)
+std::size_t inline max_shared_mem_per_block()
+{
+    static std::size_t const bytes = [] {
+#if MKN_GPU_ROCM
+        hipDeviceProp_t prop;
+        if (hipGetDeviceProperties(&prop, 0) != hipSuccess)
+            throw std::runtime_error("hipGetDeviceProperties failed");
+        return static_cast<std::size_t>(prop.sharedMemPerBlock);
+#elif MKN_GPU_CUDA
+        cudaDeviceProp prop;
+        if (cudaGetDeviceProperties(&prop, 0) != cudaSuccess)
+            throw std::runtime_error("cudaGetDeviceProperties failed");
+        return static_cast<std::size_t>(prop.sharedMemPerBlock);
+#else
+        return std::numeric_limits<std::size_t>::max();
+#endif
+    }();
+    return bytes;
+}
+
 template<typename Mode, bool _sync>
 struct DeviceLauncher : public mkn::gpu::DLauncher<Mode>
 {
@@ -36,6 +59,7 @@ struct DeviceLauncher : public mkn::gpu::DLauncher<Mode>
     template<typename... Args>
     auto& operator()(Args&&... args)
     {
+        check_shared_mem_();
         Super::operator()(std::forward<Args>(args)...);
         if constexpr (_sync)
             this->sync();
@@ -45,10 +69,20 @@ struct DeviceLauncher : public mkn::gpu::DLauncher<Mode>
     template<typename... Args>
     auto& stream(Args&&... args)
     {
+        check_shared_mem_();
         Super::stream(std::forward<Args>(args)...);
         if constexpr (_sync)
             this->sync();
         return *this;
+    }
+
+private:
+    void check_shared_mem_() const
+    {
+        if (auto const max = max_shared_mem_per_block(); this->ds > max)
+            throw std::runtime_error("kernel launch needs " + std::to_string(this->ds)
+                                     + " bytes of shared memory, device limit is "
+                                     + std::to_string(max));
     }
 };
 
@@ -56,19 +90,20 @@ struct DeviceLauncher : public mkn::gpu::DLauncher<Mode>
 template<typename Box_t, bool sync = true>
 class BoxCellNLauncher : public DeviceLauncher<mkn::gpu::Guess, sync>
 {
-    using Super                       = DeviceLauncher<mkn::gpu::Guess, sync>;
-    static constexpr std::size_t warp = 32; // 32 for nvidia. todo?
+    using Super = DeviceLauncher<mkn::gpu::Guess, sync>;
+
 public:
     BoxCellNLauncher(Box_t const& box, std::size_t const _n, size_t const& dev = 0)
         : Super{std::size_t{1}, dev}
         , n{_n}
     {
-        n_per_cell  = n % warp == 0 ? n : n + (warp - (n % warp));
-        this->count = n_per_cell * box.size();
-        this->b     = dim3{};
-        this->g     = dim3{};
-        this->b.x   = n_per_cell;
-        this->g.x   = box.size();
+        auto const warp = mkn::gpu::warp_size;
+        n_per_cell      = n % warp == 0 ? n : n + (warp - (n % warp));
+        this->count     = n_per_cell * box.size();
+        this->b         = dim3{};
+        this->g         = dim3{};
+        this->b.x       = n_per_cell;
+        this->g.x       = box.size();
     }
 
     static std::uint32_t block_idx() _PHARE_DEV_FN_ { return blockIdx.x; }

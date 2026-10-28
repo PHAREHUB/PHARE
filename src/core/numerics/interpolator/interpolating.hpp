@@ -7,6 +7,7 @@
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/particles/particle_array_def.hpp"
+#include "core/data/particles/arrays/particle_array_soavx.hpp"
 
 #include "interpolator.hpp"
 

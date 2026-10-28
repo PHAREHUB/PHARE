@@ -120,7 +120,7 @@ option(withMkn "Use mkn::gpu" OFF)
 
 
 # -DwithGpu=OFF
-option(withGpu "Build for GPU hardware (requires withMkn)" OFF)
+option(withGpu "Build for GPU hardware (requires withMkn or withKokkos)" OFF)
 
 
 

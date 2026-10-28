@@ -11,14 +11,12 @@
 namespace PHARE::kernel
 {
 
-auto inline warp_size() _PHARE_ALL_FN_ // make runtime interrogation?
+std::size_t inline warp_size() _PHARE_ALL_FN_
 {
-#if !defined(MKN_GPU_CUDA) || !defined(MKN_GPU_ROCM)
-    throw std::runtime_error("warpsize is not available for cpu");
-#elif defined(MKN_GPU_ROCM)
-    return 32ull; // not always
-#elif defined(MKN_GPU_CUDA)
-    return 32ull;
+#if PHARE_DEVICE_PASS
+    return warpSize;
+#else
+    return mkn::gpu::warp_size;
 #endif
 }
 

@@ -469,8 +469,9 @@ public: /** Performs the 1D interpolation
                                Indexes const& startIndex, Weights const& weights,
                                double coef = 1.) */
     template<typename... Args>
-    PHARE_ALWAYS_INLINE auto operator()(Args&&... args) _PHARE_ALL_FN_
+    PHARE_ALWAYS_INLINE auto operator()(Args&&... args)
         requires(sizeof...(Args) == 6)
+    _PHARE_ALL_FN_
     {
         auto&& [field, particle, func, startIndex, weights, coef] = std::forward_as_tuple(args...);
         auto const& [xStartIndex]                                 = startIndex;
@@ -536,8 +537,9 @@ public: /** Performs the 2D interpolation
          * contribute \param[in] weights is the arrays of weights for the associated index
          */
     template<typename... Args>
-    PHARE_ALWAYS_INLINE auto operator()(Args&&... args) _PHARE_ALL_FN_
+    PHARE_ALWAYS_INLINE auto operator()(Args&&... args)
         requires(sizeof...(Args) == 6)
+    _PHARE_ALL_FN_
     {
         auto&& [field, particle, func, startIndex, weights, coef] = std::forward_as_tuple(args...);
         auto const& [xStartIndex, yStartIndex]                    = startIndex;
@@ -614,8 +616,9 @@ public: /** Performs the 3D interpolation
          * contribute \param[in] weights is the arrays of weights for the associated index
          */
     template<typename... Args>
-    PHARE_ALWAYS_INLINE auto operator()(Args&&... args) _PHARE_ALL_FN_
+    PHARE_ALWAYS_INLINE auto operator()(Args&&... args)
         requires(sizeof...(Args) == 6)
+    _PHARE_ALL_FN_
     {
         auto&& [field, particle, func, startIndex, weights, coef] = std::forward_as_tuple(args...);
         auto const& [xStartIndex, yStartIndex, zStartIndex]       = startIndex;

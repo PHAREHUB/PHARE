@@ -52,11 +52,16 @@ public:
                 layout_.evalOnBiggerBox(Jc, amount, fn);
         };
 
+        using Field_t    = std::remove_cvref_t<decltype(Jx)>::Super;
         auto const curlB = curl(layout_, B);
+        Field_t jx = Jx, jy = Jy, jz = Jz;
 
-        eval(Jx, [&](auto const&... ijk) { Jx(ijk...) = curlB.x({ijk...}); });
-        eval(Jy, [&](auto const&... ijk) { Jy(ijk...) = curlB.y({ijk...}); });
-        eval(Jz, [&](auto const&... ijk) { Jz(ijk...) = curlB.z({ijk...}); });
+        eval(Jx,
+             [=] _PHARE_ALL_FN_(auto const&... ijk) mutable { jx(ijk...) = curlB.x({ijk...}); });
+        eval(Jy,
+             [=] _PHARE_ALL_FN_(auto const&... ijk) mutable { jy(ijk...) = curlB.y({ijk...}); });
+        eval(Jz,
+             [=] _PHARE_ALL_FN_(auto const&... ijk) mutable { jz(ijk...) = curlB.z({ijk...}); });
     }
 
 

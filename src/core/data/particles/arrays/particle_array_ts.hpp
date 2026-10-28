@@ -1018,11 +1018,10 @@ void TileSetSpan<Particles>::sync(Args&&... args) _PHARE_ALL_FN_
 
         PHARE_WITH_MKN_GPU({
             auto const& [stream] = std::forward_as_tuple(args...);
-            kernel::launch(stream, particles_.size(), [=] _PHARE_ALL_FN_() mutable {
-                view.sync_tile_add_new(kernel::idx());
-                __syncthreads();
-                view.sync_tile_rm_left(kernel::idx());
-            });
+            kernel::launch(stream, particles_.size(),
+                           [=] _PHARE_ALL_FN_() mutable { view.sync_tile_add_new(kernel::idx()); });
+            kernel::launch(stream, particles_.size(),
+                           [=] _PHARE_ALL_FN_() mutable { view.sync_tile_rm_left(kernel::idx()); });
         })
     }
     else

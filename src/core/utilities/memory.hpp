@@ -46,7 +46,9 @@ void fill(Vector& dst, Value const val)
     {
         PHARE_WITH_KOKKOS({ //
             auto data = dst.data();
-            Kokkos::parallel_for("fill", 5, KOKKOS_LAMBDA(int i) { data[i] = val; });
+            Kokkos::parallel_for(
+                "fill", dst.size(), KOKKOS_LAMBDA(std::size_t i) { data[i] = val; });
+            Kokkos::fence();
         })
     }
     else

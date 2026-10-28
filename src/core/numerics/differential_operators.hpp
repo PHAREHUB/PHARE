@@ -16,7 +16,7 @@
 namespace PHARE::core::detail
 {
 template<std::size_t d, typename Array, std::size_t dim>
-double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
+double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift) _PHARE_ALL_FN_
 {
     return for_N_fold<dim>([&](auto... i) { return array((i == d ? idx[i] + shift : idx[i])...); });
 }
@@ -67,7 +67,7 @@ public:
 
     NO_DISCARD std::array<QtyCentering, dim> centering() const { return centering_; }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+    NO_DISCARD double operator()(MeshIndex<dim> const idx) const _PHARE_ALL_FN_
     {
         return scale_
                * (detail::shifted<d>(view_, idx, shift_ + 1)
@@ -94,7 +94,7 @@ public:
 
     NO_DISCARD std::array<QtyCentering, dim> centering() const { return centering_; }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const) const { return 0.; }
+    NO_DISCARD double operator()(MeshIndex<dim> const) const _PHARE_ALL_FN_ { return 0.; }
 
 private:
     std::array<QtyCentering, dim> centering_;
@@ -122,7 +122,7 @@ namespace detail
 
         NO_DISCARD std::array<QtyCentering, dim> centering() const { return dj_vk_.centering(); }
 
-        NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+        NO_DISCARD double operator()(MeshIndex<dim> const idx) const _PHARE_ALL_FN_
         {
             if constexpr (j >= dim && k < dim)
                 return -dk_vj_(idx);
@@ -171,7 +171,7 @@ public:
 
     NO_DISCARD std::array<QtyCentering, dim> centering() const { return dx_vx_.centering(); }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+    NO_DISCARD double operator()(MeshIndex<dim> const idx) const _PHARE_ALL_FN_
     {
         return dx_vx_(idx) + dy_vy_(idx) + dz_vz_(idx);
     }

@@ -10,13 +10,6 @@
 
 #include <atomic>
 
-// device atomics (atomicAdd...) only exist in the device compilation pass; host calls of
-// _PHARE_ALL_FN_ code (e.g. GPU_UNIFIED CPU fallbacks) use the std::atomic paths instead
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
-#define PHARE_DEVICE_PASS 1
-#else
-#define PHARE_DEVICE_PASS 0
-#endif
 
 
 namespace PHARE::core

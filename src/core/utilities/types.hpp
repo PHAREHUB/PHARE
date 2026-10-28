@@ -643,7 +643,7 @@ constexpr auto for_N(Fn&& fn) _PHARE_ALL_FN_
         else if constexpr (M == for_N_R_mode::make_tuple)
             return std::make_tuple(fn(ics)...);
         else if constexpr (M == for_N_R_mode::make_array)
-            return std::array{fn(ics)...};
+            return std::array<return_type, N>{fn(ics)...};
         else if constexpr (M == for_N_R_mode::forward_tuple)
             return std::forward_as_tuple(fn(ics)...);
         else

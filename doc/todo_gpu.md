@@ -56,21 +56,13 @@ like.
 
 ## Field solvers
 
-### Ampere, Faraday and Ohm have no device kernels
-- `src/core/numerics/ampere/ampere.hpp`, `src/core/numerics/faraday/faraday.hpp`,
-  `src/core/numerics/ohm/ohm.hpp`
-- The captureless `_PHARE_ALL_FN_` kernels (`JxEq_`, `BxEq_`, static `E_Eq_`, ...) were dropped
-  when rebasing onto master's shared `curl`/`grad` (#1468): they used `GridLayout::deriv` and
-  `laplacian`, which no longer exist. The solvers now evaluate `[&]` capturing host lambdas over
-  `curl(layout_, B)` / `grad(layout_, Pe)`, so `GPU_UNIFIED` field solves run on the host.
-- Proper fix: make `curl`/`grad` (and the recentered field reads they use) device callable, then
-  pass fields as lambda arguments again so `evalOnBox` can dispatch to the device.
-
-### for_N_fold is host only
-- `src/core/utilities/types.hpp` (`for_N_fold`), used by `for_N` and `NdArrayViewer::idx`
-- `for_N` is `_PHARE_ALL_FN_` but forwards to `for_N_fold`, whose immediately invoked lambda is not
-  annotated.
-- Proper fix: annotate `for_N_fold` and its inner lambda `_PHARE_ALL_FN_`.
+### Faraday and Ohm have no device kernels
+- `src/core/numerics/faraday/faraday.hpp`, `src/core/numerics/ohm/ohm.hpp`
+- Their kernels are `[&]` capturing host lambdas over master's `curl(layout_, E)` /
+  `grad(layout_, Pe)` (#1468), so `GPU_UNIFIED` field solves run on the host. Ampere is done:
+  `curl` is `_PHARE_ALL_FN_` and its lambdas copy `basic::Field` views of J.
+- Proper fix: same as Ampere, copy `basic::Field` views into `[=] _PHARE_ALL_FN_` lambdas, and make
+  `grad` and Ohm's `ideal_`/`pressure_`/... device callable.
 
 
 

@@ -36,6 +36,14 @@
 
 #endif // PHARE_HAVE_GPU
 
+// device only builtins (atomicAdd, warpSize...) exist in the device compilation pass only, host
+// calls of _PHARE_ALL_FN_ code (e.g. GPU_UNIFIED CPU fallbacks) take the host paths instead
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#define PHARE_DEVICE_PASS 1
+#else
+#define PHARE_DEVICE_PASS 0
+#endif
+
 #include "core/def/detail/thrust.hpp"
 
 namespace PHARE

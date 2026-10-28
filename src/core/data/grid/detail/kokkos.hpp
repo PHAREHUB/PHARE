@@ -13,11 +13,14 @@ struct GridLayout
     {
         PHARE_LOG_LINE_SS(box.size());
         int size = box.size();
-        Kokkos::parallel_for("evalOnBox", size, [&](int i) { // will fail with copy capture
-            auto b = box.begin();
-            b      = b + i;
-            fn(*b, args...);
-        });
+        Kokkos::parallel_for(
+            "evalOnBox", size, KOKKOS_LAMBDA(int i) {
+                auto b = box.begin();
+                b      = b + i;
+                auto f = fn;
+                f(*b, args...);
+            });
+        Kokkos::fence();
     }
 };
 

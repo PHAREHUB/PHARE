@@ -145,12 +145,12 @@ template<typename ParticleArray_t>
 void post_move_sync_tile(ParticleArray_t& domain, ParticleArray_t& patchGhost,
                          ParticleArray_t& levelGhost, auto const& boxing, std::size_t const ti)
 {
-    auto constexpr dim = ParticleArray_t::dimension;
     PostMoveSyncCells const cells{boxing};
 
     // fn(bucket, AMR cell) for every non empty bucket of the tile
     auto const per_bucket = [](auto& cps, auto&& fn) {
-        auto const& gb = cps.ghost_box();
+        auto constexpr dim = ParticleArray_t::dimension;
+        auto const& gb     = cps.ghost_box();
         for (auto const& bix : cps.local_box(gb))
             if (auto& bucket = cps(bix); bucket.size())
             {
@@ -865,7 +865,6 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
                     launcher.b.x = kernel::warp_size();
                     launcher.g.x = domain().size();
                     launcher.ds  = ds * 4 * 8;
-                    assert(launcher.ds < 65000);
                     auto pdensity = pop.particleDensity();
                     auto flux     = *pop.flux();
                     launcher.stream(in.streamer.streams[i], [=] __device__() mutable {

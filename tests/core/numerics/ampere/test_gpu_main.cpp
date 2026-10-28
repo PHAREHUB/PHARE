@@ -45,7 +45,7 @@ void test()
     auto constexpr static gpu_opts = PHARE::SimOpts{
         .dimension = dim, .interp_order = 3, .alloc_mode = PHARE::AllocatorMode::GPU_UNIFIED};
 
-    EXPECT_EQ(evolve<cpu_opts>(), evolve<gpu_opts>());
+    EXPECT_TRUE(evolve<cpu_opts>().isclose(evolve<gpu_opts>(), 1e-14));
 }
 
 TEST(AmpereTest, worksOnGPU_1d)

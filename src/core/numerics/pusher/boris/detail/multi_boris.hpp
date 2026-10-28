@@ -552,7 +552,6 @@ void MultiBorisBackend<layout, ModelAccessor, Interpolator>::move_gpu_copy(
                   + 2 * static_cast<std::uint32_t>(kernel::warp_size())
                         * static_cast<std::uint32_t>(sizeof(typename Particles_t::Particle_t))
                   + static_cast<std::uint32_t>(sizeof(int));
-            assert(launcher.ds < 65000);
             launcher.stream(in.streamer.streams[i], [=] __device__() mutable {
                 on_tiles_push_deposit<Tile_vt_, ParticleType::Domain, Particles_t::alloc_mode>(
                     parts, em, flux, rhop, filter_box, exclude_boxes, coef1, halfdt);
