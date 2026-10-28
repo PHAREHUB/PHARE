@@ -3,18 +3,23 @@
 
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/models/hybrid_state.hpp"
 #include "core/boundary/boundary_manager.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 
 #include <string>
+#include <sstream>
+
 
 namespace PHARE::solver
 {
@@ -105,6 +110,8 @@ public:
 
     virtual ~HybridModel() override {}
 
+    std::string summarize(auto& hierarchy, std::string const& format = "");
+
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
@@ -130,6 +137,103 @@ public:
 //-------------------------------------------------------------------------
 //                             definitions
 //-------------------------------------------------------------------------
+
+
+template<typename GridLayoutT>
+struct LevelStats
+{
+    std::size_t patches = 0, cells = 0, patch_ghosts = 0, level_ghosts = 0;
+
+    static auto GET(auto& rm, auto& V, auto& lvl, auto& hierarchy)
+    {
+        using namespace PHARE::core;
+
+        auto const& Vx = V[0]; // Any is fine, all primal!
+
+        auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, lvl.getLevelNumber());
+
+        LevelStats stats;
+        for (auto const& patch : rm.enumerate(lvl, V))
+        {
+            auto const layout    = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto const box       = layout.AMRBoxFor(Vx);
+            auto const ghost_box = layout.AMRGhostBoxFor(Vx);
+
+            auto const cells             = box.size();
+            auto const ghosts            = ghost_box.size() - cells;
+            auto const patch_ghost_cells = sum_from(
+                amr::patchGhostBoxOverlaps<GridLayoutT>(*patch, neighbors), [](auto box) {
+                    box.upper += 1;
+                    return box.size();
+                });
+
+            stats.cells += cells;
+            stats.patch_ghosts += patch_ghost_cells;
+            stats.level_ghosts += ghosts - patch_ghost_cells;
+            ++stats.patches;
+        }
+
+        return stats;
+    }
+
+    auto collect() const
+    {
+        using namespace PHARE::core;
+        LevelStats stats;
+        stats.cells        = mpi::sum_on_rank_0(cells);
+        stats.patch_ghosts = mpi::sum_on_rank_0(patch_ghosts);
+        stats.level_ghosts = mpi::sum_on_rank_0(level_ghosts);
+        stats.patches      = mpi::sum_on_rank_0(patches);
+        return stats;
+    }
+};
+
+template<typename GridLayoutT>
+inline std::ostream& operator<<(std::ostream& out, LevelStats<GridLayoutT> const& stats)
+{
+    out << stats.patches << ",";
+    out << stats.cells << ",";
+    out << stats.patch_ghosts << ",";
+    out << stats.level_ghosts;
+
+    return out;
+}
+
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
+    auto& hierarchy, std::string const& format)
+{
+    auto& rm = *this->resourcesManager;
+
+    std::stringstream ss;
+
+    std::size_t total = 0;
+
+    amr::onLevels(hierarchy, [&](auto& lvl) mutable {
+        auto const lcl = core::sum_from(rm.enumerate(lvl, state.ions), [&](auto const&) {
+            return core::sum_from(state.ions,
+                                  [](auto const& pop) { return pop.domainParticles().size(); });
+        });
+
+        auto const on_lvl = mpi::sum_on_rank_0(lcl);
+        total += on_lvl;
+
+        auto const level_stats
+            = LevelStats<GridLayoutT>::GET(rm, state.ions.velocity(), lvl, hierarchy).collect();
+
+        if (mpi::rank() == 0)
+            ss << "lvl:" << lvl.getLevelNumber() << " (" << level_stats << ") " // << minmax
+               << " parts(" << on_lvl << "), " << std::endl;
+    });
+
+    if (mpi::rank() == 0)
+        ss << "tot:" << total;
+
+    return ss.str();
+}
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,

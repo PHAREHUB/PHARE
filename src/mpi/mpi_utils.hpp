@@ -46,6 +46,14 @@ NO_DISCARD std::string hostname();
 // collective on first call! every rank must make the first call
 NO_DISCARD bool is_root_rank_for_host();
 
+auto inline sum_on_rank_0(std::size_t const s)
+{
+    std::size_t localsum[1]  = {s};
+    std::size_t globalsum[1] = {0};
+    MPI_Reduce(localsum, globalsum, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+    return static_cast<std::size_t>(globalsum[0]);
+}
+
 inline bool is_init()
 {
     int flag = 0;
