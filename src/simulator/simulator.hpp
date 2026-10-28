@@ -101,6 +101,7 @@ public:
         return false;
     }
 
+    std::string summary() const;
 
 
 protected:
@@ -487,6 +488,17 @@ std::string Simulator<opts>::to_str()
 }
 
 
+template<auto opts>
+std::string Simulator<opts>::summary() const
+{
+    std::stringstream ss;
+    if constexpr (has_hybrid_v<opts>)
+    {
+        if (hyb_.model_)
+            ss << hyb_.model_->summarize(*hierarchy_);
+    }
+    return ss.str();
+}
 
 
 template<auto opts>

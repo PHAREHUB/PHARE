@@ -148,7 +148,8 @@ class Simulator:
             ) from e
 
     def advance(self):
-        self._check_init()
+        if not self.initialized:
+            self.initialize()
         if self.simulation.dry_run:
             return self
 
@@ -183,8 +184,8 @@ class Simulator:
            ``PHARE_SIM_MON`` environment variable if left None. Requires the optional ``phlop`` package
            (``python3 -m pip install phlop``); silently does nothing if it isn't installed.
         """
-
-        self._check_init()
+        if not self.initialized:
+            self.initialize()
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
@@ -192,8 +193,7 @@ class Simulator:
         if self.simulation.dry_run:
             return self
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -225,7 +225,7 @@ class Simulator:
             plot_timestep_time(perf)
 
         mon.monitoring_shutdown()
-        return self.reset()
+        return self
 
     def dump(self, *args):
         # do diagnostics/restarts dump if active at this time
@@ -287,9 +287,14 @@ class Simulator:
         self.initialized = True
         return self
 
-    def _check_init(self):
-        if not self.initialized:
-            self.initialize()
+    def print_summary(self):
+        summary = self.summary()  # NO DEADLOCK!
+        if cpp.mpi_rank() == 0:
+            print("SUMMARY:", summary)
+
+    def summary(self):
+        self._check_setup()
+        return self.cpp_sim.summary()
 
     def _check_setup(self):
         if not self.cpp_sim:
