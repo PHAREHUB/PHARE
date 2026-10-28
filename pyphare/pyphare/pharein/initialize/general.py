@@ -41,7 +41,8 @@ def populate_grid(dp, sim):
     dp.add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
 
     sim.time_stepper.populate_dict(dp)
-    sim.external_field.populate_dict(dp, sim.ndim)
+    if sim.external_field is not None:
+        sim.external_field.populate_dict(dp, sim.ndim)
 
 
 def populate_amr(dp, sim):

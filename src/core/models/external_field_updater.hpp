@@ -51,15 +51,15 @@ public:
                             GridLayoutT const& layout, double time)
     {
         computePotential(scratch, time, layout);
-        curlOnGhostBox_(externalField.B0, scratch, layout);
+        curlOnGhostBox_(externalField.B0(), scratch, layout);
         if (isTimeDependent())
         {
             computePotentialTimeDerivative(scratch, time, layout);
-            curlOnGhostBox_(externalField.dB0dt, scratch, layout);
+            curlOnGhostBox_(externalField.dB0dt(), scratch, layout);
         }
         else
         {
-            externalField.dB0dt.zero();
+            externalField.dB0dt().zero();
         }
     }
 
