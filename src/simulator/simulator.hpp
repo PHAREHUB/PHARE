@@ -492,10 +492,15 @@ template<auto opts>
 std::string Simulator<opts>::summary() const
 {
     std::stringstream ss;
+    if constexpr (has_mhd_v<opts>)
+    {
+        if (mhd_.model_)
+            ss << mhd_.model_->summarize(*hierarchy_, 0, maxMHDLevel_ - 1);
+    }
     if constexpr (has_hybrid_v<opts>)
     {
         if (hyb_.model_)
-            ss << hyb_.model_->summarize(*hierarchy_);
+            ss << hyb_.model_->summarize(*hierarchy_, maxMHDLevel_, maxLevelNumber_ - 1);
     }
     return ss.str();
 }
