@@ -33,7 +33,7 @@ def ions_charge_density_func1d(x, **kwargs):
 def hierarchy_from_func1d(func, hier, **kwargs):
     assert hier.ndim == 1
 
-    def compute_(patch, **kwargs):
+    def compute_(patch, accessor=None, **kwargs):
         ref_name = next(iter(patch.patch_datas.keys()))
         x_ = patch[ref_name].x
 
@@ -79,7 +79,7 @@ def ions_charge_density_func2d(x, y, **kwargs):
 def hierarchy_from_func2d(func, hier, **kwargs):
     assert hier.ndim == 2
 
-    def compute_(patch, **kwargs):
+    def compute_(patch, accessor=None, **kwargs):
         ref_name = next(iter(patch.patch_datas.keys()))
         x_ = patch[ref_name].x
         y_ = patch[ref_name].y

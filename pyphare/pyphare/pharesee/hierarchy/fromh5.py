@@ -130,7 +130,7 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, interp_order, lvl_cell
                 pdata_name = pop_name(basename) + "_" + pdata_name
 
             if pdata_name in patch_datas:
-                raise ValueError(f"error - {dataset_name} already in patchdata")
+                raise ValueError(f"error - {pdata_name} already in patchdata")
 
             patch_datas[pdata_name] = pdata
 
