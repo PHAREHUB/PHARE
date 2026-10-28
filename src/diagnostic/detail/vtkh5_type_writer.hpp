@@ -2,7 +2,6 @@
 #define PHARE_DIAGNOSTIC_DETAIL_VTK_H5_TYPE_WRITER_HPP
 
 
-#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/algorithm.hpp"
@@ -17,6 +16,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -150,10 +150,10 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
     std::string static inline const step_level = base + "/Steps/Level";
     auto static inline const level_data_path
         = [](auto const ilvl) { return level_base + std::to_string(ilvl) + "/PointData/data"; };
-    std::size_t static constexpr steps_chunk_size   = 1024;
-    std::size_t static constexpr amr_box_chunk_size = 1024;
-    std::size_t static inline const data_chunk_size_bytes
-        = core::get_env_as("PHARE_VTKHDF_CHUNK_BYTES", std::size_t{1} << 20);
+    std::size_t static constexpr steps_chunk_size         = 1024;
+    std::size_t static constexpr amr_box_chunk_size       = 1024;
+    std::size_t static inline const data_chunk_size_bytes = core::get_env_as(
+        "PHARE_VTKHDF_CHUNK_BYTES", std::size_t{1024 * 1024}); // default = 1 MebiByte (MiB)
 
 
 public:
