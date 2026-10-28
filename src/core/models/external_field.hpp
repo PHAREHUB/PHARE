@@ -21,7 +21,7 @@ namespace PHARE::core
  *
  */
 template<typename VecFieldT>
-class ExternalField
+class ExternalFieldState
 {
 public:
     using vecfield_type = VecFieldT;
@@ -29,7 +29,7 @@ public:
 
     static constexpr std::size_t dimension = VecFieldT::dimension;
 
-    ExternalField(std::string const& name, bool const enabled)
+    ExternalFieldState(std::string const& name, bool const enabled)
     {
         if (enabled)
         {
