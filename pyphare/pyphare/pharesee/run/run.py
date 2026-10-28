@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from pyphare.core.phare_utilities import listify
+from pyphare.core.phare_utilities import listify, refinement_ratio
 from pyphare.logger import getLogger
 from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
 from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
@@ -75,7 +75,7 @@ class Run:
         """
         if merged:
             domain = self.GetDomainSize()
-            dl = self.GetDl(time=time)
+            dl = self.GetDl(hierarchy.finest_level(time))
 
             # assumes all qties in the hierarchy have the same ghost width
             # so take the first patch data of the first patch of the first level....
@@ -248,15 +248,17 @@ class Run:
     def GetMagneticFlux(
         self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None
     ):
+        hier = self._get_hierarchy(time, "EM_B.h5")
+
         # Reuse grids if provided, otherwise generate them
         if xn is None or yn is None or Xn is None or Yn is None:
             domain = self.GetDomainSize()
-            dl = self.GetDl(level="finest", time=time)
+            dl = self.GetDl(hier.finest_level(time))
             xn = np.arange(0, domain[0] + dl[0], dl[0])
             yn = np.arange(0, domain[1] + dl[1], dl[1])
             Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
 
-        merged_B = self.GetB(time, merged=True, interp=interp)
+        merged_B = self._get(hier, time, merged=True, interp=interp)
         bx_interp = merged_B["Bx"][0]
         by_interp = merged_B["By"][0]
 
@@ -293,7 +295,8 @@ class Run:
 
     def GetReconnectionRate(self, times, interp="nearest"):
         domain = self.GetDomainSize()
-        dl = self.GetDl(level="finest", time=times[0])
+        hier = self._get_hierarchy(times[0], "EM_B.h5")
+        dl = self.GetDl(hier.finest_level(times[0]))
         xn = np.arange(0, domain[0] + dl[0], dl[0])
         yn = np.arange(0, domain[1] + dl[1], dl[1])
         Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
@@ -360,49 +363,20 @@ class Run:
 
         return (data_file.attrs["domain_box"] + 1) * root_cell_width
 
-    def GetDl(self, level="finest", time=None):
+    def GetDl(self, level=0):
         """
-        gives the ndarray containing the grid sizes at the given time
-        for the hierarchy defined in the given run, and for the given level
-        (default is 'finest', but can also be a int)
+        gives the ndarray containing the grid sizes for the given level
 
         :param level: the level at which get the associated grid size
-        :param time: the time because level depends on it
         """
-
         import h5py
 
-        def _get_time():
-            if time:
-                return time
-            if self.default_time_:
-                return self.default_time_
-            self.default_time_ = float(next(iter(data_file[h5_time_grp_key].keys())))
-            return self.default_time_
+        if level < 0:
+            raise ValueError(f"Run::GetDl: level must be >= 0, got {level}")
 
-        h5_time_grp_key = "t"
-        files = self.available_diags
-
-        for h5_filename in files:
-            data_file = h5py.File(h5_filename, "r")
-
-            time = _get_time()
-
-            try:
-                hier = self._get_hierarchy(time, h5_filename.split("/")[-1])
-
-                if level == "finest":
-                    level = hier.finest_level(time)
-                fac = np.power(hier.refinement_ratio, level)
-
-                root_cell_width = np.asarray(data_file.attrs["cell_width"])
-
-                return root_cell_width / fac
-
-            except KeyError:
-                ...  # time may not be avilaable for given quantity
-
-        raise RuntimeError("Unable toGetDl")
+        with h5py.File(self.available_diags[0], "r") as data_file:
+            root_cell_width = np.asarray(data_file.attrs["cell_width"])
+        return root_cell_width / refinement_ratio**level
 
     def all_times(self):
         import h5py
