@@ -81,13 +81,14 @@ def populate_amr(dp, sim):
 
 
 def populate_load_balancer(dp, sim):
-    lb = sim.load_balancer or LoadBalancer(active=False, _register=False)
+    # load balancing is always on with tagging, a declared LoadBalancer only overrides the
+    # defaults. With refinement boxes it is off unless declared, which is then an error
     base = "simulation/AMR/loadbalancing"
-    dp.add_bool(f"{base}/active", lb.active)
+    declared = sim.load_balancer is not None
+    lb = sim.load_balancer or LoadBalancer(_register=False)
+    dp.add_bool(f"{base}/active", declared or sim.refinement == "tagging")
     dp.add_string(f"{base}/mode", lb.mode)
     dp.add_double(f"{base}/tolerance", lb.tol)
-
-    # if mode==nppc, imbalance allowed
     dp.add_bool(f"{base}/auto", lb.auto)
     dp.add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
     dp.add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)

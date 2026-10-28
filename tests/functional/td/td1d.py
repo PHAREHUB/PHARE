@@ -102,8 +102,6 @@ def config():
             write_timestamps=timestamps,
         )
 
-    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
-
     return sim
 
 

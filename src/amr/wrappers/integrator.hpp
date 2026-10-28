@@ -28,6 +28,7 @@
 #include "initializer/data_provider.hpp"
 
 #include "amr/load_balancing/load_balancer_details.hpp"
+#include "amr/load_balancing/coarsest_rebalance_check.hpp"
 
 
 namespace PHARE::amr
@@ -41,6 +42,12 @@ class Integrator
         return cppdict::get_value(dict, "simulation/AMR/refinement/tagging/method",
                                   std::string{"none"})
                == std::string{"auto"};
+    }
+
+    // L0 is MHD if there are any MHD levels, only a hybrid L0 is ever rebalanced explicitly
+    bool static _is_hybrid_coarsest(initializer::PHAREDict const& dict)
+    {
+        return cppdict::get_value(dict, "simulation/AMR/max_mhd_level", 0) == 0;
     }
 
 
@@ -68,11 +75,11 @@ public:
 
 private:
     amr::LoadBalancerDetails const lb_info_;
-    bool const is_tagging_refinement                = false;
-    int loadBalancerPatchId_                        = -1;
-    std::size_t rebalance_coarsest_auto_back_off    = 0;
-    std::size_t time_step_idx                       = 0;
-    std::size_t rebalance_coarsest_auto_back_off_by = 1;
+    bool const is_tagging_refinement = false;
+    bool const is_hybrid_coarsest    = false;
+    int loadBalancerPatchId_         = -1;
+    std::size_t time_step_idx        = 0;
+    CoarsestRebalanceCheck auto_rebalance_check_;
 
 
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator_;
@@ -103,35 +110,11 @@ private:
 
     bool tolerance_rebalance_check()
     {
-        if (rebalance_coarsest_auto_back_off == 0)
-        {
+        return auto_rebalance_check_([&] {
             PHARE_LOG_SCOPE(1, "Integrator::_should_rebalance_now::automatic");
-
-            auto workLoads       = mpi::collect(computeNonUniformWorkLoadForLevel0());
-            auto const max_value = *std::max_element(workLoads.begin(), workLoads.end());
-            for (auto& workload : workLoads)
-                workload /= max_value;
-            auto const min_value = *std::min_element(workLoads.begin(), workLoads.end());
-            assert(min_value <= 1);
-
-            if ((1 - min_value) > lb_info_.tolerance)
-            {
-                rebalance_coarsest_auto_back_off_by = lb_info_.next_rebalance;
-                rebalance_coarsest_auto_back_off    = rebalance_coarsest_auto_back_off_by;
-                return true;
-            }
-
-            rebalance_coarsest_auto_back_off_by *= lb_info_.next_rebalance_backoff_multiplier;
-            rebalance_coarsest_auto_back_off = rebalance_coarsest_auto_back_off_by;
-
-            if (rebalance_coarsest_auto_back_off > lb_info_.max_next_rebalance)
-                rebalance_coarsest_auto_back_off_by = rebalance_coarsest_auto_back_off
-                    = lb_info_.max_next_rebalance;
-        }
-
-        --rebalance_coarsest_auto_back_off;
-        return false;
-    };
+            return mpi::collect(computeNonUniformWorkLoadForLevel0());
+        });
+    }
 
     std::function<bool()> _rebalance_check;
 };
@@ -161,8 +144,9 @@ Integrator<_dimension>::Integrator(
     double endTime, amr::LoadBalancerDetails const& lb_info, int loadBalancerPatchId)
     : lb_info_{lb_info}
     , is_tagging_refinement{_is_tagging_refinement(dict)}
+    , is_hybrid_coarsest{_is_hybrid_coarsest(dict)}
     , loadBalancerPatchId_{loadBalancerPatchId}
-    , rebalance_coarsest_auto_back_off{lb_info_.on_init ? 0 : lb_info_.next_rebalance}
+    , auto_rebalance_check_{lb_info_}
     , _rebalance_check{lb_info_.automatic ? std::bind(&Integrator::tolerance_rebalance_check, this)
                                           : std::bind(&Integrator::cadence_rebalance_check, this)}
 {
@@ -218,7 +202,7 @@ Integrator<_dimension>::Integrator(
 template<std::size_t _dimension>
 bool Integrator<_dimension>::_should_rebalance_now()
 {
-    if (is_tagging_refinement and lb_info_.active)
+    if (is_tagging_refinement and is_hybrid_coarsest and lb_info_.active)
         return _rebalance_check();
 
     return false;
