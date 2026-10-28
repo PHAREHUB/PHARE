@@ -13,6 +13,7 @@
 
 #include "gtest/gtest.h"
 
+#include <stdexcept>
 #include <string>
 
 using namespace PHARE;
@@ -33,7 +34,6 @@ using GridLayout_t  = MHDTypes::GridLayout_t;
 using VecField_t    = MHDTypes::VecField_t;
 using Factory_t     = ExternalFieldUpdaterFactory<VecField_t, GridLayout_t>;
 using Dipole_t      = ExternalFieldUpdaterDipole<VecField_t, GridLayout_t>;
-using Zero_t        = ExternalFieldUpdaterZero<VecField_t, GridLayout_t>;
 using UserDefined_t = ExternalFieldUpdaterUserDefined<VecField_t, GridLayout_t>;
 
 auto constexpr cells = 8u;
@@ -97,8 +97,8 @@ double maxDifference(UpdaterRun& lhs, UpdaterRun& rhs)
     double maxDiff = 0.;
     for_N<3>([&](auto i) {
         constexpr auto component = static_cast<Component>(decltype(i)::value);
-        auto& lhsField           = lhs.externalField.B0(component);
-        auto& rhsField           = rhs.externalField.B0(component);
+        auto& lhsField           = lhs.externalField.B0()(component);
+        auto& rhsField           = rhs.externalField.B0()(component);
         for (std::size_t k = 0; k < lhsField.size(); ++k)
             maxDiff = std::max(maxDiff, std::abs(lhsField.data()[k] - rhsField.data()[k]));
     });
@@ -173,25 +173,9 @@ double maxDeviation(VecField_t& vecfield, Point<double, 3> const& expected)
 } // namespace
 
 
-TEST(ExternalFieldUpdaterFactory, defaultsToZeroExternalFieldWhenTypeIsAbsent)
+TEST(ExternalFieldUpdaterFactory, throwsWhenTypeIsAbsent)
 {
-    initializer::PHAREDict dict;
-    auto updater = Factory_t::create(dict);
-
-    ASSERT_NE(updater, nullptr);
-    EXPECT_NE(dynamic_cast<Zero_t*>(updater.get()), nullptr);
-}
-
-
-TEST(ExternalFieldUpdaterFactory, createsTheZeroUpdater)
-{
-    initializer::PHAREDict dict;
-    putType(dict, ExternalFieldUpdaterType::Zero);
-    auto updater = Factory_t::create(dict);
-
-    ASSERT_NE(updater, nullptr);
-    EXPECT_NE(dynamic_cast<Zero_t*>(updater.get()), nullptr);
-    EXPECT_FALSE(updater->isTimeDependent());
+    EXPECT_THROW(Factory_t::create(initializer::PHAREDict{}), std::runtime_error);
 }
 
 
@@ -340,7 +324,7 @@ TEST(ExternalFieldUpdaterFactory, forwardsThePotentialComponentsInOrder)
     UpdaterRun run{*updater, 1.};
 
     // the potential grows as 1 + t, so at t = 1 the field is twice its curl at t = 0
-    EXPECT_NEAR(maxDeviation(run.externalField.B0, expectedCurl * 2.), 0., 1e-12);
+    EXPECT_NEAR(maxDeviation(run.externalField.B0(), expectedCurl * 2.), 0., 1e-12);
 }
 
 
@@ -353,7 +337,7 @@ TEST(ExternalFieldUpdaterFactory, forwardsThePotentialTimeDerivative)
 
     // d/dt of the potential above is the same shape with g = 1, so dB0/dt is the bare curl -
     // a value the potential itself never takes, so the two arrays cannot be confused
-    EXPECT_NEAR(maxDeviation(run.externalField.dB0dt, expectedCurl), 0., 1e-12);
+    EXPECT_NEAR(maxDeviation(run.externalField.dB0dt(), expectedCurl), 0., 1e-12);
 }
 
 
@@ -365,8 +349,8 @@ TEST(ExternalFieldUpdaterFactory, zeroesTheTimeDerivativeOfAStaticUserDefinedFie
 
     UpdaterRun run{*updater, 1.};
 
-    EXPECT_NEAR(maxDeviation(run.externalField.B0, expectedCurl * 2.), 0., 1e-12);
-    EXPECT_DOUBLE_EQ(maxDeviation(run.externalField.dB0dt, Point<double, 3>{0., 0., 0.}), 0.);
+    EXPECT_NEAR(maxDeviation(run.externalField.B0(), expectedCurl * 2.), 0., 1e-12);
+    EXPECT_DOUBLE_EQ(maxDeviation(run.externalField.dB0dt(), Point<double, 3>{0., 0., 0.}), 0.);
 }
 
 

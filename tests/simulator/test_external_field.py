@@ -3,10 +3,13 @@
 Functional tests for the external magnetic field B0.
 """
 
+import os
+
 import numpy as np
 
 import pyphare.pharein as ph
 from pyphare.core.phare_utilities import any_fp_tol
+from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
@@ -22,6 +25,10 @@ def az(x, y):
     """Bilinear vector potential: curl is (y, -x),
     and is exactly computed by the discrete curl."""
     return x * y
+
+
+def az_twice(x, y):
+    return 2.0 * x * y
 
 
 def az_t(x, y, t):
@@ -91,7 +98,8 @@ class ExternalFieldTest(SimulatorTest):
     # -- helpers ---------------------------------------------------------------
 
     def config(self, nbr_steps, external_field=None, **kwargs):
-        """A short 2D run dumping EM_B0 at every step, plus the initial time."""
+        """A short 2D run, dumping EM_B0 at every step plus the initial time when an
+        external field is declared."""
         timestamps = np.arange(nbr_steps + 1) * time_step
         opts = dict(
             time_step=time_step,
@@ -112,7 +120,8 @@ class ExternalFieldTest(SimulatorTest):
 
         sim = self.simulation(**opts)
         plasma_model(sim)
-        ph.ElectromagDiagnostics(quantity="B0", write_timestamps=timestamps)
+        if external_field is not None:
+            ph.ElectromagDiagnostics(quantity="B0", write_timestamps=timestamps)
         return sim, timestamps
 
     def run_sim(self, sim):
@@ -296,28 +305,147 @@ class ExternalFieldTest(SimulatorTest):
                     inside += np.count_nonzero(mask)
         self.assertGreater(inside, 0, "no node was checked inside the radius")
 
-    def test_no_external_field_gives_a_clean_zero_b0(self):
-        """The default: B0 must be zero everywhere, and never the SAMRAI sentinel."""
-        sim, timestamps = self.config(
+    def restart_pair(self, first_field, restarted_field):
+        restart_time = 2 * time_step
+        timestamps = [restart_time, 4 * time_step]
+        out = "phare_outputs/test_external_field_restart"
+
+        def options(external_field, diag_dir, restart_options):
+            opts = dict(
+                time_step=time_step,
+                time_step_nbr=4,
+                cells=cells,
+                dl=dl,
+                refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
+                smallest_patch_size=10,
+                largest_patch_size=20,
+                diag_options={
+                    "format": "phareh5",
+                    "options": {"dir": diag_dir, "mode": "overwrite"},
+                },
+                restart_options=restart_options,
+            )
+            if external_field is not None:
+                opts["external_field"] = external_field
+            return opts
+
+        def setup(sim, external_field):
+            plasma_model(sim)
+            ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+            if external_field is not None:
+                ph.ElectromagDiagnostics(quantity="B0", write_timestamps=timestamps)
+
+        restart_options = {
+            "dir": out,
+            "mode": "overwrite",
+            "timestamps": [restart_time],
+        }
+        sim = self.simulation(**options(first_field, out, restart_options))
+        setup(sim, first_field)
+        Simulator(sim).run().reset()
+        first_dir = sim.diag_options["options"]["dir"]
+        restarted_dir = first_dir + "_restarted"
+
+        restart_options = {
+            "dir": first_dir,
+            "mode": "overwrite",
+            "restart_time": restart_time,
+        }
+        ph.global_vars.sim = None
+        sim = ph.Simulation(**options(restarted_field, restarted_dir, restart_options))
+        setup(sim, restarted_field)
+        self.register_diag_dir_for_cleanup(restarted_dir)
+        Simulator(sim).run().reset()
+        return Run(restarted_dir), timestamps
+
+    def test_restart_declaring_a_field_computes_b0(self):
+        run, timestamps = self.restart_pair(
+            None, {"type": "user-defined", "potential": (None, None, az)}
+        )
+        for time in timestamps:
+            self.assert_b0_is_exact(run, time, min_levels=2)
+
+    def test_restart_with_other_parameters_takes_the_new_field(self):
+        run, timestamps = self.restart_pair(
+            {"type": "user-defined", "potential": (None, None, az_twice)},
+            {"type": "user-defined", "potential": (None, None, az)},
+        )
+        for time in timestamps:
+            self.assert_b0_is_exact(run, time, min_levels=2)
+
+    def test_restart_dropping_the_field_runs(self):
+        run, timestamps = self.restart_pair(
+            {"type": "user-defined", "potential": (None, None, az)}, None
+        )
+        self.assertFalse(os.path.exists(os.path.join(run.path, "EM_B0.h5")))
+        for time in timestamps:
+            b = run.GetB(time, all_primal=False)
+            self.assertGreaterEqual(len(b.levels(time)), 2)
+
+    def restart_entries(self, external_field):
+        import glob
+
+        import h5py
+
+        opts = dict(
+            time_step=time_step,
+            time_step_nbr=2,
+            cells=cells,
+            dl=dl,
+            refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
+            smallest_patch_size=10,
+            largest_patch_size=20,
+            diag_options={
+                "format": "phareh5",
+                "options": {
+                    "dir": "phare_outputs/test_external_field_entries",
+                    "mode": "overwrite",
+                },
+            },
+            restart_options={
+                "dir": "phare_outputs/test_external_field_entries",
+                "mode": "overwrite",
+                "timestamps": [time_step],
+            },
+        )
+        if external_field is not None:
+            opts["external_field"] = external_field
+        sim = self.simulation(**opts)
+        plasma_model(sim)
+        Simulator(sim).run().reset()
+
+        entries = set()
+        pattern = os.path.join(sim.restart_options["dir"], "**", "proc.*")
+        for path in glob.glob(pattern, recursive=True):
+            with h5py.File(path, "r") as restart_file:
+                restart_file.visit(lambda name: entries.add(name.split("/")[-1]))
+        return entries
+
+    def test_restart_files_hold_b0_only_when_declared(self):
+        declared = self.restart_entries(
+            {"type": "user-defined", "potential": (None, None, az)}
+        )
+        self.assertIn("HybridModel_B0##default", declared)
+        self.assertIn("HybridModel_dB0dt##default", declared)
+
+        undeclared = self.restart_entries(None)
+        self.assertTrue(undeclared)
+        self.assertFalse([name for name in undeclared if "B0" in name])
+
+    def test_b0_readback_without_field_raises(self):
+        sim, _ = self.config(
             nbr_steps=2,
             refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
             smallest_patch_size=10,
             largest_patch_size=20,
         )
-        run = self.run_sim(sim)
+        self.simulator = Simulator(sim)
+        self.simulator.initialize()
+        self.simulator.advance()
+        self.simulator.advance()
 
-        for time in timestamps:
-            levels = self.b0_levels(run, time)
-            self.assertGreaterEqual(len(levels), 2)
-            for ilvl, level in levels.items():
-                for patch in level.patches:
-                    for name, pd in patch.patch_datas.items():
-                        data = pd.dataset[:]
-                        np.testing.assert_array_equal(
-                            data,
-                            np.zeros_like(data),
-                            err_msg=f"t={time} lvl={ilvl} {name}",
-                        )
+        with self.assertRaises(RuntimeError):
+            hierarchy_from(simulator=self.simulator, qty="EM_B0_x")
 
 
 if __name__ == "__main__":

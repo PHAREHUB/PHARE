@@ -217,7 +217,6 @@ PYBIND11_MODULE(cpp_etc, m)
     });
 
     py::enum_<core::ExternalFieldUpdaterType>(m, "ExternalFieldUpdaterType")
-        .value("zero", core::ExternalFieldUpdaterType::Zero)
         .value("user-defined", core::ExternalFieldUpdaterType::UserDefined)
         .value("dipole", core::ExternalFieldUpdaterType::Dipole);
 

@@ -377,11 +377,18 @@ namespace solver
                 {
                     messenger.registerLevel(hierarchy, ilvl);
 
-                    auto level = hierarchy->getPatchLevel(ilvl);
+                    auto& model = getModel_(ilvl);
+                    auto level  = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
+                    {
                         load_balancer_manager_->allocate(*patch, restartTime_);
+                        model.allocate(*patch, restartTime_);
+                    }
+
+                    model.initializeExternalField(*level, restartTime_);
+
                     // if load balance on restart advance
-                    load_balancer_manager_->estimate(*level, getModel_(ilvl));
+                    load_balancer_manager_->estimate(*level, model);
                 }
                 restartInitialized_ = true;
             }

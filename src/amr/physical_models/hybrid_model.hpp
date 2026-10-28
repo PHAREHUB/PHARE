@@ -100,11 +100,11 @@ public:
                 std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
-        , externalField{model_name}
+        , externalField{model_name, dict.contains("external_field")}
         , resourcesManager{_resourcesManager}
         , externalFieldUpdater{dict.contains("external_field")
                                    ? external_field_factory_type::create(dict["external_field"])
-                                   : external_field_factory_type::createZero()}
+                                   : nullptr}
 
     {
         // no boundary conditions in hybrid for now, but boundaryManager needed by the messenger, so
@@ -121,6 +121,9 @@ public:
 
     void initializeExternalField(level_t& level, double time) override
     {
+        if (!externalFieldUpdater)
+            return;
+
         for (auto const& patch : resourcesManager->enumerate(level, externalField, tmpVec_))
         {
             auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
@@ -131,7 +134,7 @@ public:
 
     void updateExternalField(level_t& level, double time) override
     {
-        if (externalFieldUpdater->isTimeDependent())
+        if (externalFieldUpdater and externalFieldUpdater->isTimeDependent())
             initializeExternalField(level, time);
     }
 
