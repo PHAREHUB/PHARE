@@ -42,8 +42,6 @@ set( SOURCES_INC
      numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_neumann.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
-     numerics/pusher/pusher.hpp
-     numerics/pusher/pusher_factory.hpp
      numerics/ampere/ampere.hpp
      numerics/faraday/faraday.hpp
      numerics/ohm/ohm.hpp
