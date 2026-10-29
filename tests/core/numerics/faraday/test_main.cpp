@@ -7,6 +7,8 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 
+#include "simulator/simulator_def.hpp"
+
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
@@ -84,11 +86,12 @@ protected:
     static constexpr auto dim          = 1;
     static constexpr auto interp_order = 1;
 
-    using UsableVecFieldND = UsableVecField<dim>;
-    using GridLayout_t
-        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-
-    using Faraday_t = Faraday<GridLayout_t>;
+    using core_types                 = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes                = core_types::Hybrid;
+    using GridLayout_t               = HybridTypes::GridLayout_t;
+    using Faraday_t                  = Faraday<GridLayout_t>;
+    auto static constexpr field_opts = PHARE::core::TensorFieldOptions<HybridTypes>{};
+    using UsableVecFieldND           = UsableVecField<field_opts>;
 
     GridLayout_t layout;
 
@@ -113,13 +116,14 @@ protected:
     static constexpr auto dim          = 2;
     static constexpr auto interp_order = 1;
 
-    using UsableVecFieldND = UsableVecField<dim>;
-    using GridLayout_t
-        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using Faraday_t = Faraday<GridLayout_t>;
+    using core_types                 = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes                = core_types::Hybrid;
+    using GridLayout_t               = HybridTypes::GridLayout_t;
+    using Faraday_t                  = Faraday<GridLayout_t>;
+    auto static constexpr field_opts = PHARE::core::TensorFieldOptions<HybridTypes>{};
+    using UsableVecFieldND           = UsableVecField<field_opts>;
 
     GridLayout_t layout;
-
     UsableVecFieldND B, E, Bnew;
 
 public:
@@ -141,12 +145,14 @@ protected:
     static constexpr auto dim          = 3;
     static constexpr auto interp_order = 1;
 
-    using UsableVecFieldND = UsableVecField<dim>;
-    using GridLayout_t
-        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using Faraday_t = Faraday<GridLayout_t>;
-    GridLayout_t layout;
+    using core_types                 = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes                = core_types::Hybrid;
+    using GridLayout_t               = HybridTypes::GridLayout_t;
+    using Faraday_t                  = Faraday<GridLayout_t>;
+    auto static constexpr field_opts = PHARE::core::TensorFieldOptions<HybridTypes>{};
+    using UsableVecFieldND           = UsableVecField<field_opts>;
 
+    GridLayout_t layout;
     UsableVecFieldND B, E, Bnew;
 
 public:
@@ -172,8 +178,8 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
     auto gsi_p_X = this->layout.ghostStartIndex(QtyCentering::primal, Direction::X);
     auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
 
-    auto const& [Ex, Ey, Ez]          = E();
-    auto const& [Bx, By, Bz]          = B();
+    auto& [Ex, Ey, Ez]                = E();
+    auto& [Bx, By, Bz]                = B();
     auto const& [Bxnew, Bynew, Bznew] = Bnew();
 
     for (auto ix = gsi_p_X; ix <= gei_p_X; ++ix)
@@ -231,8 +237,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     auto gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
     auto gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
 
-    auto const& [Ex, Ey, Ez]          = E();
-    auto const& [Bx, By, Bz]          = B();
+    auto& [Ex, Ey, Ez]                = E();
+    auto& [Bx, By, Bz]                = B();
     auto const& [Bxnew, Bynew, Bznew] = Bnew();
 
     for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
@@ -373,8 +379,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
     auto gsi_d_Z = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Z);
     auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
 
-    auto const& [Ex, Ey, Ez]          = E();
-    auto const& [Bx, By, Bz]          = B();
+    auto& [Ex, Ey, Ez]                = E();
+    auto& [Bx, By, Bz]                = B();
     auto const& [Bxnew, Bynew, Bznew] = Bnew();
 
     for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)

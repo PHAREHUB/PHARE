@@ -30,6 +30,15 @@ if(useExceptionsInsteadOfMPIAbort)
   set (PHARE_FLAGS ${PHARE_FLAGS} -DPHARE_ERRORS_USE_MPI_ABORT=0 ) # defaults in C++ to true if not set!
 endif(useExceptionsInsteadOfMPIAbort)
 
+if(withGpu)
+  if(NOT withMkn AND NOT withKokkos)
+    message(FATAL_ERROR "withGpu requires withMkn or withKokkos")
+  endif()
+  add_compile_definitions(PHARE_HAVE_GPU_HARDWARE=1)
+elseif(withMkn)
+  add_compile_definitions(MKN_GPU_CPU=1)
+endif(withGpu)
+
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
 
@@ -46,8 +55,6 @@ if(PGO_USE)
   set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-use )
 endif()
 
-
-set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})
 
@@ -204,7 +211,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   # never be skipped by the PHARE_UNLEVELED_TEST_LEVEL check below, else the
   # binary silently builds with default (non-Werror, missing -DPHARE_HAS_HIGHFIVE) flags.
   function(add_phare_test_build_flags_ binary)
-    target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
+    target_compile_options(${binary} PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
   endfunction(add_phare_test_build_flags_)
 
   # ctest-registration decoration only - assumes add_test() was already called
@@ -263,7 +270,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
         return()
       endif()
-      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ${Python_EXECUTABLE} -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
       set_test_procs_(py3_${name} ${PHARE_MPI_PROCS})
     endfunction(add_python3_test)
@@ -272,7 +279,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
         return()
       endif()
-      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} ${Python_EXECUTABLE} ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
       set_test_procs_(py3_${name}_mpi_n_${N} ${N})
     endfunction(add_mpi_python3_test)
@@ -296,25 +303,6 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   endfunction(add_phare_build_test)
 
 
-  if(DEFINED GTEST_ROOT)
-    set(GTEST_ROOT ${GTEST_ROOT} CACHE PATH "Path to googletest")
-    find_package(GTest REQUIRED)
-    set(GTEST_LIBS GTest::GTest GTest::Main)
-  else()
-    set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
-
-    if (NOT EXISTS ${GTEST_ROOT})
-      execute_process(COMMAND ${Git} clone https://github.com/google/googletest ${GTEST_ROOT})
-    endif()
-
-    add_subdirectory(subprojects/googletest)
-    set(GTEST_INCLUDE_DIRS
-      $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
-      $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>)
-    set(GTEST_LIBS gtest gmock)
-
-  endif()
-
   function(phare_exec level target exe directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
       add_test(NAME ${target} COMMAND ${exe} WORKING_DIRECTORY ${directory})
@@ -335,7 +323,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       else()
         add_test(
             NAME py3_${target}_mpi_n_${N}
-            COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} ${ARGN}
+            COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} ${Python_EXECUTABLE} -u ${file} ${ARGN}
             WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target}_mpi_n_${N})
         set_test_procs_(py3_${target}_mpi_n_${N} ${N})

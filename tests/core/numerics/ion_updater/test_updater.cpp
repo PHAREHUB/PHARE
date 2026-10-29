@@ -2,19 +2,33 @@
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 
+#include "core/utilities/types.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+#include "core/numerics/interpolator/interpolating.hpp"
+#include "core/numerics/interpolator/interpolating.hpp"
+#include "core/data/particles/particle_array_appender.hpp"
+#include "core/data/particles/particle_array_converter.hpp"
+
+#include "simulator/simulator_def.hpp"
+
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tests/core/data/electromag/test_electromag_fixtures.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+#include "tests/core/data/ion_population/test_ion_population_fixtures.hpp"
+#include "tests/amr/resources_manager/test_resources_manager_fixtures.hpp"
 
 #include "gtest/gtest.h"
 
 #include <numeric>
 #include <algorithm>
+#include <type_traits>
+#include <unordered_map>
 
 
-using namespace PHARE::core;
-
+namespace PHARE::core
+{
 
 using Param  = PHARE::core::Span<double const> const&;
 using Return = std::shared_ptr<Span<double>>;
@@ -71,8 +85,7 @@ Return bz(Param x)
 
 
 
-
-int nbrPartPerCell = 1000;
+std::size_t nbrPartPerCell = 1000;
 
 using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
@@ -108,9 +121,10 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<InitFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
-    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = 1.;
-    dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
+    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"]
+        = static_cast<int>(nbrPartPerCell);
+    dict["ions"]["pop0"]["particle_initializer"]["charge"] = 1.;
+    dict["ions"]["pop0"]["particle_initializer"]["basis"]  = std::string{"cartesian"};
 
     dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
     dict["ions"]["pop1"]["mass"]                            = 1.;
@@ -137,9 +151,10 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<InitFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
-    dict["ions"]["pop1"]["particle_initializer"]["charge"]            = 1.;
-    dict["ions"]["pop1"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
+    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"]
+        = static_cast<int>(nbrPartPerCell);
+    dict["ions"]["pop1"]["particle_initializer"]["charge"] = 1.;
+    dict["ions"]["pop1"]["particle_initializer"]["basis"]  = std::string{"cartesian"};
 
     dict["electromag"]["name"]             = std::string{"EM"};
     dict["electromag"]["electric"]["name"] = std::string{"E"};
@@ -155,281 +170,74 @@ static auto init_dict = createDict();
 
 
 
-template<std::size_t dim, std::size_t interporder>
-struct DimInterp
+
+template<auto opts_>
+struct TestParam
 {
-    static constexpr auto dimension    = dim;
-    static constexpr auto interp_order = interporder;
+    auto static constexpr opts         = opts_;
+    static constexpr auto dimension    = opts.dimension;
+    static constexpr auto interp_order = opts.interp_order;
 };
 
+template<auto layout_mode, auto opts>
+struct updater_test_bits;
 
-
-// the Electromag and Ions used in this test
-// need their resources pointers (Fields and ParticleArrays) to set manually
-// to buffers. ElectromagBuffer and IonsBuffer encapsulate these buffers
-
-
-
-template<std::size_t dim, std::size_t interp_order>
-struct ElectromagBuffers
-{
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes       = PHARE_Types<opts>;
-    using Grid             = PHARETypes::Hybrid::Grid_t;
-    using GridLayout       = PHARETypes::Hybrid::GridLayout_t;
-    using Electromag       = PHARETypes::Hybrid::Electromag_t;
-    using UsableVecFieldND = UsableVecField<dim>;
-
-    UsableVecFieldND B, E;
-
-    ElectromagBuffers(GridLayout const& layout)
-        : B{"EM_B", layout, HybridQuantity::Vector::B}
-        , E{"EM_E", layout, HybridQuantity::Vector::E}
-    {
-    }
-
-    ElectromagBuffers(ElectromagBuffers const& source, GridLayout const& layout)
-        : ElectromagBuffers{layout}
-    {
-        B.copyData(source.B);
-        E.copyData(source.E);
-    }
-
-
-    void setBuffers(Electromag& EM)
-    {
-        B.set_on(EM.B);
-        E.set_on(EM.E);
-    }
-};
-
-
-
-
-template<std::size_t dim, std::size_t interp_order>
-struct IonsBuffers
-{
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes                 = PHARE_Types<opts>;
-    using UsableVecFieldND           = UsableVecField<dim>;
-    using Grid                       = PHARETypes::Hybrid::Grid_t;
-    using GridLayout                 = PHARETypes::Hybrid::GridLayout_t;
-    using Ions                       = PHARETypes::Hybrid::Ions_t;
-    using ParticleArray              = PHARETypes::Hybrid::ParticleArray_t;
-    using ParticleInitializerFactory = PHARETypes::Hybrid::ParticleInitializerFactory_t;
-
-    Grid ionChargeDensity;
-    Grid ionMassDensity;
-    Grid protonParticleDensity;
-    Grid protonChargeDensity;
-    Grid alphaParticleDensity;
-    Grid alphaChargeDensity;
-
-    UsableVecFieldND protonF, alphaF, Vi, chargeFlux;
-    UsableTensorField<dim> M, alpha_M, protons_M;
-
-    static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
-
-    ParticleArray protonDomain;
-    ParticleArray protonPatchGhost;
-    ParticleArray protonLevelGhost;
-    ParticleArray protonLevelGhostOld;
-    ParticleArray protonLevelGhostNew;
-
-    ParticleArray alphaDomain;
-    ParticleArray alphaPatchGhost;
-    ParticleArray alphaLevelGhost;
-    ParticleArray alphaLevelGhostOld;
-    ParticleArray alphaLevelGhostNew;
-
-    ParticlesPack<ParticleArray> protonPack;
-    ParticlesPack<ParticleArray> alphaPack;
-
-    IonsBuffers(GridLayout const& layout)
-        : ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
-                           layout.allocSize(HybridQuantity::Scalar::rho), 0.}
-        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
-                         layout.allocSize(HybridQuantity::Scalar::rho), 0.}
-        , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
-                                layout.allocSize(HybridQuantity::Scalar::rho), 0.}
-        , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
-                              layout.allocSize(HybridQuantity::Scalar::rho), 0.}
-        , alphaParticleDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
-                               layout.allocSize(HybridQuantity::Scalar::rho), 0.}
-        , alphaChargeDensity{"alpha_chargeDensity", HybridQuantity::Scalar::rho,
-                             layout.allocSize(HybridQuantity::Scalar::rho), 0.}
-        , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
-        , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
-        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
-        , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protonDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , protonPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , protonLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , protonLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , protonLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , alphaDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , alphaPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , alphaLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , alphaLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , alphaLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
-        , protonPack{"protons",         &protonDomain,        &protonPatchGhost,
-                     &protonLevelGhost, &protonLevelGhostOld, &protonLevelGhostNew}
-        , alphaPack{"alpha",          &alphaDomain,        &alphaPatchGhost,
-                    &alphaLevelGhost, &alphaLevelGhostOld, &alphaLevelGhostNew}
-    {
-    }
-
-
-    IonsBuffers(IonsBuffers const& source, GridLayout const& layout)
-        : ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
-                           layout.allocSize(HybridQuantity::Scalar::rho)}
-        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
-                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
-                                layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
-                              layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaParticleDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
-                               layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaChargeDensity{"alpha_chargeDensity", HybridQuantity::Scalar::rho,
-                             layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
-        , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
-        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
-        , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protonDomain{source.protonDomain}
-        , protonPatchGhost{source.protonPatchGhost}
-        , protonLevelGhost{source.protonLevelGhost}
-        , protonLevelGhostOld{source.protonLevelGhostOld}
-        , protonLevelGhostNew{source.protonLevelGhostNew}
-        , alphaDomain{source.alphaDomain}
-        , alphaPatchGhost{source.alphaPatchGhost}
-        , alphaLevelGhost{source.alphaLevelGhost}
-        , alphaLevelGhostOld{source.alphaLevelGhostOld}
-        , alphaLevelGhostNew{source.alphaLevelGhostNew}
-        , protonPack{"protons",         &protonDomain,        &protonPatchGhost,
-                     &protonLevelGhost, &protonLevelGhostOld, &protonLevelGhostNew}
-        , alphaPack{"alpha",          &alphaDomain,        &alphaPatchGhost,
-                    &alphaLevelGhost, &alphaLevelGhostOld, &alphaLevelGhostNew}
-
-    {
-        ionChargeDensity.copyData(source.ionChargeDensity);
-        ionMassDensity.copyData(source.ionMassDensity);
-        protonParticleDensity.copyData(source.protonParticleDensity);
-        protonChargeDensity.copyData(source.protonChargeDensity);
-        alphaParticleDensity.copyData(source.alphaParticleDensity);
-        alphaChargeDensity.copyData(source.alphaChargeDensity);
-
-        protonF.copyData(source.protonF);
-        alphaF.copyData(source.alphaF);
-        Vi.copyData(source.Vi);
-        chargeFlux.copyData(source.chargeFlux);
-    }
-
-    void setBuffers(Ions& ions)
-    {
-        {
-            auto const& [V, m, cd, md, cf] = ions.getCompileTimeResourcesViewList();
-            Vi.set_on(V);
-            chargeFlux.set_on(cf);
-            M.set_on(m);
-            cd.setBuffer(&ionChargeDensity);
-            md.setBuffer(&ionMassDensity);
-        }
-
-        auto& pops = ions.getRunTimeResourcesViewList();
-        {
-            auto const& [F, M, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
-            d.setBuffer(&protonParticleDensity);
-            c.setBuffer(&protonChargeDensity);
-            protons_M.set_on(M);
-            protonF.set_on(F);
-            particles.setBuffer(&protonPack);
-        }
-
-        {
-            auto const& [F, M, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
-            d.setBuffer(&alphaParticleDensity);
-            c.setBuffer(&alphaChargeDensity);
-            alpha_M.set_on(M);
-            alphaF.set_on(F);
-            particles.setBuffer(&alphaPack);
-        }
-    }
-};
-
-
-
-
-template<typename DimInterpT>
+template<typename TestParam_t>
 struct IonUpdaterTest : public ::testing::Test
 {
-    static constexpr auto dim          = DimInterpT::dimension;
-    static constexpr auto interp_order = DimInterpT::interp_order;
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes    = PHARE_Types<opts>;
-    using Ions          = PHARETypes::Hybrid::Ions_t;
-    using Electromag    = PHARETypes::Hybrid::Electromag_t;
-    using GridLayout    = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using ParticleArray = PHARETypes::Hybrid::ParticleArray_t;
-    using ParticleInitializerFactory = PHARETypes::Hybrid::ParticleInitializerFactory_t;
+    auto static constexpr opts         = TestParam_t::opts;
+    static constexpr auto dim          = opts.dimension;
+    static constexpr auto interp_order = opts.interp_order;
+    using PHARETypes                   = PHARE::core::PHARE_Types<opts>;
+    using Ions                         = PHARETypes::Hybrid::Ions_t;
+    using Electromag                   = PHARETypes::Hybrid::Electromag_t;
+    using GridLayout                   = PHARETypes::Hybrid::GridLayout_t;
+    using ParticleArray                = PHARETypes::Hybrid::ParticleArray_t;
+    using ParticleInitializerFactory   = PHARETypes::Hybrid::ParticleInitializerFactory_t;
 
-    using IonUpdater_t = IonUpdater<Ions, Electromag, GridLayout>;
-    using Boxing_t     = UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using IonUpdater_t = std::conditional_t<ParticleArray::layout_mode == LayoutMode::AoSMapped,
+                                            core::IonUpdater<ParticleArray, GridLayout>,
+                                            core::ParallelIonUpdater<ParticleArray, GridLayout>>;
+    using Boxing_t     = IonUpdater_t::Boxing_t;
+    using Interpolator = Interpolating<dim, interp_order>;
 
+    using Hybrid_t                   = PHARETypes::Hybrid;
+    auto constexpr static field_opts = TensorFieldOptions<Hybrid_t>{};
+    using UsableElectromag_t         = UsableElectromag<field_opts>;
 
-    double dt{0.01};
+    Interpolator interpolator;
+
+    double const dt{0.01};
 
     // grid configuration
-    std::array<int, dim> ncells;
-    GridLayout layout;
-    // assumes no level ghost cells
-    Boxing_t const boxing{layout,
-                          {grow(layout.AMRBox(), GridLayout::options.particle_ghost_width)}};
+    GridLayout const layout{{0.1}, {100u}, {{0.}}};
 
 
-    // data for electromagnetic fields
-    using Field            = PHARETypes::Hybrid::Grid_t;
-    using VecField         = PHARETypes::Hybrid::VecField_t;
-    using UsableVecFieldND = UsableVecField<dim>;
+    Boxing_t const boxing{layout, {layout.AMRBox()}};
+    std::unordered_map<std::string, Boxing_t> const levelBoxing{{"patch_id", boxing}};
 
-    ElectromagBuffers<dim, interp_order> emBuffers;
-    IonsBuffers<dim, interp_order> ionsBuffers;
+    static_assert(std::is_same_v<Electromag, typename UsableElectromag_t::Super>);
+    UsableElectromag_t EM{layout, init_dict["electromag"]};
 
-    Electromag EM{init_dict["electromag"]};
-    Ions ions{init_dict["ions"]};
-
-
+    UsableIons_t<opts> ions{layout, init_dict["ions"]};
 
     IonUpdaterTest()
-        : ncells{100}
-        , layout{{0.1}, {100u}, {{0.}}}
-        , emBuffers{layout}
-        , ionsBuffers{layout}
     {
-        emBuffers.setBuffers(EM);
-        ionsBuffers.setBuffers(ions);
-
-
         // ok all resources pointers are set to buffers
         // now let's initialize Electromag fields to user input functions
         // and ion population particles to user supplied moments
 
-
+        assert(no_nans(ions.velocity()(Component::X)));
         EM.initialize(layout);
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
             auto particleInitializer = ParticleInitializerFactory::create(info);
             particleInitializer->loadParticles(pop.domainParticles(), layout);
+            EXPECT_GT(pop.domainParticles().size(), 0ull);
+            // particle_array_domain_is_valid(pop.domainParticles(), layout.AMRBox());
         }
-
+        assert(no_nans(ions.velocity()(Component::X)));
 
         // now all domain particles are loaded we need to manually insert
         // ghost particles (this is in reality SAMRAI's job)
@@ -440,7 +248,6 @@ struct IonUpdaterTest : public ::testing::Test
         // and right is touching another patch
         // so on the left no patchGhost but levelGhost(and old and new)
         // on the right no levelGhost but patchGhosts
-
 
         for (auto& pop : ions)
         {
@@ -465,6 +272,7 @@ struct IonUpdaterTest : public ::testing::Test
                 auto& patchGhostPart    = pop.patchGhostParticles();
 
 
+
                 // copies need to be put in the ghost cell
                 // we have copied particles be now their iCell needs to be udpated
                 // our choice is :
@@ -485,135 +293,193 @@ struct IonUpdaterTest : public ::testing::Test
                 //     |      |       |     |
                 //     -------|-------|     |
                 //            ---------------
-                for (auto const& part : domainPart)
-                {
+
+                // per_particle() dispatches per layout (flat for AoS/AoSMapped, cell-by-cell
+                // for AoSPC, tile-then-cell for AoSPCTS), so no manual tile loop is needed here
+                per_particle(domainPart, [&](auto const& part) {
                     if constexpr (interp_order == 2 or interp_order == 3)
                     {
-                        if (part.iCell[0] == firstAMRCell[0]
-                            or part.iCell[0] == firstAMRCell[0] + 1)
+                        if (part.iCell()[0] == firstAMRCell[0]
+                            or part.iCell()[0] == firstAMRCell[0] + 1)
                         {
                             auto p{part};
-                            p.iCell[0] -= 2;
+                            p.iCell()[0] -= 2;
                             levelGhostPartOld.push_back(p);
                         }
                     }
                     else if constexpr (interp_order == 1)
                     {
-                        if (part.iCell[0] == firstAMRCell[0])
+                        if (part.iCell()[0] == firstAMRCell[0])
                         {
                             auto p{part};
-                            p.iCell[0] -= 1;
+                            p.iCell()[0] -= 1;
                             levelGhostPartOld.push_back(p);
                         }
                     }
-                }
+                });
 
+                levelGhostPartOld.template on_appended<ParticleType::Ghost>();
+                levelGhostPartNew = levelGhostPartOld;
+                levelGhostPart    = levelGhostPartOld;
 
-                std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
-                          std::back_inserter(levelGhostPartNew));
-
-
-                std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
-                          std::back_inserter(levelGhostPart));
-
-
-                EXPECT_GT(pop.domainParticles().size(), 0ull);
-                EXPECT_GT(levelGhostPartOld.size(), 0ull);
+                EXPECT_EQ(pop.domainParticles().size(), 100 * nbrPartPerCell);
+                EXPECT_EQ(levelGhostPartOld.size(),
+                          GridLayout::options.particle_ghost_width * nbrPartPerCell);
                 EXPECT_EQ(patchGhostPart.size(), 0);
+
 
             } // end 1D
         } // end pop loop
-        depositParticles(ions, layout, Interpolator<dim, interp_order>{}, DomainDeposit{});
 
-
-        depositParticles(ions, layout, Interpolator<dim, interp_order>{}, LevelGhostDeposit{});
-
+        assert(no_nans(ions.velocity()(Component::X)));
+        PHARE::core::depositParticles(ions, layout, interpolator, PHARE::core::DomainDeposit{});
+        PHARE::core::depositParticles(ions, layout, interpolator, PHARE::core::LevelGhostDeposit{});
+        sumTileBorders();
+        assert(no_nans(ions.velocity()(Component::X)));
 
         ions.computeChargeDensity();
+        assert(no_nans(ions.velocity()(Component::X)));
         ions.computeBulkVelocity();
+        assert(no_nans(ions.velocity()(Component::X)));
     } // end Ctor
 
 
 
+    using Patch = test::HybridPatch<Ions, UsableElectromag_t>;
+
+
+    auto update(auto const mode)
+    {
+        assert(no_nans(ions.velocity()(Component::X)));
+        IonUpdater_t ionUpdater{};
+
+        if constexpr (ParticleArray::layout_mode == LayoutMode::AoSMapped)
+            ionUpdater.updatePopulations(*ions, *EM, boxing, dt, mode);
+        else
+        {
+            // state = {layout, ions, em, electromag}: em is an unused owner (UsableElectromag
+            // is move-only, hence emplace), electromag views this->EM
+            std::vector<Patch> patches;
+            patches.reserve(1);
+            patches.emplace_back(layout, *ions, layout, *EM);
+
+            auto const quantities = [&](int i) {
+                return std::forward_as_tuple(patches[0].model.state.ions,
+                                             patches[i].model.state.electromag);
+            };
+
+            assert(ions.massDensity().data() == patches[0].model.state.ions.massDensity().data());
+            auto accessor = test::make_model_level_accessor(patches, quantities);
+            ionUpdater.updatePopulations(accessor, levelBoxing, dt, mode);
+        }
+        assert(no_nans(ions.velocity()(Component::X)));
+    }
+
     void fillIonsMomentsGhosts()
     {
-        using Interpolator = IonUpdater_t::Interpolator;
-        Interpolator interpolate;
-
         for (auto& pop : this->ions)
         {
             double alpha = 0.5;
-            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.particleDensity(),
-                        pop.flux(), layout,
-                        /*coef = */ alpha);
+            interpolator.template particleToMesh<ParticleType::LevelGhost>(
+                pop.levelGhostParticlesNew(), layout, pop.particleDensity(), pop.flux(),
+                /*coef = */ alpha);
 
+            interpolator.template particleToMesh<ParticleType::LevelGhost>(
+                pop.levelGhostParticlesOld(), layout, pop.particleDensity(), pop.flux(),
+                /*coef = */ (1. - alpha));
+        }
 
-            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.particleDensity(),
-                        pop.flux(), layout,
-                        /*coef = */ (1. - alpha));
+        sumTileBorders();
+    }
+
+    // tiles hold only their own partial deposits on shared border/ghost nodes; in a run the
+    // messenger's border sum completes them. no messenger here: reduce (sums every tile's
+    // ghost box) and copy the totals back so per-tile ions.update() sees full moments.
+    // tiles are then complete, so checks read them with reduce_single (copy, no sum)
+    void sumTileBorders()
+    {
+        if constexpr (is_field_tile_set_v<std::decay_t<decltype(ions.massDensity())>>)
+        {
+            auto const sum = [](auto& tiles) { copy_fields(tiles, *reduce(tiles)); };
+
+            for (auto& pop : this->ions)
+            {
+                sum(pop.particleDensity());
+                sum(pop.chargeDensity());
+                for (auto& component : pop.flux())
+                    sum(component);
+            }
         }
     }
 
 
 
-    void checkMomentsHaveEvolved(IonsBuffers<dim, interp_order> const& ionsBufferCpy)
+    void checkMomentsHaveEvolved(auto const& ionsBufferCpy)
     {
         auto& populations = this->ions.getRunTimeResourcesViewList();
 
-        auto& protonParticleDensity = populations[0].particleDensity();
-        auto& protonChargeDensity   = populations[0].chargeDensity();
-        auto& protonFx              = populations[0].flux().getComponent(Component::X);
-        auto& protonFy              = populations[0].flux().getComponent(Component::Y);
-        auto& protonFz              = populations[0].flux().getComponent(Component::Z);
+        auto const& protonParticleDensity = reduce_single(populations[0].particleDensity());
+        auto const& protonChargeDensity   = reduce_single(populations[0].chargeDensity());
+        auto const& protonFx              = reduce_single(populations[0].flux()(Component::X));
+        auto const& protonFy              = reduce_single(populations[0].flux()(Component::Y));
+        auto const& protonFz              = reduce_single(populations[0].flux()(Component::Z));
 
-        auto& alphaParticleDensity = populations[1].particleDensity();
-        auto& alphaChargeDensity   = populations[1].chargeDensity();
-        auto& alphaFx              = populations[1].flux().getComponent(Component::X);
-        auto& alphaFy              = populations[1].flux().getComponent(Component::Y);
-        auto& alphaFz              = populations[1].flux().getComponent(Component::Z);
+        auto const& alphaParticleDensity = reduce_single(populations[1].particleDensity());
+        auto const& alphaChargeDensity   = reduce_single(populations[1].chargeDensity());
+        auto const& alphaFx              = reduce_single(populations[1].flux()(Component::X));
+        auto const& alphaFy              = reduce_single(populations[1].flux()(Component::Y));
+        auto const& alphaFz              = reduce_single(populations[1].flux()(Component::Z));
+
 
         auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
         auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-        auto nonZero = [&](auto const& field) {
+        auto nonZero = [&](auto const& field, std::string const type) {
             auto sum = 0.;
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 sum += std::abs(field(ix));
             }
             EXPECT_GT(sum, 0.);
+            if (sum == 0)
+                std::cout << "nonZero failed for " << type << " : " << field.name() << "\n";
         };
 
-        auto check = [&](auto const& newField, auto const& originalField) {
-            nonZero(newField);
-            nonZero(originalField);
+        auto check = [&](auto const& newField, auto const& og) {
+            // assert(no_nans(newField));
+            assert(no_nans(og));
+            auto const& originalField = reduce_single(og);
+            nonZero(newField, newField.name() + ":new");
+            // nonZero(originalField, "originalField");
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 auto evolution = std::abs(newField(ix) - originalField(ix));
                 //  should check that moments are still compatible with user inputs also
-                EXPECT_TRUE(evolution > 0.0);
+                EXPECT_GT(evolution, 0.0);
                 if (evolution <= 0.0)
-                    std::cout << "after update : " << newField(ix)
+                    std::cout << newField.name() + ": after update : " << newField(ix)
                               << " before update : " << originalField(ix)
                               << " evolution : " << evolution << " ix : " << ix << "\n";
             }
         };
 
-        check(protonParticleDensity, ionsBufferCpy.protonParticleDensity);
-        check(protonChargeDensity, ionsBufferCpy.protonChargeDensity);
-        check(protonFx, ionsBufferCpy.protonF(Component::X));
-        check(protonFy, ionsBufferCpy.protonF(Component::Y));
-        check(protonFz, ionsBufferCpy.protonF(Component::Z));
 
-        check(alphaParticleDensity, ionsBufferCpy.alphaParticleDensity);
-        check(alphaChargeDensity, ionsBufferCpy.alphaChargeDensity);
-        check(alphaFx, ionsBufferCpy.alphaF(Component::X));
-        check(alphaFy, ionsBufferCpy.alphaF(Component::Y));
-        check(alphaFz, ionsBufferCpy.alphaF(Component::Z));
+        check(protonParticleDensity, ionsBufferCpy[0].particleDensity());
+        check(protonChargeDensity, ionsBufferCpy[0].chargeDensity());
+        check(protonFx, ionsBufferCpy[0].flux()(Component::X));
+        check(protonFy, ionsBufferCpy[0].flux()(Component::Y));
+        check(protonFz, ionsBufferCpy[0].flux()(Component::Z));
 
-        check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vi(Component::X));
-        check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vi(Component::Y));
-        check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vi(Component::Z));
+        check(alphaParticleDensity, ionsBufferCpy[1].particleDensity());
+        check(alphaChargeDensity, ionsBufferCpy[1].chargeDensity());
+        check(alphaFx, ionsBufferCpy[1].flux()(Component::X));
+        check(alphaFy, ionsBufferCpy[1].flux()(Component::Y));
+        check(alphaFz, ionsBufferCpy[1].flux()(Component::Z));
+
+        assert(no_nans(ionsBufferCpy.velocity()(Component::X)));
+        check(reduce_single(ions.velocity()(Component::X)), ionsBufferCpy.velocity()(Component::X));
+        check(reduce_single(ions.velocity()(Component::Y)), ionsBufferCpy.velocity()(Component::Y));
+        check(reduce_single(ions.velocity()(Component::Z)), ionsBufferCpy.velocity()(Component::Z));
     }
 
 
@@ -649,8 +515,9 @@ struct IonUpdaterTest : public ::testing::Test
                 EXPECT_GE(0.07, diff);
 
                 if (diff >= 0.07)
-                    std::cout << "actual : " << density(ix) << " prescribed : " << functionX[i]
-                              << " diff : " << diff << " ix : " << ix << "\n";
+                    std::cout << i << " actual : " << density(ix)
+                              << " prescribed : " << functionX[i] << " diff : " << diff
+                              << " ix : " << ix << " max: " << functionX.size() << "\n";
             }
         };
 
@@ -658,25 +525,30 @@ struct IonUpdaterTest : public ::testing::Test
         auto& protonParticleDensity = populations[0].particleDensity();
         auto& alphaParticleDensity  = populations[1].particleDensity();
 
-        check(protonParticleDensity, density);
-        check(alphaParticleDensity, density);
+        check(reduce_single(protonParticleDensity), density);
+        check(reduce_single(alphaParticleDensity), density);
     }
 };
 
 
-
-using DimInterps = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
-
-
-TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
+// clang-format off
+using Permutations = ::testing::Types<
+    TestParam<SimOpts{1, 1}>
+  , TestParam<SimOpts{1, 2}>
+  , TestParam<SimOpts{1, 3}>
+  , TestParam<SimOpts{.dimension = 1, .interp_order = 1, .layout_mode = LayoutMode::AoSPCTS}>
+  , TestParam<SimOpts{.dimension = 1, .interp_order = 2, .layout_mode = LayoutMode::AoSPCTS}>
+  , TestParam<SimOpts{.dimension = 1, .interp_order = 3, .layout_mode = LayoutMode::AoSPCTS}>
+>;
+// clang-format on
+TYPED_TEST_SUITE(IonUpdaterTest, Permutations, );
 
 
 
 
 TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{};
 }
 
 
@@ -722,19 +594,21 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
     {
         for (auto& pop : this->ions)
         {
+            auto const ghost = convert_to<LayoutMode::AoS>(pop.levelGhostParticles(), this->layout);
+
             if constexpr (TypeParam::interp_order == 1)
             {
-                for (auto const& part : pop.levelGhostParticles())
+                for (auto it = ghost.begin(); it != ghost.end(); ++it)
                 {
-                    EXPECT_EQ(firstAMRCell[0] - 1, part.iCell[0]);
+                    EXPECT_EQ(firstAMRCell[0] - 1, it.iCell()[0]);
                 }
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
-                typename IonUpdaterTest<TypeParam>::ParticleArray copy{pop.levelGhostParticles()};
+                auto copy                 = ghost;
                 auto firstInOuterMostCell = std::partition(
                     std::begin(copy), std::end(copy), [&firstAMRCell](auto const& particle) {
-                        return particle.iCell[0] == firstAMRCell[0] - 1;
+                        return particle.iCell()[0] == firstAMRCell[0] - 1;
                     });
                 EXPECT_EQ(nbrPartPerCell, std::distance(std::begin(copy), firstInOuterMostCell));
                 EXPECT_EQ(nbrPartPerCell, std::distance(firstInOuterMostCell, std::end(copy)));
@@ -752,45 +626,45 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{};
 
-    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+    auto ionsBufferCpy = this->ions;
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    this->update(UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
-
+    this->ions.update();
 
     auto& populations = this->ions.getRunTimeResourcesViewList();
 
-    auto checkIsUnTouched = [](auto const& original, auto const& cpy) {
+    auto checkIsUnTouched = [&](auto const& og, auto const& cp) {
+        auto const original = convert_to<LayoutMode::AoS>(og, this->layout);
+        auto const cpy      = convert_to<LayoutMode::AoS>(cp, this->layout);
+
         // no particles should have moved, so none should have left the domain
         EXPECT_EQ(cpy.size(), original.size());
         for (std::size_t iPart = 0; iPart < original.size(); ++iPart)
         {
-            EXPECT_EQ(cpy[iPart].iCell[0], original[iPart].iCell[0]);
-            EXPECT_DOUBLE_EQ(cpy[iPart].delta[0], original[iPart].delta[0]);
+            EXPECT_EQ(cpy.iCell(iPart)[0], original.iCell(iPart)[0]);
 
+            EXPECT_DOUBLE_EQ(cpy.delta(iPart)[0], original.delta(iPart)[0]);
             for (std::size_t iDir = 0; iDir < 3; ++iDir)
             {
-                EXPECT_DOUBLE_EQ(cpy[iPart].v[iDir], original[iPart].v[iDir]);
+                EXPECT_DOUBLE_EQ(cpy.v(iPart)[iDir], original.v(iPart)[iDir]);
             }
         }
     };
 
-    checkIsUnTouched(populations[0].patchGhostParticles(), ionsBufferCpy.protonPatchGhost);
-    checkIsUnTouched(populations[0].levelGhostParticles(), ionsBufferCpy.protonLevelGhost);
-    checkIsUnTouched(populations[0].levelGhostParticlesOld(), ionsBufferCpy.protonLevelGhostOld);
-    checkIsUnTouched(populations[0].levelGhostParticlesNew(), ionsBufferCpy.protonLevelGhostNew);
+    auto& cpy_pops = ionsBufferCpy.getRunTimeResourcesViewList();
 
-    checkIsUnTouched(populations[1].patchGhostParticles(), ionsBufferCpy.alphaPatchGhost);
-    checkIsUnTouched(populations[1].levelGhostParticles(), ionsBufferCpy.alphaLevelGhost);
-    checkIsUnTouched(populations[1].levelGhostParticlesOld(), ionsBufferCpy.alphaLevelGhost);
-    checkIsUnTouched(populations[1].levelGhostParticlesNew(), ionsBufferCpy.alphaLevelGhost);
+    checkIsUnTouched(populations[0].levelGhostParticles(), cpy_pops[0].levelGhostParticles());
+    checkIsUnTouched(populations[0].levelGhostParticlesOld(), cpy_pops[0].levelGhostParticlesOld());
+    checkIsUnTouched(populations[0].levelGhostParticlesNew(), cpy_pops[0].levelGhostParticlesNew());
+
+    checkIsUnTouched(populations[1].levelGhostParticles(), cpy_pops[1].levelGhostParticles());
+    checkIsUnTouched(populations[1].levelGhostParticlesOld(), cpy_pops[1].levelGhostParticlesOld());
+    checkIsUnTouched(populations[1].levelGhostParticlesNew(), cpy_pops[1].levelGhostParticlesNew());
 }
 
 
@@ -808,7 +682,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    this->fillIonsMomentsGhosts();
 //
-//    ionUpdater.updateIons(this->ions);
+//    this->ions.update();
 //
 //    auto& populations = this->ions.getRunTimeResourcesViewList();
 //
@@ -823,16 +697,22 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{};
 
-    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+    auto ionsBufferCpy = this->ions;
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt, UpdaterMode::all);
+    assert(ionsBufferCpy.massDensity().data() != this->ions.massDensity().data());
+
+    assert(no_nans(this->ions.velocity()(Component::X)));
+    this->update(UpdaterMode::all);
+    assert(no_nans(this->ions.velocity()(Component::X)));
 
     this->fillIonsMomentsGhosts();
+    assert(no_nans(this->ions.velocity()(Component::X)));
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
+
+    // assert(no_nans(this->ions.velocity()(Component::X)));
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -843,17 +723,17 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{};
 
-    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+    auto ionsBufferCpy = this->ions;
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    assert(ionsBufferCpy.massDensity().data() != this->ions.massDensity().data());
+
+    this->update(UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -863,15 +743,13 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    this->update(UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -880,12 +758,12 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     {
         for (auto ix = ix0; ix <= ix1; ++ix)
         {
-            auto& density = pop.particleDensity();
-            auto& flux    = pop.flux();
+            auto const& density = reduce_single(pop.particleDensity());
+            auto const& flux    = pop.flux();
 
-            auto& fx = flux.getComponent(Component::X);
-            auto& fy = flux.getComponent(Component::Y);
-            auto& fz = flux.getComponent(Component::Z);
+            auto const& fx = reduce_single(flux(Component::X));
+            auto const& fy = reduce_single(flux(Component::Y));
+            auto const& fz = reduce_single(flux(Component::Z));
 
             EXPECT_FALSE(std::isnan(density(ix)));
             EXPECT_FALSE(std::isnan(fx(ix)));
@@ -896,23 +774,84 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 }
 
 
+template<std::size_t dim>
+void pseudo_randomize_deltas(auto& parts)
+{
+    std::size_t k = 0;
+
+    per_particle(parts, [&](Particle<dim>& p) {
+        for (std::uint16_t i = 0; i < dim; ++i)
+        {
+            double dir = k % 2 == 0 ? -1 : 1;
+            p.delta()[i] += dir * .03 * k;
+            assert(p.delta()[i] > 0 and p.delta()[i] < 1);
+            if (k == 9)
+                k = 0;
+            ++k;
+        }
+    });
+}
+
+template<typename GridLayout>
+void populate_particles(auto& ions, GridLayout& layout)
+{
+    auto constexpr dim = GridLayout::dimension;
+    Particle<dim> const particle{1.0 / nbrPartPerCell, ConstArray<int, dim>(),
+                                 ConstArray<double, dim>(.5), ConstArray<double, 3>(1)};
+    auto const ghost_box = grow(layout.AMRBox(), 1);
+
+    auto const shift_particle = [](auto p, auto const bix) {
+        p.iCell() = bix;
+        return p;
+    };
+
+    for (auto& pop : ions)
+    {
+        pop.domainParticles().clear();
+        pop.levelGhostParticles().clear();
+        pop.patchGhostParticles().clear();
+
+        pop.domainParticles().check();
+        pop.levelGhostParticles().check();
+
+        for (auto const& bix : layout.AMRBox())
+            for (std::size_t i = 0; i < nbrPartPerCell; ++i)
+                pop.domainParticles().emplace_back(shift_particle(particle, *bix));
+
+        for (auto const& bix : ghost_box)
+            if (not isIn(bix, layout.AMRBox()))
+                for (std::size_t i = 0; i < nbrPartPerCell; ++i)
+                    pop.levelGhostParticles().emplace_back(shift_particle(particle, *bix));
+
+        per_particle(pop.levelGhostParticles(),
+                     [&](Particle<dim>& p) { EXPECT_TRUE(not isIn(p, layout.AMRBox())); });
+
+        pseudo_randomize_deltas<dim>(pop.domainParticles());
+        pseudo_randomize_deltas<dim>(pop.levelGhostParticles());
+
+        pop.domainParticles().check();
+        pop.levelGhostParticles().check();
+    }
+}
+
+
 
 
 // Overlapping same-level patches: cells in `nonOwnedBoxes` belong to another patch.
 // Particles move only along x, at a fixed fraction of a cell per step (E = B = 0).
-template<typename DimInterpT>
-struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
+template<typename TestParam_t>
+struct IonUpdaterOwnershipTest : public IonUpdaterTest<TestParam_t>
 {
-    using Super    = IonUpdaterTest<DimInterpT>;
-    using Box_t    = Super::IonUpdater_t::Box;
+    using Super    = IonUpdaterTest<TestParam_t>;
     using Boxing_t = Super::Boxing_t;
+    using Box_t    = Boxing_t::Box_t;
 
     static constexpr double cellsPerStep = 0.5;
 
     IonUpdaterOwnershipTest()
     {
-        this->EM.E.zero();
-        this->EM.B.zero();
+        (*this->EM).E.zero();
+        (*this->EM).B.zero();
     }
 
     Boxing_t makeBoxing(std::vector<Box_t> const& nonOwned) const
@@ -928,20 +867,14 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     {
         auto const dx = this->layout.meshSize()[0];
         for (auto& particle : particles)
-            particle.v[0] = v * cellsPerStep * dx / this->dt;
+            particle.v()[0] = v * cellsPerStep * dx / this->dt;
     }
 
     // what level initialization does on overlapping patches
     void eraseNonOwned(std::vector<Box_t> const& nonOwned)
     {
         for (auto& pop : this->ions)
-        {
-            auto& particles = pop.domainParticles();
-            auto range      = makeIndexRange(particles);
-            auto const kept = particles.partition(
-                range, [&](auto const& cell) { return !isIn(Point{cell}, nonOwned); });
-            particles.erase(makeRange(particles, kept.iend(), particles.size()));
-        }
+            delete_particles_in(pop.domainParticles(), nonOwned);
     }
 
     static std::size_t count(auto const& particles, auto&& predicate)
@@ -953,13 +886,13 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     static auto crossing(auto const& particles, int const cell)
     {
         return count(particles, [&](auto const& p) {
-            return p.iCell[0] == cell and p.delta[0] + cellsPerStep >= 1.;
+            return p.iCell()[0] == cell and p.delta()[0] + cellsPerStep >= 1.;
         });
     }
 
     static double weights(auto const& particles)
     {
-        return sum_from(particles, [](auto const& particle) { return particle.weight; });
+        return sum_from(particles, [](auto const& particle) { return particle.weight(); });
     }
 
     static double total(auto const& field) { return sum(field); }
@@ -967,7 +900,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     // level ghosts move into the first domain cell, which is owned or not
     void checkLevelGhostExport(bool const withNonOwned)
     {
-        typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+        typename Super::IonUpdater_t ionUpdater{};
 
         auto const nonOwned = withNonOwned ? std::vector{box(0, 9)} : std::vector<Box_t>{};
         auto const boxing   = this->makeBoxing(nonOwned);
@@ -983,21 +916,21 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ASSERT_GT(nbrEntering.back(), 0u);
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+        ionUpdater.updatePopulations(*this->ions, *this->EM, boxing, this->dt, UpdaterMode::all);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
         {
             auto const& domain = pop.domainParticles();
             EXPECT_EQ(domain.size(), nbrDomain[ipop] + (withNonOwned ? 0 : nbrEntering[ipop]));
-            EXPECT_EQ(count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell); }), 0u);
+            EXPECT_EQ(count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell()); }), 0u);
             ++ipop;
         }
     }
 
-    void checkLevelGhostDeposit(bool const withNonOwned)
+    void checkLevelGhostDeposit(bool const withNonOwned, UpdaterMode const mode)
     {
-        typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+        typename Super::IonUpdater_t ionUpdater{};
 
         auto const nonOwned = withNonOwned ? std::vector{box(0, 9)} : std::vector<Box_t>{};
         auto const boxing   = this->makeBoxing(nonOwned);
@@ -1011,16 +944,15 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
 
             double enteringWeights = 0;
             for (auto const& p : pop.levelGhostParticles())
-                if (p.iCell[0] == -1 and p.delta[0] + cellsPerStep >= 1.)
-                    enteringWeights += p.weight;
+                if (p.iCell()[0] == -1 and p.delta()[0] + cellsPerStep >= 1.)
+                    enteringWeights += p.weight();
             ASSERT_GT(enteringWeights, 0.);
 
             expected.push_back(weights(pop.domainParticles())
                                + (withNonOwned ? 0. : enteringWeights));
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt,
-                                     UpdaterMode::domain_only);
+        ionUpdater.updatePopulations(*this->ions, *this->EM, boxing, this->dt, mode);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
@@ -1031,14 +963,21 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     }
 };
 
-using DimInterps1D = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
-TYPED_TEST_SUITE(IonUpdaterOwnershipTest, DimInterps1D, );
+// clang-format off
+using OwnershipPermutations = ::testing::Types<
+    TestParam<SimOpts{1, 1}>
+  , TestParam<SimOpts{1, 2}>
+  , TestParam<SimOpts{1, 3}>
+>;
+// clang-format on
+
+TYPED_TEST_SUITE(IonUpdaterOwnershipTest, OwnershipPermutations, );
 
 
 
 TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndIsDepositedOnce)
 {
-    typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+    typename TestFixture::IonUpdater_t ionUpdater{};
 
     auto const nonOwned = std::vector{TestFixture::box(60, 99)};
     auto const boxing   = this->makeBoxing(nonOwned);
@@ -1054,7 +993,7 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
         ASSERT_GT(nbrCrossing.back(), 0u);
     }
 
-    ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(*this->ions, *this->EM, boxing, this->dt, UpdaterMode::all);
 
     std::size_t ipop = 0;
     for (auto& pop : this->ions)
@@ -1064,12 +1003,12 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
 
         EXPECT_EQ(domain.size(), nbrDomain[ipop] - nbrCrossing[ipop]);
         EXPECT_EQ(
-            TestFixture::count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell); }),
+            TestFixture::count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell()); }),
             0u);
 
         // the leaving particles wait in the patch ghost array for the exchange
         EXPECT_EQ(patchGhost.size(), nbrCrossing[ipop]);
-        EXPECT_EQ(TestFixture::count(patchGhost, [](auto const& p) { return p.iCell[0] == 60; }),
+        EXPECT_EQ(TestFixture::count(patchGhost, [](auto const& p) { return p.iCell()[0] == 60; }),
                   nbrCrossing[ipop]);
 
         auto const deposited = TestFixture::total(pop.particleDensity());
@@ -1093,12 +1032,22 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotExported)
 
 TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringOwnedCellIsDepositedInMomentsOnlyMode)
 {
-    this->checkLevelGhostDeposit(/*withNonOwned=*/false);
+    this->checkLevelGhostDeposit(/*withNonOwned=*/false, UpdaterMode::domain_only);
 }
 
 TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotDepositedInMomentsOnlyMode)
 {
-    this->checkLevelGhostDeposit(/*withNonOwned=*/true);
+    this->checkLevelGhostDeposit(/*withNonOwned=*/true, UpdaterMode::domain_only);
+}
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringOwnedCellIsDeposited)
+{
+    this->checkLevelGhostDeposit(/*withNonOwned=*/false, UpdaterMode::all);
+}
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotDeposited)
+{
+    this->checkLevelGhostDeposit(/*withNonOwned=*/true, UpdaterMode::all);
 }
 
 
@@ -1120,6 +1069,101 @@ TYPED_TEST(IonUpdaterOwnershipTest, ownershipFollowsDomainAndNonOwnedBoxes)
 }
 
 
+// TYPED_TEST(IonUpdaterTest, hardCodedRegressionTest0)
+// {
+//     using IonUpdater      = TestFixture::IonUpdater;
+//     auto constexpr dim    = TestFixture::dim;
+//     auto constexpr interp = TestFixture::interp_order;
+
+//     std::array<double, 3> expectations
+//         = {199.99999999999889, 199.99999999999659, 199.99999999999673};
+
+//     populate_particles(this->ions, this->layout);
+
+//     for (auto& pop : this->ions)
+//     {
+//         EXPECT_EQ(pop.domainParticles().size(), 100 * nbrPartPerCell);
+//         EXPECT_EQ(pop.levelGhostParticles().size(), 2 * nbrPartPerCell);
+//         EXPECT_EQ(pop.patchGhostParticles().size(), 0);
+//     }
+
+//     IonUpdater ionUpdater{};
+//     this->update(ionUpdater, UpdaterMode::domain_only);
+
+//     std::int64_t icellSum = 0;
+//     double densitySum = 0, fluxXSum = 0, fluxYSum = 0, fluxZSum = 0;
+//     for (auto& pop : this->ions)
+//     {
+//         densitySum += PHARE::core::sum(reduce(pop.density()));
+//         fluxXSum += PHARE::core::sum(reduce(pop.flux()[0]));
+//         fluxYSum += PHARE::core::sum(reduce(pop.flux()[1]));
+//         fluxZSum += PHARE::core::sum(reduce(pop.flux()[2]));
+//         per_particle(pop.domainParticles(),
+//                      [&](Particle<dim>& p) { icellSum += PHARE::core::sum(p.iCell()); });
+//     }
+
+//     EXPECT_EQ(icellSum, 9900000);
+//     EXPECT_DOUBLE_EQ(densitySum, expectations[interp - 1]);
+//     EXPECT_DOUBLE_EQ(fluxXSum, expectations[interp - 1]);
+//     EXPECT_DOUBLE_EQ(fluxYSum, expectations[interp - 1]);
+//     EXPECT_DOUBLE_EQ(fluxZSum, expectations[interp - 1]);
+// }
+
+
+
+// TYPED_TEST(IonUpdaterTest, hardCodedRegressionTest1)
+// {
+//     using IonUpdater      = TestFixture::IonUpdater;
+//     auto constexpr dim    = TestFixture::dim;
+//     auto constexpr interp = TestFixture::interp_order;
+
+//     std::array<double, 3> expectations
+//         = {199.99999999999889, 199.99999999999659, 199.99999999999673};
+
+//     populate_particles(this->ions, this->layout);
+
+//     double deltaSum = 0;
+//     for (auto& pop : this->ions)
+//     {
+//         EXPECT_EQ(pop.domainParticles().size(), 100 * nbrPartPerCell);
+//         EXPECT_EQ(pop.levelGhostParticles().size(), 2 * nbrPartPerCell);
+//         EXPECT_EQ(pop.patchGhostParticles().size(), 0);
+//         per_particle(pop.domainParticles(),
+//                      [&](Particle<dim>& p) { deltaSum += PHARE::core::sum(p.delta()); });
+//     }
+//     EXPECT_DOUBLE_EQ(deltaSum, 103333.29999993632);
+
+//     IonUpdater ionUpdater{};
+//     this->update(ionUpdater, UpdaterMode::all);
+
+//     std::size_t icellSum = 0, pCount = 0;
+//     deltaSum          = 0;
+//     double densitySum = 0, fluxXSum = 0, fluxYSum = 0, fluxZSum = 0;
+//     for (auto& pop : this->ions)
+//     {
+//         densitySum += PHARE::core::sum(reduce(pop.density()));
+//         fluxXSum += PHARE::core::sum(reduce(pop.flux()[0]));
+//         fluxYSum += PHARE::core::sum(reduce(pop.flux()[1]));
+//         fluxZSum += PHARE::core::sum(reduce(pop.flux()[2]));
+//         per_particle(pop.domainParticles(),
+//                      [&](Particle<dim>& p) { deltaSum += PHARE::core::sum(p.delta()); });
+//         per_particle(pop.domainParticles(),
+//                      [&](Particle<dim>& p) { icellSum += PHARE::core::sum(p.iCell()); });
+//         pCount += pop.domainParticles().size();
+//     }
+
+//     EXPECT_EQ(pCount, 200000);
+//     EXPECT_EQ(icellSum, 9900000);
+//     EXPECT_DOUBLE_EQ(deltaSum, 123333.30000002828);
+//     EXPECT_DOUBLE_EQ(densitySum, expectations[interp - 1]);
+//     EXPECT_DOUBLE_EQ(fluxXSum, expectations[interp - 1]);
+//     EXPECT_DOUBLE_EQ(fluxYSum, expectations[interp - 1]);
+//     EXPECT_DOUBLE_EQ(fluxZSum, expectations[interp - 1]);
+// }
+
+
+
+} // namespace PHARE::core
 
 
 int main(int argc, char** argv)

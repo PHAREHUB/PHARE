@@ -1,15 +1,13 @@
 
 #include "phare_core.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
-#include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 
 #include "gtest/gtest.h"
-
-using namespace PHARE::core;
-using namespace PHARE::initializer;
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;
@@ -19,7 +17,7 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 
 using GridLayoutT    = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
-using ParticleArrayT = ParticleArray<1>;
+using ParticleArrayT = AoSMappedParticleArray<1>;
 
 
 TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleVectorInitializer)

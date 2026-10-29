@@ -4,6 +4,7 @@
 
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <tuple>
@@ -91,6 +92,44 @@ private:
             }
         }
     }
+};
+
+
+// FiniteVolumeEulerPerField itself assumes plain (non-tiled) fields, since it needs a
+// GridLayout matching the extent of the fields it is given (see evalOnBox). This wraps it so
+// callers (see FiniteVolumeEuler) can pass either plain or tiled U/Unew/fluxes transparently.
+template<typename GridLayout>
+class FiniteVolumeEulerPerFieldSingleTransformer
+{
+public:
+    FiniteVolumeEulerPerFieldSingleTransformer(GridLayout const& layout, double const dt)
+        : layout_{layout}
+        , dt_{dt}
+    {
+    }
+
+    template<typename Field, typename... Fluxes>
+    void operator()(Field const& U, Field& Unew, Fluxes const&... fluxes) const
+    {
+        if constexpr (is_field_tile_set_v<Field>)
+        {
+            auto& U_tiles    = U();
+            auto& Unew_tiles = Unew();
+
+            // U, Unew and each of fluxes are all defined on the same patch, so they share the
+            // same tiling
+            for (std::size_t i = 0; i < U_tiles.size(); ++i)
+                FiniteVolumeEulerPerField<GridLayout>{U_tiles[i].layout(), dt_}(
+                    U_tiles[i](), Unew_tiles[i](), fluxes()[i]()...);
+            // probably need some inner sync here
+        }
+        else
+            FiniteVolumeEulerPerField<GridLayout>{layout_, dt_}(U, Unew, fluxes...);
+    }
+
+private:
+    GridLayout layout_;
+    double dt_;
 };
 
 } // namespace PHARE::core

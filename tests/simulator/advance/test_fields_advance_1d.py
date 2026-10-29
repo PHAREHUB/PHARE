@@ -3,6 +3,7 @@ This file exists independently from test_advance.py to isolate dimension
   test cases and allow each to be overridden in some way if required.
 """
 
+import itertools
 import unittest
 
 from ddt import data, ddt, unpack
@@ -10,6 +11,7 @@ from ddt import data, ddt, unpack
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
 from pyphare.core.box import Box1D
+from pyphare.cpp import supported_particle_layouts
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 
@@ -26,8 +28,11 @@ def permute_hybrid(boxes=None):
             super_class=HybridAdvanceTest,
             interp_order=interp_order,
             refinement_boxes=boxes,
+            particle_layout=layout,
         )
-        for interp_order in interp_orders
+        for interp_order, layout in itertools.product(
+            interp_orders, supported_particle_layouts()
+        )
     ]
 
 

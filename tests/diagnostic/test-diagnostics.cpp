@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <filesystem>
 
+#include "tests/simulator/per_test.hpp"
 #include "test_diagnostics.ipp"
 
 // PHARE_TEST_DIM/PHARE_TEST_INTERP set per binary by CMake

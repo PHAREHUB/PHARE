@@ -1,8 +1,16 @@
 
 #include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
 
 #include "phare_mpi.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+
+#include "core/data/grid/grid.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
@@ -10,18 +18,10 @@
 #include "gtest/gtest.h"
 
 
-#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
-
-#include "core/data/grid/grid.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-
-
 #include <type_traits>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
-
 
 
 template<typename T>
@@ -71,15 +71,16 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
 
     Point<double, dim> origin{{0.}};
 
+    GridYee layout{dl, nbrCells, origin};
     std::shared_ptr<FieldDataT> srcOld;
     std::shared_ptr<FieldDataT> srcNew;
     std::shared_ptr<FieldDataT> destNew;
 
 
     aFieldLinearTimeInterpolate()
-        : srcOld{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
-        , srcNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
-        , destNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
+        : srcOld{std::make_shared<FieldDataT>(domain, ghost, fieldName, layout, qty)}
+        , srcNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, layout, qty)}
+        , destNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, layout, qty)}
     {
         double const oldTime = 0.;
         double const newTime = 0.5;

@@ -2,6 +2,7 @@
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_HPP
 
 #include "core/utilities/types.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
 #include "core/data/ions/ion_population/particle_pack.hpp"
@@ -10,6 +11,7 @@
 #include "particle_resource.hpp"
 
 
+#include <tuple>
 #include <string>
 #include <vector>
 #include <type_traits>
@@ -89,14 +91,39 @@ namespace amr
     template<typename ResourceManager, typename ResourceView>
     class ResourceResolver
     {
+        using ResourceUserTypes          = ResourceManager::ResourceUserTypes;
+        auto constexpr static tuple_size = std::tuple_size_v<ResourceUserTypes>;
+
+        int constexpr static tuple_idx()
+        {
+            int idx = -1;
+
+            if constexpr (tuple_size)
+                core::for_N<tuple_size>([&](auto i) {
+                    using UserType_t  = std::tuple_element_t<i, ResourceUserTypes>;
+                    using PatchData_t = UserType_t::patch_data_type;
+                    using Data_t      = PatchData_t::data_type;
+                    if constexpr (std::is_same_v<ResourceView, Data_t>)
+                        idx = i;
+                });
+
+            return idx;
+        }
+
         auto constexpr static resolve_t()
         {
-            if constexpr (is_tensor_field_v<ResourceView>)
+            if constexpr (int constexpr tup_idx = tuple_idx(); tup_idx >= 0)
+                return std::tuple_element_t<tup_idx, ResourceUserTypes>{};
+
+            else if constexpr (is_tensor_field_v<ResourceView>)
                 return typename ResourceManager::template UserTensorField_t<ResourceView::rank>{};
+
             else if constexpr (is_particles_v<ResourceView>)
                 return typename ResourceManager::template UserParticle_t<ResourceView>{};
+
             else if constexpr (is_field_v<ResourceView>)
                 return typename ResourceManager::UserField_t{};
+
             else
                 throw std::runtime_error("bad condition");
         }

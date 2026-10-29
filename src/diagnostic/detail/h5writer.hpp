@@ -21,6 +21,7 @@
 #include "diagnostic/detail/types/mhd.hpp"
 
 
+
 #if !defined(PHARE_DIAG_DOUBLES)
 #error // PHARE_DIAG_DOUBLES not defined
 #endif
@@ -100,6 +101,12 @@ public:
     auto getDiagnosticWriterForType(String& type)
     {
         return typeWriters_.at(type);
+    }
+
+    void requestTemporaries(DiagnosticProperties& diagnostic)
+    {
+        if (auto it = typeWriters_.find(diagnostic.type); it != typeWriters_.end())
+            it->second->requestTemporaries(diagnostic);
     }
 
     static std::string fileString(std::string fileStr)

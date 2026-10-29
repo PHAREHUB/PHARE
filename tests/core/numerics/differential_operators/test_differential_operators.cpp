@@ -19,12 +19,12 @@ namespace PHARE::core
 
 constexpr SimOpts mhdOpts(std::size_t dim, MHDOpts::ReconstructionType reconstruction)
 {
-    return SimOpts{dim,
-                   0,
-                   0,
-                   reconstruction,
-                   MHDOpts::SlopeLimiterType::None,
-                   MHDOpts::RiemannSolverType::Rusanov};
+    return SimOpts{.dimension           = dim,
+                   .interp_order        = 0,
+                   .nbRefinedPart       = 0,
+                   .reconstruction_type = reconstruction,
+                   .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                   .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov};
 }
 
 constexpr auto Constant = MHDOpts::ReconstructionType::Constant;
@@ -248,18 +248,10 @@ Box_t<Layout> physicalBox(Layout const& layout, Centering_t<Layout> const& cente
 }
 
 template<typename Box>
-Box shrink(Box box, std::size_t d)
+Box shrink_idx(Box box, std::size_t d)
 {
     ++box.lower[d];
     --box.upper[d];
-    return box;
-}
-
-template<typename Box>
-Box shrink(Box box)
-{
-    for (std::size_t d = 0; d < Box::dimension; ++d)
-        box = shrink(box, d);
     return box;
 }
 
@@ -271,7 +263,7 @@ Box_t<Layout> reach(Layout const& layout, Centering_t<Layout> const& src,
     if (d >= Layout::dimension)
         return box;
     bool const staggered = src[d] == QtyCentering::primal and dst[d] == QtyCentering::dual;
-    return staggered ? box : shrink(box, d);
+    return staggered ? box : shrink_idx(box, d);
 }
 
 template<typename Box>
@@ -478,7 +470,7 @@ TYPED_TEST(DifferentialOperators, laplacianIsExactOnCubics)
 
         auto const centering = layout.centering(f.field);
         auto const tol       = tolerance(layout, maxAbs(f));
-        for (auto const& idx : shrink(ghostBox(layout, centering)))
+        for (auto const& idx : shrink(ghostBox(layout, centering), 1))
             EXPECT_NEAR(laplacian(layout, f.field, idx),
                         cubicLaplacian(coordinates(layout, centering, idx)), tol);
     }

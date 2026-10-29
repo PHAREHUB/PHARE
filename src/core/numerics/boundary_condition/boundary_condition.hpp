@@ -21,7 +21,7 @@ namespace core
         }
 
         template<typename ParticleIterator>
-        ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator end)
+        ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator /*end*/)
         {
             // TODO
             return ParticleIterator{begin}; // place holder

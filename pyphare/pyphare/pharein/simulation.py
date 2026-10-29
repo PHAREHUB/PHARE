@@ -189,6 +189,32 @@ def check_layout(**kwargs):
     return layout
 
 
+valid_particle_layouts = ("AoSMapped", "AoSPCTS", "AoSCMTS")
+
+
+def check_particle_layout(**kwargs):
+    particle_layout = kwargs.get("particle_layout", "AoSMapped")
+    particle_layout = str(particle_layout).split(".")[-1]  # support enum
+    if particle_layout not in valid_particle_layouts:
+        raise ValueError(
+            f"Error: invalid particle_layout ({particle_layout}), valid={valid_particle_layouts}"
+        )
+    return particle_layout
+
+
+valid_allocators = ("CPU", "GPU_UNIFIED")
+
+
+def check_allocator(**kwargs):
+    allocator = kwargs.get("allocator", "CPU")
+    allocator = str(allocator).split(".")[-1]  # support enum
+    if allocator not in valid_allocators:
+        raise ValueError(
+            f"Error: invalid allocator ({allocator}), valid={valid_allocators}"
+        )
+    return allocator
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -198,7 +224,6 @@ def check_path(**kwargs):
 
 
 # ------------------------------------------------------------------------------
-
 
 
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
@@ -214,9 +239,8 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
-no_refined_particle_nbr = (
-    0  # internal, C++-facing counterpart of no_hybrid_interp_order
-)
+# internal, C++-facing counterpart of no_hybrid_interp_order
+no_refined_particle_nbr = 0
 
 
 def check_refined_particle_nbr(ndim, **kwargs):
@@ -572,6 +596,25 @@ def check_optional_keywords(**kwargs):
     return extra
 
 
+def check_threading(**kwargs):
+    threading = kwargs.get("threading", {})
+    if not isinstance(threading, dict):
+        raise TypeError(
+            "Error: 'threading' must be a dict like {'pools': 1, 'threads_per_pool': 1}"
+        )
+
+    defaults = {"pools": 1, "threads_per_pool": 1}
+    unknown = [key for key in threading if key not in defaults]
+    if unknown:
+        raise ValueError(f"Error: invalid 'threading' keys: {unknown}")
+
+    threading = {**defaults, **threading}
+    for key, value in threading.items():
+        if not isinstance(value, int) or value < 1:
+            raise ValueError(f"Error: 'threading' '{key}' must be an int >= 1")
+    return threading
+
+
 def check_resistivity(**kwargs):
     resistivity = kwargs.get("resistivity", 0.0)
     if resistivity < 0.0:
@@ -593,12 +636,44 @@ def check_hyper_resistivity(**kwargs):
 
 
 def check_clustering(**kwargs):
-    valid_keys = ["berger", "tile"]
+    valid_methods = ["berger", "tile"]
+    valid_tile_keys = {"method", "tile_size", "allow_remote_tile_extent"}
+    valid_berger_keys = {"method"}
+
     clustering = kwargs.get("clustering", "tile")
-    if clustering not in valid_keys:
+
+    if isinstance(clustering, str):
+        clustering = {"method": clustering}
+
+    if not isinstance(clustering, dict):
+        raise TypeError("clustering must be a string or dict")
+
+    method = clustering.get("method")
+    if method not in valid_methods:
         raise ValueError(
-            f"Error: clustering type is not supported, supported types are {valid_keys}"
+            f"clustering method '{method}' not supported, must be one of {valid_methods}"
         )
+
+    valid_keys = valid_tile_keys if method == "tile" else valid_berger_keys
+    unknown = set(clustering.keys()) - valid_keys
+    if unknown:
+        raise ValueError(f"Unknown clustering options for '{method}': {unknown}")
+
+    if "tile_size" in clustering:
+        ndim = compute_dimension(kwargs["cells"])
+        ts = clustering["tile_size"]
+        if isinstance(ts, int):
+            clustering["tile_size"] = [ts] * ndim
+        if len(clustering["tile_size"]) != ndim:
+            raise ValueError(
+                f"tile_size length {len(clustering['tile_size'])} != ndim {ndim}"
+            )
+
+    if "allow_remote_tile_extent" in clustering and not isinstance(
+        clustering["allow_remote_tile_extent"], bool
+    ):
+        raise TypeError("allow_remote_tile_extent must be a bool")
+
     return clustering
 
 
@@ -687,6 +762,8 @@ def checker(func):
             "time_step",
             "time_step_nbr",
             "layout",
+            "particle_layout",
+            "allocator",
             "interp_order",
             "domain_boundaries",
             "refined_particle_nbr",
@@ -696,6 +773,7 @@ def checker(func):
             "refinement",
             "tagging_threshold",
             "clustering",
+            "allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
             "smallest_patch_size",
             "largest_patch_size",
             "diag_options",
@@ -719,6 +797,7 @@ def checker(func):
             "riemann",
             "mhd_timestepper",
             "refinement_order",
+            "threading",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -738,6 +817,11 @@ def checker(func):
 
         kwargs["description"] = kwargs.get("description", None)
 
+        kwargs["allow_patches_smaller_than_minimum_size_to_prevent_overlaps"] = (
+            kwargs.get(
+                "allow_patches_smaller_than_minimum_size_to_prevent_overlaps", False
+            )
+        )
         kwargs["clustering"] = check_clustering(**kwargs)
 
         kwargs["restart_options"] = check_restart_options(**kwargs)
@@ -753,13 +837,15 @@ def checker(func):
 
         kwargs["particle_pusher"] = check_pusher(**kwargs)
         kwargs["layout"] = check_layout(**kwargs)
+        kwargs["particle_layout"] = check_particle_layout(**kwargs)
+        kwargs["allocator"] = check_allocator(**kwargs)
         kwargs["path"] = check_path(**kwargs)
 
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
-            ndim, **kwargs
+        kwargs["periodicities"], kwargs["domain_boundaries"] = (
+            boundary.resolve_boundaries(ndim, **kwargs)
         )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
@@ -771,6 +857,8 @@ def checker(func):
         kwargs["nesting_buffer"] = check_nesting_buffer(ndim, **kwargs)
 
         kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
+
+        kwargs["threading"] = check_threading(**kwargs)
 
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
@@ -956,6 +1044,9 @@ class Simulation:
         These parameters are more advanced, modify them at your own risk
 
             * **layout** (``str``), layout of the physical quantities on the mesh (default = "yee")
+            * **particle_layout** (``str``), in-memory particle array layout, one of "AoSMapped", "AoSPCTS" (default = "AoSMapped")
+            * **allocator** (``str``), particle/field data allocator, one of "CPU", "GPU_UNIFIED" (default = "CPU")
+            * **threading** (``dict``), thread pools per MPI rank, ``{"pools": 1, "threads_per_pool": 1}`` (default). A pool works one patch at a time, its threads the tiles of that patch, so only tiled particle layouts use more than one thread. Overridden by the env vars ``PHARE_THREAD_POOLS`` and ``PHARE_THREADS_PER_POOL``
 
 
     For instance:
@@ -1028,7 +1119,7 @@ class Simulation:
         * **tagging_threshold** (``float``), default=0.1, used only when `refinement="tagging"`. Threshold of the tagging criterion above which a cell is flagged for refinement. Lower values tag more cells and produce more/larger refined regions. See :ref:`tagging-for-refinement` for the underlying theory.
         * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. With `refinement="boxes"` this is derived automatically from the number of levels given in `refinement_boxes`; with `refinement="tagging"` it must be given explicitly (it otherwise silently defaults to 1, i.e. no refinement).
         * **tag_buffer** (``int``), default=1, number of cells by which each tagged cell is grown, in every direction, before clustering into boxes. E.g. with `tag_buffer=1`, a single tagged cell becomes surrounded by a 1-cell-wide layer of also-tagged cells: 3 tagged cells in 1D, 9 in 2D. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
-        * **clustering** (``str``), {"berger", "tile" (default)}, type of :ref:`clustering` to use for AMR. :ref:`tile <tiling>` results in wider patches, less artifacts and better scalability than :ref:`berger <berger-rigoutsos>`.
+        * **clustering** (``str`` or ``dict``), type of :ref:`clustering` to use for AMR. String form: ``"tile"`` (default) or ``"berger"``. Dict form: ``{"method": "tile", "tile_size": 16, "allow_remote_tile_extent": False}``. ``tile_size`` (int or per-dim list, default 8) controls the SAMRAI tile grid granularity — larger values reduce patch overlap risk and produce fewer, larger patches. ``allow_remote_tile_extent`` (bool, default ``True``) — set to ``False`` to disable cross-MPI-rank tile clustering, which eliminates overlap path 1 at the cost of smaller per-rank patches (useful as a diagnostic). :ref:`tile <tiling>` results in wider patches, less artifacts and better scalability than :ref:`berger <berger-rigoutsos>`.
 
         **Expert parameters:**
 
@@ -1203,6 +1294,9 @@ class Simulation:
     def __setstate__(self, state):
         vars(self).update(state)
 
+    def __repr__(self):
+        return print_simulation(self)
+
     # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
@@ -1268,6 +1362,25 @@ class Simulation:
 
 
 # ------------------------------------------------------------------------------
+
+
+def print_simulation(sim):
+    """:meta private:"""
+    import json
+
+    def default(o):
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        if callable(o):
+            return getattr(o, "__name__", str(o))
+        if hasattr(o, "__dict__"):
+            return o.__dict__
+        return str(o)
+
+    try:
+        return json.dumps(vars(sim), default=default, indent=2, sort_keys=True)
+    except (TypeError, ValueError) as e:
+        return f"<Simulation repr failed: {e}>"
 
 
 def serialize(sim):

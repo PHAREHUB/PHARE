@@ -1,11 +1,11 @@
 #ifndef PHARE_ELECTRIC_FIELD_COARSENER
 #define PHARE_ELECTRIC_FIELD_COARSENER
 
-#include "amr/amr_constants.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
+#include "amr/amr_constants.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <cstddef>
@@ -26,10 +26,16 @@ namespace PHARE::amr
  * This is done by assigning to a magnetic field component on a coarse face, the average
  * of the enclosed fine faces
  *
+ * WARNING:
+ * the following assumes where B is, i.e. Yee layout centering
+ * as it only does faces pirmal-dual, dual-primal and dual-dual
+ *
  */
 template<std::size_t dimension>
 class ElectricFieldCoarsener
 {
+    using Point_t = core::Point<int, dimension>;
+
 public:
     ElectricFieldCoarsener(std::array<core::QtyCentering, dimension> const centering,
                            SAMRAI::hier::Box const& sourceBox,
@@ -38,9 +44,9 @@ public:
         : centering_{centering}
         , sourceBox_{sourceBox}
         , destinationBox_{destinationBox}
-
     {
     }
+
 
     template<typename FieldT>
     void operator()(FieldT const& fineField, FieldT& coarseField,
@@ -53,8 +59,8 @@ public:
         // For the moment we only take the case of field with the same centering
         TBOX_ASSERT(fineField.physicalQuantity() == coarseField.physicalQuantity());
 
-        core::Point<int, dimension> fineStartIndex;
 
+        Point_t fineStartIndex;
         for (auto i = std::size_t{0}; i < dimension; ++i)
         {
             fineStartIndex[i] = coarseIndex[i] * refinementRatio;
@@ -144,11 +150,12 @@ public:
         }
     }
 
-private:
+
     std::array<core::QtyCentering, dimension> const centering_;
     SAMRAI::hier::Box const sourceBox_;
     SAMRAI::hier::Box const destinationBox_;
 };
+
 
 } // namespace PHARE::amr
 
