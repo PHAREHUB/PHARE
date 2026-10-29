@@ -106,7 +106,7 @@ struct OhmTest : public ::testing::Test
                 Vx(ix) = std::sinh(0.2 * point[0]);
                 Vy(ix) = std::sinh(0.3 * point[0]);
                 Vz(ix) = std::sinh(0.4 * point[0]);
-                P(ix)  = std::cosh(0.5 * point[0]);
+                P(ix)  = std::cosh(0.3 * point[0]);
                 Bx(ix) = std::cosh(0.2 * point[0]);
                 Jy(ix) = std::tanh(0.3 * point[0]);
                 Jz(ix) = std::tanh(0.4 * point[0]);
@@ -145,7 +145,7 @@ struct OhmTest : public ::testing::Test
                     Vx(ix, iy) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1]);
                     Vy(ix, iy) = std::sinh(0.3 * point[0]) * std::sinh(0.3 * point[1]);
                     Vz(ix, iy) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1]);
-                    P(ix, iy)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1]);
+                    P(ix, iy)  = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1]);
                     Jz(ix, iy) = std::tanh(0.4 * point[0]) * std::tanh(0.4 * point[1]);
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
@@ -209,8 +209,8 @@ struct OhmTest : public ::testing::Test
                                          * std::sinh(0.3 * point[2]);
                         Vz(ix, iy, iz) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1])
                                          * std::sinh(0.4 * point[2]);
-                        P(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                        * std::cosh(0.5 * point[2]);
+                        P(ix, iy, iz) = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1])
+                                        * std::cosh(0.3 * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
@@ -506,6 +506,69 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                                 ::testing::DoubleNear((expected_ohmZ[index_]), 1e-10));
                 }
             }
+        }
+    }
+}
+
+
+// with B = J = 0 and a uniform Te, Ohm's law reduces to E = -Te grad(n)/n = -grad(Te ln n),
+// which is curl free: the pressure term must not feed Faraday, even on a noisy density (#1527)
+TYPED_TEST(OhmTest, ThatIsothermalPressureTermIsCurlFree)
+{
+    using Ohm_t        = TestFixture::Ohm_t;
+    auto constexpr dim = TestFixture::dim;
+
+    if constexpr (dim > 1)
+    {
+        auto& layout    = this->layout;
+        auto const Te   = 0.09;
+        auto const zero = [&](auto& field) {
+            layout.evalOnGhostBox(field, [&](auto const&... ijk) { field(ijk...) = 0.; });
+        };
+        for (auto* vecfield : {&this->V, &this->B, &this->J})
+            for (auto const component : {Component::X, Component::Y, Component::Z})
+                zero((*vecfield)(component));
+
+        // particle-noise-like density: uncorrelated from node to node, in [1, 1.5)
+        auto k = 0;
+        layout.evalOnGhostBox(this->n, [&](auto const&... ijk) {
+            auto const hash = std::sin(12.9898 * ++k) * 43758.5453;
+            this->n(ijk...) = 1. + 0.5 * (hash - std::floor(hash));
+            this->P(ijk...) = Te * this->n(ijk...);
+        });
+
+        auto const dict = [] {
+            PHARE::initializer::PHAREDict dict;
+            dict["resistivity"]       = 0.0;
+            dict["hyper_resistivity"] = 0.0;
+            return dict;
+        }();
+        Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
+
+        // the curl Faraday applies to E, evaluated where B lives
+        auto const curlE = curl(layout, this->Enew);
+        auto const& Ex   = this->Enew(Component::X);
+        auto maxCurlZ    = 0.;
+        auto maxEx       = 0.;
+        layout.evalOnBox(this->B(Component::Z), [&](auto const&... ijk) {
+            maxCurlZ = std::max(maxCurlZ, std::abs(curlE.z({ijk...})));
+        });
+        layout.evalOnBox(
+            Ex, [&](auto const&... ijk) { maxEx = std::max(maxEx, std::abs(Ex(ijk...))); });
+
+        EXPECT_GT(maxEx, 0.1); // the density noise does drive a pressure field
+        EXPECT_LT(maxCurlZ, 1e-12 * maxEx * layout.inverseMeshSize(Direction::X));
+
+        if constexpr (dim == 3)
+        {
+            auto maxCurlXY = 0.;
+            layout.evalOnBox(this->B(Component::X), [&](auto const&... ijk) {
+                maxCurlXY = std::max(maxCurlXY, std::abs(curlE.x({ijk...})));
+            });
+            layout.evalOnBox(this->B(Component::Y), [&](auto const&... ijk) {
+                maxCurlXY = std::max(maxCurlXY, std::abs(curlE.y({ijk...})));
+            });
+            EXPECT_LT(maxCurlXY, 1e-12 * maxEx * layout.inverseMeshSize(Direction::X));
         }
     }
 }
