@@ -55,8 +55,19 @@ constexpr std::uint64_t cell_key(std::uint64_t const seed, std::uint64_t const p
 }
 
 
-/** @brief SplitMix64 generator (Steele, Lea & Flood 2014; Vigna's reference version),
- * a UniformRandomBitGenerator with an 8-byte state, cheap enough to build one per cell.
+/** @brief SplitMix64 generator, a UniformRandomBitGenerator with an 8-byte state.
+ *
+ * Particles are loaded with one generator per cell, so building a generator must be cheap:
+ * SplitMix64 starts from a single 64-bit value, whereas std::mt19937_64 carries ~2.5 kB of
+ * state and a costly seeding. SplitMix64 passes TestU01 BigCrush.
+ *
+ * References:
+ * - G. L. Steele, D. Lea, C. H. Flood, "Fast splittable pseudorandom number generators",
+ *   OOPSLA 2014, doi:10.1145/2660193.2660195 (the generator behind Java's SplittableRandom)
+ * - S. Vigna, reference implementation https://prng.di.unimi.it/splitmix64.c, reproduced here
+ *   (state += 0x9e3779b97f4a7c15, output = splitmix64_mix(state))
+ * - P. L'Ecuyer, R. Simard, "TestU01: a C library for empirical testing of random number
+ *   generators", ACM Trans. Math. Softw. 33(4), 2007 (BigCrush)
  */
 class SplitMix64
 {
