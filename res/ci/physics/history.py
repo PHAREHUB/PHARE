@@ -323,7 +323,7 @@ def canary(tonight_builds, exists):
 
 def expire(history, exists, canary_ok, drawn, deadline_s=120, clock=time.monotonic):
     """(history, notes). Marks records expired when TeamCity says their build's
-    physics-out is gone (exists -> False); None (unknown) never expires anything.
+    results are gone (exists -> False); None (unknown) never expires anything.
     Only the last `drawn` nights are asked, each (build, job) once overall (a reused
     build appears in many nights), until the deadline. A job that is not a plain
     name is never asked: it would go into a URL."""

@@ -355,7 +355,7 @@ def update_history(site, tonight, builds, cfg, base, get, notes):
 
     def exists(build_id, job):
         if (build_id, job) not in asked:
-            asked[build_id, job] = tc.physics_out_exists(base, build_id, job, get)
+            asked[build_id, job] = tc.results_exist(base, build_id, get)
         return asked[build_id, job]
 
     canary_ok = history.canary([(b["id"], j) for j, b in builds.items()], exists)
@@ -383,7 +383,7 @@ def figure_url_for(base, figure_base):
         )
     return lambda job, build, name: (
         tc.artifact_url(
-            base, build["type"], build["id"], f"physics-out/{job}/figures/{name}"
+            base, build["type"], build["id"], tc.published(f"figures/{name}")
         )
         if build
         else None
@@ -393,12 +393,15 @@ def figure_url_for(base, figure_base):
 def push_refusal(a, builds, others=()):
     """Why --push is refused, or None: only a night whose every known build (the job builds,
     at least one, and the pipeline head and page writer when known) is on the default
-    branch reaches the public page."""
+    branch reaches the public page. A head or writer on no branch at all (a config with
+    no repository) is on no other branch either."""
     if a.figure_base is not None:
         return "--figure-base links to local files"
     if not builds:
         return "no job build known from TeamCity"
-    if not all(b["default_branch"] for b in [*builds.values(), *others]):
+    if not all(b["default_branch"] for b in builds.values()):
+        return "a job build is not on the default branch"
+    if any(b["default_branch"] is False for b in others):
         return "a known build is not on the default branch"
     if not os.environ.get("NIGHTLY_PAGE_TOKEN"):
         return "NIGHTLY_PAGE_TOKEN is not set"

@@ -742,25 +742,27 @@ class TcTest(unittest.TestCase):
             self.assertEqual(tc.artifact_sources(self.BASE, 5, get), [])
         info = {"id": 5, "buildTypeId": "T_x", "startDate": "20261028T010012+0000"}
         b = tc.build_info(self.BASE, 5, self.fake(info))
-        # absent is not the default branch, and not a schedule
+        # no branch at all (a config with no repository), and not a schedule
         self.assertEqual(
-            (b["default_branch"], b["sha"], b["triggered"]), (False, None, None)
+            (b["default_branch"], b["sha"], b["triggered"]), (None, None, None)
         )
+        b = tc.build_info(self.BASE, 5, self.fake(info | {"branchName": "pull/1"}))
+        self.assertIs(b["default_branch"], False)  # a branch, but not the default one
         for triggered in (5, "schedule", [1], {"type": 3}, {}):
             b = tc.build_info(self.BASE, 5, self.fake(info | {"triggered": triggered}))
             self.assertIsNone(b["triggered"], triggered)
 
-    def test_physics_out_exists_codes(self):
+    def test_results_exist_codes(self):
         url = []
 
         def ok(u, timeout=30, headers=None):
             url.append((u, timeout))
             return b"[]"
 
-        self.assertIs(tc.physics_out_exists(self.BASE, 9, "hybrid", ok), True)
+        self.assertIs(tc.results_exist(self.BASE, 9, ok), True)
         self.assertEqual(url[0][1], 10)
         self.assertTrue(
-            url[0][0].endswith("/builds/id:9/artifacts/children/physics-out/hybrid")
+            url[0][0].endswith("/builds/id:9/artifacts/metadata/publish/summary.json")
         )
 
         def raiser(exc):
@@ -772,11 +774,9 @@ class TcTest(unittest.TestCase):
         def http(code):
             return urllib.error.HTTPError("u", code, "m", {}, None)
 
-        self.assertIs(
-            tc.physics_out_exists(self.BASE, 9, "h", raiser(http(404))), False
-        )
+        self.assertIs(tc.results_exist(self.BASE, 9, raiser(http(404))), False)
         for exc in (http(500), urllib.error.URLError("x"), TimeoutError()):
-            self.assertIsNone(tc.physics_out_exists(self.BASE, 9, "h", raiser(exc)))
+            self.assertIsNone(tc.results_exist(self.BASE, 9, raiser(exc)))
 
 
 AGENT_OK = """some chatter the agent added
@@ -1638,6 +1638,7 @@ def tc_build(i, type_, start=TONIGHT, default=True, trigger="schedule", sha=SHA_
         "id": i,
         "buildTypeId": type_,
         "startDate": start,
+        "branchName": "refs/heads/master" if default else "refs/pull/1/head",
         "defaultBranch": default,
         "triggered": {"type": trigger},
         "revisions": {"revision": [{"version": sha}]},
@@ -1658,6 +1659,7 @@ def fake_teamcity(
     heads=(9,),
     head_default=True,
     own_default=True,
+    own_branchless=False,
     head_broken=False,
     sources=None,
     last=(),
@@ -1669,7 +1671,7 @@ def fake_teamcity(
 
     def get(url, *a, **k):
         urls.append(url)
-        if "/artifacts/children/" in url:
+        if "/artifacts/metadata/" in url:
             return b"[]"
         if sources is not None and "snapshotDependency:(from:(id:5))" in url:
             return b'{"build": []}'
@@ -1690,9 +1692,10 @@ def fake_teamcity(
             return b"{}"
         start, trigger = (own_start, "schedule") if i == 5 else (TONIGHT, head_trigger)
         default = own_default if i == 5 else head_default
-        return json.dumps(
-            tc_build(i, "T_x", start, trigger=trigger, default=default)
-        ).encode()
+        b = tc_build(i, "T_x", start, trigger=trigger, default=default)
+        if i == 5 and own_branchless:  # a writer config with no repository
+            del b["branchName"], b["defaultBranch"]
+        return json.dumps(b).encode()
 
     get.urls = urls
     return get
@@ -1817,7 +1820,7 @@ class PublishTest(unittest.TestCase):
         self.assertIn("order 1 not 3", html)  # the abnormal test shows the model's text
         self.assertIn(
             f"{TC_BASE}/guestAuth/repository/download/{HYB_TYPE}/11:id/"
-            "physics-out/hybrid/figures/ion_ion_beam1d__a.png",
+            "publish/figures/ion_ion_beam1d__a.png",
             html,
         )
         self.assertFalse((self.site / "history.pending.json").exists())
@@ -1855,7 +1858,7 @@ class PublishTest(unittest.TestCase):
         self.main(get)
         own = [u for u in get.urls if f"builds/id:5?fields={tc.FIELDS}" in u]
         self.assertEqual(len(own), 1)
-        asked = [u for u in get.urls if "/artifacts/children/" in u]
+        asked = [u for u in get.urls if "/artifacts/metadata/" in u]
         self.assertTrue(asked)
         self.assertEqual(len(asked), len(set(asked)))
 
@@ -2351,6 +2354,14 @@ class PublishTest(unittest.TestCase):
                 self.assertEqual(run.calls, [])
                 self.assertEqual(len(self.printed.strip().splitlines()), 1)
                 self.assertIn("push refused", self.printed)
+        # a writer with no repository is on no branch, so on no other branch either
+        run = self.fake_run()
+        with unittest.mock.patch.dict(os.environ, {"NIGHTLY_PAGE_TOKEN": SECRET}):
+            self.main(
+                fake_teamcity(tc_nightly(), own_branchless=True), ["--push"], runner=run
+            )
+        self.assertNotIn("push refused", self.printed)
+        self.assertTrue(run.calls)
         # the local preview links its figures without any TeamCity build
         self.main(fake_teamcity(tc_nightly()), ["--figure-base", "../in"], own=False)
         self.assertIn('src="../in/hybrid/figures/ion_ion_beam1d__a.png"', self.index())

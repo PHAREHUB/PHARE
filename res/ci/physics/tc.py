@@ -49,13 +49,17 @@ def artifact_url(base, build_type_id, build_id, path):
     return f"{base}/guestAuth/repository/download/{build_type_id}/{build_id}:id/{path}"
 
 
-FIELDS = "id,buildTypeId,startDate,defaultBranch,triggered(type),revisions(revision(version))"
+FIELDS = (
+    "id,buildTypeId,startDate,branchName,defaultBranch,triggered(type),"
+    "revisions(revision(version))"
+)
 JOB_ID = re.compile(r"_virtual_([a-z0-9]+)_functional_")
 
 
 def _build(b):
     """One TeamCity build as {"id", "type", "start", "default_branch", "triggered", "sha"},
-    or None when an id, type or start is bad. A bad sha or trigger only gives None."""
+    or None when an id, type or start is bad. A bad sha or trigger only gives None.
+    default_branch is None for a build on no branch at all (a config with no repository)."""
     try:
         bid, btype = b["id"], b["buildTypeId"]
         if type(bid) is not int or not history.BUILD_TYPE.fullmatch(btype):
@@ -76,7 +80,11 @@ def _build(b):
         "id": bid,
         "type": btype,
         "start": start,
-        "default_branch": b.get("defaultBranch") is True,
+        "default_branch": (
+            b.get("defaultBranch") is True
+            if "branchName" in b or "defaultBranch" in b
+            else None
+        ),
         "triggered": triggered if isinstance(triggered, str) else None,
         "sha": sha,
     }
@@ -157,11 +165,17 @@ def job_of(type_id, cfg):
     return m.group(1) if m and m.group(1) in cfg["jobs"] else None
 
 
-def physics_out_exists(base, build_id, job, get=None):
-    """True if the build still lists physics-out/<job>, False on HTTP 404, None otherwise."""
+def published(name):
+    """Where a job's physics-out/<job>/<name> is among its artifacts: a pipeline job
+    publishes a folder's contents at the root of its publish/ artifacts."""
+    return f"publish/{name}"
+
+
+def results_exist(base, build_id, get=None):
+    """True if the build still keeps its summary.json, False on HTTP 404, None otherwise."""
     url = (
         f"{base}/guestAuth/app/rest/builds/id:{int(build_id)}"
-        f"/artifacts/children/physics-out/{job}"
+        f"/artifacts/metadata/{published('summary.json')}"
     )
     try:
         (get or http_get)(url, timeout=10)

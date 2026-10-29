@@ -87,7 +87,7 @@ def fetch_history(base, build_type_id, job, current_id, nights, get=None):
         return []
 
     def artifact(i, name):
-        url = tc.artifact_url(base, build_type_id, i, f"physics-out/{job}/{name}")
+        url = tc.artifact_url(base, build_type_id, i, tc.published(name))
         return tc.get_json(url, get)
 
     history = []
