@@ -10,7 +10,6 @@ class AnyTensorField(PatchHierarchy):
         return klass(
             hier.time_hier,
             hier.domain_box,
-            hier.refinement_ratio,
             hier.data_files,
             hier.selection_box,
         )

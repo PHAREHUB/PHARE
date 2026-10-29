@@ -2,9 +2,10 @@ import numpy as np
 
 from ...core import gridlayout  #  import GridLayout, HybridGridLayoutFor
 from ...core.box import Box
+from ...core.phare_utilities import refinement_ratio
 from ..particles import Particles
 from .hierarchy import PatchHierarchy
-from .hierarchy_utils import field_qties, isFieldQty, quantidic, refinement_ratio
+from .hierarchy_utils import field_qties, isFieldQty, quantidic
 from .patch import Patch
 from .patchdata import FieldData, ParticleData
 from .patchlevel import PatchLevel

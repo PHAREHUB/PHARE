@@ -248,7 +248,6 @@ def build_hierarchy(**kwargs):
     dim = len(origin)
     if dim > 1:
         assert len(nbr_cells) == dim
-    refinement_ratio = kwargs["refinement_ratio"]
 
     domain_box = boxm.Box([0] * dim, nbr_cells - 1)
     boxes = build_boxes(domain_box, **kwargs)
@@ -265,4 +264,4 @@ def build_hierarchy(**kwargs):
 
     sorted_levels_numbers = sorted(patch_levels)
     patch_levels = {ilvl: patch_levels[ilvl] for ilvl in sorted_levels_numbers}
-    return PatchHierarchy({0.0: patch_levels}, domain_box, refinement_ratio)
+    return PatchHierarchy({0.0: patch_levels}, domain_box)

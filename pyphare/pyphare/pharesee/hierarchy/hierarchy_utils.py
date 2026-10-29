@@ -8,7 +8,7 @@ from pyphare.core import phare_utilities as phut
 
 from ...core.box import Box
 from ...core.gridlayout import GridLayout
-from ...core.phare_utilities import listify, refinement_ratio
+from ...core.phare_utilities import listify
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patch import Patch
 from .patchdata import FieldData, ParticleData
@@ -165,7 +165,6 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     return PatchHierarchy(
         time_hier,
         domain_box,
-        refinement_ratio,
         data_files=reference_hier.data_files,
         selection_box=reference_hier.selection_box,
     )

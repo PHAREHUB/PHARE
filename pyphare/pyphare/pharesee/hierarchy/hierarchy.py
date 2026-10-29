@@ -21,7 +21,6 @@ class PatchHierarchy:
         self,
         time_hier,  # {time: {ilvl: PatchLevel}}
         domain_box,
-        refinement_ratio=2,
         data_files=None,
         selection_box=None,
     ):
@@ -33,7 +32,6 @@ class PatchHierarchy:
         self.ndim = len(domain_box.lower)
 
         self.domain_box = domain_box
-        self.refinement_ratio = refinement_ratio
 
         self._sim = None
 
@@ -296,7 +294,7 @@ class PatchHierarchy:
         returns the domain box refined for a given level number
         """
         assert level_number >= 0
-        return boxm.refine(self.domain_box, self.refinement_ratio**level_number)
+        return boxm.refine(self.domain_box, refinement_ratio**level_number)
 
     def level_domain_box(self, level_number):
         if level_number == 0:
