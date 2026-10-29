@@ -147,7 +147,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::i
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
+            auto particleInitializer = ParticleInitializerFactory::create(info, pop.name());
             particleInitializer->loadParticles(pop.domainParticles(), layout);
         }
 

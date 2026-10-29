@@ -426,7 +426,7 @@ struct IonUpdaterTest : public ::testing::Test
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
+            auto particleInitializer = ParticleInitializerFactory::create(info, pop.name());
             particleInitializer->loadParticles(pop.domainParticles(), layout);
         }
 
