@@ -11,7 +11,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <cmath>
 #include <fstream>
+#include <limits>
 #include <variant>
 
 using namespace PHARE::core;
@@ -545,30 +547,40 @@ TYPED_TEST(OhmTest, ThatIsothermalPressureTermIsCurlFree)
         }();
         Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
 
-        // the curl Faraday applies to E, evaluated where B lives
-        auto const curlE = curl(layout, this->Enew);
-        auto const& Ex   = this->Enew(Component::X);
-        auto maxCurlZ    = 0.;
-        auto maxEx       = 0.;
-        layout.evalOnBox(this->B(Component::Z), [&](auto const&... ijk) {
-            maxCurlZ = std::max(maxCurlZ, std::abs(curlE.z({ijk...})));
-        });
-        layout.evalOnBox(
-            Ex, [&](auto const&... ijk) { maxEx = std::max(maxEx, std::abs(Ex(ijk...))); });
+        // largest |value| on the physical box of `where`, NaN as soon as one value is not finite
+        auto const maxAbs = [&](auto& where, auto&& value) {
+            auto max = 0.;
+            layout.evalOnBox(where, [&](auto const&... ijk) {
+                auto const v = std::abs(value(ijk...));
+                max          = std::isfinite(v) and std::isfinite(max)
+                                   ? std::max(max, v)
+                                   : std::numeric_limits<double>::quiet_NaN();
+            });
+            return max;
+        };
 
-        EXPECT_GT(maxEx, 0.1); // the density noise does drive a pressure field
-        EXPECT_LT(maxCurlZ, 1e-12 * maxEx * layout.inverseMeshSize(Direction::X));
+        auto maxE = 0.;
+        for (auto const c : {Component::X, Component::Y, Component::Z})
+        {
+            auto& Ec        = this->Enew(c);
+            auto const maxC = maxAbs(Ec, [&](auto... ijk) { return Ec(ijk...); });
+            maxE            = std::isnan(maxC) ? maxC : std::max(maxE, maxC); // keeps a NaN
+        }
+        EXPECT_GT(maxE, 0.1); // the density noise does drive a pressure field
+
+        // the curl Faraday applies to E, evaluated where B lives
+        auto const curlE     = curl(layout, this->Enew);
+        auto const tolerance = 1e-12 * maxE * layout.inverseMeshSize(Direction::X);
+
+        EXPECT_LT(maxAbs(this->B(Component::Z), [&](auto... ijk) { return curlE.z({ijk...}); }),
+                  tolerance);
 
         if constexpr (dim == 3)
         {
-            auto maxCurlXY = 0.;
-            layout.evalOnBox(this->B(Component::X), [&](auto const&... ijk) {
-                maxCurlXY = std::max(maxCurlXY, std::abs(curlE.x({ijk...})));
-            });
-            layout.evalOnBox(this->B(Component::Y), [&](auto const&... ijk) {
-                maxCurlXY = std::max(maxCurlXY, std::abs(curlE.y({ijk...})));
-            });
-            EXPECT_LT(maxCurlXY, 1e-12 * maxEx * layout.inverseMeshSize(Direction::X));
+            EXPECT_LT(maxAbs(this->B(Component::X), [&](auto... ijk) { return curlE.x({ijk...}); }),
+                      tolerance);
+            EXPECT_LT(maxAbs(this->B(Component::Y), [&](auto... ijk) { return curlE.y({ijk...}); }),
+                      tolerance);
         }
     }
 }

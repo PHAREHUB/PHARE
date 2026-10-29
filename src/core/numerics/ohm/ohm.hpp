@@ -2,6 +2,7 @@
 #define PHARE_OHM_HPP
 
 
+#include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -73,9 +74,9 @@ private:
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
         // pressure_ reads n and Pe on the two nodes on each side of an E edge
-        for (auto const centering : layout_.centering(n))
-            if (centering != QtyCentering::primal)
-                throw std::runtime_error("Ohm: the electron moments must be primal");
+        auto const isPrimal = [](auto const c) { return c == QtyCentering::primal; };
+        if (not all(layout_.centering(n), isPrimal) or not all(layout_.centering(Pe), isPrimal))
+            throw std::runtime_error("Error - Ohm - n and Pe must be primal");
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
@@ -177,6 +178,7 @@ private:
     // For a uniform Te this is exactly the discrete gradient of Te ln(n), whose discrete curl
     // vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
     // Dividing D(Pe) by the edge average of n is not a discrete gradient and does create some.
+    // n must be > 0 on both nodes, as it already must be for the electron velocity.
     template<auto component, typename Field>
     auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
     {
