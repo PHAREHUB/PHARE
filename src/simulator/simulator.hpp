@@ -417,9 +417,6 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
             using ResMan_t = PHARETypes::Hybrid::Model_t::resources_manager_type;
             hyb_.resman_   = std::make_shared<ResMan_t>();
             hybrid_init(dict);
-            if (dict["simulation"].contains("restarts"))
-                rMan = restarts::RestartsManagerResolver::make_unique(
-                    *hierarchy_, *hyb_.resman_, dict["simulation"]["restarts"]);
         }
     }
     else
@@ -436,9 +433,6 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
             using ResMan_t = PHARETypes::MHD::Model_t::resources_manager_type;
             mhd_.resman_   = std::make_shared<ResMan_t>();
             mhd_init(dict);
-            if (dict["simulation"].contains("restarts"))
-                rMan = restarts::RestartsManagerResolver::make_unique(
-                    *hierarchy_, *mhd_.resman_, dict["simulation"]["restarts"]);
         }
     }
     else
@@ -454,6 +448,22 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
             names += (names.empty() ? "" : ", ") + name;
         throw std::runtime_error("unsupported model, none of [" + names
                                  + "] is supported by this build");
+    }
+
+    auto mutated_dict = restarts::inject_simulation_information(
+        dict, amr::ResourcesManagerGlobals::registeredResourcesHash());
+
+    if (mutated_dict["simulation"].contains("restarts"))
+    {
+        if constexpr (has_hybrid_v<opts>)
+            if (hyb_.resman_)
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *hyb_.resman_, mutated_dict["simulation"]["restarts"]);
+
+        if constexpr (has_mhd_v<opts>)
+            if (mhd_.resman_)
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *mhd_.resman_, mutated_dict["simulation"]["restarts"]);
     }
 
     finalize_init(dict);
