@@ -2,6 +2,7 @@
 #define PHARE_OHM_HPP
 
 
+#include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -72,19 +73,22 @@ private:
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPe = grad(layout_, Pe);
+        // pressure_ reads n and Pe on the two nodes on each side of an E edge
+        auto const isPrimal = [](auto const c) { return c == QtyCentering::primal; };
+        if (not all(layout_.centering(n), isPrimal) or not all(layout_.centering(Pe), isPrimal))
+            throw std::runtime_error("Error - Ohm - n and Pe must be primal");
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
+                Pack{Enew, n, Ve, Pe, B, J}, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
+                Pack{Enew, n, Ve, Pe, B, J}, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
+                Pack{Enew, n, Ve, Pe, B, J}, args...);
         });
     }
 
@@ -93,20 +97,21 @@ private:
     {
         VecField& Exyz;
         Field const& n;
-        VecField const &Ve, &B, &J;
+        VecField const& Ve;
+        Field const& Pe;
+        VecField const &B, &J;
     };
 
 
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
-             typename... IDXs>
-    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename... IDXs>
+    void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ve, B, J]     = pack;
+        auto const& [E, n, Ve, Pe, B, J] = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, gradPe, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, Pe, {ijk...});
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -169,42 +174,30 @@ private:
     }
 
 
-    template<auto component, typename Field, typename GradPe>
-    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
+    // -grad(Pe)/n is evaluated as -(<Te> D(ln n) + D(Te)), with Te = Pe/n on the nodes.
+    // For a uniform Te this is exactly the discrete gradient of Te ln(n), whose discrete curl
+    // vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
+    // Dividing D(Pe) by the edge average of n is not a discrete gradient and does create some.
+    // n must be > 0 on both nodes, as it already must be for the electron velocity.
+    template<auto component, typename Field>
+    auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
     {
-        if constexpr (component == Component::X)
-        {
-            auto const nOnEx = GridLayout::template project<GridLayout::momentsToEx>(n, index);
+        constexpr auto d = detail::vector_component_index<component>();
 
-            return -gradPe(index) / nOnEx;
+        if constexpr (d < dimension)
+        {
+            // E_d is dual along d, its two neighbouring nodes are index and index+1 along d
+            auto const n0  = detail::shifted<d>(n, index, 0);
+            auto const n1  = detail::shifted<d>(n, index, 1);
+            auto const Te0 = detail::shifted<d>(Pe, index, 0) / n0;
+            auto const Te1 = detail::shifted<d>(Pe, index, 1) / n1;
+
+            return -layout_.inverseMeshSize(static_cast<Direction>(d))
+                   * (0.5 * (Te0 + Te1) * std::log(n1 / n0) + (Te1 - Te0));
         }
-
-        else if constexpr (component == Component::Y)
+        else
         {
-            if constexpr (Field::dimension >= 2)
-            {
-                auto const nOnEy = GridLayout::template project<GridLayout::momentsToEy>(n, index);
-
-                return -gradPe(index) / nOnEy;
-            }
-            else
-            {
-                return 0.;
-            }
-        }
-
-        else if constexpr (component == Component::Z)
-        {
-            if constexpr (Field::dimension >= 3)
-            {
-                auto const nOnEz = GridLayout::template project<GridLayout::momentsToEz>(n, index);
-
-                return -gradPe(index) / nOnEz;
-            }
-            else
-            {
-                return 0.;
-            }
+            return 0.;
         }
     }
 
