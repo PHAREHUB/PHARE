@@ -1,13 +1,18 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
+#include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
 #include "amr/data/field/refine/field_refine_patch_strategy.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_data_traits.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 
+#include "core/data/vector.hpp"
+#include "core/data/field/field_box.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/constants.hpp"
 
 #include <array>
 #include <cassert>
@@ -22,6 +27,17 @@ namespace PHARE::amr
 
 namespace detail
 {
+    // the untiled tensor field data matching a tiled one, e.g. the phare_scratch_vec_field's
+    template<typename T>
+    struct untiled_tensor_field_data;
+
+    template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+    struct untiled_tensor_field_data<TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>>
+    {
+        using type
+            = TensorFieldData<rank, GridLayoutT, typename Grid_t::grid_type, PhysicalQuantity>;
+    };
+
     //! a fine cell of the snapshot region, in the layout's local indices -- never negative
     template<std::size_t dimension>
     using LocalCellKey = std::array<std::uint32_t, dimension>;
@@ -144,6 +160,9 @@ public:
     {
     }
 
+    // the untiled phare_scratch_vec_field, tiled B gathers its touch-up region into
+    void registerScratchID(int const scratch_id) { scratch_id_ = scratch_id; }
+
     void preprocessRefine(SAMRAI::hier::Patch&, SAMRAI::hier::Patch const&,
                           SAMRAI::hier::Box const&, SAMRAI::hier::IntVector const&) override
     {
@@ -205,7 +224,74 @@ public:
         auto const region
             = reconstructionRegion(fine_box, fine.getPatchData(data_id_)->getGhostBox());
 
-        touchUpInteriorFaces(fields, layout, region, scratch_);
+        using Field_t = std::decay_t<decltype(fields[0])>;
+        if constexpr (core::is_field_tile_set_v<Field_t>)
+            touchUpTiles(fine, fields, layout, region);
+        else
+            touchUpInteriorFaces(fields, layout, region, scratch_);
+    }
+
+
+    // the touch-up runs on patch shaped views of the untiled phare_scratch_vec_field (or of tmp on
+    // the SAMRAI temporary patches which have none), holding the owning tiles' values over the
+    // region field boxes, which are then copied into every tile's ghost copies
+    void touchUpTiles(SAMRAI::hier::Patch const& fine, auto& fields, gridlayout_type const& layout,
+                      SAMRAI::hier::Box const& region)
+    {
+        using View_t       = std::decay_t<decltype(fields[0])>::field_type;
+        using ScratchDataT = detail::untiled_tensor_field_data<VecFieldDataT>::type;
+
+        if (scratch_id_ < 0)
+            throw std::runtime_error(
+                "MagneticRefinePatchStrategy: registerScratchID was not called before use");
+
+        auto const regionLayout = geometry_type::layoutFromBox(region, layout);
+        auto const shapes       = core::for_N_make_array<N>(
+            [&](auto i) { return layout.allocSize(fields[i].physicalQuantity()); });
+
+        auto const data = [&]() {
+            std::array<value_type*, N> ptrs;
+            if (fine.checkAllocated(scratch_id_))
+            {
+                auto& scratch = ScratchDataT::getFields(fine, scratch_id_);
+                for (std::size_t i = 0; i < N; ++i)
+                {
+                    if (core::product(shapes[i]) > scratch[i].size())
+                        throw std::runtime_error(
+                            "MagneticRefinePatchStrategy: scratch field too small");
+                    ptrs[i] = scratch[i].data();
+                }
+                return ptrs;
+            }
+            auto& buffer = tmp.get_no_copy(
+                core::sum_from(shapes, [](auto const& shape) { return core::product(shape); }));
+            for (std::size_t i = 0, offset = 0; i < N; offset += core::product(shapes[i++]))
+                ptrs[i] = buffer.data() + offset;
+            return ptrs;
+        }();
+
+        auto const boxes = core::for_N_make_array<N>([&](auto i) {
+            auto const qty              = fields[i].physicalQuantity();
+            using PhysicalQuantity      = std::decay_t<decltype(qty)>;
+            auto const region_field_box = phare_box_from<dimension>(
+                FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(region, qty,
+                                                                             regionLayout));
+            return *(grow(region_field_box, 1) * layout.AMRGhostBoxFor(qty));
+        });
+
+        auto views = core::for_N_make_array<N>(
+            [&](auto i) { return View_t{fields[i].physicalQuantity(), data[i], shapes[i]}; });
+
+        for (std::size_t i = 0; i < N; ++i)
+            core::gather_owned(fields[i], boxes[i], views[i],
+                               layout.AMRGhostBoxFor(fields[i].physicalQuantity()).lower);
+
+        touchUpInteriorFaces(views, layout, region, scratch_);
+
+        for (std::size_t i = 0; i < N; ++i)
+            core::scatter_to_tiles(views[i],
+                                   layout.AMRGhostBoxFor(fields[i].physicalQuantity()).lower,
+                                   boxes[i], fields[i]);
     }
 
 
@@ -462,7 +548,11 @@ private:
         return d;
     }
 
+    int scratch_id_ = -1;
     DivScratch scratch_;
+
+    using value_type = VecFieldDataT::value_type;
+    static inline core::MinimizingVector<value_type> tmp; // SAMRAI temporary patches
 };
 
 } // namespace PHARE::amr

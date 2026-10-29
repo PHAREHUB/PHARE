@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import time as timem
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -98,6 +99,7 @@ class Simulator:
         from pyphare.simulator import _simulator
 
         _simulator.obj = self
+        self.cpp_lib = None
 
     def __del__(self):
         self.reset()
@@ -121,8 +123,6 @@ class Simulator:
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
             return self
         except Exception as e:  # see #1434
-            import traceback
-
             print(f'Exception caught in "Simulator.setup()": {sys.exc_info()}')
             print(traceback.format_exc())
             raise ValueError("Error in Simulator.setup(), see previous error") from e
@@ -143,12 +143,13 @@ class Simulator:
             return self
         except Exception as e:  # see #1434
             print(f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}')
+            print(traceback.format_exc())
             raise ValueError(
                 "Error in Simulator.initialize(), see previous error"
             ) from e
 
     def advance(self):
-        self._check_init()
+        self._check_setup()
         if self.simulation.dry_run:
             return self
 
@@ -183,17 +184,15 @@ class Simulator:
            ``PHARE_SIM_MON`` environment variable if left None. Requires the optional ``phlop`` package
            (``python3 -m pip install phlop``); silently does nothing if it isn't installed.
         """
-
-        self._check_init()
+        if not self.initialized:
+            self.initialize()
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
-
         if self.simulation.dry_run:
             return self
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -209,6 +208,7 @@ class Simulator:
             perf.append(ticktock)
             tot += ticktock
             t = self.cpp_sim.currentTime()
+
             if cpp.mpi_rank() == 0:
                 delta = datetime.timedelta(seconds=tot)
                 print(
@@ -225,7 +225,7 @@ class Simulator:
             plot_timestep_time(perf)
 
         mon.monitoring_shutdown()
-        return self.reset()
+        return self
 
     def dump(self, *args):
         # do diagnostics/restarts dump if active at this time
@@ -287,13 +287,18 @@ class Simulator:
         self.initialized = True
         return self
 
-    def _check_init(self):
-        if not self.initialized:
-            self.initialize()
-
     def _check_setup(self):
         if not self.cpp_sim:
             self.setup()
+
+    def print_summary(self):
+        summary = self.summary()  # NO DEADLOCK!
+        if cpp.mpi_rank() == 0:
+            print("SUMMARY:", summary)
+
+    def summary(self):
+        self._check_setup()
+        return self.cpp_sim.summary()
 
     def _log_to_file(self):
         """

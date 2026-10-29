@@ -127,11 +127,8 @@ private:
         }
         else if constexpr (std::is_same_v<Strategy, MHDMessenger<MHDModel>>)
         {
-            auto& mhdCoarseModel      = dynamic_cast<MHDModel const&>(coarseModel);
-            auto& mhdResourcesManager = mhdCoarseModel.resourcesManager;
-            auto& mhdBoundaryManager  = mhdCoarseModel.boundaryManager;
-            return std::make_unique<Strategy>(mhdResourcesManager, mhdBoundaryManager, firstLevel,
-                                              refinementConfig_);
+            auto& mhdModel = dynamic_cast<MHDModel&>(coarseModel);
+            return std::make_unique<Strategy>(mhdModel, firstLevel, refinementConfig_);
         }
 
         return {};

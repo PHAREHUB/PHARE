@@ -38,6 +38,7 @@ SamraiLifeCycle::~SamraiLifeCycle()
 
 void SamraiLifeCycle::reset()
 {
+    PHARE_WITH_PHLOP(phlop::reset_scope_timer());
     PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::startup();

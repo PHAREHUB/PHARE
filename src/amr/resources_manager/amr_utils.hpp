@@ -3,6 +3,7 @@
 
 
 #include "core/def.hpp"
+#include "core/logger.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "mpi/mpi_utils.hpp"
 #include "core/utilities/types.hpp"
@@ -16,6 +17,7 @@
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/hier/BoxOverlap.h>
@@ -33,6 +35,15 @@ namespace amr
     using core::dirY;
     using core::dirZ;
 
+    template<typename T, std::size_t dim>
+    core::Box<std::uint32_t, dim> AMRToLocal(core::Box<T, dim> const& AMRBox,
+                                             core::Box<T, dim> const& referenceAMRBox)
+    {
+        return {(AMRBox.lower - referenceAMRBox.lower).as_unsigned(),
+                (AMRBox.upper - referenceAMRBox.lower).as_unsigned()};
+    }
+
+
     /**
      * @brief offsetIsZero_ returns true of the transformation has zero offset
      */
@@ -45,13 +56,6 @@ namespace amr
      */
     NO_DISCARD bool isSameBlock(SAMRAI::hier::Transformation const& transformation);
 
-
-
-    /**
-     * @brief AMRToLocal sets the AMRBox to local indexing relative to the referenceAMRBox
-     */
-    SAMRAI::hier::Box& AMRToLocal(SAMRAI::hier::Box& AMRBox,
-                                  SAMRAI::hier::Box const& referenceAMRBox);
 
 
 
@@ -75,6 +79,14 @@ namespace amr
      * local index relative to referenceAMRBox
      */
     NO_DISCARD SAMRAI::hier::IntVector localToAMRVector(SAMRAI::hier::Box const& referenceAMRBox);
+
+
+    template<std::size_t dim>
+    NO_DISCARD SAMRAI::hier::Box grow(SAMRAI::hier::Box const& box, int const by)
+    {
+        return SAMRAI::hier::Box::grow(box,
+                                       SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim}, by});
+    }
 
 
     /**
@@ -203,6 +215,18 @@ namespace amr
         };
     }
 
+    // a layout stored at allocation must have the patch's mesh size, if the patch has a geometry
+    //  (temporary patches don't), see FieldLayoutData
+    template<typename GridLayoutT>
+    void assert_layout_matches(SAMRAI::hier::Patch const& patch, GridLayoutT const& layout)
+    {
+        if (auto const geom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
+                patch.getPatchGeometry()))
+            for (std::size_t d = 0; d < GridLayoutT::dimension; ++d)
+                if (geom->getDx()[d] != layout.meshSize()[d])
+                    throw std::runtime_error("stored layout mesh size differs from its patch's");
+    }
+
 
 
     // same-level neighbour boxes of all local patches of level `ilvl`, including periodic images
@@ -211,6 +235,18 @@ namespace amr
     {
         return SAMRAI::hier::HierarchyNeighbors{hierarchy, ilvl, ilvl};
     }
+
+    NO_DISCARD auto inline getSameLevelNeighbors(SAMRAI::hier::Patch const& patch,
+                                                 SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                                 int const width = 1)
+    { // with 1 == immediate neighbors no ghost box
+        auto const lvlNbr                 = patch.getPatchLevelNumber();
+        bool constexpr do_same_level_nbrs = true;
+        return SAMRAI::hier::HierarchyNeighbors{hierarchy, lvlNbr, lvlNbr, do_same_level_nbrs,
+                                                width}
+            .getSameLevelNeighbors(patch.getBox(), lvlNbr);
+    }
+
 
 
     // potentially to replace with SAMRAI coarse to fine boundary stuff
@@ -225,13 +261,12 @@ namespace amr
         auto const particleGhostBox    = grow(domBox, GridLayoutT::options.particle_ghost_width);
 
         auto const& neighbor_boxes = neighbors.getSameLevelNeighbors(domain, lvlNbr);
-        std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
+        std::vector<core::Box<int, dimension>> patchGhostLayerBoxes;
         patchGhostLayerBoxes.reserve(neighbor_boxes.size() + 1);
         patchGhostLayerBoxes.emplace_back(domBox);
         for (auto const& neighbox : neighbor_boxes)
             patchGhostLayerBoxes.emplace_back(
                 *(particleGhostBox * phare_box_from<dimension>(neighbox)));
-
         return patchGhostLayerBoxes;
     }
 
@@ -273,11 +308,18 @@ namespace amr
     }
 
 
-    inline auto to_string(auto const& id)
+    template<typename GridLayoutT>
+    NO_DISCARD auto patchGhostBoxOverlaps(SAMRAI::hier::Patch const& patch,
+                                          SAMRAI::hier::PatchHierarchy const& hierarchy)
     {
-        std::stringstream patchID;
-        patchID << id;
-        return patchID.str();
+        auto constexpr dimension    = GridLayoutT::dimension;
+        auto const domBox           = phare_box_from<dimension>(patch.getBox());
+        auto const particleGhostBox = grow(domBox, GridLayoutT::options.particle_ghost_width);
+        return core::generate_from(
+            [&](auto& neighbox) {
+                return *(particleGhostBox * phare_box_from<dimension>(neighbox));
+            },
+            getSameLevelNeighbors(patch, hierarchy));
     }
 
     template<typename GridLayout, typename ResMan, typename Action, typename... Args>
@@ -287,8 +329,18 @@ namespace amr
         {
             auto guard        = resman.setOnPatch(*patch, args...);
             GridLayout layout = layoutFromPatch<GridLayout>(*patch);
-            action(layout, to_string(patch->getGlobalId()),
+            action(layout, core::to_string(patch->getGlobalId()),
                    static_cast<std::size_t>(level.getLevelNumber()));
+        }
+    }
+
+    template<typename ResMan, typename Action, typename... Args>
+    void visitLevel(SAMRAI_Types::level_t& level, ResMan& resman, Action&& action, Args&&... args)
+    {
+        for (auto& patch : level)
+        {
+            auto guard = resman.setOnPatch(*patch, args...);
+            action();
         }
     }
 
