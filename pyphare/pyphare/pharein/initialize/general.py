@@ -188,6 +188,10 @@ def populate_restarts(dp, sim, serialized_sim):
         dp.add_vector_int(
             restarts_path + "restart_ids", _patch_data_ids(restart_file_load_path)
         )
+        dp.add_string(
+            restarts_path + "file_resources_hash",
+            _resources_hash(restart_file_load_path),
+        )
         dp.add_string(restarts_path + "loadPath", restart_file_load_path)
         dp.add_double(restarts_path + "restart_time", restart_time)
 
@@ -240,3 +244,9 @@ def _serialized_simulation_string(restart_file_dir):
     from pyphare.cpp import cpp_etc_lib
 
     return cpp_etc_lib().serialized_simulation_string(restart_file_dir)
+
+
+def _resources_hash(restart_file_dir):
+    from pyphare.cpp import cpp_etc_lib
+
+    return cpp_etc_lib().resources_hash(restart_file_dir)
