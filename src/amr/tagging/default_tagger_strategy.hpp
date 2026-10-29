@@ -106,6 +106,12 @@ void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layo
             else
                 tagsv(iCell) = 0;
         }
+
+        // the skipped last cell must still be written: SAMRAI pre-sets to 1 the tags of cells
+        // covered by the existing finer level, so leaving it untouched would keep it refined
+        // forever once a refined region has covered it
+        if constexpr (!doLastCell)
+            tagsv(end_x) = 0;
     }
     if constexpr (dimension == 2)
     {

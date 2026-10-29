@@ -40,6 +40,48 @@ TEST(test_tagger, fromFactoryInvalid)
 }
 
 
+// minimal model for the tagger: only the magnetic field is read
+struct UniformBModel
+{
+    using gridlayout_type
+        = PHARE::core::PHARE_Types<PHARE::SimOpts{1ul, 1ul}>::Hybrid::GridLayout_t;
+    static constexpr std::size_t dimension            = 1;
+    static constexpr std::string_view model_type_name = "HybridModel";
+    struct
+    {
+        struct
+        {
+            UsableVecField<dimension>& B;
+        } electromag;
+    } state;
+};
+
+TEST(test_tagger, everyCellIsWrittenIn1D)
+{
+    // SAMRAI pre-sets to 1 the tags of cells covered by the existing finer level before calling
+    // the tagger, so every cell must be overwritten or it stays refined forever.
+    // At interp order 1 the last cell of the patch is not evaluated: it must still be reset.
+    auto static constexpr dim = UniformBModel::dimension;
+    using GridLayoutT         = UniformBModel::gridlayout_type;
+
+    std::uint32_t constexpr nCells = 20;
+    auto layout                    = TestGridLayout<GridLayoutT>::make(nCells);
+    UsableVecField<dim> B{"EM_B", layout, HybridQuantity::Vector::B}; // uniform (zero) field
+
+    UniformBModel model{{{B}}};
+
+    PHARE::initializer::PHAREDict dict;
+    dict["threshold"] = 0.1;
+    DefaultTaggerStrategy<UniformBModel> tagger{dict};
+
+    std::vector<int> tags(nCells, 1); // as if a finer level covered the whole patch
+    tagger.tag(model, layout, tags.data());
+
+    for (std::size_t iCell = 0; iCell < nCells; ++iCell)
+        EXPECT_EQ(tags[iCell], 0) << "cell " << iCell;
+}
+
+
 using Param   = PHARE::core::Span<double const>;
 using RetType = std::shared_ptr<PHARE::core::Span<double>>;
 
