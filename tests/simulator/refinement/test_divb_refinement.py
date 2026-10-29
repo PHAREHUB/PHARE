@@ -63,14 +63,14 @@ FINE_BOX = [[4, 16], [15, 31]]
 # must stay absolutely tiny and not amplify what it inherits. Both arms must hold.
 #
 # Measured floors, float64 diagnostics, 1 to 4 ranks, both modes:
-#   boxes  : coarse ~7.0e-16,            fine 1.9e-15 .. 2.8e-15,  ratio 2.77 .. 3.98
-#   tagging: coarse 2.1e-15 .. 2.6e-15,  fine 9.2e-15 .. 1.4e-14,  ratio 3.77 .. 5.33
-# The run is deterministic for a given rank count (the per-rank particle seed is fixed), and
-# the spread above is what changing the decomposition moves. Dumped at float32 instead, the
+#   boxes  : coarse 6.8e-16 .. 6.9e-16,  fine 2.8e-15 .. 2.9e-15,  ratio 4.11 .. 4.18
+#   tagging: coarse 2.1e-15 .. 2.5e-15,  fine 8.7e-15 .. 1.2e-14,  ratio 3.90 .. 5.05
+# The initial particles do not depend on the rank count (fixed seed, one random stream per
+# cell); the spread above is what changing the decomposition moves. Dumped at float32 instead, the
 # write precision alone puts the fine level at ~4.3e-07 -- which is why the test skips rather
 # than measure the dump format.
 #
-# ABS_CAP is the arm with teeth: ~7x above the worst measured fine value, and still ~12 orders
+# ABS_CAP is the arm with teeth: ~8x above the worst measured fine value, and still ~12 orders
 # below the O(B/dx) spike, so it catches a touch-up that is merely approximate long before one
 # that is wrong. REL_TOL keeps ~2x over the worst measured ratio and catches what the cap
 # cannot: a 100x amplification of a 1e-15 floor is still under ABS_CAP.
@@ -161,7 +161,7 @@ def config(mode, order, diag_dir):
             "vthy": thermal,
             "vthz": thermal,
             "nbr_part_per_cell": 30,
-            "init": {"seed": cpp.mpi_rank() + 12},
+            "init": {"seed": 12},
         },
     )
     ph.ElectronModel(closure="isothermal", Te=0.0)

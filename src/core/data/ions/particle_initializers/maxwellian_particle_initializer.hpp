@@ -3,12 +3,15 @@
 
 #include <memory>
 #include <random>
+#include <string>
 #include <cassert>
+#include <cstdint>
 #include <functional>
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/random.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer.hpp"
 #include "core/data/particles/particle.hpp"
 #include "initializer/data_provider.hpp"
@@ -18,8 +21,18 @@
 
 namespace PHARE::core
 {
+template<typename Generator>
 void maxwellianVelocity(std::array<double, 3> const& V, std::array<double, 3> const& Vth,
-                        std::mt19937_64& generator, std::array<double, 3>& partVelocity);
+                        Generator& generator, std::array<double, 3>& partVelocity)
+{
+    std::normal_distribution<> maxwellX(V[0], Vth[0]);
+    std::normal_distribution<> maxwellY(V[1], Vth[1]);
+    std::normal_distribution<> maxwellZ(V[2], Vth[2]);
+
+    partVelocity[0] = maxwellX(generator);
+    partVelocity[1] = maxwellY(generator);
+    partVelocity[2] = maxwellZ(generator);
+}
 
 
 std::array<double, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
@@ -30,6 +43,12 @@ void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3
 
 /** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
  * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
+ *
+ * Each cell draws its particles from its own generator, keyed by (seed, population name, level,
+ * global AMR cell index), so a seeded load does not depend on the patch tiling, the number of
+ * MPI ranks or the load balancing. Without a seed, the key base is drawn from std::random_device.
+ * Seeded values are reproducible for a given standard library only, since the std distributions
+ * used to draw positions and velocities are implementation-defined.
  */
 template<typename ParticleArray, typename GridLayout>
 class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
@@ -38,15 +57,13 @@ public:
     static constexpr auto dimension = GridLayout::dimension;
     using InputFunction             = initializer::InitFunction<dimension>;
 
-    MaxwellianParticleInitializer(InputFunction density,
-                                  std::array<InputFunction, 3> const& bulkVelocity,
-                                  std::array<InputFunction, 3> const& thermalVelocity,
-                                  std::uint32_t const& nbrParticlesPerCell,
-                                  std::optional<std::size_t> seed = {},
-                                  Basis const basis               = Basis::Cartesian,
-                                  std::array<InputFunction, 3> const& magneticField
-                                  = {nullptr, nullptr, nullptr},
-                                  double densityCutOff = 1e-5)
+    MaxwellianParticleInitializer(
+        InputFunction density, std::array<InputFunction, 3> const& bulkVelocity,
+        std::array<InputFunction, 3> const& thermalVelocity,
+        std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
+        Basis const basis                                 = Basis::Cartesian,
+        std::array<InputFunction, 3> const& magneticField = {nullptr, nullptr, nullptr},
+        double densityCutOff = 1e-5, std::string const& populationName = "")
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}
@@ -55,13 +72,13 @@ public:
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
         , rngSeed_{seed}
+        , populationKey_{fnv1a64(populationName)}
     {
     }
 
 
     /**
-     * @brief load pacore
-} // namespace PHARErticles in a ParticleArray in a domain defined by the given layout
+     * @brief load particles in a ParticleArray in a domain defined by the given layout
      */
     void loadParticles(ParticleArray& particles, GridLayout const& layout) const override;
 
@@ -69,16 +86,12 @@ public:
     virtual ~MaxwellianParticleInitializer() = default;
 
 
-    NO_DISCARD static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
+    NO_DISCARD static std::uint64_t baseSeed(std::optional<std::size_t> const& seed)
     {
-        if (!seed.has_value())
-        {
-            std::random_device randSeed;
-            std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
-                                   randSeed(), randSeed(), randSeed(), randSeed()};
-            return std::mt19937_64(seed_seq);
-        }
-        return std::mt19937_64(*seed);
+        if (seed.has_value())
+            return *seed;
+        std::random_device randSeed;
+        return (std::uint64_t{randSeed()} << 32) ^ std::uint64_t{randSeed()};
     }
 
 private:
@@ -92,6 +105,7 @@ private:
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
     std::optional<std::size_t> rngSeed_;
+    std::uint64_t populationKey_;
 };
 
 
@@ -164,8 +178,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
                    cellCoords)));
 
     auto const [n, V, Vth] = fns();
-    auto randGen           = getRNG(rngSeed_);
-    ParticleDeltaDistribution<double> deltaDistrib;
+    auto const seed        = baseSeed(rngSeed_);
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
     {
@@ -174,6 +187,8 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
 
         auto const cellWeight = n[flatCellIdx] / nbrParticlePerCell_;
         auto const iCell      = icell(flatCellIdx, ndCellIndices);
+        SplitMix64 randGen{cell_key(seed, populationKey_, layout.levelNumber(), iCell)};
+        ParticleDeltaDistribution<double> deltaDistrib;
         std::array<double, 3> particleVelocity;
         std::array<std::array<double, 3>, 3> basis;
 
