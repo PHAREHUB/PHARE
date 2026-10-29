@@ -9,6 +9,7 @@
 #include "particle_initializer.hpp"
 
 #include <memory>
+#include <string>
 
 namespace PHARE
 {
@@ -23,7 +24,7 @@ namespace core
 
     public:
         NO_DISCARD static std::unique_ptr<ParticleInitializerT>
-        create(initializer::PHAREDict const& dict)
+        create(initializer::PHAREDict const& dict, std::string const& populationName = "")
         {
             using FunctionType = initializer::InitFunction<dimension>;
 
@@ -66,7 +67,7 @@ namespace core
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, v, vth, nbrPartPerCell, seed, Basis::Cartesian, magneticField,
-                        densityCutOff);
+                        densityCutOff, populationName);
                 }
                 else if (basisName == "magnetic")
                 {
@@ -77,7 +78,7 @@ namespace core
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, v, vth, nbrPartPerCell, seed, Basis::Magnetic, magneticField,
-                        densityCutOff);
+                        densityCutOff, populationName);
                 }
             }
             // TODO throw?

@@ -73,7 +73,7 @@ class MaxwellianFluidModel:
         * **vthx**, **vthy**, **vthz** (*function or number*), default=1, thermal velocity profile, per direction.
         * **nbr_part_per_cell** (``int``), default=100, number of macro-particles loaded per cell for this population.
         * **density_cut_off** (``float``), default=1e-16, cells where `density` evaluates below this value are not populated with particles.
-        * **init** (``dict``), optional ``{"seed": <int>}`` to fix the random seed used to draw this population's particle positions/velocities (default: unseeded, i.e. different particles on every run).
+        * **init** (``dict``), optional ``{"seed": <int>}`` to fix the random seed used to draw this population's particle positions/velocities (default: unseeded, i.e. different particles on every run). Each cell draws from its own stream, keyed by the seed, the population name and the cell, so a seeded run gives the same particles whatever the patch layout or number of MPI ranks (for a given compiler and standard library). Two populations with the same seed still get different particles, and renaming a population changes its particles.
 
     All profile functions (`density`, `vbulk*`, `vth*`, and `bx`/`by`/`bz` above)
     take the spatial coordinates as arguments and must return a value (or an
