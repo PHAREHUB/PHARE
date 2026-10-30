@@ -172,6 +172,8 @@ public:
 
     NO_DISCARD VecField& getE() const { return this->model_.state.electromag.E; }
 
+    NO_DISCARD VecField& getB0() const { return this->model_.externalFieldManager.field().B0(); }
+
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
     auto& tmpField() { return tmpField_; }
@@ -304,6 +306,11 @@ public:
 
     NO_DISCARD const VecField& getB() const { return this->model_.state.B; }
 
+    NO_DISCARD const VecField& getB0() const
+    {
+        return this->model_.externalFieldManager.field().B0();
+    }
+
     NO_DISCARD const Field& getEtot() const { return this->model_.state.Etot; }
 
     NO_DISCARD const VecField& getE() const
@@ -317,6 +324,8 @@ public:
     NO_DISCARD VecField& getRhoV() { return this->model_.state.rhoV; }
 
     NO_DISCARD VecField& getB() { return this->model_.state.B; }
+
+    NO_DISCARD VecField& getB0() { return this->model_.externalFieldManager.field().B0(); }
 
     NO_DISCARD Field& getEtot() { return this->model_.state.Etot; }
 

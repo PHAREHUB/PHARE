@@ -308,6 +308,7 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 
     hyb_.model_ = std::make_shared<HybridModel>(dict["simulation"], hyb_.resman_);
     hyb_.resman_->registerResources(hyb_.model_->state); // still valid, never moved
+    hyb_.resman_->registerResources(hyb_.model_->externalFieldManager.field());
 
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
@@ -344,6 +345,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 
     mhd_.model_ = std::make_shared<MHDModel>(dict["simulation"], mhd_.resman_);
     mhd_.resman_->registerResources(mhd_.model_->state);
+    mhd_.resman_->registerResources(mhd_.model_->externalFieldManager.field());
 
     // we register the mhd model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver

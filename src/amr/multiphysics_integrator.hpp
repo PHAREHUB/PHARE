@@ -374,18 +374,23 @@ namespace solver
             if (!restartInitialized_ and SamraiLifeCycle::getRestartManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
+                auto const time = dict_["restarts"]["restart_time"].template to<double>();
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
                 {
                     messenger.registerLevel(hierarchy, ilvl);
 
-                    auto level = hierarchy->getPatchLevel(ilvl);
+                    auto& model = getModel_(ilvl);
+                    auto level  = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
                     {
-                        auto time = dict_["restarts"]["restart_time"].template to<double>();
                         load_balancer_manager_->allocate(*patch, time);
+                        model.allocate(*patch, time);
                     }
+
+                    model.initializeExternalField(*level, time);
+
                     // if load balance on restart advance
-                    load_balancer_manager_->estimate(*level, getModel_(ilvl));
+                    load_balancer_manager_->estimate(*level, model);
                 }
                 restartInitialized_ = true;
             }
