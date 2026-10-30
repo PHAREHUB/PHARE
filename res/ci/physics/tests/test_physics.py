@@ -330,9 +330,7 @@ class ExtractTest(unittest.TestCase):
 class HistoryTest(unittest.TestCase):
     SHA = "a" * 40
 
-    def part(
-        self, status="ok", agent="text", rc=0, passed=None, dstatus="ok", numbers=None
-    ):
+    def part(self, rc=0, passed=None, dstatus="ok", numbers=None):
         deck = {
             "name": "d",
             "figures": [],
@@ -344,15 +342,14 @@ class HistoryTest(unittest.TestCase):
         }
         return {
             "job": "hybrid",
-            "meta": {"agent_status": status, "agent_reason": "quota", "sha": self.SHA},
+            "meta": {"sha": self.SHA},
             "summary": {"decks_exit_code": rc, "decks": [deck]},
-            "agent": agent,
         }
 
-    def rec(self, part=None, cfg=None, model=("looks right", "fine")):
+    def rec(self, part=None, cfg=None):
         part = part or self.part()
         deck = (part.get("summary") or {}).get("decks", [None])[0]
-        return history.test_record(deck, cfg or {}, part, model)
+        return history.test_record(deck, cfg or {}, part)
 
     def hist(self, *statuses, passed=None, manual=False):
         out = []
@@ -364,75 +361,67 @@ class HistoryTest(unittest.TestCase):
 
     def test_status_order(self):
         """The first matching rule wins (history.test_record)."""
-        ok = ("looks right", "fine")
-        for part, cfg, model, want in (
+        inside, outside = (
+            {"within_deck_tolerance": True},
+            {"within_deck_tolerance": False},
+        )
+        for part, cfg, want in (
             (
                 self.part(passed=False, dstatus="output missing"),
                 {},
-                ok,
                 ("own check failed", None),
             ),
             (
                 {"job": "hybrid", "missing": True},
                 {},
-                ok,
                 ("not run", "the hybrid job left no results tonight"),
             ),
-            (
-                self.part(dstatus="output missing"),
-                {},
-                ok,
-                ("not run", "output missing"),
-            ),
+            (self.part(dstatus="output missing"), {}, ("not run", "output missing")),
             (
                 self.part(dstatus="extract error <b>"),
                 {},
-                ok,
                 ("no data", "extract error <b>"),
             ),
             (
                 self.part(dstatus="stale output ignored"),
                 {},
-                ok,
                 ("no data", "stale output ignored"),
             ),
+            (self.part(numbers=outside), {}, ("out of tolerance", None)),
+            (self.part(numbers=inside), {}, ("within tolerance", None)),
+            (
+                self.part(rc=1, passed=True, numbers=inside),
+                {},
+                ("within tolerance", None),
+            ),
+            (self.part(), {}, ("eye check", None)),
             (
                 self.part(),
                 {"judge": False, "judge_reason": "why"},
-                ok,
-                ("not judged", "why"),
+                ("eye check", "why"),
             ),
-            (self.part(status="unavailable"), {}, ok, ("no analysis", "quota")),
-            (self.part(agent=""), {}, ok, ("no analysis", "quota")),
-            (self.part(), {}, ("suspicious", "x"), ("suspicious", None)),
-            (self.part(), {}, None, ("cannot tell", None)),
-            (self.part(), {}, ("bogus", "x"), ("cannot tell", None)),
-            (self.part(), {}, ("own check failed", "x"), ("cannot tell", None)),
-            (self.part(rc=1, passed=True), {}, ok, ("looks right", None)),
+            # a tolerance flag that is not a bool says nothing
+            (self.part(numbers={"within_deck_tolerance": 1}), {}, ("eye check", None)),
         ):
-            r = self.rec(part, cfg, model)
+            r = self.rec(part, cfg)
             self.assertEqual((r["status"], r["reason"]), want)
         self.assertEqual(
-            history.test_record(None, {}, self.part(), ok)["status"], "not run"
+            history.test_record(None, {}, self.part())["status"], "not run"
         )
 
     def test_a_failed_tests_step_is_never_green(self):
-        for model in (("looks right", ""), ("cannot tell", ""), None, ("bogus", "")):
-            r = self.rec(self.part(rc=137), model=model)
-            self.assertEqual(
-                (r["status"], r["reason"]),
-                ("own check unknown", "tests step failed (exit 137)"),
-                model,
-            )
-        r = self.rec(self.part(rc=137), model=("suspicious", "x"))
+        r = self.rec(self.part(rc=137, numbers={"within_deck_tolerance": True}))
         self.assertEqual(
-            (r["status"], r.get("own_check_unknown")), ("suspicious", True)
+            (r["status"], r["reason"]),
+            ("own check unknown", "tests step failed (exit 137)"),
         )
-        r = self.rec(self.part(status="unavailable", rc=137))
-        self.assertEqual(
-            (r["status"], r.get("own_check_unknown")), ("no analysis", True)
-        )
-        self.assertNotIn("own_check_unknown", self.rec(self.part(status="unavailable")))
+        for numbers, status in (
+            ({"within_deck_tolerance": False}, "out of tolerance"),
+            ({}, "eye check"),
+        ):
+            r = self.rec(self.part(rc=137, numbers=numbers))
+            self.assertEqual((r["status"], r.get("own_check_unknown")), (status, True))
+        self.assertNotIn("own_check_unknown", self.rec(self.part()))
 
     def test_since_new_tonight_and_prev_sha(self):
         for statuses, since, new in (
@@ -1252,9 +1241,8 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(meta["agent_reason"], "PermissionError before the agent ran")
         caps = {d["name"]: 6 for d in decks.job(decks.load(), "mhd")}
         part = publish.read_part(self.last_out, "mhd", caps)
-        self.assertEqual(part["agent"], "")  # the agent never ran
         deck = next(d for d in part["summary"]["decks"] if d["name"] == "convergence")
-        rec = history.test_record(deck, decks.job(decks.load(), "mhd")[0], part, None)
+        rec = history.test_record(deck, decks.job(decks.load(), "mhd")[0], part)
         self.assertEqual(rec["status"], "own check failed")
         with unittest.mock.patch.object(
             judge, "last_block", side_effect=RuntimeError("boom")
@@ -1321,7 +1309,7 @@ class PageTest(unittest.TestCase):
             "tests": tests,
         }
 
-    def part(self, names, sections=None, exit_code=0, figures=None):
+    def part(self, names, exit_code=0, figures=None):
         return {
             "job": "hybrid",
             "missing": False,
@@ -1333,7 +1321,6 @@ class PageTest(unittest.TestCase):
                     for n in names
                 ],
             },
-            "sections": sections or {},
         }
 
     def render(
@@ -1365,19 +1352,15 @@ class PageTest(unittest.TestCase):
             self.night(
                 "2026-10-28",
                 {
-                    "a": self.rec("looks right", key=0.0875, reason="fine"),
-                    "b": self.rec("suspicious", key=0.5),
-                    "c": self.rec("not judged", reason="why not"),
+                    "a": self.rec("within tolerance", key=0.0875, reason="fine"),
+                    "b": self.rec("out of tolerance", key=0.5),
+                    "c": self.rec("eye check", reason="why not"),
                     "d": self.rec("not run"),
                 },
             )
         ]
         parts = [
-            self.part(
-                names,
-                sections={n: ("looks right", f"theory of {n}") for n in names},
-                figures={n: [f"{n}__1.png", f"{n}__2.png"] for n in names},
-            )
+            self.part(names, figures={n: [f"{n}__1.png", f"{n}__2.png"] for n in names})
         ]
         dc = self.deck_cfg(names, a={"own_check": "none"}, b={"own_check": "none"})
         out = self.render(hist, names, parts, deck_cfg=dc)
@@ -1395,9 +1378,8 @@ class PageTest(unittest.TestCase):
         loud = out[: out.index('<div class="quiet">')]
         self.assertIn('class="big"', loud)
         self.assertNotIn('class="big"', quiet)
-        self.assertIn("theory of b", loud)
-        self.assertNotIn("theory of a", out)  # no model text on a test that looks right
-        self.assertIn('<div class="analysis">theory of c</div>', quiet)
+        self.assertIn("⚠ b", loud)
+        self.assertIn("○ c", quiet)
         self.assertEqual(quiet.count("<img"), 3)  # a card shows its first figure only
         for want in (
             "gamma = 0.5",
@@ -1439,13 +1421,7 @@ class PageTest(unittest.TestCase):
         ]
         hist[1]["run"]["time"] = evil
         figures = [f"a__{evil}.png", f"a__{evil}.mp4"]
-        parts = [
-            self.part(
-                ["a", "b"],
-                sections={"a": ("suspicious", evil)},
-                figures={"a": figures, "b": figures},
-            )
-        ]
+        parts = [self.part(["a", "b"], figures={"a": figures, "b": figures})]
         out = self.render(
             hist, ["a", "b"], parts, notes=[evil], cfg=self.cfg(model=evil)
         )
@@ -1466,14 +1442,6 @@ class PageTest(unittest.TestCase):
         for raw in ('<img src="//evil', 'onload="', '<a href="//evil'):
             self.assertNotIn(raw, out)
         self.assertEqual(out.count("<script>"), 1)
-
-    def test_model_text_cap(self):
-        hist = [self.night("2026-10-28", {"a": self.rec("suspicious")})]
-        parts = [self.part(["a"], sections={"a": ("suspicious", "y" * 10000)})]
-        out = self.render(hist, ["a"], parts)
-        run = max(len(m) for m in re.findall(r"y+(?: \[…\])?", out))
-        self.assertLessEqual(run, 4000 + len(" […]"))
-        self.assertIn("[…]", out)
 
     def test_dots(self):
         hist = [
@@ -1569,10 +1537,8 @@ class PageTest(unittest.TestCase):
                 {"a": self.rec("own check unknown", own_check_unknown=True)},
             )
         ]
-        said = {"a": ("looks right", "the model's reading")}
-        out = self.render(hist, ["a"], [self.part(["a"], said, exit_code=3)])
+        out = self.render(hist, ["a"], [self.part(["a"], exit_code=3)])
         self.assertIn("hybrid tests step failed (exit 3): own checks unknown", out)
-        self.assertIn('<div class="analysis">the model&#x27;s reading</div>', out)
         self.assertEqual(out.count(">own check unknown</span>"), 1)
         ok = self.render(hist, ["a"], [self.part(["a"], exit_code=None)])
         self.assertNotIn("tests step failed", ok)
@@ -1580,21 +1546,23 @@ class PageTest(unittest.TestCase):
     def test_counts_follow_the_table(self):
         statuses = [
             "own check failed",
-            "suspicious",
-            "looks right",
-            "cannot tell",
-            "not judged",
-            "no analysis",
+            "out of tolerance",
+            "within tolerance",
+            "eye check",
             "own check unknown",
             "no data",
             "not run",
+            # older nights carry the model's verdicts
+            "suspicious",
+            "looks right",
+            "no analysis",
         ]
-        names = [f"t{i}" for i in range(9)]
+        names = [f"t{i}" for i in range(len(statuses))]
         hist = [
             self.night("2026-10-28", {n: self.rec(s) for n, s in zip(names, statuses)})
         ]
         out = self.render(hist, names)
-        self.assertIn("2 to look at · 1 fine · 5 can't tell · 1 not run", out)
+        self.assertIn("3 to look at · 2 fine · 4 to check by eye · 1 not run", out)
 
     def test_unrecorded_manual_run_draws_tonight(self):
         sched = self.night("2026-10-28", {"a": self.rec("looks right")})
@@ -1719,7 +1687,8 @@ class PublishTest(unittest.TestCase):
         self.addCleanup(env.stop)
         os.environ.pop("NIGHTLY_PAGE_TOKEN", None)
 
-    def write_job(self, job, decks_in, agent="", meta=None, status=None):
+    def write_job(self, job, decks_in, meta=None, status=None, numbers=None):
+        """A job's files as the nightly publishes them; numbers: {deck: its numbers}."""
         j = self.d / "in" / job
         j.mkdir(parents=True, exist_ok=True)
         (j / "meta.json").write_text(
@@ -1737,7 +1706,7 @@ class PublishTest(unittest.TestCase):
             {
                 "name": n,
                 "figures": [f"{n}__a.png"],
-                "numbers": {"gamma": 0.09},
+                "numbers": (numbers or {}).get(n, {"gamma": 0.09}),
                 "status": status,
             }
             for n in decks_in
@@ -1745,22 +1714,16 @@ class PublishTest(unittest.TestCase):
         (j / "summary.json").write_text(
             json.dumps({"decks_exit_code": 0, "decks": decks_out})
         )
-        (j / "agent.md").write_text(agent)
 
     def write_both(self, hybrid_meta=None, mhd_meta=None):
+        inside = {"gamma": 0.09, "within_deck_tolerance": True}
         self.write_job(
             "hybrid",
             ("ion_ion_beam1d", "td1d"),
-            "### ion_ion_beam1d\nVerdict: looks right\nall good\n",
             hybrid_meta,
+            numbers={"ion_ion_beam1d": inside},
         )
-        self.write_job(
-            "mhd",
-            ("convergence", "orszag_tang"),
-            "### convergence\nVerdict: suspicious\norder 1 not 3\n"
-            "### orszag_tang\nVerdict: looks right\nfine\n",
-            mhd_meta,
-        )
+        self.write_job("mhd", ("convergence", "orszag_tang"), mhd_meta)
 
     def edit_summary(self, job, change):
         p = self.d / "in" / job / "summary.json"
@@ -1789,8 +1752,7 @@ class PublishTest(unittest.TestCase):
         self.write_job(
             "mhd",
             ("convergence", "orszag_tang"),
-            "### convergence\nVerdict: suspicious\norder 1 not 3\n"
-            "### orszag_tang\nVerdict: own check failed\n",  # only the scripts can say so
+            numbers={"convergence": {"within_deck_tolerance": False}},
         )
         get = fake_teamcity(tc_nightly())
         self.assertEqual(self.main(get), 0)
@@ -1809,15 +1771,15 @@ class PublishTest(unittest.TestCase):
         self.assertEqual(
             status,
             {
-                "ion_ion_beam1d": "looks right",
-                "td1d": "not judged",
-                "convergence": "suspicious",
-                "orszag_tang": "cannot tell",
+                "ion_ion_beam1d": "within tolerance",
+                "td1d": "eye check",
+                "convergence": "out of tolerance",
+                "orszag_tang": "eye check",
             },
         )
         self.assertEqual(night["tests"]["ion_ion_beam1d"]["key"], 0.09)
         html = self.index()
-        self.assertIn("order 1 not 3", html)  # the abnormal test shows the model's text
+        self.assertIn('<section id="convergence" class="test abnormal">', html)
         self.assertIn(
             f"{TC_BASE}/guestAuth/repository/download/{HYB_TYPE}/11:id/"
             "publish/figures/ion_ion_beam1d__a.png",
@@ -1961,15 +1923,7 @@ class PublishTest(unittest.TestCase):
         self.assertFalse((self.site / "history.pending.json").exists())
 
     def test_notes_from_the_parts(self):
-        self.write_both(
-            hybrid_meta={
-                "agent_status": "unavailable",
-                "agent_reason": "timeout",
-                "unavailable_nights": 3,
-                "opencode_version": "1.19.0",
-                "not_given": ["a.png"],
-            }
-        )
+        self.write_both()
 
         def change(s):
             s["decks"][0]["freshness"] = "unknown"
@@ -1979,10 +1933,7 @@ class PublishTest(unittest.TestCase):
         self.main(fake_teamcity(tc_nightly()))
         html = self.index()
         for note in (
-            "agent unavailable 3 nights in a row (hybrid)",
             "freshness unknown: figures may be from an earlier run (hybrid)",
-            "OpenCode 1.19.0 differs from the pinned 1.18.32",
-            "not given to the agent (symlink or not a regular file): a.png",
             "number ion_ion_beam1d.bad key",
         ):
             self.assertIn(note, html)
@@ -2030,10 +1981,7 @@ class PublishTest(unittest.TestCase):
         self.write_job(
             "mhd",
             ("convergence", "orszag_tang"),
-            f'### convergence\nVerdict: suspicious\n<img src={evil}>\n<a href="{evil}">x</a>',
-            EVIL_META
-            | {"sha": SHA_DEF, "build_id": f'5"><img src="{evil}'}
-            | {"agent_reason": f'<img src="{evil}">'},
+            EVIL_META | {"sha": SHA_DEF, "build_id": f'5"><img src="{evil}'},
         )
 
         def change(s):
@@ -2073,35 +2021,13 @@ class PublishTest(unittest.TestCase):
     def test_clean_part_meta(self):
         meta = EVIL_META | {
             "build_id": '5"><img src="//evil.example/b.png">',
-            "agent_status": 'ok"><img src="//evil.example/s.png">',
-            "unavailable_nights": '9"><img src="//evil.example/u.png">',
             "sha": "A" * 40,  # not lower-case hex
-            "agent_reason": "r" * 500,
-            "not_given": ["n" * 500] + [f"f{i}" for i in range(30)],
         }
         out = publish.clean_part({"job": "mhd", "meta": meta, "summary": {}}, {})
-        clean = out["meta"]
-        self.assertEqual(
-            [
-                clean[k]
-                for k in ("build_id", "sha", "agent_status", "unavailable_nights")
-            ],
-            [None, None, None, 0],
-        )
-        self.assertEqual(clean["opencode_version"], "unknown")
-        self.assertEqual(len(clean["agent_reason"]), 200)
-        self.assertEqual(
-            (len(clean["not_given"]), len(clean["not_given"][0])), (20, 200)
-        )
-        self.assertTrue([d for d in out["dropped"] if "not_given" in d])
-        good = META | {"sha": SHA_ABC, "opencode_version": "1.19.0-beta.2"}
-        clean = publish.clean_part({"job": "mhd", "meta": good, "summary": {}}, {})[
-            "meta"
-        ]
-        self.assertEqual(
-            [clean[k] for k in ("build_id", "sha", "opencode_version", "agent_status")],
-            [5, SHA_ABC, "1.19.0-beta.2", "ok"],
-        )
+        self.assertEqual(out["meta"], {"build_id": None, "sha": None})
+        good = META | {"sha": SHA_ABC}
+        clean = publish.clean_part({"job": "mhd", "meta": good, "summary": {}}, {})
+        self.assertEqual(clean["meta"], {"build_id": 5, "sha": SHA_ABC})
 
     def test_clean_part_decks(self):
         figures = [
@@ -2171,44 +2097,26 @@ class PublishTest(unittest.TestCase):
         ):
             self.assertIn(bad, dropped)
 
-    def test_a_part_without_readable_meta_and_summary_is_missing(self):
+    def test_a_part_without_a_readable_summary_is_missing(self):
+        """meta.json is optional: only a job with a model step writes it."""
         with tempfile.TemporaryDirectory() as t:
             j = Path(t)
             for broken in ("meta.json", "summary.json"):
                 for text in (None, "{not json", "[1]"):
                     (j / "meta.json").write_text(json.dumps({"build_id": 5}))
                     (j / "summary.json").write_text(json.dumps({"decks": []}))
-                    self.assertFalse(publish.read_part(j, "mhd", {}).get("missing"))
+                    self.assertEqual(
+                        publish.read_part(j, "mhd", {})["meta"]["build_id"], 5
+                    )
                     if text is None:
                         (j / broken).unlink()
                     else:
                         (j / broken).write_text(text)
-                    self.assertEqual(
-                        publish.read_part(j, "mhd", {}), {"job": "mhd", "missing": True}
-                    )
-
-    def test_sections_keep_only_known_decks_and_strict_verdicts(self):
-        names = {"td1d", "orszag_tang"}
-        pre, secs = publish.sections(
-            "intro\n### td1d  \nVerdict: suspicious  \nx\n### other\nVerdict: looks right\n"
-            "### orszag_tang\nsomething else\n### td1d\nVerdict: looks right",
-            names,
-        )
-        self.assertEqual(pre, "intro")
-        self.assertEqual(
-            secs["td1d"], ("suspicious", "x\n### other\nVerdict: looks right")
-        )
-        self.assertEqual(secs["orszag_tang"][0], "cannot tell")
-        self.assertIn("something else", secs["orszag_tang"][1])
-        # only the scripts can say "own check failed"
-        _, secs = publish.sections("### td1d\nVerdict: own check failed\nx", names)
-        self.assertEqual(secs["td1d"][0], "cannot tell")
-        for sep in ("\u2028", "\x85", "\x0b", "\x1c"):  # str.splitlines splits on these
-            _, secs = publish.sections(
-                f"### td1d\nVerdict: suspicious\nx {sep}### orszag_tang{sep}Verdict: looks right",
-                names,
-            )
-            self.assertEqual(list(secs), ["td1d"], repr(sep))
+                    part = publish.read_part(j, "mhd", {})
+                    if broken == "summary.json":
+                        self.assertEqual(part, {"job": "mhd", "missing": True})
+                    else:
+                        self.assertEqual(part["meta"], {"build_id": None, "sha": None})
 
     # push
 

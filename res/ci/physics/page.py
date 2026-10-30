@@ -10,9 +10,11 @@ import history as hist
 
 COMMIT = "https://github.com/PHAREHUB/PHARE/commit/"
 COMPARE = "https://github.com/PHAREHUB/PHARE/compare/"
-MODEL_TEXT_CAP = 4000
 SLUGS = {
     "own check failed": "failed",
+    "out of tolerance": "suspicious",
+    "within tolerance": "ok",
+    "eye check": "eye-check",
     "suspicious": "suspicious",
     "looks right": "ok",
     "cannot tell": "cannot-tell",
@@ -22,7 +24,7 @@ SLUGS = {
     "no data": "no-data",
     "not run": "not-run",
 }
-ICONS = {"abnormal": "⚠", "nominal": "✓", "neutral": "?", "notrun": "-"}
+ICONS = {"abnormal": "⚠", "nominal": "✓", "neutral": "○", "notrun": "-"}
 
 CSS = """
 :root{--bg:#fbfbfa;--fg:#1d232a;--muted:#6b7280;--card:#fff;--line:#e5e7eb;
@@ -63,8 +65,6 @@ margin-left:4px;background:var(--grey-bg);color:var(--muted);vertical-align:1px}
 .figs .big{max-width:100%;width:520px}.figs .thumb{width:150px;max-width:45%}
 .figs img,.figs video{width:100%;height:auto;border:1px solid var(--line);border-radius:3px;background:#fff}
 .zoom{cursor:zoom-in}
-.analysis{background:var(--note);border-radius:4px;padding:10px 12px;margin:8px 0;
-white-space:pre-wrap;font-size:13px}
 .facts{font-size:13px;font-variant-numeric:tabular-nums}
 .dots{margin-top:8px;line-height:1}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:2px;
@@ -83,7 +83,7 @@ h1{font-size:26px}h2{font-size:18px}.quiet h2{font-size:16px}.muted,ul.notes{fon
 .tile{font-size:14px;padding:8px 12px}.pill{font-size:13px}
 .quiet{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
 .figs .big{width:900px}.figs .thumb{width:240px}
-.analysis,.facts{font-size:15px}.dot{width:11px;height:11px}
+.facts{font-size:15px}.dot{width:11px;height:11px}
 section.test{display:grid;grid-template-columns:minmax(0,900px) minmax(300px,1fr);
 column-gap:24px;align-items:start}section.test h2{grid-column:1/-1}
 section.test .figs{margin:8px 0}section.test .side{min-width:0}}
@@ -191,12 +191,6 @@ def _figures(name, job, part, build, figure_url, compact=False):
     return f'<div class="figs">{"".join(out)}</div>'
 
 
-def _text(part, name):
-    text = ((part or {}).get("sections") or {}).get(name)
-    text = text[1] if text else ""
-    return text[:MODEL_TEXT_CAP] + " […]" if len(text) > MODEL_TEXT_CAP else text
-
-
 def _facts(deck, rec, compact=False):
     th = {} if compact else deck.get("theory") or {}
     bits = []
@@ -241,21 +235,18 @@ def _dots(name, nights, base, limit):
 
 
 def _section(name, deck, job, st, rec, ctx):
-    """A test: the abnormal ones large, with figures and the model's text, every other one
-    as a compact card (first figure, key number, reason, dots)."""
+    """A test: the abnormal ones large, with all their figures, every other one as a
+    compact card (first figure, key number, reason, dots)."""
     kind = _kind(st)
     compact = kind != "abnormal"
     part = ctx["parts"].get(job)
     build = ctx["tonight"]["run"]["builds"].get(job)
     if _build_id(build) is None:
         build = None
-    side = []
-    # the model's text wherever it can help: not on a test that looks right or didn't run
-    text = _text(part, name)
-    if text and kind in ("abnormal", "neutral"):
-        side.append(f'<div class="analysis">{e(text)}</div>')
-    side.append(_facts(deck, rec, compact))
-    side.append(_dots(name, ctx["nights"], ctx["base"], ctx["dots"]))
+    side = [
+        _facts(deck, rec, compact),
+        _dots(name, ctx["nights"], ctx["base"], ctx["dots"]),
+    ]
     body = [
         f"<h2>{ICONS[kind]} {e(name)} {_pills(st, rec, ctx['tonight'], kind)}</h2>",
         _figures(name, job, part, build, ctx["figure_url"], compact),
@@ -265,7 +256,7 @@ def _section(name, deck, job, st, rec, ctx):
     return f'<section id="{e(name)}" class="{cls} {kind}">{"".join(body)}</section>'
 
 
-def _header(ctx, cfg, counts, notes):
+def _header(ctx, counts, notes):
     t, run = ctx["tonight"], ctx["tonight"]["run"]
     when = e(t["date"])
     if run.get("manual"):
@@ -284,7 +275,7 @@ def _header(ctx, cfg, counts, notes):
     head = [
         "<h1>PHARE nightly physics</h1>",
         f'<div class="muted">{when} · {commit}{" · " + links if links else ""}'
-        f" · read by {e(cfg.get('model', 'unknown'))} · advice only, never a gate</div>",
+        " · numbers from the tests, held against theory · never a gate</div>",
         f'<div class="muted">{counts}</div>',
     ]
     if notes:
@@ -321,7 +312,7 @@ def render(history, tonight, recorded, cfg, parts, notes, figure_url):
     kinds = [_kind(r[3]) for r in rows]
     counts = (
         f"{kinds.count('abnormal')} to look at · {kinds.count('nominal')} fine · "
-        f"{kinds.count('neutral')} can't tell · {kinds.count('notrun')} not run"
+        f"{kinds.count('neutral')} to check by eye · {kinds.count('notrun')} not run"
     )
     tiles = "".join(
         f'<a class="tile {_kind(st)}" href="#{e(name)}">{ICONS[_kind(st)]} {e(name)}</a>'
@@ -339,7 +330,7 @@ def render(history, tonight, recorded, cfg, parts, notes, figure_url):
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>PHARE nightly physics</title><style>{CSS}</style></head><body><main>"
-        f"{_header(ctx, cfg, counts, notes)}"
+        f"{_header(ctx, counts, notes)}"
         f'<div class="tiles">{tiles}</div>{sections}'
         '<footer class="muted">Rewritten every night by the TeamCity shadow nightly. '
         "Figures load from TeamCity: if it is down, they are missing.</footer></main>"

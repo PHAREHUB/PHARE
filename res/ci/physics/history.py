@@ -16,9 +16,18 @@ SHA = re.compile(r"[0-9a-f]{40}")
 BUILD_TYPE = re.compile(r"[A-Za-z0-9_]+")
 JOB_NAME = re.compile(r"[a-z0-9_]+")
 
-ABNORMAL = ("own check failed", "suspicious")
-NOMINAL = ("looks right",)
-NEUTRAL = ("cannot tell", "not judged", "no analysis", "own check unknown", "no data")
+# the model's verdicts ("suspicious", "looks right", "cannot tell", "no analysis", "not
+# judged") are kept: older nights in history.json carry them
+ABNORMAL = ("own check failed", "out of tolerance", "suspicious")
+NOMINAL = ("within tolerance", "looks right")
+NEUTRAL = (
+    "eye check",
+    "own check unknown",
+    "no data",
+    "cannot tell",
+    "not judged",
+    "no analysis",
+)
 NOT_RUN = ("not run",)
 
 VERSION = 1
@@ -41,8 +50,9 @@ def _short(text):
     return None if text is None else str(text)[:MAX_REASON]
 
 
-def test_record(deck, cfg, part, model):
-    """The night's record for one deck: the first matching rule wins."""
+def test_record(deck, cfg, part):
+    """The night's record for one deck, from its numbers and its own check: the first
+    matching rule wins."""
     job = part.get("job")
     passed = deck.get("deck_passed") if deck else None
     rec = {
@@ -74,27 +84,17 @@ def test_record(deck, cfg, part, model):
     ):
         return done("no data", status)
     rec["key"] = _key(deck, cfg)
-    if cfg.get("judge") is False:
-        return done("not judged", cfg.get("judge_reason"))
-    summary = part.get("summary") or {}
-    rc = summary.get("decks_exit_code")
-    steps_failed = rc not in (0, None)
-    meta = part.get("meta") or {}
-    if meta.get("agent_status") != "ok" or not part.get("agent"):
-        return done(
-            "no analysis",
-            meta.get("agent_reason"),
-            own_check_unknown=passed is None and steps_failed,
-        )
-    verdict = model[0] if model else "cannot tell"
-    if verdict not in ("looks right", "suspicious", "cannot tell"):
-        verdict = "cannot tell"
-    if passed is None and steps_failed and verdict in ("looks right", "cannot tell"):
-        return done("own check unknown", f"tests step failed (exit {rc})")
-    return done(
-        verdict,
-        own_check_unknown=passed is None and steps_failed and verdict == "suspicious",
-    )
+    rc = (part.get("summary") or {}).get("decks_exit_code")
+    unknown = passed is None and rc not in (0, None)
+    within = (deck.get("numbers") or {}).get("within_deck_tolerance")
+    if within is False:
+        return done("out of tolerance", own_check_unknown=unknown)
+    if within is True:
+        if unknown:
+            return done("own check unknown", f"tests step failed (exit {rc})")
+        return done("within tolerance")
+    # no number to hold against theory: the figures are for a physicist's eye
+    return done("eye check", cfg.get("judge_reason"), own_check_unknown=unknown)
 
 
 def _key(deck, cfg):
@@ -170,7 +170,7 @@ def state(history, name, judged_tonight):
         if kind == "abnormal":
             if recovered and rec["status"] == "own check failed":
                 break  # that run was ended by the passing own check
-            recovered = False  # a model-started run needs "looks right" to end
+            recovered = False  # any other abnormal run needs a nominal night to end
             collected.append((i, rec))
         elif rec.get("deck_passed") is True and all(
             r["status"] == "own check failed" for _, r in collected

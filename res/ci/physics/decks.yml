@@ -25,7 +25,7 @@ jobs:
       source: tests/functional/td/td1d.py
       workdir: build/tests/functional/td
       judge: false  # extracted every night (history for a future tolerance), never judged
-      judge_reason: "vth = T(x) in the deck (vth is a standard deviation, so ion pressure is T^2): the TD is not in pressure balance; deck under review"
+      judge_reason: "vth = T(x) in the deck, but vth is a standard deviation: the ion pressure is T^2, so the TD starts out of pressure balance; no tolerance until the deck is fixed"
       figures: []
       extractor: tangential_discontinuity
       theory: {quantity: "TD with no flow is an equilibrium: By profile unchanged", value: 0.0, deck_tolerance: null}

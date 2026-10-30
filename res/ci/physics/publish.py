@@ -6,11 +6,11 @@ no commit status. The only token is NIGHTLY_PAGE_TOKEN, read only with --push, a
 reaches git through the environment alone.
 
 Tonight's builds (ids, types, start dates, commit, trigger, default branch) all come from
-TeamCity's guest API. meta.json and summary.json come from the pod that runs code, so
-clean_part checks every field before the page sees it; what they say about the commit or
-the build id is only cross-checked, never used. The agent's text only ever becomes escaped
-plain text on the page. Never a gate: whatever happens, exit 0, and an existing index.html
-is left alone when something goes wrong.
+TeamCity's guest API. summary.json (and meta.json, when a job wrote one) come from the pod
+that runs code, so clean_part checks every field before the page sees it; what they say
+about the commit or the build id is only cross-checked, never used. Each test's state comes
+from its numbers and its own check. Never a gate: whatever happens, exit 0, and an existing
+index.html is left alone when something goes wrong.
 """
 
 import argparse
@@ -26,43 +26,15 @@ from zoneinfo import ZoneInfo
 
 import decks
 import history
-import judge
 import page
 import tc
 
 SAFE_FIGURE = re.compile(r"[A-Za-z0-9._-]+")  # as extract's SAFE_NAME, re-checked here
 
 
-def sections(body, names):
-    """The agent's text as (preamble, {deck: (verdict, rest)}): a heading counts only for a
-    known deck, once; the verdict is the line right after it, if it is exactly one of the
-    model's three, else 'cannot tell' (and the line stays in the text)."""
-    pre, secs, current = [], {}, None
-    for line in body.split("\n"):
-        line = line.rstrip()
-        m = re.fullmatch(r"### (\S+)", line)
-        if m and m.group(1) in names and m.group(1) not in secs:
-            current = m.group(1)
-            secs[current] = [None, []]
-        elif current is None:
-            pre.append(line)
-        elif secs[current][0] is None:
-            ok = line.startswith("Verdict: ") and line[9:] in judge.VERDICTS
-            secs[current][0] = line[9:] if ok else "cannot tell"
-            if not ok:
-                secs[current][1].append(line)
-        else:
-            secs[current][1].append(line)
-    return "\n".join(pre), {
-        n: (v or "cannot tell", "\n".join(r)) for n, (v, r) in secs.items()
-    }
-
-
 NUMBER_KEY = re.compile(r"[A-Za-z0-9_]{1,40}")
 TEXT_CAP = 200
-NOT_GIVEN_MAX = 20
 FIGURE_SUFFIXES = (".png", ".mp4")
-AGENT_STATUSES = ("ok", "unavailable", "not run")
 
 
 def str_matching(value, pattern):
@@ -103,18 +75,8 @@ def short_text(value, what, dropped):
     return None
 
 
-def clean_not_given(value, dropped):
-    """The names the agent was not given: at most NOT_GIVEN_MAX of them, TEXT_CAP long."""
-    if not isinstance(value, list):
-        return []
-    names = [n[:TEXT_CAP] for n in value if isinstance(n, str)]
-    if len(names) > NOT_GIVEN_MAX:
-        dropped.append(f"{len(names) - NOT_GIVEN_MAX} more not_given names")
-    return names[:NOT_GIVEN_MAX]
-
-
 def clean_part(part, caps):
-    """The trust boundary: meta.json and summary.json are written in the pod that runs code.
+    """The trust boundary: summary.json and meta.json are written in the pod that runs code.
     Every field publish renders or sends is checked; a bad one becomes None/'unknown' or is
     dropped, and what was dropped is listed (part['dropped'], shown as inline code).
     caps: {deck name: max_figures} for the job's decks in publish's own decks.yml."""
@@ -122,14 +84,6 @@ def clean_part(part, caps):
     clean = {
         "build_id": int_or_none(meta.get("build_id")),
         "sha": str_matching(meta.get("sha"), history.SHA),
-        "opencode_version": str_matching(meta.get("opencode_version"), judge.VERSION)
-        or "unknown",
-        "agent_status": meta.get("agent_status")
-        if meta.get("agent_status") in AGENT_STATUSES
-        else None,
-        "agent_reason": short_text(meta.get("agent_reason"), "agent_reason", dropped),
-        "unavailable_nights": int_or_none(meta.get("unavailable_nights")) or 0,
-        "not_given": clean_not_given(meta.get("not_given"), dropped),
     }
     decks_in = summary.get("decks")
     decks_out, seen = [], set()
@@ -173,22 +127,20 @@ def clean_part(part, caps):
 
 
 def read_part(d, job, caps):
-    """One job's meta.json and summary.json (without both, 'no report') and agent.md, the
-    agent's text alone (absent when the agent gave none), checked by clean_part."""
+    """One job's summary.json (without it, 'no report') and its meta.json, written by the
+    model step when the job had one (else {}), checked by clean_part."""
     try:
-        part = {
-            "job": job,
-            "meta": json.loads((d / "meta.json").read_text()),
-            "summary": json.loads((d / "summary.json").read_text()),
-        }
+        part = {"job": job, "summary": json.loads((d / "summary.json").read_text())}
     except (OSError, ValueError):
         return {"job": job, "missing": True}
-    if not isinstance(part["meta"], dict) or not isinstance(part["summary"], dict):
+    if not isinstance(part["summary"], dict):
         return {"job": job, "missing": True}
     try:
-        part["agent"] = (d / "agent.md").read_text()
-    except OSError:
-        part["agent"] = ""
+        part["meta"] = json.loads((d / "meta.json").read_text())
+    except (OSError, ValueError):
+        part["meta"] = {}
+    if not isinstance(part["meta"], dict):
+        part["meta"] = {}
     return clean_part(part, caps)
 
 
@@ -262,8 +214,7 @@ def common_sha(builds, notes):
 
 
 def clean_parts(a, cfg):
-    """The cleaned parts of --jobs (a missing one is {"job", "missing": True}); each other
-    gets part["sections"] = {deck: (verdict, text)} from the agent's text, if it answered."""
+    """The cleaned parts of --jobs (a missing one is {"job", "missing": True})."""
     parts = []
     for job in a.jobs.split(","):
         decks_of_job = cfg["jobs"].get(job, [])
@@ -271,11 +222,7 @@ def clean_parts(a, cfg):
             d["name"]: d.get("max_figures", decks.DEFAULT_MAX_FIGURES)
             for d in decks_of_job
         }
-        part = read_part(Path(a.inp, job), job, caps)
-        if not part.get("missing"):
-            asked = part["meta"]["agent_status"] == "ok"
-            part["sections"] = sections(part["agent"], set(caps))[1] if asked else {}
-        parts.append(part)
+        parts.append(read_part(Path(a.inp, job), job, caps))
     return parts
 
 
@@ -283,21 +230,8 @@ def part_notes(part, cfg, builds):
     """What the page says about one job, from its cleaned part and TeamCity's build."""
     job, meta = part["job"], part["meta"]
     notes = []
-    pinned = str(cfg.get("opencode_version"))
-    if meta["opencode_version"] != pinned:
-        notes.append(
-            f"{job}: OpenCode {meta['opencode_version']} differs from the pinned {pinned}"
-        )
-    if meta["agent_status"] == "unavailable" and meta["unavailable_nights"] > 1:
-        nights = meta["unavailable_nights"]
-        notes.append(f"agent unavailable {nights} nights in a row ({job})")
     if any(d["freshness"] == "unknown" for d in part["summary"]["decks"]):
         notes.append(f"freshness unknown: figures may be from an earlier run ({job})")
-    if meta["not_given"]:
-        shown = ", ".join(meta["not_given"][:20])
-        notes.append(
-            f"{job}: not given to the agent (symlink or not a regular file): {shown}"
-        )
     if part["dropped"]:
         shown = ", ".join(x[:80] for x in part["dropped"][:20])
         notes.append(
@@ -325,8 +259,7 @@ def records(parts, cfg):
         for deck_cfg in job_decks:
             name = deck_cfg["name"]
             deck = next((d for d in decks_in if d["name"] == name), None)
-            model = part.get("sections", {}).get(name)
-            tests[name] = history.test_record(deck, deck_cfg, part, model)
+            tests[name] = history.test_record(deck, deck_cfg, part)
     return tests
 
 
