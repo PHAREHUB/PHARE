@@ -49,7 +49,7 @@ private:
 
 
 /** @brief Like BoxSlabs::span_iterator, but dereferencing yields a Span<value_type> over the
- * underlying array's data for the current span, instead of a BoxSpan.
+ * underlying array's data for the current span, instead of a (start point, span length) tuple.
  */
 template<typename Array_t, bool with_point>
 class FieldBoxSlabs<Array_t, with_point>::span_iterator

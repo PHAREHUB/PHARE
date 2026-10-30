@@ -3,6 +3,7 @@
 
 #include "core/utilities/box/box.hpp"
 
+#include <tuple>
 #include <cstddef>
 #include <algorithm>
 #include <cstdint>
@@ -28,26 +29,6 @@ Instead of visiting the box point by point, the box is decomposed into:
 This gives callers whole contiguous spans to work with (memcpy, vectorizable
 inner loops) rather than a callback per point.
 */
-
-
-/** @brief One span of a box: the contiguous run of `size` cells from `start` along the
- * fastest-varying dimension.
- *
- * Binds as [start, size], or iterates its points: a point_iterator advances its own
- * copy of start, which unlike advancing start in place lets the compiler vectorize
- * loops over the span (2D points otherwise stay packed in one 64 bit register).
- */
-template<typename T, std::size_t dim>
-struct BoxSpan
-{
-    class point_iterator;
-
-    point_iterator begin() const { return {start}; }
-    T end() const { return start[dim - 1] + size; }
-
-    Point<T, dim> start;
-    std::uint32_t size;
-};
 
 
 /** @brief Entry point of the span-wise iteration: iterates the slabs of a box.
@@ -97,7 +78,8 @@ protected:
 
 /** @brief Iterator over the spans of one slab.
  *
- * Dereferencing yields the current BoxSpan by value.
+ * Dereferencing yields a (start point, span length) tuple, where the returned
+ * point is owned by the iterator.
  *
  * Comparison operators only inspect span_idx, so comparing iterators made
  * from different boxes or slabs is meaningless.
@@ -152,7 +134,7 @@ public:
             return (_point = {slab_idx, span_idx, box.lower[2]});
     }
 
-    BoxSpan<T, dim> operator*() { return {point(), span_size}; }
+    auto operator*() { return std::forward_as_tuple(point(), span_size); }
 
     bool operator==(span_iterator const& that) const { return span_idx == that.span_idx; }
     bool operator!=(span_iterator const& that) const { return span_idx != that.span_idx; }
@@ -250,33 +232,6 @@ protected:
 };
 
 
-/** @brief Iterator over the points of one span, compared against the span's end
- * coordinate along the fastest-varying dimension.
- */
-template<typename T, std::size_t dim>
-class BoxSpan<T, dim>::point_iterator
-{
-public:
-    point_iterator(Point<T, dim> const& start)
-        : point{start}
-    {
-    }
-
-    auto& operator*() const { return point; }
-
-    point_iterator& operator++()
-    {
-        ++point[dim - 1];
-        return *this;
-    }
-
-    bool operator!=(T const end) const { return point[dim - 1] != end; }
-
-private:
-    Point<T, dim> point;
-};
-
-
 template<typename T, std::size_t dim>
 auto make_box_slabs(Box<T, dim> const box)
 {
@@ -286,8 +241,10 @@ auto make_box_slabs(Box<T, dim> const box)
 
 /** @brief Calls fn(point, args...) for every point of `box`, walking it span-wise.
  *
- * `point` is owned by the span's point_iterator: it is only valid for the duration
- * of the call.
+ * `point` is a copy of the span's start advanced along the fastest-varying dimension,
+ * which unlike advancing the start in place lets the compiler vectorize the span loop
+ * (2D points otherwise stay packed in one 64 bit register); it is only valid for the
+ * duration of the call.
  * `args` are passed to every call as lvalues, never forwarded: fn runs once per
  * point, so a by-value parameter could otherwise move from them on the first one.
  */
@@ -295,9 +252,17 @@ template<typename T, std::size_t dim>
 void for_each_point(Box<T, dim> const& box, auto&& fn, auto&&... args)
 {
     for (auto const& slab : make_box_slabs(box))
-        for (auto const& span : slab)
-            for (auto const& point : span)
+        for (auto const& [start, size] : slab)
+        {
+            // `<` (not `!=`) tells the compiler the 32 bit index cannot wrap,
+            // so field offsets stay affine and the loop can be vectorized
+            auto point = start;
+            for (T i = start[dim - 1], end = i + size; i < end; ++i)
+            {
+                point[dim - 1] = i;
                 fn(point, args...);
+            }
+        }
 }
 
 

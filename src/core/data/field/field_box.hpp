@@ -8,7 +8,6 @@
 #include <vector>
 #include <cassert>
 #include <cstddef>
-#include <cstring>
 #include <type_traits>
 
 namespace PHARE::core
@@ -59,16 +58,9 @@ public:
 };
 
 
-// plain assignment (Operator == SetEqual<T>) is just a bulk copy, so it can
-// skip the element-by-element loop below and memcpy the whole span instead
-template<typename Operator, typename T>
-void operate_on_span(auto& dst, T const* src_data)
-    requires(std::is_same_v<Operator, SetEqual<T>>)
-{
-    std::memcpy(dst.data(), src_data, dst.size() * sizeof(T));
-}
-
-// generic per-element path for any other Operator (e.g. PlusEquals, SetMax, see types.hpp)
+// per-element Operator (e.g. SetEqual, PlusEquals, SetMax, see types.hpp): no memcpy, which
+//  is only valid for trivially copyable value types and is an out-of-line call that costs
+//  more than the copy on the short spans of ghost slabs thin along the fastest dimension
 template<typename Operator, typename T>
 void operate_on_span(auto& dst, T const* src_data)
 {
@@ -125,7 +117,10 @@ void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
     for (auto const& slab : make_field_box_slabs(lcl_box, field))
         for (auto const& span : slab)
         {
-            std::memcpy(vec.data() + seek, span.data(), span.size() * sizeof(value_type));
+            // element-wise for the same reasons as operate_on_span
+            auto* const dst = vec.data() + seek;
+            for (std::size_t i = 0; i < span.size(); ++i)
+                dst[i] = span[i];
             seek += span.size();
         }
 }

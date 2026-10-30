@@ -19,13 +19,38 @@ template<typename T, std::size_t dim>
 PHARE_BENCH_NO_VECTORIZE void for_each_point_scalar(Box<T, dim> const& box, auto&& fn)
 {
     for (auto const& slab : make_box_slabs(box))
-        for (auto const& span : slab)
+        for (auto const& [start, size] : slab)
+        {
+            auto point = start;
 #if defined(__clang__)
 #pragma clang loop vectorize(disable) interleave(disable)
 #endif
-            for (auto const& point : span)
+            for (T i = start[dim - 1], end = i + size; i < end; ++i)
+            {
+                point[dim - 1] = i;
                 fn(point);
+            }
+        }
 }
+
+// for_each_point as it was with `!=` ending the innermost loop: the 32 bit index could
+// wrap, so the compiler cannot treat field offsets as affine and keeps the loop scalar
+template<typename T, std::size_t dim>
+void for_each_point_not_equal(Box<T, dim> const& box, auto&& fn)
+{
+    for (auto const& slab : make_box_slabs(box))
+        for (auto const& [start, size] : slab)
+        {
+            auto point = start;
+            for (T i = start[dim - 1], end = i + size; i != end; ++i)
+            {
+                point[dim - 1] = i;
+                fn(point);
+            }
+        }
+}
+
+enum class Loop { scalar, not_equal, less };
 
 // as GridLayout::evalOnAnyBox, the main caller
 template<std::size_t dim>
@@ -57,7 +82,7 @@ auto make_array(double const v)
 }
 
 
-template<std::size_t dim, bool vectorized>
+template<std::size_t dim, Loop loop>
 void for_each_point_axpy(benchmark::State& state)
 {
     auto box = make_box<dim>();
@@ -78,10 +103,12 @@ void for_each_point_axpy(benchmark::State& state)
 
     for (auto _ : state)
     {
-        if constexpr (vectorized)
-            for_each_point(box, fn);
-        else
+        if constexpr (loop == Loop::scalar)
             for_each_point_scalar(box, fn);
+        else if constexpr (loop == Loop::not_equal)
+            for_each_point_not_equal(box, fn);
+        else
+            for_each_point(box, fn);
         benchmark::DoNotOptimize(dst.data());
         benchmark::ClobberMemory();
     }
@@ -89,12 +116,14 @@ void for_each_point_axpy(benchmark::State& state)
     state.SetItemsProcessed(state.iterations() * box.size());
 }
 
-BENCHMARK_TEMPLATE(for_each_point_axpy, 1, /*vectorized*/ false)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(for_each_point_axpy, 1, /*vectorized*/ true)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(for_each_point_axpy, 2, /*vectorized*/ false)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(for_each_point_axpy, 2, /*vectorized*/ true)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(for_each_point_axpy, 3, /*vectorized*/ false)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(for_each_point_axpy, 3, /*vectorized*/ true)->Unit(benchmark::kMicrosecond);
+#define PHARE_FOR_EACH_POINT_CASES(dim)                                                            \
+    BENCHMARK_TEMPLATE(for_each_point_axpy, dim, Loop::scalar)->Unit(benchmark::kMicrosecond);     \
+    BENCHMARK_TEMPLATE(for_each_point_axpy, dim, Loop::not_equal)->Unit(benchmark::kMicrosecond);  \
+    BENCHMARK_TEMPLATE(for_each_point_axpy, dim, Loop::less)->Unit(benchmark::kMicrosecond)
+
+PHARE_FOR_EACH_POINT_CASES(1);
+PHARE_FOR_EACH_POINT_CASES(2);
+PHARE_FOR_EACH_POINT_CASES(3);
 
 } // namespace PHARE::core::bench
 
