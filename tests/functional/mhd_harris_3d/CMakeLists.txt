@@ -12,7 +12,7 @@ if(HighFive AND testMPI)
   # exec level 11
   # mpirun -n 10
 
-  phare_mpi_python3_exec(21 10 harris_mhd_3d harris_3d.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(21 10 harris_mhd_3d harris_mhd_3d.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif(HighFive AND testMPI)
 
