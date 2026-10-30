@@ -36,7 +36,20 @@ public:
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override;
 
+    // quantities are converted to primal through a temporary when written, and MHD V and P are
+    //  first computed into temporaries
+    void requestTemporaries(DiagnosticProperties& diagnostic) override
+    {
+        requestTemporaries_(diagnostic);
+    }
+
 private:
+    void requestTemporaries_(DiagnosticProperties& diagnostic)
+        requires(solver::is_hybrid_model_v<Model_t>);
+
+    void requestTemporaries_(DiagnosticProperties& diagnostic)
+        requires(solver::is_mhd_model_v<Model_t>);
+
     struct Info
     {
         std::vector<std::size_t> offset_per_level
@@ -171,6 +184,55 @@ FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl
 
 
 template<typename H5Writer>
+void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& diagnostic)
+    requires(solver::is_hybrid_model_v<Model_t>)
+{
+    auto& modelView = this->h5Writer_.modelView();
+
+    std::string const tree{"/ions/"};
+    if (isActiveDiag(diagnostic, tree, "charge_density")
+        or isActiveDiag(diagnostic, tree, "mass_density"))
+        modelView.requestTmpField();
+    else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
+        modelView.requestTmpVecField();
+
+    for (auto& pop : modelView.getIons())
+    {
+        std::string const pop_tree{tree + "pop/" + pop.name() + "/"};
+        if (isActiveDiag(diagnostic, pop_tree, "density")
+            or isActiveDiag(diagnostic, pop_tree, "charge_density"))
+            modelView.requestTmpField();
+        else if (isActiveDiag(diagnostic, pop_tree, "flux"))
+            modelView.requestTmpVecField();
+    }
+}
+
+
+template<typename H5Writer>
+void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& diagnostic)
+    requires(solver::is_mhd_model_v<Model_t>)
+{
+    auto& modelView = this->h5Writer_.modelView();
+
+    std::string const tree{"/mhd/"};
+    if (isActiveDiag(diagnostic, tree, "rho") or isActiveDiag(diagnostic, tree, "Etot"))
+        modelView.requestTmpField();
+    else if (isActiveDiag(diagnostic, tree, "rhoV"))
+        modelView.requestTmpVecField();
+    else if (isActiveDiag(diagnostic, tree, "P"))
+    {
+        modelView.requestP();
+        modelView.requestTmpField();
+    }
+    else if (isActiveDiag(diagnostic, tree, "V"))
+    {
+        modelView.requestV();
+        modelView.requestTmpVecField();
+    }
+}
+
+
+template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
 {
     PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::setup");
@@ -267,8 +329,6 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
     auto& rho  = modelView.getRho();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();
-    auto& P    = modelView.getP();
-    auto& V    = modelView.getV();
 
     std::string const tree{"/mhd/"};
 
@@ -279,9 +339,9 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
     else if (isActiveDiag(diagnostic, tree, "Etot"))
         file_writer.writeField(Etot, layout);
     else if (isActiveDiag(diagnostic, tree, "P"))
-        file_writer.writeField(P, layout);
+        file_writer.writeField(modelView.getP(), layout);
     else if (isActiveDiag(diagnostic, tree, "V"))
-        file_writer.template writeTensorField<1>(V, layout);
+        file_writer.template writeTensorField<1>(modelView.getV(), layout);
 }
 
 
@@ -331,16 +391,16 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
     auto maxLvl     = writer->h5Writer_.maxLevel;
 
     auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
     auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();
 
+    // V and P are temporaries, which only exist if requested, see requestTemporaries_
     std::string tree{"/mhd/"};
 
     if (isActiveDiag(diagnostic, tree, "V"))
     {
+        auto& V = modelView.getV();
         modelView.visitHierarchy(
             [&](GridLayout& layout, std::string, std::size_t) {
                 core::ToPrimitiveConverter<GridLayout> toPrim{layout};
@@ -350,6 +410,7 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
     }
     else if (isActiveDiag(diagnostic, tree, "P"))
     {
+        auto& P = modelView.getP();
         modelView.visitHierarchy(
             [&](GridLayout& layout, std::string, std::size_t) {
                 auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
