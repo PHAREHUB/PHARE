@@ -363,7 +363,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
     auto const layout = NDlayout<dim, interp>::create();
 
-    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
+    Ohm_t{this->ohm_info, layout}(*&this->n, this->V, *&this->P, this->B, this->J, this->Enew);
 
 
     auto const& [Exnew, Eynew, Eznew] = this->Enew();

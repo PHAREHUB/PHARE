@@ -246,24 +246,22 @@ struct AllFluxes
             throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
 
+    // skips the B face fluxes, see operate below
     void zero()
     {
         rho_fx.zero();
         rhoV_fx.zero();
-        B_fx.zero();
         Etot_fx.zero();
         if constexpr (dimension >= 2)
         {
             rho_fy.zero();
             rhoV_fy.zero();
-            B_fy.zero();
             Etot_fy.zero();
         }
         if constexpr (dimension == 3)
         {
             rho_fz.zero();
             rhoV_fz.zero();
-            B_fz.zero();
             Etot_fz.zero();
         }
     }
@@ -322,26 +320,26 @@ struct AllFluxesNames
 };
 
 
+// B face fluxes are skipped: B evolves through the constrained-transport electric field and
+// nothing reads them, so the Godunov pass does not store them either; a new reader must first
+// make it store them
 template<template<typename> typename Op, typename Field, typename VecField>
 void operate(AllFluxes<Field, VecField>& dst, AllFluxes<Field, VecField> const& src, auto&&... args)
 {
     operate<Op>(dst.rho_fx, src.rho_fx, args...);
     operate<Op>(dst.rhoV_fx, src.rhoV_fx, args...);
-    operate<Op>(dst.B_fx, src.B_fx, args...);
     operate<Op>(dst.Etot_fx, src.Etot_fx, args...);
 
     if constexpr (AllFluxes<Field, VecField>::dimension >= 2)
     {
         operate<Op>(dst.rho_fy, src.rho_fy, args...);
         operate<Op>(dst.rhoV_fy, src.rhoV_fy, args...);
-        operate<Op>(dst.B_fy, src.B_fy, args...);
         operate<Op>(dst.Etot_fy, src.Etot_fy, args...);
     }
     if constexpr (AllFluxes<Field, VecField>::dimension == 3)
     {
         operate<Op>(dst.rho_fz, src.rho_fz, args...);
         operate<Op>(dst.rhoV_fz, src.rhoV_fz, args...);
-        operate<Op>(dst.B_fz, src.B_fz, args...);
         operate<Op>(dst.Etot_fz, src.Etot_fz, args...);
     }
 }
