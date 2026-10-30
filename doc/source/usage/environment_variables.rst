@@ -33,10 +33,13 @@ triggers monitoring setup before the C++ simulator is constructed).
 
 See :doc:`performance_analyses` for details on configuring and analysing scope timings.
 
-``PHARE_H5_CHUNK_SIZE``
--------------------------
+``PHARE_VTKHDF_CHUNK_BYTES``
+------------------------------
 
-HDF5 dataset chunk size, in elements. Defaults to ``1024``. Affects VTKHDF diagnostics.
+HDF5 chunk size, in bytes, of the field datasets (``PointData``) of VTKHDF diagnostics.
+Defaults to ``1048576`` (1 MiB). A chunk holds whole rows (all components of a point).
+The other VTKHDF datasets (time steps, offsets and AMR boxes) are small and use fixed
+chunks of 1024 rows.
 
 ``PHARE_SIM_MON``
 -------------------

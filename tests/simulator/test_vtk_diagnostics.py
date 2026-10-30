@@ -1,3 +1,4 @@
+import glob
 import itertools
 import unittest
 from copy import deepcopy
@@ -154,6 +155,68 @@ def permute(dic):
     ]
 
 
+def assert_vtkhdf_layout(test, path, ndim):
+    import h5py
+
+    x_times = {1: 4, 2: 2, 3: 1}[ndim]
+    with h5py.File(path, "r") as h5_file:
+        root = h5_file["VTKHDF"]
+        nsteps = int(root["Steps"].attrs["NSteps"])
+        test.assertEqual(nsteps, root["Steps/Values"].shape[0])
+
+        ilvl = 0
+        while f"Level{ilvl}/PointData/data" in root:
+            data = root[f"Level{ilvl}/PointData/data"][:]
+            boxes = root[f"Level{ilvl}/AMRBox"][:]
+            steps = root[f"Steps/Level{ilvl}"]
+            n_boxes = steps["NumberOfAMRBox"][:]
+            box_offsets = steps["AMRBoxOffset"][:]
+            data_offsets = steps["PointDataOffset/data"][:]
+            data_ends = np.append(data_offsets[1:], data.shape[0])
+
+            for step in range(nsteps):
+                step_boxes = boxes[
+                    box_offsets[step] : box_offsets[step] + n_boxes[step]
+                ]
+                test.assertTrue((step_boxes[:, 2 * ndim :] == 0).all())
+                lower = step_boxes[:, 0 : 2 * ndim : 2]
+                shapes = step_boxes[:, 1 : 2 * ndim : 2] - lower + 2
+                values = data[data_offsets[step] : data_ends[step]]
+                test.assertEqual(
+                    values.shape[0], np.prod(shapes, axis=1).sum() * x_times
+                )
+                if n_boxes[step] == 0:
+                    continue
+
+                origin = lower.min(axis=0)
+                extent = (lower + shapes).max(axis=0) - origin
+                nodes = np.full(tuple(extent) + (data.shape[1],), np.nan)
+                row = 0
+                for box_lower, shape in zip(lower, shapes):
+                    size = int(np.prod(shape))
+                    block = values[row : row + size]
+                    for copy in range(1, x_times):
+                        np.testing.assert_array_equal(
+                            values[row + copy * size : row + (copy + 1) * size], block
+                        )
+                    row += size * x_times
+
+                    block = block.reshape(tuple(shape[::-1]) + (data.shape[1],))
+                    block = np.moveaxis(
+                        block, list(range(ndim)), list(range(ndim))[::-1]
+                    )
+                    region = tuple(
+                        slice(lo - o, lo - o + n)
+                        for lo, o, n in zip(box_lower, origin, shape)
+                    )
+                    shared = ~np.isnan(nodes[region])
+                    np.testing.assert_allclose(
+                        block[shared], nodes[region][shared], atol=1e-5
+                    )
+                    nodes[region] = block
+            ilvl += 1
+
+
 @ddt
 class VTKDiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
@@ -188,6 +251,9 @@ class VTKDiagnosticsTest(SimulatorTest):
                         self.assertEqual(h5_file.attrs["pop_mass"], mass)
                         self.assertEqual(h5_file.attrs["pop_charge"], charge)
 
+            for path in sorted(glob.glob(f"{local_out}/*.vtkhdf")):
+                assert_vtkhdf_layout(self, path, ndim)
+
             try:
                 from pyphare.pharesee.phare_vtk import plot as plot_vtk
 
@@ -195,6 +261,23 @@ class VTKDiagnosticsTest(SimulatorTest):
                 plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d_interp{interp}.vtk.png")
             except ModuleNotFoundError:
                 print("WARNING: vtk python module not found - cannot make plots")
+
+    def test_level_without_patches_on_some_ranks(self):
+        ndim, interp = 2, 1
+        simInput = deepcopy(simArgs)
+        simInput["refinement_boxes"] = {"L0": {"B0": [[10] * ndim, [12] * ndim]}}
+        local_out = self._run(ndim, interp, simInput)
+
+        if cpp.mpi_rank() == 0:
+            import h5py
+
+            with h5py.File(f"{local_out}/EM_B.vtkhdf", "r") as h5_file:
+                n_boxes = h5_file["VTKHDF/Steps/Level1/NumberOfAMRBox"][:]
+            if cpp.mpi_size() > 1:
+                self.assertLess(n_boxes.max(), cpp.mpi_size())
+
+            for path in sorted(glob.glob(f"{local_out}/*.vtkhdf")):
+                assert_vtkhdf_layout(self, path, ndim)
 
 
 if __name__ == "__main__":

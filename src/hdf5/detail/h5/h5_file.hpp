@@ -13,14 +13,6 @@
 
 
 
-namespace PHARE::hdf5::h5::detail
-{
-
-// https://support.hdfgroup.org/documentation/hdf5/latest/hdf5_chunking.html
-static inline auto const CHUNK_SIZE = core::get_env_as("PHARE_H5_CHUNK_SIZE", std::size_t{1024});
-
-} // namespace PHARE::hdf5::h5::detail
-
 namespace PHARE::hdf5::h5
 {
 using HiFile = HighFive::File;
@@ -121,12 +113,13 @@ public:
         createGroupsToDataSet(path);
         HighFive::DataSetCreateProps props;
         props.add(HighFive::Chunking{chunk});
+        H5Pset_fill_time(props.getId(), H5D_FILL_TIME_NEVER);
         return h5file_.createDataSet(path, dataspace, HighFive::create_datatype<Type>(), props);
     }
 
     template<typename Type, std::size_t cols>
-    auto create_resizable_2d_data_set(auto const& path, hsize_t const x_chunk = detail::CHUNK_SIZE,
-                                      hsize_t const y_chunk = 1)
+    auto create_resizable_2d_data_set(auto const& path, hsize_t const x_chunk,
+                                      hsize_t const y_chunk)
     {
         return create_chunked_data_set<Type>(
             path, std::vector<hsize_t>{x_chunk, y_chunk},
@@ -134,7 +127,7 @@ public:
     }
 
     template<typename Type>
-    auto create_resizable_1d_data_set(auto const& path, hsize_t const chunk = detail::CHUNK_SIZE)
+    auto create_resizable_1d_data_set(auto const& path, hsize_t const chunk)
     {
         return create_chunked_data_set<Type>(
             path, std::vector<hsize_t>{chunk},
