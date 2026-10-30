@@ -31,9 +31,7 @@ public:
 
         TimeSetter{level, model, newTime}(statenew.B);
 
-        bc.fillMagneticGhosts(statenew.B, level, newTime);
-
-        bc.fillMomentsGhosts(statenew, level, newTime);
+        bc.fillStateGhosts(statenew, level, newTime);
     }
 };
 

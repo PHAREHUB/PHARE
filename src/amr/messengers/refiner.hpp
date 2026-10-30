@@ -4,13 +4,48 @@
 #include "communicator.hpp"
 
 #include "amr/messengers/field_operate_transaction.hpp"
+#include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "core/utilities/types.hpp"
 
+#include <SAMRAI/xfer/RefineClasses.h>
+
+#include <optional>
 #include <stdexcept>
+#include <string>
 
 
 namespace PHARE::amr
 {
+
+/**
+ * @brief throws if two items of an equivalence class have fill patterns that differ by their
+ * overwrite_interior flag: SAMRAI compares fill pattern types only, and computes the overlaps
+ * of a class with the pattern of its first item.
+ * Called in debug builds only: the classes and the flags are set by the code and the compiled
+ * configuration, not by the run.
+ */
+inline void checkOverwriteInteriorAgrees(SAMRAI::xfer::RefineClasses& classes)
+{
+    for (int c = 0; c < classes.getNumberOfEquivalenceClasses(); ++c)
+    {
+        std::optional<bool> overwrite;
+        for (auto it = classes.getIterator(c); it != classes.getIteratorEnd(c); ++it)
+        {
+            auto const* pattern = dynamic_cast<OverwriteInteriorFillPattern const*>(
+                classes.getRefineItem(*it).d_var_fill_pattern.get());
+            if (!pattern)
+                continue;
+            if (overwrite and *overwrite != pattern->overwriteInterior())
+                throw std::runtime_error("patch data "
+                                         + std::to_string(classes.getRefineItem(*it).d_dst)
+                                         + " shares its equivalence class with an item of "
+                                           "another overwrite_interior");
+            overwrite = pattern->overwriteInterior();
+        }
+    }
+}
+
+
 
 enum class RefinerType {
     GhostField,
@@ -25,6 +60,18 @@ enum class RefinerType {
     PatchFieldBorderMax,
     PatchVecFieldBorderMax,
     ExteriorGhostParticles
+};
+
+
+
+/** One item of a multi-item Refiner. told/tnew are only used when timeOp is set. */
+struct RefineItem
+{
+    std::string dst, src;
+    std::string told{}, tnew{};
+    std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp;
+    std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp  = nullptr;
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr;
 };
 
 
@@ -214,6 +261,9 @@ public:
             {
                 throw std::runtime_error("No Schedule for RefinerType");
             }
+
+            PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(
+                               *this->findSchedule(algo, levelNumber)->getEquivalenceClasses());)
         }
     }
 
@@ -233,6 +283,7 @@ public:
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
                     oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
                     patchStrat_.get());
+                PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(*schedule->getEquivalenceClasses());)
                 schedule->fillData(initDataTime);
             }
             else
@@ -240,6 +291,7 @@ public:
                 auto schedule = algo->createSchedule(level, oldLevel,
                                                      level->getNextCoarserHierarchyLevelNumber(),
                                                      hierarchy, patchStrat_.get());
+                PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(*schedule->getEquivalenceClasses());)
                 schedule->fillData(initDataTime);
             }
         }
@@ -296,6 +348,36 @@ public:
 
         auto&& [idDst, idSrc] = rm->getIDsList(dst, src);
         this->add_algorithm()->registerRefine(idDst, idSrc, idDst, refineOp, fillPattern);
+    }
+
+
+
+    /**
+     * @brief creates a Refiner with a single algorithm holding all the given items, so that they
+     * are filled by one schedule. Items of different centerings have different factory types
+     * (centered_factory.hpp), so SAMRAI does not give one the overlaps of another.
+     */
+    Refiner(std::vector<RefineItem> const& items, std::shared_ptr<ResourcesManager> const& rm,
+            std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat = nullptr)
+    {
+        patchStrat_ = patchStrat;
+
+        auto& algo = this->add_algorithm();
+        for (auto const& item : items)
+        {
+            if (item.timeOp)
+            {
+                auto&& [idDst, idSrc, idTold, idTnew]
+                    = rm->getIDsList(item.dst, item.src, item.told, item.tnew);
+                algo->registerRefine(idDst, idSrc, idTold, idTnew, idDst, item.refineOp,
+                                     item.timeOp, item.fillPattern);
+            }
+            else
+            {
+                auto&& [idDst, idSrc] = rm->getIDsList(item.dst, item.src);
+                algo->registerRefine(idDst, idSrc, idDst, item.refineOp, item.fillPattern);
+            }
+        }
     }
 
 
