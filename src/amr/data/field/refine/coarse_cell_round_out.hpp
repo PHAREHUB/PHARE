@@ -107,6 +107,26 @@ NO_DISCARD bool isWholeCoarseCells(SAMRAI::hier::Box const& box)
 }
 
 
+/**
+ * @brief True if copies of this quantity into a coarse-interpolation temporary must cover whole
+ * coarse cells: the B components.
+ *
+ * The touch-up on a temporary reads whole coarse cells, and the temporary's edge can cut one.
+ * Copied up to that edge only, the faces past it are gathered from the next coarser level while a
+ * neighbouring temporary holds same-level copies of them, and the two touch-ups disagree on the
+ * shared fine faces.
+ */
+template<typename PhysicalQuantity>
+NO_DISCARD constexpr bool copiesWholeCoarseCells(PhysicalQuantity const qty)
+{
+    if constexpr (requires { PhysicalQuantity::Bx; })
+        return qty == PhysicalQuantity::Bx or qty == PhysicalQuantity::By
+               or qty == PhysicalQuantity::Bz;
+    else
+        return false;
+}
+
+
 } // namespace PHARE::amr
 
 #endif // PHARE_AMR_COARSE_CELL_ROUND_OUT_HPP

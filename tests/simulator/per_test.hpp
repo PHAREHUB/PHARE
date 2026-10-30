@@ -96,6 +96,7 @@ struct SimulatorTestParam : private HierarchyMaker<opts.dimension>, public PHARE
     using HybridModel = HybridModelSelector<opts>::type;
     using MHDModel    = MHDModelSelector<opts>::type;
     using HierarchyMaker<dim>::hierarchy;
+    using Simulator::integrator_;
 
     auto& dict(std::string job_py)
     {
