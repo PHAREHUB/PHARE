@@ -3,18 +3,24 @@
 
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/models/hybrid_state.hpp"
 #include "core/boundary/boundary_manager.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/physical_models/model_stats.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 
 #include <string>
+#include <sstream>
+
 
 namespace PHARE::solver
 {
@@ -105,6 +111,9 @@ public:
 
     virtual ~HybridModel() override {}
 
+    std::string summarize(auto& hierarchy, std::size_t const minlvl, std::size_t const maxlvl,
+                          std::string const& format = "");
+
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
@@ -130,6 +139,44 @@ public:
 //-------------------------------------------------------------------------
 //                             definitions
 //-------------------------------------------------------------------------
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
+    auto& hierarchy, std::size_t const minlvl, std::size_t const maxlvl, std::string const& format)
+{
+    auto& rm = *this->resourcesManager;
+
+    std::stringstream ss;
+
+    std::size_t total = 0;
+
+    auto on_level = [&](auto& lvl) mutable {
+        auto const lcl = core::sum_from(rm.enumerate(lvl, state.ions), [&](auto const&) {
+            return core::sum_from(state.ions,
+                                  [](auto const& pop) { return pop.domainParticles().size(); });
+        });
+
+        auto const on_lvl = mpi::sum_on_rank_0(lcl);
+        total += on_lvl;
+
+        auto const level_stats = LevelStats<GridLayoutT, physical_quantity_type>::GET(
+                                     lvl, hierarchy, GridLayoutT::options.particle_ghost_width)
+                                     .collect();
+
+        if (mpi::rank() == 0)
+            ss << "lvl:" << lvl.getLevelNumber() << " (" << level_stats << ") " // << minmax
+               << " parts(" << on_lvl << "), " << std::endl;
+    };
+
+    amr::onLevels(hierarchy, on_level, minlvl, maxlvl);
+
+    if (mpi::rank() == 0)
+        ss << "tot:" << total;
+
+    return ss.str();
+}
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,

@@ -273,6 +273,20 @@ namespace amr
     }
 
 
+    template<typename GridLayoutT>
+    NO_DISCARD auto patchGhostBoxOverlaps(SAMRAI::hier::Patch const& patch,
+                                          SAMRAI::hier::HierarchyNeighbors const& neighbors,
+                                          int const ghost_width)
+    {
+        auto constexpr dimension = GridLayoutT::dimension;
+        auto const domBox        = phare_box_from<dimension>(patch.getBox());
+        auto const ghostBox      = grow(domBox, ghost_width);
+        return core::generate_from(
+            [&](auto const& neighbox) { return *(ghostBox * phare_box_from<dimension>(neighbox)); },
+            neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber()));
+    }
+
+
     inline auto to_string(auto const& id)
     {
         std::stringstream patchID;

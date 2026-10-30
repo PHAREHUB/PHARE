@@ -73,6 +73,7 @@ set( SOURCES_CPP
 set( CORE_EXTRA_SOURCES_CPP )
 if (withPhlop)
   set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp
+                              ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/common_threaded_timer.cpp
    )
 endif(withPhlop)
 
