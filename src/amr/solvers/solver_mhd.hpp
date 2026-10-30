@@ -4,6 +4,7 @@
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/solvers/solver.hpp"
 #include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
@@ -294,26 +295,17 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::prepareStep(IPhysic
 
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
 
-    auto& rho  = mhdModel.state.rho;
-    auto& rhoV = mhdModel.state.rhoV;
-    auto& B    = mhdModel.state.B;
-    auto& Etot = mhdModel.state.Etot;
+    amr::onLevel(amr::make_model_level_accessor(level, mhdModel, mhdModel.state, stateOld_),
+                 [&](auto& view) {
+                     auto& [state, stateOld] = view.args;
+                     view.setTime(currentTime, stateOld.rho, stateOld.rhoV, stateOld.B,
+                                  stateOld.Etot);
 
-    for (auto& patch : level)
-    {
-        auto dataOnPatch
-            = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot, stateOld_);
-
-        mhdModel.resourcesManager->setTime(stateOld_.rho, *patch, currentTime);
-        mhdModel.resourcesManager->setTime(stateOld_.rhoV, *patch, currentTime);
-        mhdModel.resourcesManager->setTime(stateOld_.B, *patch, currentTime);
-        mhdModel.resourcesManager->setTime(stateOld_.Etot, *patch, currentTime);
-
-        stateOld_.rho.copyData(rho);
-        stateOld_.rhoV.copyData(rhoV);
-        stateOld_.B.copyData(B);
-        stateOld_.Etot.copyData(Etot);
-    }
+                     stateOld.rho.copyData(state.rho);
+                     stateOld.rhoV.copyData(state.rhoV);
+                     stateOld.B.copyData(state.B);
+                     stateOld.Etot.copyData(state.Etot);
+                 });
 }
 
 
@@ -324,18 +316,19 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::accumulateFluxSum(
     PHARE_LOG_SCOPE(1, "SolverMHD::accumulateFluxSum");
 
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
-    auto& rm       = *mhdModel.resourcesManager;
 
     // MacOS clang still unhappy with structured bindings captures in lambdas
     auto&& tf          = evolve_.exposeFluxes();
     auto& timeFluxes   = std::get<0>(tf);
     auto& timeElectric = std::get<1>(tf);
 
-    for (auto& _ : rm.enumerate(level, fluxSum_, fluxSumE_, timeFluxes, timeElectric))
-    {
-        core::operate<core::PlusEqualsProduct>(fluxSum_, timeFluxes, coef);
-        core::operate<core::PlusEqualsProduct>(fluxSumE_, timeElectric, coef);
-    }
+    amr::onLevel(amr::make_model_level_accessor(level, mhdModel, fluxSum_, fluxSumE_, timeFluxes,
+                                                timeElectric),
+                 [&](auto& view) {
+                     auto& [fluxSum, fluxSumE, timeFluxes_v, timeElectric_v] = view.args;
+                     core::operate<core::PlusEqualsProduct>(fluxSum, timeFluxes_v, coef);
+                     core::operate<core::PlusEqualsProduct>(fluxSumE, timeElectric_v, coef);
+                 });
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
@@ -343,13 +336,13 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::resetFluxSum(IPhysi
                                                                           level_t& level)
 {
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
-    auto& rm       = *mhdModel.resourcesManager;
 
-    for (auto& _ : rm.enumerate(level, fluxSum_, fluxSumE_))
-    {
-        fluxSum_.zero();
-        fluxSumE_.zero();
-    }
+    amr::onLevel(amr::make_model_level_accessor(level, mhdModel, fluxSum_, fluxSumE_),
+                 [&](auto& view) {
+                     auto& [fluxSum, fluxSumE] = view.args;
+                     fluxSum.zero();
+                     fluxSumE.zero();
+                 });
 }
 
 
@@ -402,17 +395,12 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
     auto const [wave, diffusive] = cflNumbers;
 
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
-    auto& rho      = mhdModel.state.rho;
-    auto& rhoV     = mhdModel.state.rhoV;
-    auto& B        = mhdModel.state.B;
-    auto& Etot     = mhdModel.state.Etot;
 
     double dt = std::numeric_limits<double>::max();
 
-    for (auto& patch : level)
-    {
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot);
+    amr::onLevel(amr::make_model_level_accessor(level, mhdModel, mhdModel.state), [&](auto& view) {
+        auto const& [state] = view.args;
+        auto const& layout  = view.layout;
 
         auto const meshSize = layout.meshSize();
 
@@ -425,18 +413,18 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             dt = std::min(dt, diffusive / (2.0 * eta_ * invdx2));
         }
 
-        auto const& rhoVx = rhoV(core::Component::X);
-        auto const& rhoVy = rhoV(core::Component::Y);
-        auto const& rhoVz = rhoV(core::Component::Z);
-        auto const& Bx    = B(core::Component::X);
-        auto const& By    = B(core::Component::Y);
-        auto const& Bz    = B(core::Component::Z);
+        auto const& rhoVx = state.rhoV(core::Component::X);
+        auto const& rhoVy = state.rhoV(core::Component::Y);
+        auto const& rhoVz = state.rhoV(core::Component::Z);
+        auto const& Bx    = state.B(core::Component::X);
+        auto const& By    = state.B(core::Component::Y);
+        auto const& Bz    = state.B(core::Component::Z);
 
         // wave cfl constraint
-        layout.evalOnBox(rho, [&](auto&... args) mutable {
+        layout.evalOnBox(state.rho, [&](auto&... args) mutable {
             core::MeshIndex<dimension> const index{args...};
 
-            auto const r  = rho(index);
+            auto const r  = state.rho(index);
             auto const vx = rhoVx(index) / r;
             auto const vy = rhoVy(index) / r;
             auto const vz = rhoVz(index) / r;
@@ -448,7 +436,7 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             auto const bz
                 = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
 
-            auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
+            auto const P = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, state.Etot(index));
             auto const BdotB = bx * bx + by * by + bz * bz;
 
             std::array<double, 3> const v{vx, vy, vz};
@@ -467,7 +455,7 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             }
             dt = std::min(dt, wave / invDtWave);
         });
-    }
+    });
 
     return dt;
 }
@@ -477,9 +465,6 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::mhdNaNCheck_(MHDMod
                                                                           level_t const& level,
                                                                           double time)
 {
-    auto& rm  = model.resourcesManager;
-    auto& rho = model.state.rho;
-
     auto check_nans = [&](auto const& field, auto const& origin,
                           core::MeshIndex<MHDModel::dimension> const& index) {
         if (std::isnan(field(index)))
@@ -492,12 +477,11 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::mhdNaNCheck_(MHDMod
         }
     };
 
-    for (auto const& patch : rm->enumerate(level, rho))
-    {
-        auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-        layout.evalOnGhostBox(
-            rho, [&](auto const&... args) { check_nans(rho, layout.origin(), {args...}); });
-    }
+    amr::onLevel(amr::make_model_level_accessor(level, model, model.state.rho), [&](auto& view) {
+        auto const& [rho] = view.args;
+        view.layout.evalOnGhostBox(
+            rho, [&](auto const&... args) { check_nans(rho, view.layout.origin(), {args...}); });
+    });
 }
 
 } // namespace PHARE::solver
