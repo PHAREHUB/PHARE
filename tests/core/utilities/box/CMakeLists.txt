@@ -20,4 +20,4 @@ function(_box_test test_file test_name)
 endfunction(_box_test)
 
 _box_test(test_box.cpp test-box)
-_box_test(test_box_slabs.cpp test-box-slabs)
+_box_test(test_box_spans.cpp test-box-spans)

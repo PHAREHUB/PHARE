@@ -33,4 +33,4 @@ function(_field_test test_name)
 
 endfunction(_field_test)
 
-_field_test(test_field_box_slabs)
+_field_test(test_field_box)

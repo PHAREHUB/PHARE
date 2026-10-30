@@ -7,7 +7,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 
-#include "core/utilities/box/box_slabs.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/types.hpp"
 
 #include <array>
@@ -231,35 +231,27 @@ public:
         // divergences, and the corrections write the faces those divergences are computed from.
         scratch.reset(region, layout);
 
+        auto const& [box_x, box_y, box_z] = fine_field_box;
         if constexpr (dimension == 1)
         {
-            core::for_each_point(
-                fine_field_box[dirX], [](auto const& i, auto&... args) { correctBx1d(args..., i); },
-                scratch, bx, layout);
+            core::for_each_point(box_x,
+                                 [&](auto const& i) { correctBx1d(scratch, bx, layout, i); });
         }
         else if constexpr (dimension == 2)
         {
-            core::for_each_point(
-                fine_field_box[dirX], [](auto const& i, auto&... args) { correctBx2d(args..., i); },
-                scratch, bx, by, layout);
-
-            core::for_each_point(
-                fine_field_box[dirY], [](auto const& i, auto&... args) { correctBy2d(args..., i); },
-                scratch, bx, by, layout);
+            core::for_each_point(box_x,
+                                 [&](auto const& i) { correctBx2d(scratch, bx, by, layout, i); });
+            core::for_each_point(box_y,
+                                 [&](auto const& i) { correctBy2d(scratch, bx, by, layout, i); });
         }
         else if constexpr (dimension == 3)
         {
             core::for_each_point(
-                fine_field_box[dirX], [](auto const& i, auto&... args) { correctBx3d(args..., i); },
-                scratch, bx, by, bz, layout);
-
+                box_x, [&](auto const& i) { correctBx3d(scratch, bx, by, bz, layout, i); });
             core::for_each_point(
-                fine_field_box[dirY], [](auto const& i, auto&... args) { correctBy3d(args..., i); },
-                scratch, bx, by, bz, layout);
-
+                box_y, [&](auto const& i) { correctBy3d(scratch, bx, by, bz, layout, i); });
             core::for_each_point(
-                fine_field_box[dirZ], [](auto const& i, auto&... args) { correctBz3d(args..., i); },
-                scratch, bx, by, bz, layout);
+                box_z, [&](auto const& i) { correctBz3d(scratch, bx, by, bz, layout, i); });
         }
     }
 

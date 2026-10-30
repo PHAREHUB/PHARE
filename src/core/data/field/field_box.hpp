@@ -3,7 +3,7 @@
 
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
-#include "core/data/field/field_box_spans.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include <vector>
 #include <cassert>
@@ -17,6 +17,10 @@ template<typename Field_t>
 class FieldBox
 {
     using value_type = std::decay_t<typename Field_t::value_type>;
+
+    // set_from/append_to/operate_on_fields walk lcl_box span by span (box_spans.hpp)
+    // and a span is contiguous in memory only for C ordering
+    static_assert(Field_t::is_c_ordered);
 
 public:
     auto constexpr static dimension = Field_t::dimension;
@@ -58,71 +62,53 @@ public:
 };
 
 
-// per-element Operator (e.g. SetEqual, PlusEquals, SetMax, see types.hpp): no memcpy, which
-//  is only valid for trivially copyable value types and is an out-of-line call that costs
-//  more than the copy on the short spans of ghost slabs thin along the fastest dimension
-template<typename Operator, typename T>
-void operate_on_span(auto& dst, T const* src_data)
+// Operator{dst[i]}(src[i]) for i in [0, size) (Operator: SetEqual, PlusEquals, SetMax, see
+//  types.hpp). A plain loop on purpose, which the compiler vectorizes: memcpy is an
+//  out-of-line call that costs more than the copy on the 2-cell spans of thin ghost layers.
+template<typename Operator>
+void operate_on_span(auto* dst, auto const* src, std::size_t const size)
 {
-    for (std::size_t i = 0; i < dst.size(); ++i, ++src_data)
-        Operator{dst[i]}(*src_data);
+    for (std::size_t i = 0; i < size; ++i)
+        Operator{dst[i]}(src[i]);
 }
 
 
-
-// applies Operator span-by-span between two same-shaped FieldBoxes (see
-// core/utilities/box/box_slabs.hpp); used to add/copy/max one field's local
-// region into another's, e.g. periodic boundary data exchange
+// dst.field = Operator(dst.field, src.field) over two same-shaped boxes, e.g. to copy or
+//  add one patch's region into another's
 template<typename Operator>
 void operate_on_fields(auto& dst, auto const& src)
 {
-    assert(dst.lcl_box.shape() == src.lcl_box.shape()); // spans are paired slab by slab
-    auto d_span       = make_field_box_slabs(dst.lcl_box, dst.field);
-    auto const s_span = make_field_box_slabs(src.lcl_box, src.field);
+    assert(dst.lcl_box.shape() == src.lcl_box.shape());
 
-    auto d_slabs = d_span.begin();
-    auto s_slabs = s_span.begin();
-    for (; s_slabs != s_span.end(); ++s_slabs, ++d_slabs)
-    {
-        auto d_spans = d_slabs.begin();
-        auto s_spans = s_slabs.begin();
-        for (; s_spans != s_slabs.end(); ++s_spans, ++d_spans)
-            operate_on_span<Operator>(*d_spans, (*s_spans).data());
-    }
+    for_each_span(dst.lcl_box, src.lcl_box,
+                  [&](auto const& dst_start, auto const& src_start, auto const size) {
+                      operate_on_span<Operator>(&dst.field(dst_start), &src.field(src_start), size);
+                  });
 }
-
-
 
 
 template<typename Field_t>
 template<typename Operator>
 void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t seek)
 {
-    for (auto& slab : make_field_box_slabs(lcl_box, field))
-        for (auto& span : slab)
-        {
-            operate_on_span<Operator>(span, vec.data() + seek);
-            seek += span.size();
-        }
+    for_each_span(lcl_box, [&](auto const& start, auto const size) {
+        operate_on_span<Operator>(&field(start), vec.data() + seek, size);
+        seek += size;
+    });
 }
 
 
+// reserve vec beforehand, or the resize below may reallocate it on every call
 template<typename Field_t>
 void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
 {
-    // reserve vec before use!
     std::size_t seek = vec.size();
-    vec.resize(vec.size() + lcl_box.size());
+    vec.resize(seek + lcl_box.size());
 
-    for (auto const& slab : make_field_box_slabs(lcl_box, field))
-        for (auto const& span : slab)
-        {
-            // element-wise for the same reasons as operate_on_span
-            auto* const dst = vec.data() + seek;
-            for (std::size_t i = 0; i < span.size(); ++i)
-                dst[i] = span[i];
-            seek += span.size();
-        }
+    for_each_span(lcl_box, [&](auto const& start, auto const size) {
+        operate_on_span<SetEqual<value_type>>(vec.data() + seek, &field(start), size);
+        seek += size;
+    });
 }
 
 } // namespace PHARE::core
