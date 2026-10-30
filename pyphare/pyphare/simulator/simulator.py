@@ -120,12 +120,12 @@ class Simulator:
             self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
             return self
-        except Exception as e:  # see #1434
+        except Exception:  # see #1434
             import traceback
 
             print(f'Exception caught in "Simulator.setup()": {sys.exc_info()}')
             print(traceback.format_exc())
-            raise ValueError("Error in Simulator.setup(), see previous error") from e
+            raise
 
     def initialize(self):
         if self.initialized:
@@ -141,11 +141,9 @@ class Simulator:
             self.dump()  # first dump might be before first advance
 
             return self
-        except Exception as e:  # see #1434
+        except Exception:  # see #1434
             print(f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}')
-            raise ValueError(
-                "Error in Simulator.initialize(), see previous error"
-            ) from e
+            raise
 
     def advance(self):
         self._check_init()
