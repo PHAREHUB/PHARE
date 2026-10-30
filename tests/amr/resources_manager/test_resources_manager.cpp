@@ -11,17 +11,19 @@
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/utilities/types.hpp"
+#include "core/utilities/variants.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "initializer/data_provider.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include <string>
-#include <vector>
-
 #include "gtest/gtest.h"
 
+#include <string>
+#include <vector>
 
 #include "tests/initializer/init_functions.hpp"
 
@@ -304,6 +306,138 @@ typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DO
                          HybridState1DOnly>
     MyTypes;
 INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, aResourceUserCollection, MyTypes);
+
+
+
+
+struct FieldResource
+{
+    FieldResource(std::string const& name = "rho")
+        : rho{name, HybridQuantity::Scalar::rho, nullptr, cells}
+    {
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(rho); }
+
+    std::array<std::uint32_t, 1> cells{5};
+    Field1D rho;
+};
+struct VecFieldResource
+{
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(B); }
+
+    VecField1D B{"B", HybridQuantity::Vector::B};
+};
+
+struct ResourceUser
+{
+    using Resources = std::variant<FieldResource>;
+
+    // distinct names so each entry gets its own patch data
+    ResourceUser()
+        : resources{FieldResource{"rho0"}, FieldResource{"rho1"}}
+    {
+    }
+
+    NO_DISCARD std::vector<Resources>& getRunTimeResourcesViewList() { return resources; }
+
+    auto get() { return get_as_tuple_or_throw<FieldResource, FieldResource>(resources); }
+
+    std::vector<Resources> resources;
+};
+
+
+TEST(usingResources, test_variants_helpers)
+{
+    using Resources = std::variant<FieldResource, VecFieldResource>;
+
+    std::vector<Resources> resources{FieldResource{}, VecFieldResource{}};
+
+    {
+        auto const&& [rho, B] = get_as_tuple_or_throw<FieldResource, VecFieldResource>(resources);
+    }
+    {
+        auto& rho = get_as_ref_or_throw<FieldResource>(resources);
+        EXPECT_EQ(&rho, &std::get<FieldResource>(resources[0]));
+    }
+    {
+        auto& B = get_as_ref_or_throw<VecFieldResource>(resources);
+        EXPECT_EQ(&B, &std::get<VecFieldResource>(resources[1]));
+    }
+    { // a leading element of another requested type must not be taken, nor cast
+        std::vector<Resources> mixed{VecFieldResource{}, FieldResource{}, VecFieldResource{}};
+        auto&& [rho, B] = get_as_tuple_or_throw<FieldResource, VecFieldResource>(mixed);
+        EXPECT_EQ(&rho, &std::get<FieldResource>(mixed[1]));
+        EXPECT_EQ(&B, &std::get<VecFieldResource>(mixed[2]));
+    }
+}
+
+
+TEST(usingResources, test_variants_resource_helpers)
+{
+    using Resources = std::variant<Field1D, VecField1D>;
+
+    std::array<std::uint32_t, 1> cells{5};
+    Field1D moe_{"moe", HybridQuantity::Scalar::rho, nullptr, cells};
+    VecField1D B_{"B", HybridQuantity::Vector::B};
+    Field1D rho_{"rho", HybridQuantity::Scalar::rho, nullptr, cells};
+    VecField1D E_{"E", HybridQuantity::Vector::E};
+
+    std::vector<Resources> resources{rho_, moe_, B_, E_};
+    {
+        auto const& rho = get_from_variants(resources, rho_);
+        EXPECT_EQ(rho.name(), "rho");
+
+        auto const& B = get_from_variants(resources, B_);
+        EXPECT_EQ(B.name(), "B");
+    }
+    auto [rho, B] = get_from_variants(resources, rho_, B_);
+    EXPECT_EQ(rho.name(), "rho");
+    EXPECT_EQ(B.name(), "B");
+}
+
+TEST(usingResourcesManager, test_variants)
+{
+    ResourceUser resourceUser;
+
+    std::unique_ptr<BasicHierarchy> bhierarchy;
+    ResourcesManager<GridLayout_t, Grid1D> resourcesManager;
+
+    bhierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
+    bhierarchy->init();
+    resourcesManager.registerResources(resourceUser);
+    auto& hierarchy = bhierarchy->hierarchy;
+
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+            resourcesManager.allocate(resourceUser, *patch, 0);
+
+    std::size_t patches = 0, checks = 0;
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+        {
+            auto dataOnPatch = resourcesManager.setOnPatch(*patch, resourceUser);
+            auto&& [r0, r1]  = resourceUser.get();
+            r0.rho.data()[4] = 3;
+            r1.rho.data()[4] = 5;
+            ++patches;
+        }
+
+
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+        {
+            auto dataOnPatch = resourcesManager.setOnPatch(*patch, resourceUser);
+            auto&& [r0, r1]  = resourceUser.get();
+            EXPECT_EQ(r0.rho.data()[4], 3); // would be 5 if r0 and r1 shared a buffer
+            EXPECT_EQ(r1.rho.data()[4], 5);
+            ++checks;
+        }
+
+    EXPECT_GE(patches, 1);
+    EXPECT_EQ(checks, patches);
+}
+
 
 
 

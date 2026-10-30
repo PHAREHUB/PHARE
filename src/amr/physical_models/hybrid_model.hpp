@@ -3,6 +3,7 @@
 
 
 #include "core/def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/models/hybrid_state.hpp"
 #include "core/boundary/boundary_manager.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
@@ -48,6 +49,8 @@ public:
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
+    using Resources = std::variant<field_type, vecfield_type>;
+
     static constexpr std::string_view model_type_name = "HybridModel";
     static inline std::string const model_name{model_type_name};
 
@@ -55,21 +58,24 @@ public:
     core::HybridState<Electromag, Ions, Electrons> state;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
+    std::vector<Resources> resources{
+        field_type{"tmpField0", core::HybridQuantity::all_primal_field},
+        vecfield_type{"tmpVecField0", core::HybridQuantity::Vector::V}};
 
 
     void initialize(level_t& level) override;
+
+    void registerResources() override { resourcesManager->registerResources(*this); }
 
 
     /**
      * @brief allocate uses the ResourcesManager to allocate HybridState physical quantities on
      * the given Patch at the given allocateTime
      */
-    virtual void allocate(patch_t& patch, double const allocateTime) override
+    void allocate(patch_t& patch, double const allocateTime) override
     {
-        resourcesManager->allocate(state, patch, allocateTime);
+        resourcesManager->allocate(*this, patch, allocateTime);
     }
-
-
 
 
     /**
@@ -113,8 +119,10 @@ public:
 
     NO_DISCARD bool isSettable() const { return state.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto& getRunTimeResourcesViewList() { return resources; }
+    NO_DISCARD auto& getRunTimeResourcesViewList() const { return resources; }
 
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
     NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
 
     //-------------------------------------------------------------------------
