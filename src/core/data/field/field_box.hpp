@@ -6,7 +6,6 @@
 #include "core/utilities/box/box_spans.hpp"
 
 #include <vector>
-#include <cassert>
 #include <cstddef>
 #include <type_traits>
 
@@ -18,7 +17,7 @@ class FieldBox
 {
     using value_type = std::decay_t<typename Field_t::value_type>;
 
-    // set_from/append_to/operate_on_fields walk lcl_box span by span (box_spans.hpp)
+    // set_from/append_to walk lcl_box span by span (box_spans.hpp)
     // and a span is contiguous in memory only for C ordering
     static_assert(Field_t::is_c_ordered);
 
@@ -78,7 +77,9 @@ void operate_on_span(auto* dst, auto const* src, std::size_t const size)
 template<typename Operator>
 void operate_on_fields(auto& dst, auto const& src)
 {
-    assert(dst.lcl_box.shape() == src.lcl_box.shape());
+    // a span is contiguous in memory only for C ordering
+    static_assert(std::decay_t<decltype(dst.field)>::is_c_ordered);
+    static_assert(std::decay_t<decltype(src.field)>::is_c_ordered);
 
     for_each_span(dst.lcl_box, src.lcl_box,
                   [&](auto const& dst_start, auto const& src_start, auto const size) {

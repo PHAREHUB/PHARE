@@ -4,6 +4,7 @@
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -32,12 +33,14 @@ namespace PHARE::core
 /** Walks two same-shaped boxes span by span, in lockstep and in memory order:
  * calls fn(a_start, b_start, size) where a_start and b_start are the first
  * points of matching spans of `a` and `b`, and size is their number of cells.
+ * The start points are only valid for the duration of the call.
  * A box with lower > upper in any direction (e.g. an empty intersection) has no spans.
  */
 template<typename T, std::size_t dim>
 void for_each_span(Box<T, dim> const& a, Box<T, dim> const& b, auto&& fn)
 {
     static_assert(dim >= 1 and dim <= 3);
+    assert(a.shape() == b.shape()); // b is only read through its lower corner
 
     // one past the last cell in each direction. `x < end` rather than `x <= upper`
     // also makes an unsigned box with upper = lower - 1 = UINT_MAX empty
@@ -65,6 +68,7 @@ void for_each_span(Box<T, dim> const& a, Box<T, dim> const& b, auto&& fn)
 
 /** Walks `box` span by span, in memory order: calls fn(start, size) where start is
  * the first point of the span and size its number of cells.
+ * `start` is only valid for the duration of the call.
  */
 template<typename T, std::size_t dim>
 void for_each_span(Box<T, dim> const& box, auto&& fn)

@@ -87,6 +87,29 @@ TYPED_TEST(FieldBoxTest, operate_on_fields_adds_region_into_shifted_region)
 }
 
 
+// the max of two regions: SetMax keeps the larger value cell by cell
+TYPED_TEST(FieldBoxTest, operate_on_fields_keeps_the_max_of_two_regions)
+{
+    auto& layout = this->layout;
+    auto& dst    = this->dst;
+    auto& src    = this->src;
+
+    auto const box = thin_region(layout.ghostBoxFor(src));
+    for (auto const& point : box)
+    {
+        src(point) = tag(point);
+        dst(point) = (point[0] % 2 == 0) ? 2 * tag(point) : 0; // larger in dst on even x
+    }
+
+    FieldBox dst_box{dst, layout, box};
+    FieldBox const src_box{src, layout, box};
+    operate_on_fields<SetMax<double>>(dst_box, src_box);
+
+    for (auto const& point : box)
+        EXPECT_EQ(dst(point), (point[0] % 2 == 0) ? 2 * tag(point) : tag(point));
+}
+
+
 // pack a region of src (append_to), unpack it into a shifted region of dst (set_from)
 TYPED_TEST(FieldBoxTest, append_to_then_set_from_moves_a_thin_region)
 {
