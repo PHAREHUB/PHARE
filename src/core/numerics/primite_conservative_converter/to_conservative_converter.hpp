@@ -4,7 +4,6 @@
 
 #include <array>
 
-#include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -49,18 +48,16 @@ public:
     void operator()(Field const& rho, VecField const& V, VecField const& B, Field const& P,
                     VecField& rhoV, Field& Etot) const
     {
-        layout_.evalOnGhostBox(rho,
-                               [&](auto&... args) mutable { vToRhoV_(rho, V, rhoV, {args...}); });
+        // evalOnGhostBox calls fn(index, args...): fn is captureless, state is forwarded
+        layout_.evalOnGhostBox(rho, [](auto&&... args) { vToRhoV_(args...); }, rho, V, rhoV);
 
-        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
-            eosPToEtot_(gamma_, rho, V, B, P, Etot, {args...});
-        });
+        layout_.evalOnGhostBox(
+            rho, [](auto&&... args) { eosPToEtot_(args...); }, gamma_, rho, V, B, P, Etot);
     }
 
 private:
     template<typename Field, typename VecField>
-    static void vToRhoV_(Field const& rho, VecField const& V, VecField& rhoV,
-                         MeshIndex<Field::dimension> index)
+    static void vToRhoV_(auto const& index, Field const& rho, VecField const& V, VecField& rhoV)
     {
         auto const& Vx = V(Component::X);
         auto const& Vy = V(Component::Y);
@@ -77,9 +74,8 @@ private:
     }
 
     template<typename Field, typename VecField>
-    static void eosPToEtot_(double const gamma, Field const& rho, VecField const& V,
-                            VecField const& B, Field const& P, Field& Etot,
-                            MeshIndex<Field::dimension> index)
+    static void eosPToEtot_(auto const& index, double const gamma, Field const& rho,
+                            VecField const& V, VecField const& B, Field const& P, Field& Etot)
     {
         auto const& Vx = V(Component::X);
         auto const& Vy = V(Component::Y);

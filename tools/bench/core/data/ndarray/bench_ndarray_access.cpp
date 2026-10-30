@@ -2,7 +2,7 @@
 //  all three are expected to compile to the same code, and therefore time the same
 
 #include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/utilities/index/index.hpp"
+#include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
 
 #include "benchmark/benchmark.h"
@@ -17,7 +17,7 @@ namespace PHARE::core::bench
 struct IndexSequence
 {
     template<std::size_t d, typename Array, std::size_t dim>
-    static double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
+    static double shifted(Array const& array, Point<std::size_t, dim> const& idx, int const shift)
     {
         return [&]<std::size_t... i>(std::index_sequence<i...>) {
             return array((i == d ? idx[i] + shift : idx[i])...);
@@ -28,7 +28,7 @@ struct IndexSequence
 struct Fold
 {
     template<std::size_t d, typename Array, std::size_t dim>
-    static double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
+    static double shifted(Array const& array, Point<std::size_t, dim> const& idx, int const shift)
     {
         return for_N_fold<dim>(
             [&](auto... i) { return array((i == d ? idx[i] + shift : idx[i])...); });
@@ -38,7 +38,7 @@ struct Fold
 struct MakeArray
 {
     template<std::size_t d, typename Array, std::size_t dim>
-    static double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
+    static double shifted(Array const& array, Point<std::size_t, dim> const& idx, int const shift)
     {
         return array(
             for_N_make_array<dim>([&](auto i) { return i == d ? idx[i] + shift : idx[i]; }));
@@ -59,7 +59,7 @@ void shifted_3d(benchmark::State& state)
             for (std::size_t j = 1; j < n - 1; ++j)
                 for (std::size_t k = 1; k < n - 1; ++k)
                 {
-                    MeshIndex<3> const idx{i, j, k};
+                    Point<std::size_t, 3> const idx{i, j, k};
                     out(i, j, k) = Impl::template shifted<0>(in, idx, 1)
                                    - Impl::template shifted<0>(in, idx, -1)
                                    + Impl::template shifted<1>(in, idx, 1)

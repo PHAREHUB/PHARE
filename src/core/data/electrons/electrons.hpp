@@ -68,38 +68,33 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
-        auto const& Jx = J_(Component::X);
-        auto const& Jy = J_(Component::Y);
-        auto const& Jz = J_(Component::Z);
         // Ve = (sum_s q_s F_s - J) / Ne, with Ne the total ion charge density.
         // The ion bulk velocity is mass weighted and cannot be used here, see #1466
-        auto const& Fx = ions_.chargeFlux()(Component::X);
-        auto const& Fy = ions_.chargeFlux()(Component::Y);
-        auto const& Fz = ions_.chargeFlux()(Component::Z);
-        auto const& Ne = ions_.chargeDensity();
-
-        auto& Vex = Ve_(Component::X);
-        auto& Vey = Ve_(Component::Y);
-        auto& Vez = Ve_(Component::Z);
-
         // from Ni because all components defined on primal
-        layout.evalOnBox(Ne, [&](auto const&... args) {
-            auto arr = std::array{args...};
-
-            auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, arr);
-            auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, arr);
-            auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, arr);
-
-            Vex(arr) = (Fx(arr) - JxOnVx) / Ne(arr);
-            Vey(arr) = (Fy(arr) - JyOnVy) / Ne(arr);
-            Vez(arr) = (Fz(arr) - JzOnVz) / Ne(arr);
-        });
+        layout.evalOnBox(
+            ions_.chargeDensity(), [](auto&&... args) { VeEq_(args...); }, J_, ions_.chargeFlux(),
+            ions_.chargeDensity(), Ve_);
     }
 
 
     auto& getIons() const { return ions_; }
 
 private:
+    static void VeEq_(auto const& ijk, auto const& J, auto const& F, auto const& Ne, auto& Ve)
+    {
+        auto const& [Jx, Jy, Jz] = J();
+        auto const& [Fx, Fy, Fz] = F();
+        auto&& [Vex, Vey, Vez]   = Ve();
+
+        auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, ijk);
+        auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, ijk);
+        auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, ijk);
+
+        Vex(ijk) = (Fx(ijk) - JxOnVx) / Ne(ijk);
+        Vey(ijk) = (Fy(ijk) - JyOnVy) / Ne(ijk);
+        Vez(ijk) = (Fz(ijk) - JzOnVz) / Ne(ijk);
+    }
+
     Ions ions_;
     VecField J_;
     VecField Ve_;

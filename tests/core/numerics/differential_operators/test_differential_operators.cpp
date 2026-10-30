@@ -286,7 +286,7 @@ Box intersect(Box const& a, Box const& b)
 template<typename Layout>
 std::array<double, Layout::dimension> coordinates(Layout const& layout,
                                                   Centering_t<Layout> const& centering,
-                                                  MeshIndex<Layout::dimension> const& idx)
+                                                  Point<std::size_t, Layout::dimension> const& idx)
 {
     auto const& dl = layout.meshSize();
     std::array<double, Layout::dimension> x;
