@@ -4,6 +4,7 @@ project(phare_core)
 set( SOURCES_INC
      data/electromag/electromag.hpp
      data/field/field.hpp
+     data/field/field_scratch.hpp
      data/field/field_traits.hpp
      data/field/recentered_field.hpp
      data/grid/gridlayoutdefs.hpp
@@ -66,6 +67,7 @@ set( SOURCES_INC
    )
 
 set( SOURCES_CPP
+     data/field/field_scratch.cpp
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
     )
