@@ -419,7 +419,7 @@ class EqualityReport:
                     phut.assert_fp_any_all_close(ref[:], cmp[:], atol=1e-16)
             except AssertionError as e:
                 print(e)
-        return self.failed[0][0]
+        return self.failed[0][0] if self.failed else "=="
 
     def __call__(self, reason, ref=None, cmp=None):
         self.failed.append((reason, ref, cmp))
@@ -462,6 +462,9 @@ def hierarchy_compare(this, that, atol=1e-16):
                 patch_ref = patch_level_ref.patches[patch_idx]
                 patch_cmp = patch_level_cmp.patches[patch_idx]
 
+                if patch_ref.box != patch_cmp.box:
+                    return eqr("patch box mismatch", patch_ref.box, patch_cmp.box)
+
                 if patch_ref.patch_datas.keys() != patch_cmp.patch_datas.keys():
                     return eqr("data keys mismatch")
 
@@ -469,8 +472,11 @@ def hierarchy_compare(this, that, atol=1e-16):
                     patch_data_ref = patch_ref.patch_datas[patch_data_key]
                     patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
 
-                    if not patch_data_cmp.compare(patch_data_ref, atol=atol):
+                    ret = patch_data_ref.compare(patch_data_cmp, atol=atol)
+                    if not bool(ret):
                         msg = f"data mismatch: {type(patch_data_ref).__name__} {patch_data_key}"
+                        if type(ret) is not bool:
+                            msg += "\n" + str(ret)
                         eqr(msg, patch_data_cmp, patch_data_ref)
 
                 if not eqr:
