@@ -33,6 +33,12 @@ public:
     }
 
 
+    void removeLevel(int const levelNumber)
+    {
+        Communicator<SynchronizerTypes, ResourcesManager::dimension>::removeLevel(levelNumber);
+    }
+
+
     void sync(int const levelNumber)
     {
         if (this->algos.size() == 0)

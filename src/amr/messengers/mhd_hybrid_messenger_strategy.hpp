@@ -59,6 +59,11 @@ namespace amr
         {
         }
 
+        void onHierarchyChanged(hierarchy_ptr const& /*hierarchy*/,
+                                int const /*levelNumber*/) override
+        {
+        }
+
         std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {
             return std::make_unique<MHDMessengerInfo>();
@@ -80,8 +85,8 @@ namespace amr
 
         std::string coarseModelName() const override { return MHDModel::model_name; }
 
-        void initLevel(IPhysicalModel& /*model*/, level_t& /*level*/,
-                       double const /*initDataTime*/) override
+        void initLevel(hierarchy_ptr const& /*hierarchy*/, IPhysicalModel& /*model*/,
+                       level_t& /*level*/, double const /*initDataTime*/) override
         {
         }
 

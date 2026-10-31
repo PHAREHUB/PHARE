@@ -44,9 +44,10 @@ namespace amr
      * - HybridMessenger
      * - MHDMessenger
      *
-     * IMessenger and subclasses exist also to hide all the SAMRAI details involved in communicating
-     * data in a PatchHierarchy and to provide a simple interface to the MultiPhysicsIntegrator and
-     * ISolver.
+     * IMessenger and subclasses exist also to hide how data moves in a PatchHierarchy (schedules,
+     * algorithms, fill patterns) and to provide a simple interface to the MultiPhysicsIntegrator
+     * and ISolver. They follow the hierarchy lifecycle through registerLevel and
+     * onHierarchyChanged.
      *
      */
     template<typename IPhysicalModel>
@@ -114,16 +115,19 @@ namespace amr
 
 
         /**
-         * @brief registerLevel tells the messenger which level in the hierarchy data will be
-         * communicated to. When the messenger involves communication from coarser grid, it is from
-         * levelNumber-1.
-         *
-         * This method needs to be called whenever initializing a new level in the
-         * hierarchy so that a valid Messenger be used at this level. The method registerQuantities
-         * must be called before this method. The levelnumber needs to be the one of a level in the
-         * given hierarchy.
+         * @brief registerLevel tells the messenger that levelNumber is a new or restored level
+         * object. Afterwards the messenger can exchange data within that level. Exchanges with
+         * coarser levels are available only after onHierarchyChanged has been called for it.
+         * The method registerQuantities must be called before this method.
          */
         virtual void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
+
+        /**
+         * @brief onHierarchyChanged makes levelNumber ready to exchange data within the level and
+         * with coarser levels, once the hierarchy has been reconfigured. It is called for every
+         * level from the root to the finest.
+         */
+        virtual void onHierarchyChanged(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
 
 
 
@@ -151,7 +155,8 @@ namespace amr
          * initDataTime from a coarser level iLevel-1. The initialization is performed on all
          * quantities registered during registerQuantities().
          */
-        virtual void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime)
+        virtual void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model,
+                               level_t& level, double const initDataTime)
             = 0;
 
 

@@ -34,6 +34,14 @@ public:
 
 
 
+    void removeLevel(int const levelNumber)
+    {
+        for (auto& [_, synchronizer] : synchronizers_)
+            synchronizer.removeLevel(levelNumber);
+    }
+
+
+
     void sync(int const levelNumber)
     {
         for (auto& [key, synchronizer] : synchronizers_)
