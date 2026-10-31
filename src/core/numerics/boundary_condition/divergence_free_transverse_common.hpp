@@ -74,8 +74,7 @@ void applyDivergenceFreeNormalComponent(FieldTuple& fields, std::size_t const iN
     if (side == Side::Upper)
         for_each_point(localGhostBox, apply);
     else
-        for (auto it = localGhostBox.rbegin(); it != localGhostBox.rend(); ++it)
-            apply(*it);
+        for_each_point_reverse(localGhostBox, apply);
 }
 
 } // namespace PHARE::core

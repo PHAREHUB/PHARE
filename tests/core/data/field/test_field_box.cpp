@@ -73,16 +73,14 @@ TYPED_TEST(FieldBoxTest, operate_on_fields_adds_region_into_shifted_region)
     auto& src    = this->src;
 
     auto const from = shrink(layout.ghostBoxFor(src), 1);
-    for (auto const& point : from)
-        src(point) = tag(point);
+    for_each_point(from, [&](auto const& point) { src(point) = tag(point); });
 
     FieldBox to_box{dst, layout, Box{from.lower + 1u, from.upper + 1u}};
     FieldBox const from_box{src, layout, from};
     operate_on_fields<PlusEquals<double>>(to_box, from_box);
     operate_on_fields<PlusEquals<double>>(to_box, from_box);
 
-    for (auto const& point : from)
-        EXPECT_EQ(dst(point + 1u), 2 * tag(point));
+    for_each_point(from, [&](auto const& point) { EXPECT_EQ(dst(point + 1u), 2 * tag(point)); });
     EXPECT_EQ(sum(dst), 2 * sum(src));
 }
 
