@@ -829,6 +829,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt, UpdaterMode::all);
+    ionUpdater.depositDomain(this->ions, this->layout);
 
     this->fillIonsMomentsGhosts();
 
@@ -1036,7 +1037,7 @@ TYPED_TEST_SUITE(IonUpdaterOwnershipTest, DimInterps1D, );
 
 
 
-TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndIsDepositedOnce)
+TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndIsNotDepositedHere)
 {
     typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
 
@@ -1055,6 +1056,7 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
     }
 
     ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+    ionUpdater.depositDomain(this->ions, this->layout);
 
     std::size_t ipop = 0;
     for (auto& pop : this->ions)
@@ -1072,9 +1074,55 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
         EXPECT_EQ(TestFixture::count(patchGhost, [](auto const& p) { return p.iCell[0] == 60; }),
                   nbrCrossing[ipop]);
 
+        // the leaving particles are deposited by the patch owning their cell, after the exchange
         auto const deposited = TestFixture::total(pop.particleDensity());
-        auto const expected  = TestFixture::weights(domain) + TestFixture::weights(patchGhost);
+        auto const expected  = TestFixture::weights(domain);
         EXPECT_NEAR(deposited, expected, 1e-10 * expected);
+        ++ipop;
+    }
+}
+
+
+
+TYPED_TEST(IonUpdaterOwnershipTest, exchangedLeaversAreDepositedOnce)
+{
+    typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+    auto const nonOwned = std::vector{TestFixture::box(60, 99)};
+    auto const boxing   = this->makeBoxing(nonOwned);
+    this->eraseNonOwned(nonOwned);
+
+    for (auto& pop : this->ions)
+    {
+        this->setVelocityX(pop.domainParticles(), 1);
+        this->setVelocityX(pop.levelGhostParticles(), 0);
+    }
+
+    ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+
+    std::vector<double> expected;
+    for (auto& pop : this->ions)
+    {
+        auto& domain     = pop.domainParticles();
+        auto& patchGhost = pop.patchGhostParticles();
+        ASSERT_GT(patchGhost.size(), 0u);
+        expected.push_back(TestFixture::weights(domain) + TestFixture::weights(patchGhost));
+
+        // what the exchange does, the receiving patch being this one: this checks that
+        // depositDomain deposits each particle once, test_moment_deposit.py checks that no
+        // particle is lost or counted twice across patches
+        for (auto const& particle : patchGhost)
+            domain.push_back(particle);
+        patchGhost.clear();
+    }
+
+    ionUpdater.depositDomain(this->ions, this->layout);
+
+    std::size_t ipop = 0;
+    for (auto& pop : this->ions)
+    {
+        auto const deposited = TestFixture::total(pop.particleDensity());
+        EXPECT_NEAR(deposited, expected[ipop], 1e-10 * expected[ipop]);
         ++ipop;
     }
 }
