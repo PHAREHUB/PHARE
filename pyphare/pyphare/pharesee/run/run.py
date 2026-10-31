@@ -39,47 +39,45 @@ class Run:
         return self._get_hierarchy(time, "tags.h5")
 
     def GetB(self, time, all_primal=True, **kwargs):
-        hier = self._get_hierarchy(time, "EM_B.h5", **kwargs)
+        hier = self._get_hier_for(time, "EM_B", **kwargs)
         if not all_primal:
             return hier
 
         return VectorField.FROM(compute_hier_from(_compute_to_primal, hier))
 
     def GetE(self, time, all_primal=True, **kwargs):
-        hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
+        hier = self._get_hier_for(time, "EM_E", **kwargs)
         if not all_primal:
             return hier
 
         return VectorField.FROM(compute_hier_from(_compute_to_primal, hier))
 
     def GetMassDensity(self, time, **kwargs):
-        hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
+        hier = self._get_hier_for(time, "ions_mass_density", **kwargs)
         return ScalarField.FROM(compute_hier_from(hc.drop_ghosts, hier))
 
     def GetNi(self, time, **kwargs):
-        hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
+        hier = self._get_hier_for(time, "ions_charge_density", **kwargs)
         return ScalarField.FROM(compute_hier_from(hc.drop_ghosts, hier))
 
     def GetN(self, time, pop_name, **kwargs):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
+        hier = self._get_hier_for(time, f"ions_pop_{pop_name}_density", **kwargs)
         return ScalarField.FROM(compute_hier_from(hc.drop_ghosts, hier))
 
     def GetVi(self, time, **kwargs):
-        hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        hier = self._get_hier_for(time, "ions_bulkVelocity", **kwargs)
         return VectorField.FROM(compute_hier_from(hc.drop_ghosts, hier))
 
     def GetChargeFlux(self, time, **kwargs):
-        hier = self._get_hierarchy(time, "ions_charge_flux.h5", **kwargs)
+        hier = self._get_hier_for(time, "ions_charge_flux", **kwargs)
         return VectorField.FROM(hier)
 
     def GetFlux(self, time, pop_name, **kwargs):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
+        hier = self._get_hier_for(time, f"ions_pop_{pop_name}_flux", **kwargs)
         return VectorField.FROM(compute_hier_from(hc.drop_ghosts, hier))
 
     def GetPressure(self, time, pop_name, **kwargs):
-        M = self._get_hierarchy(
-            time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
-        )
+        M = self._get_hier_for(time, f"ions_pop_{pop_name}_momentum_tensor", **kwargs)
         M = compute_hier_from(hc.drop_ghosts, M)
         V = self.GetFlux(time, pop_name, **kwargs)
         N = self.GetN(time, pop_name, **kwargs)
@@ -92,16 +90,16 @@ class Run:
         return P  # should later be a TensorField
 
     def GetPi(self, time, **kwargs):
-        M = self._get_hierarchy(time, "ions_momentum_tensor.h5", **kwargs)
+        M = self._get_hier_for(time, "ions_momentum_tensor", **kwargs)
         M = compute_hier_from(hc.drop_ghosts, M)
         massDensity = self.GetMassDensity(time, **kwargs)
-        Vi = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        Vi = self._get_hier_for(time, "ions_bulkVelocity", **kwargs)
         Vi = compute_hier_from(hc.drop_ghosts, Vi)
         Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
         return Pi  # should later be a TensorField
 
     def GetPe(self, time, all_primal=True):
-        hier = self._get_hierarchy(time, "ions_charge_density.h5")
+        hier = self._get_hier_for(time, "ions_charge_density")
         Te = hier.sim.electrons.closure.Te
         if not all_primal:
             return Te * hier
@@ -277,15 +275,25 @@ class Run:
         return self.all_times()[qty]
 
     def _available_diags(self):
-        files = glob.glob(os.path.join(self.path, "*.h5"))
-        if not files:
-            raise RuntimeError(f"No HDF5 files found at: {self.path}")
-        return files
+        if files := glob.glob(os.path.join(self.path, "*.h5")):
+            return files
+        if files := glob.glob(os.path.join(self.path, "*.vtkhdf")):
+            return files
+        raise RuntimeError(f"No HDF5 files found at: {self.path}")
+
+    def _get_hier_for(self, time, qty, **kwargs):
+        path = Path(self.path) / f"{qty}.h5"
+        if path.exists():
+            return self._get_hierarchy(time, f"{qty}.h5", **kwargs)
+        path = Path(self.path) / f"{qty}.vtkhdf"
+        if path.exists():
+            return self._get_hierarchy(time, f"{qty}.vtkhdf", **kwargs)
+        raise RuntimeError(f"No HDF5 file found for: {qty}")
 
     def _get_any_hierarchy(self, time):
         for file in self.available_diags:
             if f"{time:.10f}" in (f"{t:.10f}" for t in all_times_from(file)):
-                return self._get_hierarchy(time, os.path.basename(file))
+                return self._get_hier_for(time, Path(file).stem)
         raise RuntimeError(f"No diagnostic found at time {time} in {self.path}")
 
     def _get_hierarchy(self, times, filename, hier=None, **kwargs):

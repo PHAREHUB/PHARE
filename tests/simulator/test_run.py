@@ -296,6 +296,16 @@ class RunTest(SimulatorTest):
                         plot_file_for_qty(plot_dir, f"b{c}", time)
                     )
 
+    def test_run_pharevtkhdf(self):
+        diag_dir = self._run("pharevtkhdf")
+        if cpp.mpi_rank() == 0:
+            plot_dir = plot(diag_dir)
+            for time in timestamps:
+                for c in ["x", "y", "z"]:
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(plot_dir, f"b{c}", time)
+                    )
+
     def test_finest_selection(self):
         from pyphare.core.box import Box
         from pyphare.pharesee.filters import gaussian_filter_uniform_grid
