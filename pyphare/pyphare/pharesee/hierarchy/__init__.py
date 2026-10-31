@@ -1,5 +1,6 @@
 from pyphare.core.phare_utilities import listify
 
+from . import func
 from .hierarchy import PatchHierarchy
 from .scalarfield import ScalarField
 from .vectorfield import VectorField
@@ -8,6 +9,7 @@ __all__ = [
     "PatchHierarchy",
     "ScalarField",
     "VectorField",
+    "func",
 ]
 
 
@@ -18,7 +20,7 @@ def hierarchy_from(
     h5_filename=None,
     times=None,
     hier=None,
-    func=None,
+    from_func=None,
     **kwargs
 ):
     from .fromfunc import hierarchy_from_func
@@ -48,7 +50,7 @@ def hierarchy_from(
     if simulator is not None and qty is not None:
         return hierarchy_from_sim(simulator, qty, pop=pop)
 
-    if func is not None and hier is not None:
-        return hierarchy_from_func(func, hier, **kwargs)
+    if from_func is not None and hier is not None:
+        return hierarchy_from_func(from_func, hier, **kwargs)
 
     raise ValueError("can't make hierarchy")
