@@ -141,7 +141,7 @@ class InitializationTest(SimulatorTest):
 
                 pdatas = patch.patch_datas
                 layout = pdatas["protons_Fx"].layout
-                centering = layout.centering["X"][pdatas["protons_Fx"].field_name]
+                centering = layout.centering["X"][pdatas["protons_Fx"].name]
                 nbrGhosts = layout.nbrGhosts(
                     interp_order, centering
                 )  # primal in all directions
@@ -203,7 +203,7 @@ class InitializationTest(SimulatorTest):
                 beam_density = patch.patch_datas["beam_rho"].dataset[:]
 
                 layout = patch.patch_datas["rho"].layout
-                centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
+                centering = layout.centering["X"][patch.patch_datas["rho"].name]
                 nbrGhosts = layout.nbrGhosts(interp_order, centering)
                 select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(ndim)])
 
@@ -262,7 +262,7 @@ class InitializationTest(SimulatorTest):
             patch = hier.level(0).patches[0]
             layout = patch.patch_datas["rho"].layout
 
-            centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
+            centering = layout.centering["X"][patch.patch_datas["rho"].name]
             nbrGhosts = layout.nbrGhosts(interp_order, centering)
             select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(dim)])
             ion_density = patch.patch_datas["rho"].dataset[:]
