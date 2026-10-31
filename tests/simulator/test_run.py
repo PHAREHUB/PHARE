@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 import pyphare.pharein as ph
+import pyphare.pharesee as phc
 from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
@@ -15,32 +16,35 @@ ph.NO_GUI()
 
 time_step = 0.005
 final_time = 0.01
+time_step_nbr = int(final_time / time_step)
 timestamps = [0, time_step, final_time]
-diag_dir = "phare_outputs/test_run"
-plot_dir = Path(f"{diag_dir}_plots")
-plot_dir.mkdir(parents=True, exist_ok=True)
 
 
-def config():
-    L = 0.5
-
-    sim = ph.Simulation(
-        time_step=time_step,
-        final_time=final_time,
-        cells=(40, 40),
-        dl=(0.40, 0.40),
-        refinement="tagging",
-        max_nbr_levels=3,
-        nesting_buffer=1,
-        clustering="tile",
-        tag_buffer="1",
-        hyper_resistivity=0.002,
-        resistivity=0.001,
-        diag_options={
-            "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
+def sim_kwargs(diag_format="phareh5"):
+    return {
+        "time_step": time_step,
+        "final_time": final_time,
+        "cells": (40, 40),
+        "dl": (0.40, 0.40),
+        "refinement": "tagging",
+        "max_nbr_levels": 3,
+        "nesting_buffer": 1,
+        "clustering": "tile",
+        "tag_buffer": "1",
+        "hyper_resistivity": 0.002,
+        "resistivity": 0.001,
+        "diag_options": {
+            "format": diag_format,
+            "options": {
+                "dir": f"phare_outputs/test_run_{diag_format}",
+                "mode": "overwrite",
+            },
         },
-    )
+    }
+
+
+def setup_physics(sim):
+    L = 0.5
 
     def density(x, y):
         Ly = sim.simulation_domain()[1]
@@ -157,68 +161,86 @@ def config():
         ph.FluidDiagnostics(
             quantity=quantity, write_timestamps=timestamps, population_name=pop
         )
-    return sim
 
 
-def plot_file_for_qty(qty, time):
+def plot_file_for_qty(plot_dir, qty, time):
     return f"{plot_dir}/harris_{qty}_t{time}.png"
 
 
 def plot(diag_dir):
+    """common across phareh5 and vtk"""
     run = Run(diag_dir)
+    plot_dir = Path(f"{diag_dir}_plots")
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
     pop_name = "protons"
     for time in timestamps:
+        run.GetN(time, pop_name=pop_name).plot(
+            filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
+        )
+        for c in ["x", "y", "z"]:
+            run.GetB(time, all_primal=False).plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}", time),
+                qty=f"B{c}",
+                plot_patches=True,
+            )
+    return plot_dir
+
+
+def plot_phareh5(diag_dir):
+    """only works for phareh5 currently"""
+    run = Run(diag_dir)
+    plot_dir = Path(f"{diag_dir}_plots")
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
+    pop_name = "protons"
+    for time in timestamps:
+        Bgaussian = phc.filters.gaussian(run.GetB(time, all_primal=False))
+        for c in ["Bx", "By", "Bz"]:
+            Bgaussian[c].plot(
+                filename=plot_file_for_qty(plot_dir, f"Bgaussian{c}", time),
+                qty=f"B{c}",
+            )
+        Ngaussian = phc.filters.gaussian(run.GetN(time, pop_name=pop_name))
+        Ngaussian.plot(filename=plot_file_for_qty(plot_dir, "Ngaussian", time))
+
         run.GetDivB(time).plot(
-            filename=plot_file_for_qty("divb", time),
+            filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
             vmin=1e-11,
             vmax=2e-10,
         )
         run.GetRanks(time).plot(
-            filename=plot_file_for_qty("Ranks", time), plot_patches=True
+            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
-        run.GetN(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty("N", time), plot_patches=True
-        )
-
-        B = run.GetB(time, all_primal=False)
-        Bexp = np.exp(B)
-        for c in ["x", "y", "z"]:
-            B.plot(
-                filename=plot_file_for_qty(f"b{c}", time),
-                qty=f"B{c}",
-                plot_patches=True,
-            )
-            Bexp.plot(filename=plot_file_for_qty(f"b{c}_exp", time), qty=f"B{c}")
-
         run.GetJ(time).plot(
-            all_primal=False,
-            filename=plot_file_for_qty("jz", time),
+            filename=plot_file_for_qty(plot_dir, "jz", time),
             qty="z",
             plot_patches=True,
             vmin=-2,
             vmax=2,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(f"{pop_name}_Pxx", time),
+            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pxx", time),
             qty=pop_name + "_Pxx",
             plot_patches=True,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(f"{pop_name}_Pzz", time),
+            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pzz", time),
             qty=pop_name + "_Pzz",
             plot_patches=True,
         )
         run.GetPi(time).plot(
-            filename=plot_file_for_qty("Pxx", time),
+            filename=plot_file_for_qty(plot_dir, "Pxx", time),
             qty="Pxx",
             plot_patches=True,
         )
         run.GetPi(time).plot(
-            filename=plot_file_for_qty("Pzz", time),
+            filename=plot_file_for_qty(plot_dir, "Pzz", time),
             qty="Pzz",
             plot_patches=True,
         )
+    return plot_dir
 
 
 def assert_file_exists_with_size_at_least(file, size=10000):
@@ -244,10 +266,14 @@ class RunTest(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    def test_run(self):
-        sim = config()
-        self.register_diag_dir_for_cleanup(diag_dir)
+    def _run(self, diag_format):
+        sim = self.simulation(**sim_kwargs(diag_format))
+        setup_physics(sim)
         Simulator(sim).run().reset()
+        return sim.diag_options["options"]["dir"]
+
+    def test_run_phareh5(self):
+        diag_dir = self._run("phareh5")
 
         run = Run(diag_dir)
         B = run.GetB(timestamps[-1], all_primal=False)
@@ -257,18 +283,68 @@ class RunTest(SimulatorTest):
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
         if cpp.mpi_rank() == 0:
-            plot(diag_dir)
-
+            plot_phareh5(diag_dir)
+            plot_dir = plot(diag_dir)
             for time in timestamps:
                 for q in ["divb", "Ranks", "N", "jz"]:
-                    assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(plot_dir, q, time)
+                    )
 
                 for c in ["x", "y", "z"]:
                     assert_file_exists_with_size_at_least(
-                        plot_file_for_qty(f"b{c}", time)
+                        plot_file_for_qty(plot_dir, f"b{c}", time)
                     )
 
-        cpp.mpi_barrier()
+    def test_finest_selection(self):
+        from pyphare.core.box import Box
+        from pyphare.pharesee.filters import gaussian_filter_uniform_grid
+        from pyphare.pharesee.run.utils import interpolate_hierarchy
+
+        sim = self.simulation(**sim_kwargs())
+        setup_physics(sim)
+        actual_diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
+
+        run = Run(actual_diag_dir)
+        time = timestamps[-1]
+
+        domain = run.GetDomainSize()
+        lo = [int(d * 0.25) for d in domain]
+        hi = [int(d * 0.75) for d in domain]
+        box = Box(lo, hi)
+
+        B = run.GetB(time)
+        grids = interpolate_hierarchy(B["x"], box=box)
+        Bx_smooth = gaussian_filter_uniform_grid(grids["x"])
+
+        # grid extends beyond selection box by ghost cells (+1 for primal directions)
+        tol = [(Bx_smooth.ghosts_nbr[i] + 1) * Bx_smooth.dl[i] for i in range(2)]
+        self.assertGreaterEqual(Bx_smooth.x.min(), lo[0] - tol[0])
+        self.assertLessEqual(Bx_smooth.x.max(), hi[0] + tol[0])
+        self.assertGreaterEqual(Bx_smooth.y.min(), lo[1] - tol[1])
+        self.assertLessEqual(Bx_smooth.y.max(), hi[1] + tol[1])
+        # selection should be smaller than the full domain
+        self.assertLess(Bx_smooth.x.max() - Bx_smooth.x.min(), domain[0])
+        self.assertLess(Bx_smooth.y.max() - Bx_smooth.y.min(), domain[1])
+
+    def test_finest_no_nans(self):
+        from pyphare.pharesee.filters import gaussian_filter_uniform_grid
+        from pyphare.pharesee.run.utils import interpolate_hierarchy
+
+        sim = self.simulation(**sim_kwargs())
+        setup_physics(sim)
+        actual_diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
+
+        run = Run(actual_diag_dir)
+        time = timestamps[-1]
+
+        B = run.GetB(time)
+        grids = interpolate_hierarchy(B["x"])
+        Bx_smooth = gaussian_filter_uniform_grid(grids["x"])
+
+        self.assertFalse(np.isnan(Bx_smooth.dataset).any())
 
 
 if __name__ == "__main__":

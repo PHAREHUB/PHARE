@@ -45,6 +45,12 @@ class Patch:
 
         return deepcopy(self)
 
+    def copy_as(self, patch_datas=None, patch_id=None, attrs=None):
+        patch_datas = patch_datas if patch_datas is not None else self.patch_datas
+        patch_id = patch_id if patch_id is not None else self.id
+        attrs = attrs if attrs is not None else self.attrs
+        return type(self)(patch_datas, patch_id, box=self.box, attrs=attrs)
+
     def __copy__(self):
         return self.copy()
 
@@ -61,11 +67,11 @@ class Patch:
         pd = self.patch_datas[qty]
         origin = pd.origin[idim]
         idx = int((cut - origin) / pd.layout.dl[idim])
-        nbrGhosts = pd.ghosts_nbr[idim]
+        data = pd[pd.box]
         if idim == 0:
-            return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
+            return data[idx, :]
         elif idim == 1:
-            return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+            return data[:, idx]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return patch_array_ufunc(self, ufunc, method, *inputs, **kwargs)
