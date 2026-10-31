@@ -3,6 +3,7 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/numerics/boundary_condition/divergence_free_transverse_common.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 
@@ -85,12 +86,11 @@ public:
                     Bc.physicalQuantity())[std::min(iNormal, dimension - 1)];
                 auto fieldBox = gridLayout.toFieldBox(localGhostBox, Bc.physicalQuantity());
 
-                for (auto const& index : fieldBox)
-                {
+                for_each_point(fieldBox, [&](auto const& index) {
                     auto const mirrorIndex
                         = gridLayout.boundaryMirrored(direction, side, centering, index);
                     Bc(index) = Bc(mirrorIndex);
-                }
+                });
             }
         });
 

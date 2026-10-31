@@ -54,8 +54,7 @@ Box<std::uint32_t, dim> indexBox(std::array<std::uint32_t, dim> shape)
 template<typename Grid, typename Fn>
 void fill(Grid& grid, Fn&& fn)
 {
-    for (auto const& idx : indexBox(grid.shape()))
-        grid(*idx) = fn(*idx);
+    for_each_point(indexBox(grid.shape()), [&](auto const& idx) { grid(*idx) = fn(*idx); });
 }
 
 template<std::size_t dim>
@@ -112,14 +111,13 @@ TEST(RecenteredField, CornerAverage2D)
     fill(rho, [&](auto const& idx) { return profile(idx[0], idx[1]); });
 
     RecenteredField const rf{*rho, {dual, dual}, layout};
-    for (auto const& idx : indexBox(ConstArray<std::uint32_t, 2>(nDual<2>)))
-    {
+    for_each_point(indexBox(ConstArray<std::uint32_t, 2>(nDual<2>)), [&](auto const& idx) {
         auto const [i, j] = *idx;
         EXPECT_EQ(
             rf(i, j),
             0.25 * (profile(i, j) + profile(i + 1, j) + profile(i, j + 1) + profile(i + 1, j + 1)))
             << i << " " << j;
-    }
+    });
     EXPECT_EQ(rf(std::array<std::uint32_t, 2>{3, 4}), rf(3, 4));
 }
 
@@ -149,8 +147,9 @@ TYPED_TEST(RecenteredFieldLinear, LinearFieldsToCellCentres)
         fill(grid, [&](auto const& idx) { return linear(idx, centering); });
 
         RecenteredField const rf{*grid, allDual, layout};
-        for (auto const& idx : indexBox(ConstArray<std::uint32_t, dim>(nDual<dim>)))
+        for_each_point(indexBox(ConstArray<std::uint32_t, dim>(nDual<dim>)), [&](auto const& idx) {
             EXPECT_EQ(rf(*idx), linear(*idx, allDual)) << static_cast<int>(qty);
+        });
     }
 }
 
@@ -172,9 +171,10 @@ TYPED_TEST(RecenteredFieldLinear, MHDElectricFieldToFortranPrimal)
 
         auto const lcl_box = layout.AMRToLocal(layout.AMRBoxFor(*dst));
         auto const view    = make_array_view<false>((*dst).data(), *lcl_box.shape());
-        for (auto const& lix : lcl_box)
+        for_each_point(lcl_box, [&](auto const& lix) {
             EXPECT_EQ(view(*(lix - lcl_box.lower)), linear(*lix, allPrimal))
                 << static_cast<int>(qty);
+        });
     }
 }
 

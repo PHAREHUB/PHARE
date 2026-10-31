@@ -7,6 +7,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 
+#include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/types.hpp"
 
 #include <array>
@@ -222,37 +223,35 @@ public:
         auto const regionLayout = geometry_type::layoutFromBox(region, layout);
 
         auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
-            return field_geometry_type::toFieldBox(region, fields[i].physicalQuantity(),
-                                                   regionLayout);
+            return phare_box_from<dimension>(field_geometry_type::toFieldBox(
+                region, fields[i].physicalQuantity(), regionLayout));
         });
 
         // One stage-1 snapshot per pass (DivScratch): every correction must read stage-1
         // divergences, and the corrections write the faces those divergences are computed from.
         scratch.reset(region, layout);
 
+        auto const& [box_x, box_y, box_z] = fine_field_box;
         if constexpr (dimension == 1)
         {
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-                correctBx1d(scratch, bx, layout, i);
+            core::for_each_point(box_x,
+                                 [&](auto const& i) { correctBx1d(scratch, bx, layout, i); });
         }
         else if constexpr (dimension == 2)
         {
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-                correctBx2d(scratch, bx, by, layout, i);
-
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
-                correctBy2d(scratch, bx, by, layout, i);
+            core::for_each_point(box_x,
+                                 [&](auto const& i) { correctBx2d(scratch, bx, by, layout, i); });
+            core::for_each_point(box_y,
+                                 [&](auto const& i) { correctBy2d(scratch, bx, by, layout, i); });
         }
         else if constexpr (dimension == 3)
         {
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-                correctBx3d(scratch, bx, by, bz, layout, i);
-
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
-                correctBy3d(scratch, bx, by, bz, layout, i);
-
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirZ]))
-                correctBz3d(scratch, bx, by, bz, layout, i);
+            core::for_each_point(
+                box_x, [&](auto const& i) { correctBx3d(scratch, bx, by, bz, layout, i); });
+            core::for_each_point(
+                box_y, [&](auto const& i) { correctBy3d(scratch, bx, by, bz, layout, i); });
+            core::for_each_point(
+                box_z, [&](auto const& i) { correctBz3d(scratch, bx, by, bz, layout, i); });
         }
     }
 

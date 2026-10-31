@@ -2,6 +2,7 @@
 #define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_COMMON_HPP
 
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include <cstddef>
 #include <tuple>
@@ -41,43 +42,39 @@ void applyDivergenceFreeNormalComponent(FieldTuple& fields, std::size_t const iN
         }
     }();
 
-    auto apply_loop = [&](auto begin, auto end) {
-        for (auto it = begin; it != end; ++it)
+    // order matters: each index sets the next normal face from the one already set
+    auto apply = [&](index_type const& index) {
+        double transverseDiv = 0.0;
+        for_N<dimension>([&](auto iTransverse) {
+            if (static_cast<std::size_t>(iTransverse) != iNormal)
+            {
+                field_type& tField           = std::get<iTransverse>(fields);
+                index_type const upper_index = index.shift(iTransverse, 1);
+                double const invDxT          = gridLayout.inverseMeshSize(
+                    static_cast<Direction>(static_cast<std::uint32_t>(iTransverse)));
+                transverseDiv += (tField(upper_index) - tField(index)) * invDxT;
+            }
+        });
+
+        double const dxN = gridLayout.meshSize()[iNormal];
+        if (side == Side::Upper)
         {
-            index_type const& index = *it;
-
-            double transverseDiv = 0.0;
-            for_N<dimension>([&](auto iTransverse) {
-                if (static_cast<std::size_t>(iTransverse) != iNormal)
-                {
-                    field_type& tField           = std::get<iTransverse>(fields);
-                    index_type const upper_index = index.shift(iTransverse, 1);
-                    double const invDxT          = gridLayout.inverseMeshSize(
-                        static_cast<Direction>(static_cast<std::uint32_t>(iTransverse)));
-                    transverseDiv += (tField(upper_index) - tField(index)) * invDxT;
-                }
-            });
-
-            double const dxN = gridLayout.meshSize()[iNormal];
-            if (side == Side::Upper)
-            {
-                index_type const index_to_set      = index.shift(iNormal, 1);
-                index_type const index_already_set = index;
-                nField(index_to_set) = nField(index_already_set) - dxN * transverseDiv;
-            }
-            else
-            {
-                index_type const index_to_set      = index;
-                index_type const index_already_set = index.shift(iNormal, 1);
-                nField(index_to_set) = nField(index_already_set) + dxN * transverseDiv;
-            }
+            index_type const index_to_set      = index.shift(iNormal, 1);
+            index_type const index_already_set = index;
+            nField(index_to_set)               = nField(index_already_set) - dxN * transverseDiv;
+        }
+        else
+        {
+            index_type const index_to_set      = index;
+            index_type const index_already_set = index.shift(iNormal, 1);
+            nField(index_to_set)               = nField(index_already_set) + dxN * transverseDiv;
         }
     };
 
     if (side == Side::Upper)
-        apply_loop(localGhostBox.begin(), localGhostBox.end());
+        for_each_point(localGhostBox, apply);
     else
-        apply_loop(localGhostBox.rbegin(), localGhostBox.rend());
+        for_each_point_reverse(localGhostBox, apply);
 }
 
 } // namespace PHARE::core

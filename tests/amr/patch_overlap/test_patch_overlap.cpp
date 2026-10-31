@@ -53,8 +53,8 @@ std::set<std::array<int, dim>> cellsOf(SAMRAI::hier::BoxContainer const& boxes)
 {
     std::set<std::array<int, dim>> cells;
     for (auto const& box : boxes)
-        for (auto const& cell : amr::phare_box_from<dim>(box))
-            cells.insert(cell.toArray());
+        for_each_point(amr::phare_box_from<dim>(box),
+                       [&](auto const& cell) { cells.insert(cell.toArray()); });
     return cells;
 }
 
@@ -132,8 +132,9 @@ struct ExchangeRegionCheck
         {
             // the shared cells may hold particles that left the source
             ++nbrOverlapping;
-            for (auto const& cell : *shared)
+            for_each_point(*shared, [&](auto const& cell) {
                 ASSERT_TRUE(region.count(cell.toArray())) << "source " << srcBox;
+            });
         }
     }
 };
@@ -355,8 +356,7 @@ void checkEveryCoveredCellHasOneOwner(Configuration<dim> const& config, int cons
         domain.upper[i] = domainSize; // corner boxes may stick out by one cell
     }
 
-    for (auto const& cell : domain)
-    {
+    for_each_point(domain, [&](auto const& cell) {
         std::size_t nbrCovering = 0, nbrOwners = 0;
         int smallestId = std::numeric_limits<int>::max(), ownerId = -1;
         for (std::size_t i = 0; i < config.boxes.size(); ++i)
@@ -375,7 +375,7 @@ void checkEveryCoveredCellHasOneOwner(Configuration<dim> const& config, int cons
         {
             ASSERT_EQ(ownerId, smallestId);
         }
-    }
+    });
 }
 
 template<std::size_t dim>

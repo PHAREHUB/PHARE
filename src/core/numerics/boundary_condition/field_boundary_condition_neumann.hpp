@@ -3,6 +3,7 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 
 #include <cstddef>
@@ -59,11 +60,10 @@ public:
             QtyCentering const centering = GridLayoutT::centering(
                 field.physicalQuantity())[static_cast<std::size_t>(direction)];
             auto fieldBox = gridLayout.toFieldBox(localGhostBox, field.physicalQuantity());
-            for (Index const& index : fieldBox)
-            {
+            for_each_point(fieldBox, [&](Index const& index) {
                 Index mirrorIndex = gridLayout.boundaryMirrored(direction, side, centering, index);
                 field(index)      = field(mirrorIndex);
-            }
+            });
         });
     }
 }; // class FieldBoundaryConditionNeumann

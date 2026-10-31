@@ -5,6 +5,7 @@
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/utilities/box/amr_box.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
@@ -21,8 +22,8 @@ namespace PHARE::amr
 template<typename Dst>
 void coarsen_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& coarsener)
 {
-    for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
-        coarsener(sourceField, destinationField, bix);
+    core::for_each_point(phare_box_from<Dst::dimension>(intersectionBox),
+                         [&](auto const& bix) { coarsener(sourceField, destinationField, bix); });
 }
 
 
