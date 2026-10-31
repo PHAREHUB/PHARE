@@ -140,7 +140,10 @@ simArgs = {
 }
 
 
-def permute(dic):
+_ref_layout = "AoSMapped"
+
+
+def permute(dic, layouts=(_ref_layout,)):
     ndims = [2]
     interp_orders = [1]
     dic.update(simArgs.copy())
@@ -148,10 +151,27 @@ def permute(dic):
         dict(
             ndim=ndim,
             interp=interp_order,
+            layout=layout,
             simInput=deepcopy(dic),
         )
-        for ndim, interp_order in itertools.product(ndims, interp_orders)
+        for ndim, interp_order, layout in itertools.product(
+            ndims, interp_orders, layouts
+        )
     ]
+
+
+def cmp_layouts():
+    return [l for l in cpp.supported_model_layouts() if l != _ref_layout]
+
+
+def h5_datasets(h5_file):
+    datasets = {}
+    h5_file.visititems(
+        lambda name, obj: (
+            datasets.update({name: obj[()]}) if hasattr(obj, "dtype") else None
+        )
+    )
+    return datasets
 
 
 @ddt
@@ -160,10 +180,13 @@ class VTKDiagnosticsTest(SimulatorTest):
         super().__init__(*args, **kwargs)
         self.simulator = None
 
-    def _run(self, ndim, interp, simInput, diag_dir="", **kwargs):
+    def _run(self, ndim, interp, simInput, layout=_ref_layout, **kwargs):
+        simInput = deepcopy(simInput)
         for key in ["cells", "dl"]:
             simInput[key] = list(phut.np_array_ify(simInput[key], ndim))
-        simulation = config(self.simulation(interp_order=interp, **simInput))
+        simulation = config(
+            self.simulation(interp_order=interp, model_layout=layout, **simInput)
+        )
         self.assertTrue(len(simulation.cells) == ndim)
         dump_all_diags(simulation.model.populations)
         Simulator(simulation).run().reset()
@@ -171,12 +194,12 @@ class VTKDiagnosticsTest(SimulatorTest):
 
     @data(*permute({}))
     @unpack
-    def test_dump_diags(self, ndim, interp, simInput):
+    def test_dump_diags(self, ndim, interp, layout, simInput):
         print(f"test_dump_diags dim/interp:{ndim}/{interp}")
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
-        local_out = self._run(ndim, interp, simInput)
+        local_out = self._run(ndim, interp, simInput, layout)
 
         if cpp.mpi_rank() == 0:
             import h5py
@@ -195,6 +218,45 @@ class VTKDiagnosticsTest(SimulatorTest):
                 plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d_interp{interp}.vtk.png")
             except ModuleNotFoundError:
                 print("WARNING: vtk python module not found - cannot make plots")
+
+    @data(*permute({}, cmp_layouts()))
+    @unpack
+    def test_layout_matches_reference(self, ndim, interp, layout, simInput):
+        """tiled fields are reduced then converted to primal, as AoSMapped's are converted"""
+        print(
+            f"test_layout_matches_reference dim/interp/layout:{ndim}/{interp}/{layout}"
+        )
+
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
+        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+        ref_out = self._run(ndim, interp, simInput)
+        cmp_out = self._run(ndim, interp, simInput, layout)
+
+        if cpp.mpi_rank() == 0:
+            import glob
+            import os
+
+            import h5py
+
+            files = sorted(
+                os.path.basename(f) for f in glob.glob(f"{ref_out}/*.vtkhdf")
+            )
+            self.assertTrue(len(files) > 0)
+            for file in files:
+                with (
+                    h5py.File(f"{ref_out}/{file}", "r") as ref,
+                    h5py.File(f"{cmp_out}/{file}", "r") as cmp,
+                ):
+                    ref_ds, cmp_ds = h5_datasets(ref), h5_datasets(cmp)
+                    self.assertEqual(ref_ds.keys(), cmp_ds.keys(), file)
+                    for name, ref_data in ref_ds.items():
+                        np.testing.assert_allclose(
+                            cmp_ds[name],
+                            ref_data,
+                            atol=1e-13,
+                            rtol=0,
+                            err_msg=f"{file}:{name}",
+                        )
 
 
 if __name__ == "__main__":

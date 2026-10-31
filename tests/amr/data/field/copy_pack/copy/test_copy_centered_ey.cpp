@@ -1,5 +1,7 @@
 #include "field_data_test_param.hpp"
 
+#include "gmock/gmock.h"
+
 using testing::Eq;
 
 using namespace PHARE::core;

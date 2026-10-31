@@ -8,6 +8,22 @@ endif()
 
 file(STRINGS ${PHARE_PERMUTATIONS} THIS_FILE)
 
+# each cpp_<permutation> module is split over several translation units to bound compiler memory
+#  see src/simulator/simulator_decl.hpp
+set(PHARE_CPP_SIMULATOR_SOURCES
+    cpp_simulator.cpp
+    cpp_simulator_etc.cpp
+    cpp_simulator_models.cpp
+    cpp_simulator_solvers.cpp
+    cpp_simulator_solver_steps.cpp
+    cpp_simulator_restarts.cpp
+    cpp_simulator_integrator.cpp
+    cpp_simulator_messengers.cpp
+    cpp_simulator_moment_borders.cpp
+    cpp_simulator_ion_borders.cpp
+    cpp_simulator_diagnostics.cpp
+)
+
 while(THIS_FILE)
     list(POP_FRONT THIS_FILE LINE)
 
@@ -20,17 +36,23 @@ while(THIS_FILE)
     string(REPLACE "," ";" LINE_LIST ${LINE})
     list(LENGTH LINE_LIST LINE_LENGTH)
 
-    if(LINE_LENGTH EQUAL 5)
-        # MHD-only shape: dim,recon,slope,riemann,hall
-        # normalize to the 7-field SimOpts aggregate order: dim,0,0,...
+    # dim,interp,refined,layout,allocator[,recon,slope,riemann,hall]
+    list(GET LINE_LIST 1 _SECOND)
+    if(NOT "${_SECOND}" MATCHES "^[0-9]+$")
+        # MHD-only shape: dim,layout,allocator,recon,slope,riemann,hall
+        #  layout AoS (untiled fields) or AoSTS (tiled), see pyphare's valid_mhd_model_layouts
+        if(NOT LINE_LENGTH EQUAL 7)
+            message(FATAL_ERROR "PHARE MHD-only permutation line needs dim,layout,allocator,recon,slope,riemann,hall: ${LINE}")
+        endif()
+        # normalize to the 9-field SimOpts aggregate order: dim,0,0,layout,allocator,...
         list(INSERT LINE_LIST 1 "0" "0")
         list(LENGTH LINE_LIST LINE_LENGTH)
-    elseif(NOT LINE_LENGTH EQUAL 3 AND NOT LINE_LENGTH EQUAL 7)
+    elseif(NOT LINE_LENGTH EQUAL 5 AND NOT LINE_LENGTH EQUAL 9)
         message(FATAL_ERROR "PHARE permutation line has unsupported arity (${LINE_LENGTH}): ${LINE}")
     endif()
 
     SET(_OFFSET 3)
-    SET(_PREFIXES "ReconstructionType;SlopeLimiterType;RiemannSolverType")
+    SET(_PREFIXES "LayoutMode;AllocatorMode;ReconstructionType;SlopeLimiterType;RiemannSolverType")
     foreach(PREFIX IN LISTS _PREFIXES)
       if(LINE_LENGTH GREATER ${_OFFSET})
           list(TRANSFORM LINE_LIST PREPEND "${PREFIX}::" AT ${_OFFSET})
@@ -42,9 +64,10 @@ while(THIS_FILE)
     SET(MOD_STR "cpp_${OUT}")
     list(JOIN LINE_LIST "," LINE) # semicolon separated list to csv
 
-    pybind11_add_module(${MOD_STR} cpp_simulator.cpp)
+    pybind11_add_module(${MOD_STR} ${PHARE_CPP_SIMULATOR_SOURCES})
     target_link_libraries(${MOD_STR} PUBLIC phare_simulator)
     target_compile_options(${MOD_STR} PRIVATE
+        ${PHARE_FLAGS}
         ${PHARE_WERROR_FLAGS}
         -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}
         -DPHARE_SIM_ID=${OUT}
@@ -63,10 +86,7 @@ endwhile()
 pybind11_add_module(cpp_etc cpp_etc.cpp)
 target_compile_options(cpp_etc PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
 target_link_libraries(cpp_etc PUBLIC phare_amr phare_diagnostic)
-set_target_properties(cpp_etc
-    PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
-)
+set_target_properties(cpp_etc PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs")
 # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
 set_property(TARGET cpp_etc PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_property(TARGET cpp_etc APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")

@@ -3,6 +3,7 @@
 
 
 #include "phare_mpi.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
@@ -25,7 +26,9 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "gmock/gmock.h"
+
+#include <cmath>
+#include <string>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

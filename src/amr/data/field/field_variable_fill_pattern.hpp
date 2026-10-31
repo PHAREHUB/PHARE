@@ -36,7 +36,6 @@ public:
     // defaulted param makes this the default constructor also
     FieldFillPattern(bool overwrite_interior = false)
         : overwrite_interior_{overwrite_interior}
-
     {
     }
 

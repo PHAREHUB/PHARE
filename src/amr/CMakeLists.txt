@@ -44,6 +44,7 @@ set( SOURCES_INC
      messengers/hybrid_messenger.hpp
      messengers/hybrid_messenger_strategy.hpp
      messengers/hybrid_hybrid_messenger_strategy.hpp
+     messengers/hybrid_hybrid_messenger_strategy_borders.hpp
      messengers/mhd_hybrid_messenger_strategy.hpp
      messengers/mhd_messenger.hpp
      messengers/messenger_factory.hpp
@@ -60,6 +61,7 @@ set( SOURCES_INC
      tagging/default_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
+     solvers/solver_ppc_steps.hpp
      solvers/solver_mhd.hpp
      physical_models/physical_model.hpp
      physical_models/hybrid_model.hpp
@@ -79,6 +81,7 @@ set( SOURCES_INC
      load_balancing/concrete_load_balancer_strategy_homogeneous.hpp
      load_balancing/concrete_load_balancer_strategy_nppc.hpp
      samrai.hpp
+     utilities/box/amr_box.hpp
    )
 set( SOURCES_CPP
      resources_manager/amr_utils.cpp
@@ -89,7 +92,7 @@ set( SOURCES_CPP
 
 # single source of entry for static SAMRAI things
 add_library(${PROJECT_NAME} SHARED ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${MPI_LIBRARY_PATH})
@@ -109,10 +112,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   SAMRAI_xfer
   MPI::MPI_C
   cppdict
+  ${PHARE_BASE_LIBS}
 )
 
 if (HighFive) # SAMRAI USES HDF5 so we need this here
   target_link_libraries(${PROJECT_NAME} PUBLIC HDF5::HDF5)
+  if (HDF5_IS_PARALLEL)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC H5_HAVE_PARALLEL)
+  endif()
 endif()
 
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")

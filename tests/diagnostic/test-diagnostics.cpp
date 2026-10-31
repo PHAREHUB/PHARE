@@ -4,16 +4,18 @@
 #include <cstdlib>
 #include <filesystem>
 
+#include "tests/simulator/per_test.hpp"
 #include "test_diagnostics.ipp"
 
-// PHARE_TEST_DIM/PHARE_TEST_INTERP set per binary by CMake
+// PHARE_TEST_DIM/PHARE_TEST_INTERP/PHARE_TEST_REFINED_PARTS set per binary by CMake
 
 template<typename SimulatorParam>
 struct SimulatorDiagnosticsTest : public ::testing::Test
 {
 };
 
-using DiagnosticsSimulators = SimulatorPermutations<PHARE_TEST_DIM, PHARE_TEST_INTERP>::type;
+using DiagnosticsSimulators
+    = SimulatorTestParams<PHARE_TEST_DIM, PHARE_TEST_INTERP, PHARE_TEST_REFINED_PARTS>;
 TYPED_TEST_SUITE(SimulatorDiagnosticsTest, DiagnosticsSimulators);
 
 static std::string const job_file = "job_" + std::to_string(PHARE_TEST_DIM) + "d";

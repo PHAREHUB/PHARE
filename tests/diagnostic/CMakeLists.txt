@@ -12,14 +12,15 @@ set(SOURCES_INC
 )
 
 if(HighFive)
-  # one binary per dim/interp, see SimulatorPermutations in tests/simulator/per_test.hpp
-  #  to prevent OOM when compiling: all 2d permutations in one source file can exceed
-  #  github actions runner memory (16GB) with -O3 -g
-  function(_add_diagnostics_test dim interp)
-    set(src_name test-diagnostics_${dim}d_interp${interp})
+  # one binary per simulator permutation to prevent OOM when compiling/linking: several
+  #  simulators in one binary can exceed github actions runner memory (16GB) with -O3 -g,
+  #  or with coverage instrumentation
+  function(_add_diagnostics_test dim interp refined_parts)
+    set(src_name test-diagnostics_${dim}d_interp${interp}_refined${refined_parts})
 
     add_executable(${src_name} ${SOURCES_INC} test-diagnostics.cpp)
-    target_compile_definitions(${src_name} PRIVATE PHARE_TEST_DIM=${dim} PHARE_TEST_INTERP=${interp})
+    target_compile_definitions(${src_name} PRIVATE
+      PHARE_TEST_DIM=${dim} PHARE_TEST_INTERP=${interp} PHARE_TEST_REFINED_PARTS=${refined_parts})
 
     target_include_directories(${src_name} PRIVATE
       $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -42,9 +43,23 @@ if(HighFive)
 
   endfunction(_add_diagnostics_test)
 
+  set(_refined_parts_1_1 2 3)
+  set(_refined_parts_1_2 2 3 4)
+  set(_refined_parts_1_3 2 3 4 5)
+
+  set(_refined_parts_2_1 4 5 8 9)
+  set(_refined_parts_2_2 4 5 8 9 16)
+  set(_refined_parts_2_3 4 5 8 25)
+
+  set(_refined_parts_3_1 6)
+  set(_refined_parts_3_2 6)
+  set(_refined_parts_3_3 6)
+
   foreach(dim 1 2 3)
     foreach(interp 1 2 3)
-      _add_diagnostics_test(${dim} ${interp})
+      foreach(refined_parts ${_refined_parts_${dim}_${interp}})
+        _add_diagnostics_test(${dim} ${interp} ${refined_parts})
+      endforeach()
     endforeach()
   endforeach()
 
