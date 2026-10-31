@@ -37,6 +37,7 @@
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <iomanip>
@@ -234,11 +235,6 @@ namespace amr
             for (auto& refiner : popDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
             // TODO this 'if' may not be OK if L0 is regrided
@@ -254,6 +250,7 @@ namespace amr
 
                 electricInitRefiners_.registerLevel(hierarchy, level);
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
+                populateLvlGhostFillPatterns_(*level, *hierarchy);
                 lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
@@ -276,8 +273,6 @@ namespace amr
         {
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
             auto level        = hierarchy->getPatchLevel(levelNumber);
-
-            bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -446,19 +441,6 @@ namespace amr
                                 ions[i].particleDensity().size() * sizeof(value_type));
             }
         }
-
-
-        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
-        {
-            assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
-            assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-        }
-
 
 
         /**
@@ -786,14 +768,13 @@ namespace amr
                 info->interiorParticles, interiorParticleRefineOp_, info->interiorParticles);
 
 
-            lvlGhostPartOldRefiners_.addStaticRefiners(info->levelGhostParticlesOld,
-                                                       levelGhostParticlesOldOp_,
-                                                       info->levelGhostParticlesOld);
+            lvlGhostPartOldRefiners_.addStaticRefiners(
+                info->levelGhostParticlesOld, levelGhostParticlesOldOp_,
+                info->levelGhostParticlesOld, lgOldFillPattern_);
 
-
-            lvlGhostPartNewRefiners_.addStaticRefiners(info->levelGhostParticlesNew,
-                                                       levelGhostParticlesNewOp_,
-                                                       info->levelGhostParticlesNew);
+            lvlGhostPartNewRefiners_.addStaticRefiners(
+                info->levelGhostParticlesNew, levelGhostParticlesNewOp_,
+                info->levelGhostParticlesNew, lgNewFillPattern_);
 
 
             domainGhostPartRefiners_.addStaticRefiners(
@@ -813,22 +794,6 @@ namespace amr
                     .addStaticRefiner(
                         sumField_.name(), field, nullptr, sumField_.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-
-            assert(info->maxBorderFields.size() == 1); // charge density
-            for (auto const& field : info->maxBorderFields)
-                ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        field, field, nullptr, field,
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-            assert(info->maxBorderVecFields.size() == 1); // charge flux
-            for (auto const& vecfield : info->maxBorderVecFields)
-                ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -848,6 +813,20 @@ namespace amr
         }
 
 
+
+
+        void populateLvlGhostFillPatterns_(level_t const& level,
+                                           SAMRAI::hier::PatchHierarchy const& hierarchy)
+        {
+            lgOldFillPattern_->reset();
+            lgNewFillPattern_->reset();
+            for (auto const& patch : level)
+            {
+                auto const owned = makeLevelGhostParticleBoxFor<GridLayoutT>(*patch, hierarchy);
+                lgOldFillPattern_->setOwnedBoxes(patch->getBox(), owned);
+                lgNewFillPattern_->setOwnedBoxes(patch->getBox(), owned);
+            }
+        }
 
 
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
@@ -959,8 +938,6 @@ namespace amr
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
-        using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
-        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
@@ -968,9 +945,6 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
-
-        std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
-        std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
@@ -981,8 +955,6 @@ namespace amr
         SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> BpredGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> elecPatchGhostsRefineSchedules;
 
         SAMRAI::xfer::CoarsenAlgorithm RefluxAlgo{SAMRAI::tbox::Dimension{dimension}};
@@ -1022,6 +994,9 @@ namespace amr
         RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
         RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
+        using LGFillPattern_t = ParticleLevelGhostVariableFillPattern<GridLayoutT>;
+        std::shared_ptr<LGFillPattern_t> lgOldFillPattern_{std::make_shared<LGFillPattern_t>()};
+        std::shared_ptr<LGFillPattern_t> lgNewFillPattern_{std::make_shared<LGFillPattern_t>()};
 
 
         //! to grab particle leaving neighboring patches and inject into domain
