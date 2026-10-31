@@ -5,6 +5,7 @@
 #include <limits>
 #include <vector>
 #include <cstdint>
+#include <type_traits>
 
 namespace PHARE::core
 {
@@ -83,6 +84,21 @@ TEST(BoxSpansTest, two_boxes_walk_in_lockstep)
         cells += size;
     });
     EXPECT_EQ(cells, a.size());
+}
+
+TEST(BoxSpansTest, amr_and_local_boxes_walk_in_lockstep)
+{
+    Box<int, 3> const amr{{-3, 2, -1}, {-1, 5, 3}};
+    Box<std::uint32_t, 3> const local{{2, 2, 2}, {4, 5, 6}};
+    std::size_t cells = 0;
+    for_each_span(amr, local, [&](auto const& amr_start, auto const& local_start, auto const size) {
+        static_assert(std::is_same_v<std::decay_t<decltype(local_start)>, Point<std::uint32_t, 3>>);
+        for (std::size_t d = 0; d < 3; ++d)
+            EXPECT_EQ(static_cast<int>(local_start[d] - local.lower[d]),
+                      amr_start[d] - amr.lower[d]);
+        cells += size;
+    });
+    EXPECT_EQ(cells, amr.size());
 }
 
 } // namespace PHARE::core
