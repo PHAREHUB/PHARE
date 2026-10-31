@@ -3,6 +3,7 @@ This file exists independently from test_advance.py to isolate dimension
   test cases and allow each to be overridden in some way if required.
 """
 
+import itertools
 import unittest
 
 import matplotlib
@@ -10,6 +11,7 @@ from ddt import data, ddt, unpack
 
 from pyphare.core import phare_utilities as phut
 from pyphare.core.box import Box3D
+from pyphare.cpp import supported_model_layouts, supported_mhd_model_layouts
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 
@@ -29,8 +31,11 @@ def permute_hybrid(boxes=None):
             interp_order=interp_order,
             refinement_boxes=boxes,
             nbr_part_per_cell=ppc,
+            model_layout=layout,
         )
-        for interp_order in interp_orders
+        for interp_order, layout in itertools.product(
+            interp_orders, supported_model_layouts()
+        )
     ]
 
 
@@ -43,7 +48,9 @@ def permute_mhd(boxes=None):
             hall=False,
             refinement_boxes=boxes,
             interp_order=None,
+            model_layout=layout,
         )
+        for layout in supported_mhd_model_layouts()
     ]
 
 
@@ -75,30 +82,6 @@ class AdvanceTest3D(HybridAdvanceTest, MHDAdvanceTest):
             **kwargs,
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
-
-    # needs updating tests/simulator/utilities/field_coarsening.py
-    # @data(
-    #     *permute(({"L0": {"B0": Box3D(10, 14)}})),
-    #     *permute(({"L0": {"B0": Box3D(10, 14), "B1": Box3D(15, 19)}})),
-    #     *permute(({"L0": {"B0": Box3D(6, 23)}})),
-    #     *permute(({"L0": {"B0": Box3D(2, 12), "B1": Box3D(13, 25)}})),
-    #     *permute(({"L0": {"B0": Box3D(5, 20)}, "L1": {"B0": Box3D(15, 19)}})),
-    #     *permute(
-    #         (
-    #             {
-    #                 "L0": {"B0": Box3D(5, 20)},
-    #                 "L1": {"B0": Box3D(12, 38)},
-    #                 "L2": {"B0": Box3D(30, 52)},
-    #             }
-    #         )
-    #     ),
-    # )
-    # @unpack
-    # def test_field_coarsening_via_subcycles(self, interp_order, refinement_boxes):
-    #     print(f"{self._testMethodName}_{ndim}d")
-    #     self._test_field_coarsening_via_subcycles(
-    #         ndim, interp_order, refinement_boxes, dl=0.3, cells=cells
-    #     )
 
     @unittest.skip("should change to work on moments")
     @data(  # only supports a hierarchy with 2 levels

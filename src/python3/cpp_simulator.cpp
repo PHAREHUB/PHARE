@@ -1,4 +1,5 @@
 
+
 // PHARE_SIM_STR == template string, between <>
 // PHARE_SIM_ID  == string representing templates
 
@@ -16,7 +17,7 @@
 namespace PHARE::pydata
 {
 
-PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
+PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m, pybind11::mod_gil_not_used())
 {
     declare_macro_sim(m);
 }

@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 #include "core/utilities/enum_table.hpp"
 
+
 #include <array>
 #include <cstdint>
 #include <tuple>
@@ -36,10 +37,11 @@ public:
         Myy,
         Myz,
         Mzz,
-        count
+        count,
+        INVALID
     };
-    enum class Vector : std::uint16_t { B = 0, E, J, V, count };
-    enum class Tensor : std::uint16_t { M = 0, count };
+    enum class Vector : std::uint16_t { B = 0, E, J, V, count, INVALID };
+    enum class Tensor : std::uint16_t { M = 0, count, INVALID };
 
     static constexpr auto vector_components = make_enum_table<Vector, std::array<Scalar, 3>>({
         {Vector::B, {Scalar::Bx, Scalar::By, Scalar::Bz}},
@@ -52,6 +54,7 @@ public:
 
     template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>
     using TensorType = std::conditional_t<rank == 1, Vector, Tensor>;
+
 
     NO_DISCARD static constexpr auto B() { return componentsQuantities(Vector::B); }
     NO_DISCARD static constexpr auto E() { return componentsQuantities(Vector::E); }
@@ -66,25 +69,22 @@ public:
         return vector_components[idx];
     }
 
-    NO_DISCARD static constexpr std::array<Scalar, 6> componentsQuantities(Tensor qty)
+    NO_DISCARD static constexpr std::array<Scalar, 6> componentsQuantities(Tensor /*qty*/)
     {
         // no condition, for now there's only then momentum tensor M
         return {{Scalar::Mxx, Scalar::Mxy, Scalar::Mxz, Scalar::Myy, Scalar::Myz, Scalar::Mzz}};
     }
-
-    NO_DISCARD static constexpr auto B_items()
-    {
-        auto const& [Bx, By, Bz] = B();
-        return std::make_tuple(std::make_pair("Bx", Bx), std::make_pair("By", By),
-                               std::make_pair("Bz", Bz));
-    }
-    NO_DISCARD static constexpr auto E_items()
-    {
-        auto const& [Ex, Ey, Ez] = E();
-        return std::make_tuple(std::make_pair("Ex", Ex), std::make_pair("Ey", Ey),
-                               std::make_pair("Ez", Ez));
-    }
 };
+
+auto inline componentsQuantities(HybridQuantity::Vector const qty)
+{
+    return HybridQuantity::componentsQuantities(qty);
+}
+
+auto inline componentsQuantities(HybridQuantity::Tensor const qty)
+{
+    return HybridQuantity::componentsQuantities(qty);
+}
 
 } // namespace PHARE::core
 

@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "core/utilities/span.hpp"
+#include "core/utilities/types.hpp"
 
 #include "pybind11/stl.h"
 #include "pybind11/numpy.h"
@@ -34,6 +35,50 @@ std::size_t ndSize(PyArrayInfo const& ar_info)
                            std::multiplies<std::size_t>());
 }
 
+
+template<std::size_t dim>
+auto shape(pybind11::buffer_info const& info)
+{
+    if (info.ndim != dim)
+        throw std::runtime_error("bad dim");
+    return core::for_N_make_array<dim>([&](auto i) -> std::size_t { return info.shape[i]; });
+}
+
+template<std::size_t dim, typename T>
+auto shape(py_array_t<T> const& ar)
+{
+    return shape<dim>(ar.request());
+}
+
+
+template<std::size_t dim>
+auto strides(pybind11::buffer_info const& info)
+{
+    if (info.ndim != dim)
+        throw std::runtime_error("bad dim");
+    return core::for_N_make_array<dim>([&](auto i) -> std::size_t { return info.strides[i]; });
+}
+
+template<std::size_t dim, typename T>
+auto strides(py_array_t<T> const& ar)
+{
+    return strides<dim>(ar.request());
+}
+
+template<typename T, typename Size, std::size_t dim>
+std::array<std::size_t, dim> strides_from(std::array<Size, dim> const& shape)
+{
+    std::size_t constexpr data_size = sizeof(T);
+
+    if constexpr (dim == 1)
+        return {data_size};
+
+    if constexpr (dim == 2)
+        return {data_size * shape[1], data_size};
+
+    if constexpr (dim == 3)
+        return {data_size * shape[1] * shape[2], data_size * shape[1], data_size};
+}
 
 template<typename T>
 class __attribute__((visibility("hidden"))) PyArrayWrapper : public core::Span<T>
@@ -64,6 +109,17 @@ core::Span<T> makeSpan(py_array_t<T> const& py_array)
     assert(ar_info.ptr);
     return {static_cast<T*>(ar_info.ptr), ndSize(ar_info)};
 }
+
+// used by cpp_etc.cpp's "makeSpan" python binding
+template<typename T>
+std::shared_ptr<core::Span<T>> makePySpan(py_array_t<T> const& py_array)
+{
+    auto ar_info = py_array.request();
+    assert(ar_info.ptr);
+    return std::make_shared<core::Span<T>>(static_cast<T*>(ar_info.ptr), ndSize(ar_info));
+}
+
+
 
 
 } // namespace PHARE::pydata

@@ -14,37 +14,37 @@ set(SOURCES_INC
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
-function(_setup_amr_field_refine_test src_name)
+function(_setup_amr_field_refine_test src_name test_name)
 
-  add_executable(${src_name} ${SOURCES_INC} ${src_name}.cpp)
+  add_executable(${test_name} ${SOURCES_INC} ${src_name}.cpp)
 
-  target_include_directories(${src_name} PRIVATE
+  target_include_directories(${test_name} PRIVATE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     ${GTEST_INCLUDE_DIRS}
   )
 
-  target_link_libraries(${src_name} PRIVATE
+  target_link_libraries(${test_name} PRIVATE
       phare_amr
       phare_initializer
       ${GTEST_LIBS}
   )
 
-  target_include_directories(${src_name} PRIVATE
+  target_include_directories(${test_name} PRIVATE
     $<BUILD_INTERFACE:${SAMRAI_INCLUDE_DIRS}>)
 
-  target_link_libraries(${src_name} PRIVATE ${SAMRAI_LIBRARIES})
+  target_link_libraries(${test_name} PRIVATE ${SAMRAI_LIBRARIES})
 
 endfunction(_setup_amr_field_refine_test)
 
 
-function(_add_general_amr_field_refine_test src_name)
-  _setup_amr_field_refine_test(${src_name})
-  add_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
+function(_add_general_amr_field_refine_test src_name test_name)
+  _setup_amr_field_refine_test(${src_name} ${test_name})
+  add_phare_test(${test_name} ${CMAKE_CURRENT_BINARY_DIR})
 endfunction(_add_general_amr_field_refine_test)
 
-function(_add_serial_amr_field_refine_test src_name)
-  _setup_amr_field_refine_test(${src_name})
-  add_no_mpi_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
+function(_add_serial_amr_field_refine_test src_name test_name)
+  _setup_amr_field_refine_test(${src_name} ${test_name})
+  add_no_mpi_phare_test(${test_name} ${CMAKE_CURRENT_BINARY_DIR})
 endfunction(_add_serial_amr_field_refine_test)
 
-_add_serial_amr_field_refine_test(test_field_refine)
+_add_serial_amr_field_refine_test(test_default_field_refinement test_field_refine)

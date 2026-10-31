@@ -3,6 +3,15 @@ project(phare_simulator)
 
 set( SOURCES_INC
     simulator.hpp
+    simulator_decl.hpp
+    simulator_models.hpp
+    simulator_solvers.hpp
+    simulator_solver_steps.hpp
+    simulator_restarts.hpp
+    simulator_integrator.hpp
+    simulator_messengers.hpp
+    simulator_messenger_borders.hpp
+    simulator_diagnostics.hpp
     phare_types.hpp
    )
 

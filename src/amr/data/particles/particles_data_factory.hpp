@@ -1,10 +1,9 @@
 #ifndef PHARE_PARTICLES_DATA_FACTORY_HPP
 #define PHARE_PARTICLES_DATA_FACTORY_HPP
 
-#include "particles_data.hpp"
-
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "particles_data.hpp"
 
 #include <SAMRAI/hier/BoxGeometry.h>
 #include <SAMRAI/hier/Patch.h>

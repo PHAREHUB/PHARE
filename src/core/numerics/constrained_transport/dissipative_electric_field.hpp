@@ -13,6 +13,22 @@
 #include <vector>
 #include <algorithm>
 
+namespace PHARE::core::basic
+{
+// view of a DissipativeElectricFieldState (e.g. of one tile), E is a null view if not dissipative
+template<typename VecField>
+struct DissipativeElectricFieldState
+{
+    NO_DISCARD auto& E() { return E_; }
+    NO_DISCARD auto const& E() const { return E_; }
+
+    VecField E_{};
+    bool dissipative = false;
+};
+
+} // namespace PHARE::core::basic
+
+
 namespace PHARE::core
 {
 
@@ -20,6 +36,27 @@ template<typename VecField>
 class DissipativeElectricFieldState
 {
 public:
+    using vecfield_type = VecField;
+
+    template<typename VF>
+    using view_t = basic::DissipativeElectricFieldState<VF>;
+
+    template<typename View>
+    auto as(auto&& a, auto&&... args)
+    {
+        if (E_.empty())
+            return View{};
+        return View{a(E_[0], args...), true};
+    }
+
+    template<typename View>
+    auto as(auto&& a, auto&&... args) const
+    {
+        if (E_.empty())
+            return View{};
+        return View{a(E_[0], args...), true};
+    }
+
     DissipativeElectricFieldState() = default;
     explicit DissipativeElectricFieldState(bool const isDissipative)
     {

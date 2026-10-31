@@ -7,6 +7,8 @@
 #include <iterator>
 #include <stdexcept>
 #include <tuple>
+#include <cassert>
+#include <iterator>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -27,33 +29,22 @@ namespace core
     };
 
 
-
-
-    template<typename IterableCandidate, typename AttemptBegin = void, typename AttemptEnd = void>
-    struct has_beginend : std::false_type
-    {
-    };
-
-
-
-    /** \brief has_beginend is a traits that permit to check if a Box or a BoxContainer
-     * is passed as template argument
+    /** \brief Iterable is satisfied by any type that can be passed to std::begin/std::end,
+     * e.g. a Box or a BoxContainer
      */
     template<typename IterableCandidate>
-    struct has_beginend<IterableCandidate,
-                        tryToInstanciate<decltype(std::begin(std::declval<IterableCandidate>()))>,
-                        tryToInstanciate<decltype(std::end(std::declval<IterableCandidate>()))>>
-        : std::true_type
-    {
+    concept Iterable = requires(IterableCandidate c) {
+        std::begin(c);
+        std::end(c);
     };
 
 
     template<typename IterableCandidate>
-    using is_iterable = std::enable_if_t<has_beginend<IterableCandidate>::value, dummy::type>;
+    using is_iterable = std::enable_if_t<Iterable<IterableCandidate>, dummy::type>;
 
 
     template<typename IterableCandidate>
-    constexpr static bool is_iterable_v = has_beginend<IterableCandidate>::value;
+    constexpr static bool is_iterable_v = Iterable<IterableCandidate>;
 
 
     // Basic function

@@ -4,6 +4,7 @@
 #include "phare_core.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/field/field_layout_data.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messenger_registration.hpp"
 #include "amr/messengers/messenger.hpp"
@@ -383,6 +384,7 @@ namespace solver
                     {
                         auto time = dict_["restarts"]["restart_time"].template to<double>();
                         load_balancer_manager_->allocate(*patch, time);
+                        resetFieldLayouts_(*patch);
                     }
                     // if load balance on restart advance
                     load_balancer_manager_->estimate(*level, getModel_(ilvl));
@@ -654,6 +656,17 @@ namespace solver
 
     private:
         bool restartInitialized_ = false;
+
+        // restored patch data was allocated before its patch had a geometry, see FieldLayoutData
+        static void resetFieldLayouts_(SAMRAI::hier::Patch& patch)
+        {
+            auto const n_ids = patch.getPatchDescriptor()->getMaxNumberRegisteredComponents();
+            for (int id = 0; id < n_ids; ++id)
+                if (patch.checkAllocated(id))
+                    if (auto* data
+                        = dynamic_cast<amr::FieldLayoutData*>(patch.getPatchData(id).get()))
+                        data->resetLayout(patch);
+        }
         int nbrOfLevels_;
         std::unordered_map<std::size_t, double> subcycleEndTimes_;
         std::unordered_map<std::size_t, double> subcycleStartTimes_;

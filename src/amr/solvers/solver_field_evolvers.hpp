@@ -1,9 +1,11 @@
 #ifndef PHARE_AMR_SOLVERS_SOLVER_FIELD_EVOLVERS_HPP
 #define PHARE_AMR_SOLVERS_SOLVER_FIELD_EVOLVERS_HPP
 
+#include "core/data/field/field_tiles.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 
+#include "amr/physical_models/models.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 
@@ -11,6 +13,18 @@
 namespace PHARE::solver
 {
 
+using amr::tiled_level_exec;
+
+// on_tile(view, tile_idx) runs for every tile of every patch before the ghosts of output(view)
+// are synced, also per tile, as syncing a tile reads its neighbours' domains
+template<typename Accessor>
+void tiled_level_transform(Accessor& accessor, auto const& output, auto const& on_tile)
+{
+    tiled_level_exec(accessor, output, on_tile);
+    tiled_level_exec(accessor, output, [&](auto& view, auto const tile_idx) {
+        core::sync_inner_ghosts(output(view), tile_idx);
+    });
+}
 
 
 template<typename Model>
@@ -29,7 +43,9 @@ public:
 
     void operator()(GridLayout& layout, auto&&... args) { core_type{layout}(args...); }
 
-    void operator()(auto& B, auto& E, auto& Bnew, auto& dt)
+    template<typename VecField>
+    void operator()(VecField& B, VecField& E, VecField& Bnew, double const dt)
+        requires(not core::has_tiled_field_type_c<VecField>)
     {
         auto& rm = *model_.resourcesManager;
         for (auto& patch : rm.enumerate(level_, B, E, Bnew))
@@ -37,6 +53,25 @@ public:
             auto layout = amr::layoutFromPatch<GridLayout>(*patch);
             (*this)(layout, B, E, Bnew, dt);
         }
+    }
+
+    template<typename VecField>
+    void operator()(VecField& B, VecField& E, VecField& Bnew, double const dt)
+        requires(core::has_tiled_field_type_c<VecField>)
+    {
+        auto accessor = amr::make_model_level_accessor(level_, model_, B, E, Bnew);
+        tiled_level_transform(
+            accessor, [](auto& view) -> auto& { return std::get<2>(view.args); },
+            [dt](auto& view, auto const tile_idx) {
+                auto& [B_v, E_v, Bnew_v] = view.args;
+                core::tile_exec_with_layout_at(
+                    tile_idx,
+                    [](auto& layout, auto&&... args) {
+                        using Layout_t = std::decay_t<decltype(layout)>;
+                        core::Faraday<Layout_t>{layout}(args...);
+                    },
+                    B_v, E_v, Bnew_v, dt);
+            });
     }
 
     level_t& level_;
@@ -65,7 +100,9 @@ public:
 
     void operator()(GridLayout& layout, auto&&... args) { core_type{layout}(args...); }
 
-    void operator()(auto& B, auto& J)
+    template<typename VecField>
+    void operator()(VecField& B, VecField& J)
+        requires(not core::has_tiled_field_type_c<VecField>)
     {
         auto& rm = *model_.resourcesManager;
         for (auto& patch : rm.enumerate(level_, B, J))
@@ -73,6 +110,25 @@ public:
             auto layout = amr::layoutFromPatch<GridLayout>(*patch);
             (*this)(layout, B, J);
         }
+    }
+
+    template<typename VecField>
+    void operator()(VecField& B, VecField& J)
+        requires(core::has_tiled_field_type_c<VecField>)
+    {
+        auto accessor = amr::make_model_level_accessor(level_, model_, B, J);
+        tiled_level_transform(
+            accessor, [](auto& view) -> auto& { return std::get<1>(view.args); },
+            [](auto& view, auto const tile_idx) {
+                auto& [B_v, J_v] = view.args;
+                core::tile_exec_with_layout_at(
+                    tile_idx,
+                    [](auto& layout, auto&&... args) {
+                        using Layout_t = std::decay_t<decltype(layout)>;
+                        core::Ampere<Layout_t, box>{layout}(args...);
+                    },
+                    B_v, J_v);
+            });
     }
 
     level_t& level_;

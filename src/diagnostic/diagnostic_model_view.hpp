@@ -123,9 +123,68 @@ public:
         return model_.tags.at(key);
     }
 
+    // the reducers' temporaries for xs, nothing if untiled
+    void requestReducers(auto const&... xs)
+    {
+        if constexpr (core::is_field_tile_set_v<Field>)
+            model_.requestTemporaries(reducer_kind_(xs)...);
+    }
+
+    // requested in one call with the reducer's: distinct when both are primal, see primal_dst
+    void requestReducedToPrimal(auto const& x, auto const primal_kind)
+    {
+        if constexpr (core::is_field_tile_set_v<Field>)
+            model_.requestTemporaries(reducer_kind_(x), primal_kind);
+        else
+            model_.requestTemporaries(primal_kind);
+    }
+
+    // where to convert reduced to primal into, never reduced itself
+    auto& primal_dst(auto const& reduced, auto& primal_tmp)
+    {
+        if (static_cast<void const*>(&reduced) == static_cast<void const*>(&primal_tmp))
+            return model_.getNextTmp(primal_tmp);
+        return primal_tmp;
+    }
+
 protected:
+    // tiled fields are reduced into an untiled temporary of the same centering
+    auto& reduce_(auto& x)
+    {
+        using X = std::decay_t<decltype(x)>;
+        if constexpr (is_tensor_<X>)
+        {
+            if constexpr (core::is_field_tile_set_v<typename X::field_type>)
+            {
+                auto& tmp = model_.getTmp(x.physicalQuantity());
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    core::reduce_single(tmp[i], x[i]);
+                return tmp;
+            }
+            else
+                return x;
+        }
+        else if constexpr (core::is_field_tile_set_v<X>)
+            return core::reduce_single(model_.getTmp(GridLayout::centering(x.physicalQuantity())),
+                                       x);
+        else
+            return x;
+    }
+
     Model& model_;
     Hierarchy& hierarchy_;
+
+private:
+    template<typename X>
+    static constexpr bool is_tensor_ = requires { typename X::tensor_t; };
+
+    auto reducer_kind_(auto const& x) const
+    {
+        if constexpr (is_tensor_<std::decay_t<decltype(x)>>)
+            return x.physicalQuantity();
+        else
+            return GridLayout::centering(x.physicalQuantity());
+    }
 };
 
 
@@ -141,6 +200,10 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Mod
     using Field        = Model::field_type;
     using VecField     = Model::vecfield_type;
     using TensorFieldT = Model::ions_type::tensorfield_type;
+
+    using ScratchTensorFieldData_t
+        = amr::TensorFieldData<2, typename Super::GridLayout, typename Model::storage_t::grid_type,
+                               core::HybridQuantity>;
 
 public:
     using Model_t                = Model;
@@ -176,6 +239,16 @@ public:
 
     void requestTmpVecField() { this->model_.requestTemporaries(core::HybridQuantity::Vector::V); }
 
+    // x reduced (if tiled) then converted to primal, see BaseModelView::primal_dst
+    void requestTmpFieldFor(auto const& x)
+    {
+        this->requestReducedToPrimal(x, core::QtyCentering::primal);
+    }
+    void requestTmpVecFieldFor(auto const& x)
+    {
+        this->requestReducedToPrimal(x, core::HybridQuantity::Vector::V);
+    }
+
     // scratch for fillPopMomTensor
     void requestMomentumTensor()
     {
@@ -186,7 +259,6 @@ public:
 
     void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
     {
-        using value_type = TensorFieldT::value_type;
         auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
 
         auto& rm   = *this->model_.resourcesManager;
@@ -195,16 +267,20 @@ public:
 
         for (auto patch : rm.enumerate(lvl, ions, tmp))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(tmp[c].data(), ions[popidx].momentumTensor()[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+                core::reduce_into(tmp[c], ions[popidx].momentumTensor()[c]);
 
         MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
 
         for (auto patch : rm.enumerate(lvl, ions, tmp))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmp[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+                core::copy_fields(ions[popidx].momentumTensor()[c], tmp[c]);
     }
+
+
+    // tiled fields are reduced into the model's untiled temporaries for writing
+    auto& field_reducer(auto& f) { return this->reduce_(f); }
+    auto& vec_field_reducer(auto& f) { return this->reduce_(f); }
+    auto& tensor_field_reducer(auto& f) { return this->reduce_(f); }
 
 protected:
     void declareMomentumTensorAlgos()
@@ -233,7 +309,7 @@ protected:
     {
         auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
         {
-            using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
+            using BorderSumOp = core::FieldBorderSumOp<typename VecField::value_type>;
 
             auto const level   = hierarchy.getPatchLevel(ilvl);
             auto schedule_iter = MTschedules.find(ilvl);
@@ -244,12 +320,12 @@ protected:
                 schedule_iter
                     = MTschedules
                           .insert_or_assign(
-                              ilvl,
-                              Entry{level,
-                                    MTalgo->createSchedule(
-                                        level, 0,
-                                        std::make_shared<amr::FieldBorderOpTransactionFactory<
-                                            typename Super::TensorFieldData_t, PlusEqualsOp>>())})
+                              ilvl, Entry{level,
+                                          MTalgo->createSchedule(
+                                              level, 0,
+                                              std::make_shared<amr::FieldBorderOpTransactionFactory<
+                                                  typename Super::TensorFieldData_t, BorderSumOp,
+                                                  ScratchTensorFieldData_t>>())})
                           .first;
 
             return *schedule_iter->second.schedule;
@@ -309,22 +385,33 @@ public:
         throw std::runtime_error("E not currently available in MHD diagnostics");
     }
 
-    // diag only, temporaries the writers compute V and P into from the conservative variables
-    //  cell centered, so never the all primal destination of convert_to_fortran_primal
-    NO_DISCARD VecField& getV() { return this->model_.getTmp(core::MHDQuantity::Vector::V); }
+    // the writers compute V and P from the conservative variables into the state's primitive
+    //  ones (onto tiles if tiled, reduced for writing like the hybrid momentum tensor), these are
+    //  recomputed from the conservative variables at every step
+    NO_DISCARD VecField& getV() { return this->model_.state.V; }
 
-    NO_DISCARD Field& getP() { return this->model_.getTmp(core::QtyCentering::dual); }
+    NO_DISCARD Field& getP() { return this->model_.state.P; }
 
-    // requests for the temporaries of getV/getP and below, see TypeWriter::requestTemporaries
-    void requestV() { this->model_.requestTemporaries(core::MHDQuantity::Vector::V); }
+    // requests for the reducers of getV/getP and below, see TypeWriter::requestTemporaries
+    void requestV() { this->requestReducers(getV()); }
 
-    void requestP() { this->model_.requestTemporaries(core::QtyCentering::dual); }
+    void requestP() { this->requestReducers(getP()); }
 
     void requestTmpField() { this->model_.requestTemporaries(core::QtyCentering::primal); }
 
     void requestTmpVecField()
     {
         this->model_.requestTemporaries(core::MHDQuantity::Vector::VecAllPrimal);
+    }
+
+    // x reduced (if tiled) then converted to primal, see BaseModelView::primal_dst
+    void requestTmpFieldFor(auto const& x)
+    {
+        this->requestReducedToPrimal(x, core::QtyCentering::primal);
+    }
+    void requestTmpVecFieldFor(auto const& x)
+    {
+        this->requestReducedToPrimal(x, core::MHDQuantity::Vector::VecAllPrimal);
     }
 
     auto& tmpField() { return this->model_.getTmp(core::QtyCentering::primal); }
@@ -337,6 +424,10 @@ public:
         static_assert(rank == 1);
         return tmpVecField();
     }
+
+    // tiled fields are reduced into the model's untiled temporaries for writing
+    auto& field_reducer(auto& f) { return this->reduce_(f); }
+    auto& vec_field_reducer(auto& f) { return this->reduce_(f); }
 };
 
 

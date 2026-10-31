@@ -6,6 +6,8 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/field/field_box.hpp"
+#include "core/data/field/field_tiles.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 
 #include "SAMRAI/hier/BoundaryBox.h"
@@ -49,19 +51,21 @@ public:
     using field_geometry_type    = FieldGeometrySelector<ScalarOrTensorFieldDataT, is_scalar>::type;
     using gridlayout_type        = ScalarOrTensorFieldDataT::gridlayout_type;
     using grid_type              = ScalarOrTensorFieldDataT::grid_type;
-    using field_type             = grid_type::field_type;
     using physical_quantity_type = BoundaryManagerT::physical_quantity_type;
-    using vectorfield_type       = core::VecField<field_type, physical_quantity_type>;
-    using scalar_or_tensor_field_type
-        = ScalarOrTensorFieldSelector<ScalarOrTensorFieldDataT, is_scalar>::type;
-    using scalar_quantity_type = physical_quantity_type::Scalar;
-    using vector_quantity_type = physical_quantity_type::Vector;
+    using scalar_quantity_type   = physical_quantity_type::Scalar;
+    using vector_quantity_type   = physical_quantity_type::Vector;
 
     using patch_geometry_type = SAMRAI::hier::PatchGeometry;
 
+    static constexpr bool is_tiled = core::is_field_tile_set_v<grid_type>;
+
     using boundary_type = BoundaryManagerT::boundary_type;
+    using scalar_or_tensor_field_type
+        = std::conditional_t<is_scalar, typename BoundaryManagerT::field_type,
+                             typename BoundaryManagerT::vector_field_type>;
     using boundary_condition_type
-        = core::IFieldBoundaryCondition<scalar_or_tensor_field_type, gridlayout_type>;
+        = std::conditional_t<is_scalar, typename BoundaryManagerT::scalar_condition_type,
+                             typename BoundaryManagerT::vector_condition_type>;
 
     /**
      * @brief Constructor.
@@ -106,19 +110,80 @@ public:
                    static_cast<SAMRAI::tbox::Dimension>(static_cast<int>(dimension)),
                    static_cast<int>(gridLayout.options.field_ghost_width)));
 
-        std::shared_ptr<patch_geometry_type> patchGeom = patch.getPatchGeometry();
-        assert(patchGeom && "patch has no geometry.");
-
-        auto scalarOrTensorField = [&]() {
+        if constexpr (is_tiled)
+        {
             if constexpr (is_scalar)
             {
-                return *(&(ScalarOrTensorFieldDataT::getField(patch, data_id_)));
+                auto& tiles = ScalarOrTensorFieldDataT::getField(patch, data_id_);
+                auto grid   = core::reduce_single(tiles);
+                auto field  = *(&grid);
+                applyBoundaryConditions_(patch, field, gridLayout, fill_time, ghost_width_to_fill);
+                // every tile copy incl. inner halos, reduce_single would leave those zero
+                core::copy_fields(*tiles, *grid);
             }
             else
             {
-                return ScalarOrTensorFieldDataT::getTensorField(patch, data_id_);
-            };
-        }();
+                auto& tiles = ScalarOrTensorFieldDataT::getFields(patch, data_id_);
+                auto grids  = core::for_N_make_array<ScalarOrTensorFieldDataT::N>(
+                    [&](auto i) { return core::reduce_single(tiles[i]); });
+                auto field = ScalarOrTensorFieldDataT::template getTensorField<
+                    scalar_or_tensor_field_type>(patch, data_id_, grids);
+                applyBoundaryConditions_(patch, field, gridLayout, fill_time, ghost_width_to_fill);
+                for (std::size_t i = 0; i < grids.size(); ++i) // incl. inner halos, see above
+                    core::copy_fields(*tiles[i], *grids[i]);
+            }
+        }
+        else
+        {
+            auto scalarOrTensorField = [&]() {
+                if constexpr (is_scalar)
+                {
+                    return *(&(ScalarOrTensorFieldDataT::getField(patch, data_id_)));
+                }
+                else
+                {
+                    return ScalarOrTensorFieldDataT::getTensorField(patch, data_id_);
+                };
+            }();
+            applyBoundaryConditions_(patch, scalarOrTensorField, gridLayout, fill_time,
+                                     ghost_width_to_fill);
+        }
+    }
+
+
+    SAMRAI::hier::IntVector
+    getRefineOpStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
+    {
+        return SAMRAI::hier::IntVector{dim, 1};
+    }
+
+
+    void preprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
+                          SAMRAI::hier::Box const& fine_box,
+                          SAMRAI::hier::IntVector const& ratio) override
+    {
+    }
+
+
+    void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
+                           SAMRAI::hier::Box const& fine_box,
+                           SAMRAI::hier::IntVector const& ratio) override
+    {
+    }
+
+
+protected:
+    BoundaryManagerT& boundaryManager_; //!< a reference to the boundary manager
+    int data_id_; //!< the id of the resource to which this refine patch strategy is attached
+
+private:
+    void applyBoundaryConditions_(SAMRAI::hier::Patch& patch,
+                                  scalar_or_tensor_field_type& scalarOrTensorField,
+                                  gridlayout_type const& gridLayout, double const fill_time,
+                                  SAMRAI::hier::IntVector const& ghost_width_to_fill)
+    {
+        std::shared_ptr<patch_geometry_type> patchGeom = patch.getPatchGeometry();
+        assert(patchGeom && "patch has no geometry.");
 
         // must be retrieved to pass as argument to patchGeom->getBoundaryFillBox later
         SAMRAI::hier::Box const& patch_box = patch.getBox();
@@ -170,32 +235,6 @@ public:
             }
         });
     }
-
-
-    SAMRAI::hier::IntVector
-    getRefineOpStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
-    {
-        return SAMRAI::hier::IntVector{dim, 1};
-    }
-
-
-    void preprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
-                          SAMRAI::hier::Box const& fine_box,
-                          SAMRAI::hier::IntVector const& ratio) override
-    {
-    }
-
-
-    void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
-                           SAMRAI::hier::Box const& fine_box,
-                           SAMRAI::hier::IntVector const& ratio) override
-    {
-    }
-
-
-protected:
-    BoundaryManagerT& boundaryManager_; //!< a reference to the boundary manager
-    int data_id_; //!< the id of the resource to which this refine patch strategy is attached
 };
 
 } // namespace PHARE::amr
