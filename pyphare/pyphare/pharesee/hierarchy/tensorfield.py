@@ -12,6 +12,7 @@ class AnyTensorField(PatchHierarchy):
             hier.domain_box,
             hier.data_files,
             hier.selection_box,
+            hier.ephemerals,
         )
 
     def __getitem__(self, input):

@@ -51,6 +51,12 @@ def listify(arg):
     return arg
 
 
+def format_timestamp(timestamp):
+    if isinstance(timestamp, str):
+        return timestamp
+    return f"{timestamp:.10f}"
+
+
 def is_scalar(arg):
     # strings are single values, anything else with a length is a container
     return isinstance(arg, str) or not hasattr(arg, "__len__")
@@ -121,6 +127,18 @@ class FloatingPoint_comparator:
 
     def __ge__(self, other):
         return fp_gtr_equal(self.fp, other.fp, self.atol)
+
+
+class EqualityCheck:
+    def __init__(self, eq, msg=""):
+        self.eq = eq
+        self.msg = msg
+
+    def __bool__(self):
+        return self.eq
+
+    def __repr__(self):
+        return self.msg
 
 
 def is_fp32(item):
