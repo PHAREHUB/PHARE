@@ -121,6 +121,7 @@ class NdArrayView
 {
 public:
     static constexpr bool is_contiguous = 1;
+    static constexpr bool is_c_ordered  = c_ordering;
     static std::size_t const dimension  = dim;
     using type                          = DataType;
     using pointer_type                  = DataType*;
@@ -231,6 +232,7 @@ class NdArrayVector
 
 public:
     static constexpr bool is_contiguous = 1;
+    static constexpr bool is_c_ordered  = c_ordering;
     static std::size_t const dimension  = dim;
     using type                          = DataType;
     using value_type                    = DataType;

@@ -1,0 +1,131 @@
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+
+#include "tools/bench/core/no_vectorize.hpp"
+
+#include "benchmark/benchmark.h"
+
+#include <cstddef>
+#include <cstdint>
+
+
+namespace PHARE::core::bench
+{
+std::uint32_t constexpr static cells = 64;
+
+// for_each_point with its innermost loop kept scalar, as a baseline
+template<typename T, std::size_t dim>
+PHARE_BENCH_NO_VECTORIZE void for_each_point_scalar(Box<T, dim> const& box, auto&& fn)
+{
+    for_each_span(box, [&](auto const& start, std::uint32_t const size) {
+        auto point = start;
+#if defined(__clang__)
+#pragma clang loop vectorize(disable) interleave(disable)
+#endif
+        for (T i = start[dim - 1], end = i + size; i < end; ++i)
+        {
+            point[dim - 1] = i;
+            fn(point);
+        }
+    });
+}
+
+// for_each_point as it was with `!=` ending the innermost loop: the 32 bit index could
+// wrap, so the compiler cannot treat field offsets as affine and keeps the loop scalar
+template<typename T, std::size_t dim>
+void for_each_point_not_equal(Box<T, dim> const& box, auto&& fn)
+{
+    for_each_span(box, [&](auto const& start, std::uint32_t const size) {
+        auto point = start;
+        for (T i = start[dim - 1], end = i + size; i != end; ++i)
+        {
+            point[dim - 1] = i;
+            fn(point);
+        }
+    });
+}
+
+enum class Loop { scalar, not_equal, less };
+
+// as GridLayout::evalOnAnyBox, the main caller
+template<std::size_t dim>
+auto unpacked(auto& fn)
+{
+    return [&](auto const& point) {
+        if constexpr (dim == 1)
+            fn(point[0]);
+        else if constexpr (dim == 2)
+            fn(point[0], point[1]);
+        else
+            fn(point[0], point[1], point[2]);
+    };
+}
+
+template<std::size_t dim>
+auto make_box()
+{
+    return Box<std::uint32_t, dim>{ConstArray<std::uint32_t, dim>(1),
+                                   ConstArray<std::uint32_t, dim>(cells - 2)};
+}
+
+template<std::size_t dim>
+auto make_array(double const v)
+{
+    NdArrayVector<dim> arr{ConstArray<std::uint32_t, dim>(cells)};
+    std::fill(arr.data(), arr.data() + arr.size(), v);
+    return arr;
+}
+
+
+template<std::size_t dim, Loop loop>
+void for_each_point_axpy(benchmark::State& state)
+{
+    auto box = make_box<dim>();
+    auto dst = make_array<dim>(0);
+    auto a   = make_array<dim>(1);
+    auto b   = make_array<dim>(2);
+
+    // hide the sizes from the optimizer: real boxes and shapes are only known at runtime
+    benchmark::DoNotOptimize(box);
+    benchmark::DoNotOptimize(dst);
+    benchmark::DoNotOptimize(a);
+    benchmark::DoNotOptimize(b);
+
+    auto const& ca = a;
+    auto const& cb = b;
+    auto kernel    = [&](auto const... ijk) { dst(ijk...) = ca(ijk...) + 2 * cb(ijk...); };
+    auto fn        = unpacked<dim>(kernel);
+
+    for (auto _ : state)
+    {
+        if constexpr (loop == Loop::scalar)
+            for_each_point_scalar(box, fn);
+        else if constexpr (loop == Loop::not_equal)
+            for_each_point_not_equal(box, fn);
+        else
+            for_each_point(box, fn);
+        benchmark::DoNotOptimize(dst.data());
+        benchmark::ClobberMemory();
+    }
+
+    state.SetItemsProcessed(state.iterations() * box.size());
+}
+
+#define PHARE_FOR_EACH_POINT_CASES(dim)                                                            \
+    BENCHMARK_TEMPLATE(for_each_point_axpy, dim, Loop::scalar)->Unit(benchmark::kMicrosecond);     \
+    BENCHMARK_TEMPLATE(for_each_point_axpy, dim, Loop::not_equal)->Unit(benchmark::kMicrosecond);  \
+    BENCHMARK_TEMPLATE(for_each_point_axpy, dim, Loop::less)->Unit(benchmark::kMicrosecond)
+
+PHARE_FOR_EACH_POINT_CASES(1);
+PHARE_FOR_EACH_POINT_CASES(2);
+PHARE_FOR_EACH_POINT_CASES(3);
+
+} // namespace PHARE::core::bench
+
+
+int main(int argc, char** argv)
+{
+    ::benchmark::Initialize(&argc, argv);
+    ::benchmark::RunSpecifiedBenchmarks();
+}
