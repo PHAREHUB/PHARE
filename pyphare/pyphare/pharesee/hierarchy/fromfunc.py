@@ -33,17 +33,15 @@ def ions_charge_density_func1d(x, **kwargs):
 def hierarchy_from_func1d(func, hier, **kwargs):
     assert hier.ndim == 1
 
-    def compute_(patch_datas, **kwargs):
-        ref_name = next(iter(patch_datas.keys()))
-        x_ = patch_datas[ref_name].x
+    def compute_(patch, accessor=None, **kwargs):
+        ref_name = next(iter(patch.patch_datas.keys()))
+        x_ = patch[ref_name].x
 
-        return (
-            {
-                "name": "value",
-                "data": func(x_, **kwargs),
-                "centering": patch_datas[ref_name].centerings,
-            },
+        new_patch_data = patch[ref_name].copy_as(
+            func(x_, **kwargs), name="value", ghosts_nbr=patch[ref_name].ghosts_nbr
         )
+
+        return (new_patch_data,)
 
     return compute_hier_from(compute_, hier, **kwargs)
 
@@ -81,18 +79,16 @@ def ions_charge_density_func2d(x, y, **kwargs):
 def hierarchy_from_func2d(func, hier, **kwargs):
     assert hier.ndim == 2
 
-    def compute_(patch_datas, **kwargs):
-        ref_name = next(iter(patch_datas.keys()))
-        x_ = patch_datas[ref_name].x
-        y_ = patch_datas[ref_name].y
+    def compute_(patch, accessor=None, **kwargs):
+        ref_name = next(iter(patch.patch_datas.keys()))
+        x_ = patch[ref_name].x
+        y_ = patch[ref_name].y
 
-        return (
-            {
-                "name": "value",
-                "data": func(x_, y_, **kwargs),
-                "centering": patch_datas[ref_name].centerings,
-            },
+        new_patch_data = patch[ref_name].copy_as(
+            func(x_, y_, **kwargs), name="value", ghosts_nbr=patch[ref_name].ghosts_nbr
         )
+
+        return (new_patch_data,)
 
     return compute_hier_from(compute_, hier, **kwargs)
 

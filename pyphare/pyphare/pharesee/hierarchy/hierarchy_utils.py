@@ -9,7 +9,7 @@ from pyphare.core import phare_utilities as phut
 from ...core.box import Box
 from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify
-from .hierarchy import PatchHierarchy, format_timestamp
+from .hierarchy import HierarchyAccessor, PatchHierarchy, format_timestamp
 from .patch import Patch
 from .patchdata import FieldData, ParticleData, align_ghosts
 from .patchlevel import PatchLevel
@@ -152,6 +152,7 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     hierarchies = listify(hierarchies)
     if not are_compatible_hierarchies(hierarchies):
         raise RuntimeError("hierarchies are not compatible")
+
     reference_hier = hierarchies[0]
     domain_box = reference_hier.domain_box
     time_hier = {}
@@ -162,6 +163,7 @@ def compute_hier_from(compute, hierarchies, **kwargs):
                 ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
             )
         time_hier[t] = patch_levels
+
     return PatchHierarchy(
         time_hier,
         domain_box,
@@ -181,39 +183,31 @@ def extract_patchdatas(hierarchies, ilvl, t, ipatch):
     return patch_datas
 
 
-def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
-    new_patch_datas = {}
-    datas = compute(patchdatas, patch_id=id, **kwargs)
-    for data in datas:
-        pd_layout = layout
-        if "ghosts_nbr" in data:
-            pd_layout = layout.copy_as(ghosts_nbr=data["ghosts_nbr"])
-        extra = {k: data[k] for k in ("ghosts_nbr",) if k in data}
-        pd = FieldData(
-            pd_layout, data["name"], data["data"], centering=data["centering"], **extra
-        )
-        new_patch_datas[data["name"]] = pd
-    return new_patch_datas
+def new_patchdatas_from(compute, patch, **kwargs):
+    if not patch.patch_datas:  # empty patches are kept, nothing to compute
+        return {}
+    return {data.name: data for data in compute(patch, **kwargs)}
 
 
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
     new_patches = []
     ref_patches = reference_hier.level(ilvl, time=t).patches
-    for ip, current_patch in enumerate(ref_patches):
-        layout = current_patch.layout
+    for ip, ref_patch in enumerate(ref_patches):
         patch_datas = extract_patchdatas(hierarchies, ilvl, t, ip)
         if len(hierarchies) > 1:
             pdatas = list(patch_datas.values())
             aligned = align_ghosts(pdatas)
             if aligned is not pdatas:
                 patch_datas = dict(zip(patch_datas.keys(), aligned))
-                layout = aligned[0].layout
-        new_patch_datas = new_patchdatas_from(
-            compute, patch_datas, layout, id=current_patch.id, **kwargs
-        )
+        patch = ref_patch.copy_as(patch_datas=patch_datas)
+        accessor = HierarchyAccessor(reference_hier, t, ilvl, ip)
         new_patches.append(
-            Patch(new_patch_datas, current_patch.id, attrs=current_patch.attrs)
+            ref_patch.copy_as(
+                patch_datas=new_patchdatas_from(
+                    compute, patch, accessor=accessor, **kwargs
+                ),
+            )
         )
     return new_patches
 
@@ -267,141 +261,6 @@ def isFieldQty(qty):
     )
 
 
-def compute_rename(patch_datas, **kwargs):
-    new_names = kwargs["new_names"]
-    pd_attrs = []
-
-    for new_name, pd_name in zip(new_names, patch_datas):
-        src = patch_datas[pd_name]
-        pd_attrs.append(
-            {
-                "name": new_name,
-                "data": src.dataset,
-                "centering": src.centerings,
-                "ghosts_nbr": src.ghosts_nbr,
-            }
-        )
-
-    return tuple(pd_attrs)
-
-
-def rename(hierarchy, names):
-    return compute_hier_from(compute_rename, hierarchy, new_names=names)
-
-
-def _compute_mul(patch_datas, **kwargs):
-    names = kwargs["names"]
-
-    # multiplication of a scalarField or VectorField by a scalar
-    if "other" in kwargs:
-        other = kwargs["other"]
-        pd_attrs = []
-
-        for name, pd_name in zip(names, patch_datas):
-            pd_attrs.append(
-                {
-                    "name": name,
-                    "data": other * patch_datas[pd_name].dataset[:],
-                    "centering": patch_datas[pd_name].centerings,
-                }
-            )
-    # multiplication of 2 scalarField
-    elif "self_value" in patch_datas:
-        dset_value = (
-            patch_datas["self_value"].dataset[:] * patch_datas["other_value"].dataset[:]
-        )
-        pd_attrs = (
-            {
-                "name": "value",
-                "data": dset_value,
-                "centering": patch_datas["self_value"].centerings,
-            },
-        )
-
-    return tuple(pd_attrs)
-
-
-def _compute_add(patch_datas, **kwargs):
-    ref_name = next(iter(patch_datas.keys()))
-
-    dset_x = patch_datas["self_x"].dataset[:] + patch_datas["other_x"].dataset[:]
-    dset_y = patch_datas["self_y"].dataset[:] + patch_datas["other_y"].dataset[:]
-    dset_z = patch_datas["self_z"].dataset[:] + patch_datas["other_z"].dataset[:]
-
-    return (
-        {"name": "x", "data": dset_x, "centering": patch_datas[ref_name].centerings},
-        {"name": "y", "data": dset_y, "centering": patch_datas[ref_name].centerings},
-        {"name": "z", "data": dset_z, "centering": patch_datas[ref_name].centerings},
-    )
-
-
-def _compute_sub(patch_datas, **kwargs):
-    ref_name = next(iter(patch_datas.keys()))
-
-    dset_x = patch_datas["self_x"].dataset[:] - patch_datas["other_x"].dataset[:]
-    dset_y = patch_datas["self_y"].dataset[:] - patch_datas["other_y"].dataset[:]
-    dset_z = patch_datas["self_z"].dataset[:] - patch_datas["other_z"].dataset[:]
-
-    return (
-        {"name": "x", "data": dset_x, "centering": patch_datas[ref_name].centerings},
-        {"name": "y", "data": dset_y, "centering": patch_datas[ref_name].centerings},
-        {"name": "z", "data": dset_z, "centering": patch_datas[ref_name].centerings},
-    )
-
-
-def _compute_neg(patch_datas, **kwargs):
-    names = kwargs["new_names"]
-    pd_attrs = []
-
-    for name in names:
-        pd_attrs.append(
-            {
-                "name": name,
-                "data": -patch_datas[name].dataset[:],
-                "centering": patch_datas[name].centerings,
-            }
-        )
-
-    return tuple(pd_attrs)
-
-
-def _compute_truediv(patch_datas, **kwargs):
-    names = kwargs["res_names"]
-    pd_attrs = []
-
-    # the denominator is a scalar field which name is "value"
-    # hence the associated patchdata has to be removed from the list
-    # of patchdata from the vectorField of the numerator
-    left_ops = {k: v for k, v in patch_datas.items() if k != "value"}
-    right_op = patch_datas["value"]
-    for name, left_op in zip(names, left_ops.values()):
-        pd_attrs.append(
-            {
-                "name": name,
-                "data": left_op.dataset / right_op.dataset,
-                "centering": patch_datas[name].centerings,
-            }
-        )
-
-    return tuple(pd_attrs)
-
-
-def _compute_scalardiv(patch_datas, **kwargs):
-    names = kwargs["res_names"]
-    scalar = kwargs["scalar"]
-    pd_attrs = []
-
-    left_ops = dict(patch_datas.items())
-    for name, left_op in zip(names, left_ops.values()):
-        pd_attrs.append(
-            {
-                "name": name,
-                "data": left_op.dataset / scalar,
-                "centering": patch_datas[name].centerings,
-            }
-        )
-
-    return tuple(pd_attrs)
 
 
 @dataclass

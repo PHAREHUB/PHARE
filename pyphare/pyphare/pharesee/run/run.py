@@ -43,16 +43,14 @@ class Run:
         if not all_primal:
             return hier
 
-        h = compute_hier_from(_compute_to_primal, hier, x="Bx", y="By", z="Bz")
-        return VectorField.FROM(h)
+        return VectorField.FROM(compute_hier_from(_compute_to_primal, hier))
 
     def GetE(self, time, all_primal=True, **kwargs):
         hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
         if not all_primal:
             return hier
 
-        h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
-        return VectorField.FROM(h)
+        return VectorField.FROM(compute_hier_from(_compute_to_primal, hier))
 
     def GetMassDensity(self, time, **kwargs):
         hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
@@ -116,7 +114,7 @@ class Run:
         J = compute_hier_from(_compute_current, B)
         if not all_primal:
             return J
-        h = compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
+        h = compute_hier_from(_compute_to_primal, J)
         return VectorField.FROM(h)
 
     def GetDivB(self, time, **kwargs):

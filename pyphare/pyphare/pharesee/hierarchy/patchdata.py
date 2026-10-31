@@ -156,6 +156,7 @@ class FieldData(PatchData):
         if "ghosts_nbr" in kwargs:
             layout = self.layout.copy_as(ghosts_nbr=kwargs["ghosts_nbr"])
         kwargs.setdefault("centering", self.centerings)
+        kwargs.setdefault("ghosts_nbr", self.ghosts_nbr)
         return FieldData(layout, name, data, **kwargs)
 
     def meshgrid(self, select=None):
