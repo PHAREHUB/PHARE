@@ -69,13 +69,17 @@ void for_each_span(Box<T, dim> const& box, auto&& fn)
  * points of matching spans of `a` and `b`, and size is their number of cells.
  * The start points are only valid for the duration of the call.
  */
-template<typename T, std::size_t dim>
-void for_each_span(Box<T, dim> const& a, Box<T, dim> const& b, auto&& fn)
+template<typename T0, typename T1, std::size_t dim>
+void for_each_span(Box<T0, dim> const& a, Box<T1, dim> const& b, auto&& fn)
 {
     assert(a.shape() == b.shape()); // b is only read through its lower corner
 
-    auto const shift = b.lower - a.lower;
-    for_each_span(a, [&](auto const& start, auto const size) { fn(start, start + shift, size); });
+    for_each_span(a, [&](auto const& a_start, auto const size) {
+        Point<T1, dim> b_start;
+        for (std::size_t d = 0; d < dim; ++d)
+            b_start[d] = b.lower[d] + static_cast<T1>(a_start[d] - a.lower[d]);
+        fn(a_start, b_start, size);
+    });
 }
 
 
