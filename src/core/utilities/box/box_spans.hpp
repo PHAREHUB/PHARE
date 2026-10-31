@@ -106,6 +106,53 @@ void for_each_point(Box<T, dim> const& box, auto&& fn)
 }
 
 
+/** Calls fn(point) for every point of `box`, in reverse memory order (upper to lower),
+ * e.g. for updates where each point reads the one after it.
+ * `point` is only valid for the duration of the call.
+ */
+template<typename T, std::size_t dim>
+void for_each_point_reverse(Box<T, dim> const& box, auto&& fn)
+{
+    static_assert(dim >= 1 and dim <= 3);
+
+    auto const end = box.upper + 1;
+    auto const& lo = box.lower;
+    auto point     = lo;
+
+    // each loop checks, then steps back: no index is stepped below its lower bound, so an
+    // unsigned box starting at 0 does not wrap, and an ill-formed direction (end <= lo)
+    // runs zero times
+    auto const span = [&]() {
+        for (T i = end[dim - 1]; i > lo[dim - 1];)
+        {
+            point[dim - 1] = --i;
+            fn(point);
+        }
+    };
+
+    if constexpr (dim == 1)
+        span();
+
+    if constexpr (dim == 2)
+        for (T x = end[0]; x > lo[0];)
+        {
+            point[0] = --x;
+            span();
+        }
+
+    if constexpr (dim == 3)
+        for (T x = end[0]; x > lo[0];)
+        {
+            point[0] = --x;
+            for (T y = end[1]; y > lo[1];)
+            {
+                point[1] = --y;
+                span();
+            }
+        }
+}
+
+
 /** Calls fn(a_point, b_point) for every point of `a` and its counterpart in the
  * same-shaped box `b` (e.g. the AMR and local indices of the same cells), in memory order.
  * Both points are only valid for the duration of the call.
