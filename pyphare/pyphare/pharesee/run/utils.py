@@ -1,6 +1,7 @@
 import numpy as np
 
 from pyphare.core.gridlayout import yee_centering
+from pyphare.pharesee.hierarchy.patchdata import local_domain_coords
 
 
 def _current1d(by, bz, xby, xbz):
@@ -342,10 +343,8 @@ def slices_to_primal(pdname, **kwargs):
 
 def _compute_to_primal(patchdatas, patch_id, **kwargs):
     """
-    datasets have NaN in their ghosts... might need to be properly filled
-    with their neighbors already properly projected on primal
+    Drops ghost layer!
     """
-
     reference_name = next(iter(kwargs.values()))
     reference_pd = patchdatas[reference_name]
     ndim = reference_pd.box.ndim
@@ -364,27 +363,19 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
             if pd.centerings[i] == "dual":
                 ds_shape[i] += 1
 
-        # should be something else than nan values when the ghosts cells
-        # will be filled with correct values coming from the neighbors
-        ds_all_primal = np.full(ds_shape, np.nan)
         ds_ = np.zeros(ds_shape)
 
-        # inner is the slice containing the points that are updated
-        # in the all_primal dataset
-        # chunks is a tupls of all the slices coming from the initial dataset
-        # that are needed to calculate the average for the all_primal dataset
         inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
 
         for chunk in chunks:
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-        ds_all_primal[inner] = ds_[inner]
 
         pd_attrs.append(
             {
                 "name": name,
-                "data": ds_all_primal,
+                "data": ds_[inner],
                 "centering": centerings,
-                "ghosts_nbr": [nb_ghosts] * ndim,
+                "ghosts_nbr": [0] * ndim,
             }
         )
 
@@ -423,7 +414,7 @@ def _get_rank(patchdatas, patch_id, **kwargs):
                 "name": "rank",
                 "data": data,
                 "centering": [centering] * 2,
-                # "ghosts_nbr": reference_pd.ghosts_nbr,
+                "ghosts_nbr": reference_pd.ghosts_nbr,
             },
         )
     else:
@@ -500,50 +491,224 @@ def _compute_pop_pressure(patch_datas, **kwargs):
     )
 
 
-def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
-    """
-    :param data: the values of the data that will be used for making
-    the interpolator, defined on coords
-    :param coords: coordinates where the data are known. they
-    can be define on an irregular grid (eg the finest)
-
-    finest_coords will be the structured coordinates defined on the
-    finest grid.
-    """
-    from pyphare.core.gridlayout import yeeCoordsFor
-
+def make_interpolator(data, coords, interp):
+    """Build a scipy interpolator from flat field data and coordinates."""
     dim = coords.ndim
 
     if dim == 1:
         from scipy.interpolate import interp1d
 
-        interpolator = interp1d(
+        return interp1d(
             coords, data, kind=interp, fill_value="extrapolate", assume_sorted=False
         )
-
-        nx = 1 + int(domain[0] / dl[0])
-
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x")
-        finest_coords = (x,)
 
     elif dim == 2:
         from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 
         if interp == "nearest":
-            interpolator = NearestNDInterpolator(coords, data)
+            return NearestNDInterpolator(coords, data)
         elif interp == "bilinear":
-            interpolator = LinearNDInterpolator(coords, data)
+            return LinearNDInterpolator(coords, data)
         else:
             raise ValueError("interp can only be 'nearest' or 'bilinear'")
-
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
-        # x = np.arange(0, domain[0]+dl[0], dl[0])
-        # y = np.arange(0, domain[1]+dl[1], dl[1])
-        finest_coords = (x, y)
 
     else:
         raise ValueError("make_interpolator is not yet 3d")
 
-    return interpolator, finest_coords
+
+def finest_coords_for(domain, dl, qty, nbrGhosts):
+    """Return coordinate arrays for the finest-level output grid."""
+    from pyphare.core.gridlayout import yeeCoordsFor
+
+    dim = len(dl)
+
+    if dim == 1:
+        nx = 1 + int(domain[0] / dl[0])
+        return (yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x"),)
+
+    elif dim == 2:
+        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
+        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
+        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
+        return (x, y)
+
+    else:
+        raise ValueError("finest_coords_for is not yet 3d")
+
+
+def overlap_mask_1d(x, dl, level, qty):
+    """
+    return the mask for x where x is overlaped by the qty patch datas
+    on the given level, assuming that this level is finer than the one of x
+
+    :param x: 1d array containing the [x] position
+    :param dl: list containing the grid steps where x is defined
+    :param level: a given level associated to a hierarchy
+    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
+    """
+
+    is_overlaped = np.ones(x.shape[0], dtype=bool) * False
+
+    for patch in level.patches:
+        pdata = patch.patch_datas[qty]
+        (fine_x,) = local_domain_coords(pdata)
+        fine_dl = pdata.dl
+        local_dl = dl
+
+        if fine_dl[0] < local_dl[0]:
+            # fine patches have no ghosts here, so their boundary points are included
+            tol = 0.5 * fine_dl[0]
+            xmin, xmax = fine_x.min() - tol, fine_x.max() + tol
+
+            overlaped_idx = np.where((x > xmin) & (x < xmax))[0]
+
+            is_overlaped[overlaped_idx] = True
+
+        else:
+            raise ValueError("level needs to have finer grid resolution than that of x")
+
+    return is_overlaped
+
+
+def overlap_mask_2d(x, y, dl, level, qty):
+    """
+    return the mask for x & y where ix & y are overlaped by the qty patch datas
+    on the given level, assuming that this level is finer than the one of x & y
+    important note : this mask is flatten
+
+    :param x: 1d array containing the [x] position
+    :param y: 1d array containing the [y] position
+    :param dl: list containing the grid steps where x and y are defined
+    :param level: a given level associated to a hierarchy
+    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
+    """
+
+    is_overlaped = np.ones([x.shape[0] * y.shape[0]], dtype=bool) * False
+
+    for patch in level.patches:
+        pdata = patch.patch_datas[qty]
+        fine_x, fine_y = local_domain_coords(pdata)
+        fine_dl = pdata.dl
+        local_dl = dl
+
+        if (fine_dl[0] < local_dl[0]) and (fine_dl[1] < local_dl[1]):
+            # fine patches have no ghosts here, so their boundary points are included
+            tolx, toly = 0.5 * fine_dl[0], 0.5 * fine_dl[1]
+            xmin, xmax = fine_x.min() - tolx, fine_x.max() + tolx
+            ymin, ymax = fine_y.min() - toly, fine_y.max() + toly
+
+            xv, yv = np.meshgrid(x, y, indexing="ij")
+            xf = xv.flatten()
+            yf = yv.flatten()
+
+            overlaped_idx = np.where(
+                (xf > xmin) & (xf < xmax) & (yf > ymin) & (yf < ymax)
+            )[0]
+
+            is_overlaped[overlaped_idx] = True
+
+        else:
+            raise ValueError(
+                "level needs to have finer grid resolution than that of x or y"
+            )
+
+    return is_overlaped
+
+
+def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
+    """
+    returns 2 flattened arrays containing the data (with shape [Npoints])
+    and the coordinates (with shape [Npoints, Ndim]) for the given
+    hierarchy of qty.
+
+    :param hierarchy: the hierarchy where qty is defined
+    :param qty: the field (eg "Bx") that we want
+    """
+
+    dim = hierarchy.ndim
+
+    if dim == 1:
+        return flat_finest_field_1d(hierarchy, qty, time, neghosts)
+    elif dim == 2:
+        return flat_finest_field_2d(hierarchy, qty, time)
+    elif dim == 3:
+        raise RuntimeError("Not implemented")
+        # return flat_finest_field_3d(hierarchy, qty, time)
+    else:
+        raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
+
+
+def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
+        patches = lvl[ilvl].patches
+
+        for ip, patch in enumerate(patches):
+            pdata = patch[qty]
+            data = pdata[pdata.box]
+            (x,) = local_domain_coords(pdata)
+
+            if ilvl == hierarchy.finest_level(time):
+                if ip == 0:
+                    final_data = data
+                    final_x = x
+                else:
+                    final_data = np.concatenate((final_data, data))
+                    final_x = np.concatenate((final_x, x))
+
+            else:
+                is_overlaped = overlap_mask_1d(
+                    x, pdata.dl, hierarchy.level(ilvl + 1, time), qty
+                )
+
+                finest_data = data[~is_overlaped]
+                finest_x = x[~is_overlaped]
+
+                final_data = np.concatenate((final_data, finest_data))
+                final_x = np.concatenate((final_x, finest_x))
+
+    return final_data, final_x
+
+
+def flat_finest_field_2d(hierarchy, qty, time=None):
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
+        patches = lvl[ilvl].patches
+
+        for ip, patch in enumerate(patches):
+            pdata = patch[qty]
+            data = pdata[pdata.box]
+            x, y = local_domain_coords(pdata)
+
+            xv, yv = np.meshgrid(x, y, indexing="ij")
+
+            data_f = data.flatten()
+            xv_f = xv.flatten()
+            yv_f = yv.flatten()
+
+            if ilvl == hierarchy.finest_level(time):
+                if ip == 0:
+                    final_data = data_f
+                    tmp_x = xv_f
+                    tmp_y = yv_f
+                else:
+                    final_data = np.concatenate((final_data, data_f))
+                    tmp_x = np.concatenate((tmp_x, xv_f))
+                    tmp_y = np.concatenate((tmp_y, yv_f))
+
+            else:
+                is_overlaped = overlap_mask_2d(
+                    x, y, pdata.dl, hierarchy.level(ilvl + 1, time), qty
+                )
+
+                finest_data = data_f[~is_overlaped]
+                finest_x = xv_f[~is_overlaped]
+                finest_y = yv_f[~is_overlaped]
+
+                final_data = np.concatenate((final_data, finest_data))
+                tmp_x = np.concatenate((tmp_x, finest_x))
+                tmp_y = np.concatenate((tmp_y, finest_y))
+
+    return final_data, np.stack((tmp_x, tmp_y), axis=1)
