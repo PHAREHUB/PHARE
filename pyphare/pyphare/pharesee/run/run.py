@@ -1,11 +1,18 @@
 import glob
 import os
+from pathlib import Path
 
 import numpy as np
 
-from pyphare.core.phare_utilities import listify, refinement_ratio
+from pyphare.core import phare_utilities as phut
 from pyphare.logger import getLogger
-from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
+from pyphare.pharesee.hierarchy import (
+    ScalarField,
+    VectorField,
+    all_times_from,
+    default_time_from,
+    hierarchy_from,
+)
 from pyphare.pharesee.hierarchy import hierarchy_compute as hc
 from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
@@ -21,47 +28,12 @@ from .utils import (
 
 logger = getLogger(__name__)
 
-quantities_per_file = {
-    "EM_B": "B",
-    "EM_E": "E",
-    "ions_bulkVelocity": "Vi",
-    "ions_charge_flux": "CF",
-    "ions_charge_density": "Ni",
-    "ions_mass_density": "rho",
-    "particle_count": "nppc",
-    "mhd_rho": "mhd_rho",
-    "mhd_V": "mhd_V",
-    "mhd_P": "mhd_P",
-    "mhd_rhoV": "mhd_rhoV",
-    "mhd_Etot": "mhd_Etot",
-}
-
 
 class Run:
     def __init__(self, path, default_time=None):
         self.path = path
         self.default_time_ = default_time
-        self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
-
-    def _get_hierarchy(self, times, filename, hier=None, **kwargs):
-        from pyphare.core.box import Box
-
-        times = listify(times)
-        times = [f"{t:.10f}" for t in times]
-        if "selection_box" in kwargs and isinstance(kwargs["selection_box"], tuple):
-            lower = kwargs["selection_box"][:2]
-            upper = kwargs["selection_box"][2:]
-            kwargs["selection_box"] = Box(lower, upper)
-
-        def _get_hier(h):
-            return hierarchy_from(
-                h5_filename=os.path.join(self.path, filename),
-                times=times,
-                hier=h,
-                **kwargs,
-            )
-
-        return _get_hier(hier)
+        self.available_diags = self._available_diags()
 
     def GetTags(self, time, **kwargs):
         return self._get_hierarchy(time, "tags.h5")
@@ -132,9 +104,7 @@ class Run:
 
     def GetPe(self, time, all_primal=True):
         hier = self._get_hierarchy(time, "ions_charge_density.h5")
-
         Te = hier.sim.electrons.closure.Te
-
         if not all_primal:
             return Te * hier
 
@@ -285,14 +255,10 @@ class Run:
         return pop_attribute_from_h5(self.path, pop_name, "pop_charge")
 
     def GetDomainSize(self, **kwargs):
-        import h5py
-
-        data_file = h5py.File(
-            self.available_diags[0], "r"
-        )  # That is the first file in th available diags
-        root_cell_width = np.asarray(data_file.attrs["cell_width"])
-
-        return (data_file.attrs["domain_box"] + 1) * root_cell_width
+        hier = self._get_any_hierarchy(self.default_time)
+        root_cell_width = hier.level(0).cell_width
+        domain_box = hier.domain_box
+        return (domain_box.upper + 1) * root_cell_width
 
     def GetDl(self, level=0):
         """
@@ -300,30 +266,53 @@ class Run:
 
         :param level: the level at which get the associated grid size
         """
-        import h5py
-
         if level < 0:
             raise ValueError(f"Run::GetDl: level must be >= 0, got {level}")
 
-        with h5py.File(self.available_diags[0], "r") as data_file:
-            root_cell_width = np.asarray(data_file.attrs["cell_width"])
-        return root_cell_width / refinement_ratio**level
+        hier = self._get_any_hierarchy(self.default_time)
+        return hier.level(0).cell_width / phut.refinement_ratio**level
 
     def all_times(self):
-        import h5py
-
-        files = self.available_diags
-        ts = {}
-        for file in files:
-            basename = os.path.basename(file).split(".")[0]
-            ff = h5py.File(file)
-            time_keys = ff["t"].keys()
-            time = np.zeros(len(time_keys))
-            for it, t in enumerate(time_keys):
-                time[it] = float(t)
-            ts[quantities_per_file.get(basename, basename)] = time
-            ff.close()
-        return ts
+        return {Path(file).stem: all_times_from(file) for file in self.available_diags}
 
     def times(self, qty):
         return self.all_times()[qty]
+
+    def _available_diags(self):
+        files = glob.glob(os.path.join(self.path, "*.h5"))
+        if not files:
+            raise RuntimeError(f"No HDF5 files found at: {self.path}")
+        return files
+
+    def _get_any_hierarchy(self, time):
+        for file in self.available_diags:
+            if f"{time:.10f}" in (f"{t:.10f}" for t in all_times_from(file)):
+                return self._get_hierarchy(time, os.path.basename(file))
+        raise RuntimeError(f"No diagnostic found at time {time} in {self.path}")
+
+    def _get_hierarchy(self, times, filename, hier=None, **kwargs):
+        from pyphare.core.box import Box
+
+        times = phut.listify(times)
+        times = [f"{t:.10f}" for t in times]
+        if "selection_box" in kwargs and isinstance(kwargs["selection_box"], tuple):
+            lower = kwargs["selection_box"][:2]
+            upper = kwargs["selection_box"][2:]
+            kwargs["selection_box"] = Box(lower, upper)
+
+        def _get_hier(h):
+            return hierarchy_from(
+                h5_filename=os.path.join(self.path, filename),
+                times=times,
+                hier=h,
+                **kwargs,
+            )
+
+        return _get_hier(hier)
+
+    @property
+    def default_time(self):
+        if self.default_time_ is None:
+            ref_file = self.available_diags[0]
+            self.default_time_ = default_time_from(ref_file)
+        return self.default_time_
