@@ -14,7 +14,7 @@ def plot_field_data(fd, **kwargs):
         }
         ax.plot(x, data, **plot_kwargs)
         ax.set_xlabel(kwargs.get("xlabel", "x"))
-        ax.set_ylabel(kwargs.get("ylabel", fd.field_name))
+        ax.set_ylabel(kwargs.get("ylabel", fd.name))
 
     elif fd.ndim == 2:
         x, y, data = _pcolormesh_coords(fd, fd.box)

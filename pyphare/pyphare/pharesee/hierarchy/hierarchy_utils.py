@@ -513,7 +513,7 @@ def single_patch_for_LO(hier, qties=None, skip=None):
             if isinstance(v, FieldData):
                 l0_pds[k] = FieldData(
                     layout_of(v),
-                    v.field_name,
+                    v.name,
                     None,
                     centering=v.centerings,
                     ghosts_nbr=v.ghosts_nbr,

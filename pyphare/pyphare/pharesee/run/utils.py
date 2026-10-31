@@ -785,7 +785,7 @@ def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
         mesh = np.meshgrid(*finest_coords, indexing="ij")
         datas[qty] = uniform.UniformGrid(
             layout=layout,
-            field_name=ref_patch[qty].name,
+            name=ref_patch[qty].name,
             data=interpolator(*mesh),
             ghosts_nbr=nbrGhosts,
             centering=ref_patch[qty].centerings,
