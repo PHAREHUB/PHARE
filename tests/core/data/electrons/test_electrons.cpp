@@ -7,7 +7,7 @@
 
 #include "core/data/grid/grid.hpp"
 #include "core/data/ions/ions.hpp"
-#include "src/core/utilities/types.hpp"
+#include "core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"
@@ -130,15 +130,18 @@ struct ElectronsTest : public ::testing::Test
 {
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
+    static constexpr auto opts   = PHARE::SimOpts{dim, interp};
 
+    using core_types                 = PHARE::core::PHARE_Types<opts>;
+    auto constexpr static field_opts = TensorFieldOptions<typename core_types::Hybrid>{};
 
-    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
+    using GridYee = core_types::Hybrid::GridLayout_t;
 
     using GridND           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldND          = Field<dim, HybridQuantity::Scalar>;
     using VecFieldND       = VecField<FieldND, HybridQuantity>;
     using SymTensorFieldND = SymTensorField<FieldND, HybridQuantity>;
-    using ParticleArray_t  = ParticleArray<dim>;
+    using ParticleArray_t  = ParticleArray<ParticleArrayOptions{dim}>;
     using IonPopulationND  = IonPopulation<ParticleArray_t, VecFieldND, SymTensorFieldND>;
     using IonsT            = Ions<IonPopulationND, GridYee>;
     using PartPackND       = ParticlesPack<ParticleArray_t>;
@@ -149,8 +152,8 @@ struct ElectronsTest : public ::testing::Test
 
     Electromag<VecFieldND> electromag;
 
-    UsableVecField<dim> J, F, Ve, Vi, chargeFlux;
-    UsableTensorField<dim> ionTensor, protonTensor;
+    UsableVecField<field_opts> J, F, Ve, Vi, chargeFlux;
+    UsableTensorField<field_opts> ionTensor, protonTensor;
 
     GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
 
@@ -215,17 +218,14 @@ struct ElectronsTest : public ::testing::Test
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
 
-
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
-
 
         auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
         auto const& [_, P] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
 
-        auto const& [Jx, Jy, Jz] = J();
-        auto const& [Fx, Fy, Fz] = chargeFlux();
-
+        auto& [Jx, Jy, Jz] = J();
+        auto& [Fx, Fy, Fz] = chargeFlux();
 
         if constexpr (dim == 1)
         {
@@ -530,7 +530,8 @@ struct TwoPopulationElectronsTest : public ::testing::Test
 {
     using Base = ElectronsTest<TypeInfo>;
 
-    static constexpr auto dim = Base::dim;
+    static constexpr auto dim        = Base::dim;
+    static constexpr auto field_opts = Base::field_opts;
 
     using GridYee         = typename Base::GridYee;
     using GridND          = typename Base::GridND;
@@ -566,8 +567,8 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         {
         }
 
-        UsableVecField<dim> flux;
-        UsableTensorField<dim> momentumTensor;
+        UsableVecField<field_opts> flux;
+        UsableTensorField<field_opts> momentumTensor;
         GridND particleDensity, chargeDensity;
         ParticleArray_t domainParticles;
         ParticleArray_t patchGhostParticles = domainParticles;
@@ -658,8 +659,8 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     GridYee layout                     = NDlayout<dim, Base::interp>::create();
     PHARE::initializer::PHAREDict dict = createTwoPopulationDict(pops);
 
-    UsableVecField<dim> J, Ve, Vi, chargeFlux;
-    UsableTensorField<dim> ionTensor;
+    UsableVecField<field_opts> J, Ve, Vi, chargeFlux;
+    UsableTensorField<field_opts> ionTensor;
     GridND ionChargeDensity, ionMassDensity, Pe;
     std::array<PopulationBuffers, nbrPops> popBuffers;
 

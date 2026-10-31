@@ -9,7 +9,7 @@
 #include "python3/patch_data.hpp"
 #include "python3/patch_level.hpp"
 
-#include "simulator/simulator.hpp"
+#include "simulator/simulator_decl.hpp"
 
 
 #include <array>

@@ -1,19 +1,20 @@
 #ifndef PHARE_SOLVER_MHD_HPP
 #define PHARE_SOLVER_MHD_HPP
 
-
-#include "amr/messengers/messenger.hpp"
-#include "amr/messengers/mhd_messenger_info.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/solvers/solver.hpp"
-#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
-
+#include "core/def.hpp"
 #include "core/errors.hpp"
 #include "core/logger.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 #include "core/utilities/index/index.hpp"
+
+#include "amr/solvers/solver.hpp"
+#include "amr/messengers/messenger.hpp"
+#include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -409,21 +410,11 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
 
     double dt = std::numeric_limits<double>::max();
 
-    for (auto& patch : level)
-    {
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot);
-
+    // on one patch, or one tile of it - tiles are traversed sequentially, so reducing into dt is
+    //  safe; min is order independent and tile overlaps don't matter
+    auto const waveDt = [&](auto const& layout, auto const& rho, auto const& rhoV, auto const& B,
+                            auto const& Etot) {
         auto const meshSize = layout.meshSize();
-
-        // diffusive cfl constraint
-        if (eta_ > 0)
-        {
-            double invdx2 = 0;
-            for (std::size_t d = 0; d < dimension; ++d)
-                invdx2 += 1.0 / (meshSize[d] * meshSize[d]);
-            dt = std::min(dt, diffusive / (2.0 * eta_ * invdx2));
-        }
 
         auto const& rhoVx = rhoV(core::Component::X);
         auto const& rhoVy = rhoV(core::Component::Y);
@@ -432,7 +423,6 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
         auto const& By    = B(core::Component::Y);
         auto const& Bz    = B(core::Component::Z);
 
-        // wave cfl constraint
         layout.evalOnBox(rho, [&](auto&... args) mutable {
             core::MeshIndex<dimension> const index{args...};
 
@@ -467,6 +457,30 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             }
             dt = std::min(dt, wave / invDtWave);
         });
+    };
+
+    for (auto& patch : level)
+    {
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot);
+
+        auto const meshSize = layout.meshSize();
+
+        // diffusive cfl constraint
+        if (eta_ > 0)
+        {
+            double invdx2 = 0;
+            for (std::size_t d = 0; d < dimension; ++d)
+                invdx2 += 1.0 / (meshSize[d] * meshSize[d]);
+            dt = std::min(dt, diffusive / (2.0 * eta_ * invdx2));
+        }
+
+        // wave cfl constraint
+        using field_type = std::decay_t<decltype(rho)>;
+        if constexpr (core::is_field_tile_set_v<field_type>)
+            core::tile_exec_with_layout(waveDt, rho, rhoV, B, Etot);
+        else
+            waveDt(layout, rho, rhoV, B, Etot);
     }
 
     return dt;
@@ -480,23 +494,26 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::mhdNaNCheck_(MHDMod
     auto& rm  = model.resourcesManager;
     auto& rho = model.state.rho;
 
-    auto check_nans = [&](auto const& field, auto const& origin,
-                          core::MeshIndex<MHDModel::dimension> const& index) {
-        if (std::isnan(field(index)))
-        {
-            std::stringstream ss;
-            ss << "NaN detected in MHD field at index " << index << " on patch of origin " << origin
-               << " on level " << level.getLevelNumber() << " at time " << time;
-            core::DictionaryException ex{"cause", ss.str()};
-            throw ex;
-        }
+    // no neighbor access here, so this can be a flat per-cell loop rather than box iteration
+    auto check_nans = [&](auto const& origin) {
+        core::operate_on_fields(
+            [&](auto const& v) {
+                if (std::isnan(v))
+                {
+                    std::stringstream ss;
+                    ss << "NaN detected in MHD field on patch of origin " << origin << " on level "
+                       << level.getLevelNumber() << " at time " << time;
+                    core::DictionaryException ex{"cause", ss.str()};
+                    throw ex;
+                }
+            },
+            rho);
     };
 
     for (auto const& patch : rm->enumerate(level, rho))
     {
         auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-        layout.evalOnGhostBox(
-            rho, [&](auto const&... args) { check_nans(rho, layout.origin(), {args...}); });
+        check_nans(layout.origin());
     }
 }
 

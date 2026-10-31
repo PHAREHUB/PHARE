@@ -29,6 +29,7 @@ class MHDInitializationTest(InitializationTest):
         timestamps=None,
         diag_outputs="",
         max_mhd_level=1,
+        model_layout="AoS",
         **kwargs,
     ):
         # the shared hybrid+MHD base passes this positionally: an MHD-only run
@@ -76,6 +77,7 @@ class MHDInitializationTest(InitializationTest):
             hall=hall,
             model_options=["MHDModel"],
             max_mhd_level=max_mhd_level,
+            model_layout=model_layout,
         )
         diag_outputs = sim.diag_options["options"]["dir"]
         L = sim.simulation_domain()

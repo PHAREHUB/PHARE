@@ -34,7 +34,7 @@ class PatchHierarchy:
         self.domain_box = domain_box
 
         self._sim = None
-
+        self.data_files = {}
         if data_files is not None and isinstance(data_files, dict):
             self.data_files = data_files
         elif data_files is not None:
@@ -42,8 +42,6 @@ class PatchHierarchy:
                 self.data_files.update({data_files.filename: data_files})
             else:
                 self.data_files = {data_files.filename: data_files}
-        else:
-            self.data_files = {}
 
         self.update()
 
@@ -109,13 +107,13 @@ class PatchHierarchy:
         # data_files has a key/value per h5 filename.
         # but the "serialized_simulation" in "py_attrs" should be the same for all files
         # used by the hierarchy. So we just take the first one.
-        first_file = next(iter(self.data_files.values()))
-        if "py_attrs" not in first_file:
-            raise ValueError("Simulation is not available for deserialization")
 
         from ...pharein.simulation import deserialize
 
         try:
+            first_file = next(iter(self.data_files.values()))
+            if "py_attrs" not in first_file:
+                raise ValueError("Simulation is not available for deserialization")
             self._sim = deserialize(
                 first_file["py_attrs"].attrs["serialized_simulation"]
             )

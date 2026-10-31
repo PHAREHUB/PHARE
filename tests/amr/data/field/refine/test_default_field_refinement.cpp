@@ -6,6 +6,7 @@
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"

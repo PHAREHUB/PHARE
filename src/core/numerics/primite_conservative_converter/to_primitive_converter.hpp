@@ -3,6 +3,7 @@
 
 
 #include "core/utilities/index/index.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -57,51 +58,41 @@ public:
     template<typename Field, typename VecField>
     void rhoVToVOnGhostBox(Field& rho, VecField const& rhoV, VecField& V) const
     {
-        layout_.evalOnGhostBox(rho,
-                               [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
+        rhoVToV_(rho, rhoV, V);
     }
 
     template<typename Field, typename VecField>
     void eosEtotToPOnGhostBox(double const gamma, Field const& rho, VecField const& rhoV,
                               VecField const& B, Field& Etot, Field& P) const
     {
-        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
-            eosEtotToP_(gamma, rho, rhoV, B, Etot, P, {args...});
-        });
+        eosEtotToPOnGhostBox_(layout_, gamma, rho, rhoV(Component::X), rhoV(Component::Y),
+                              rhoV(Component::Z), B(Component::X), B(Component::Y), B(Component::Z),
+                              Etot, P);
     }
 
 private:
     template<typename Field, typename VecField>
-    static void rhoVToV_(Field& rho, VecField const& rhoV, VecField& V,
-                         MeshIndex<Field::dimension> index)
+    static void rhoVToV_(Field& rho, VecField const& rhoV, VecField& V)
     {
-        auto const& rhoVx = rhoV(Component::X);
-        auto const& rhoVy = rhoV(Component::Y);
-        auto const& rhoVz = rhoV(Component::Z);
-
-        auto& Vx = V(Component::X);
-        auto& Vy = V(Component::Y);
-        auto& Vz = V(Component::Z);
-
-        auto&& [x, y, z] = rhoVToV(rho(index), rhoVx(index), rhoVy(index), rhoVz(index));
-        Vx(index)        = x;
-        Vy(index)        = y;
-        Vz(index)        = z;
+        // no neighbor access here, so unlike eosEtotToP_ below this can be a flat per-cell loop
+        core::operate_on_fields(
+            [](auto& vx, auto& vy, auto& vz, auto const& r, auto const& rhovx, auto const& rhovy,
+               auto const& rhovz) {
+                auto&& [x, y, z] = rhoVToV(r, rhovx, rhovy, rhovz);
+                vx               = x;
+                vy               = y;
+                vz               = z;
+            },
+            V(Component::X), V(Component::Y), V(Component::Z), rho, rhoV(Component::X),
+            rhoV(Component::Y), rhoV(Component::Z));
     }
 
-    template<typename Field, typename VecField>
-    static void eosEtotToP_(double const gamma, Field const& rho, VecField const& rhoV,
-                            VecField const& B, Field& Etot, Field& P,
+    template<typename Field>
+    static void eosEtotToP_(double const gamma, Field const& rho, Field const& rhoVx,
+                            Field const& rhoVy, Field const& rhoVz, Field const& Bx,
+                            Field const& By, Field const& Bz, Field& Etot, Field& P,
                             MeshIndex<Field::dimension> index)
     {
-        auto const& rhoVx = rhoV(Component::X);
-        auto const& rhoVy = rhoV(Component::Y);
-        auto const& rhoVz = rhoV(Component::Z);
-
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
-
         auto const vx = rhoVx(index) / rho(index);
         auto const vy = rhoVy(index) / rho(index);
         auto const vz = rhoVz(index) / rho(index);
@@ -112,6 +103,44 @@ private:
         auto const bz
             = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
         P(index) = eosEtotToP(gamma, rho(index), vx, vy, vz, bx, by, bz, Etot(index));
+    }
+
+    // project<faceXToCellCenter> reads Bx's own neighboring cells (see GridLayout::project),
+    // so unlike rhoVToV_ this genuinely needs a per-tile GridLayout/ghost-box, not a flat loop.
+    template<typename Field>
+    static void eosEtotToPOnGhostBox_(GridLayout const& layout, double const gamma,
+                                      Field const& rho, Field const& rhoVx, Field const& rhoVy,
+                                      Field const& rhoVz, Field const& Bx, Field const& By,
+                                      Field const& Bz, Field& Etot, Field& P)
+        requires(not is_field_tile_set_v<Field>)
+    {
+        layout.evalOnGhostBox(rho, [&](auto&... args) mutable {
+            eosEtotToP_(gamma, rho, rhoVx, rhoVy, rhoVz, Bx, By, Bz, Etot, P, {args...});
+        });
+    }
+
+    template<typename Field>
+    static void eosEtotToPOnGhostBox_(GridLayout const&, double const gamma, Field const& rho,
+                                      Field const& rhoVx, Field const& rhoVy, Field const& rhoVz,
+                                      Field const& Bx, Field const& By, Field const& Bz,
+                                      Field& Etot, Field& P)
+        requires(is_field_tile_set_v<Field>)
+    {
+        auto& rho_tiles   = rho();
+        auto& rhoVx_tiles = rhoVx();
+        auto& rhoVy_tiles = rhoVy();
+        auto& rhoVz_tiles = rhoVz();
+        auto& Bx_tiles    = Bx();
+        auto& By_tiles    = By();
+        auto& Bz_tiles    = Bz();
+        auto& Etot_tiles  = Etot();
+        auto& P_tiles     = P();
+
+        // rho, rhoV, B, Etot, P are all defined on the same patch, so they share the same tiling
+        for (std::size_t t = 0; t < rho_tiles.size(); ++t)
+            eosEtotToPOnGhostBox_(rho_tiles[t].layout(), gamma, rho_tiles[t](), rhoVx_tiles[t](),
+                                  rhoVy_tiles[t](), rhoVz_tiles[t](), Bx_tiles[t](), By_tiles[t](),
+                                  Bz_tiles[t](), Etot_tiles[t](), P_tiles[t]());
     }
 
 

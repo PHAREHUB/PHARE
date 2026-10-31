@@ -104,11 +104,13 @@ namespace amr
 
 
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
+                           std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                           std::shared_ptr<SAMRAI::xfer::RefineTransactionFactory> const& refac
+                           = nullptr)
         {
             for (auto& [_, refiner] : refiners_)
             {
-                refiner.registerLevel(hierarchy, level);
+                refiner.registerLevel(hierarchy, level, refac);
             }
         }
 

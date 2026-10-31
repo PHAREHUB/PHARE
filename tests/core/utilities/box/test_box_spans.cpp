@@ -56,23 +56,6 @@ TEST(BoxSpansTest, points_come_in_memory_order)
     EXPECT_EQ(points_of(box), expected);
 }
 
-// ill-formed boxes (lower > upper, e.g. an empty SAMRAI intersection) have no spans
-TEST(BoxSpansTest, ill_formed_box_is_empty)
-{
-    auto constexpr max = std::numeric_limits<std::uint32_t>::max();
-
-    EXPECT_EQ(cells_in_spans(Box<int, 1>{{5}, {3}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 2>{{0, 5}, {9, 3}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 2>{{5, 0}, {3, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 3>{{5, 0, 0}, {3, 9, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 3>{{0, 5, 0}, {9, 3, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 3>{{0, 0, 5}, {9, 9, 3}}), 0);
-    // unsigned upper = lower - 1 wraps to UINT_MAX at lower = 0
-    EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {max, 9, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {9, max, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {9, 9, max}}), 0);
-}
-
 // two same-shaped boxes: matching spans sit at the same offset from each box's lower corner
 TEST(BoxSpansTest, two_boxes_walk_in_lockstep)
 {

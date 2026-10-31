@@ -40,6 +40,14 @@ def populate_grid(dp, sim):
     dp.add_int("simulation/interp_order", sim.interp_order)
     dp.add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
 
+    dp.add_enum_int("simulation/model_layout", "LayoutMode", sim.model_layout)
+    dp.add_enum_int("simulation/allocator", "AllocatorMode", sim.allocator)
+
+    dp.add_int("simulation/threading/pools", sim.threading["pools"])
+    dp.add_int(
+        "simulation/threading/threads_per_pool", sim.threading["threads_per_pool"]
+    )
+
     sim.time_stepper.populate_dict(dp)
 
 
@@ -49,7 +57,19 @@ def populate_amr(dp, sim):
     if sim.largest_patch_size is not None:
         dp.add_vector_int("simulation/AMR/largest_patch_size", sim.largest_patch_size)
 
-    dp.add_string("simulation/AMR/clustering", sim.clustering)
+    dp.add_bool(
+        "simulation/AMR/allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
+        sim.allow_patches_smaller_than_minimum_size_to_prevent_overlaps,
+    )
+
+    dp.add_string("simulation/AMR/clustering", sim.clustering["method"])
+    if "tile_size" in sim.clustering:
+        dp.add_vector_int("simulation/AMR/tile_size", sim.clustering["tile_size"])
+    if "allow_remote_tile_extent" in sim.clustering:
+        dp.add_bool(
+            "simulation/AMR/allow_remote_tile_extent",
+            sim.clustering["allow_remote_tile_extent"],
+        )
     if sim.nesting_buffer is not None:
         dp.add_vector_int("simulation/AMR/nesting_buffer", sim.nesting_buffer)
     dp.add_int("simulation/AMR/tag_buffer", sim.tag_buffer)

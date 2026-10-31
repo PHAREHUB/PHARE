@@ -10,6 +10,7 @@
 
 #include "gtest/gtest.h"
 
+#include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
 
@@ -22,6 +23,10 @@ inline constexpr PHARE::SimOpts hybridSimOptions{.dimension = dim, .interp_order
 
 template<std::size_t dim>
 inline constexpr PHARE::HybridFieldOptions<hybridSimOptions<dim>> hybridFieldOptions{};
+
+template<std::size_t dim, std::size_t rank>
+using HybridUsableTensorField = UsableTensorField<
+    TensorFieldOptions<typename PHARE_Types<hybridSimOptions<dim>>::Hybrid>{}.with_rank(rank)>;
 
 
 static constexpr std::uint32_t nCells     = 10u;
@@ -202,7 +207,7 @@ struct VecFieldBC1D : testing::Test
     GridLayout1D layout{{0.1}, {nCells}, {0.0}};
 
     static constexpr auto vecQty = HybridQuantity::Vector::B;
-    UsableTensorField<1, 1> B{"B", layout, vecQty};
+    HybridUsableTensorField<1, 1> B{"B", layout, vecQty};
 
     VecFieldBC1D()
     {
@@ -226,7 +231,7 @@ struct VecFieldBC2D : testing::Test
     GridLayout2D layout{{0.1, 0.1}, {nCellsX2D, nCellsY2D}, {0.0, 0.0}};
 
     static constexpr auto vecQty = HybridQuantity::Vector::B;
-    UsableTensorField<2, 1> B{"B", layout, vecQty};
+    HybridUsableTensorField<2, 1> B{"B", layout, vecQty};
 
     VecFieldBC2D()
     {
@@ -255,7 +260,7 @@ struct VecFieldBC2DNonUniformBy : testing::Test
     GridLayout2D layout{{0.1, 0.1}, {nCellsX2D, nCellsY2D}, {0.0, 0.0}};
 
     static constexpr auto vecQty = HybridQuantity::Vector::B;
-    UsableTensorField<2, 1> B{"B", layout, vecQty};
+    HybridUsableTensorField<2, 1> B{"B", layout, vecQty};
 
     VecFieldBC2DNonUniformBy()
     {
@@ -286,7 +291,7 @@ struct VecFieldBC2DNonUniformByAnisotropic : testing::Test
     GridLayout2D layout{{0.1, 0.2}, {nCellsX2D, nCellsY2D}, {0.0, 0.0}};
 
     static constexpr auto vecQty = HybridQuantity::Vector::B;
-    UsableTensorField<2, 1> B{"B", layout, vecQty};
+    HybridUsableTensorField<2, 1> B{"B", layout, vecQty};
 
     VecFieldBC2DNonUniformByAnisotropic()
     {
@@ -317,7 +322,7 @@ struct VecFieldBC3D : testing::Test
     GridLayout3D layout{{0.1, 0.1, 0.1}, {nCellsX3D, nCellsY3D, nCellsZ3D}, {0.0, 0.0, 0.0}};
 
     static constexpr auto vecQty = HybridQuantity::Vector::B;
-    UsableTensorField<3, 1> B{"B", layout, vecQty};
+    HybridUsableTensorField<3, 1> B{"B", layout, vecQty};
 
     VecFieldBC3D()
     {

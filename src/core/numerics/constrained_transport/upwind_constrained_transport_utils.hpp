@@ -12,55 +12,61 @@
 namespace PHARE::core
 {
 
+// Bundles heterogeneous resources (Fields and VecFields), so they can be exposed by the runtime
+// resource view list of UpwindConstrainedTransportState. Hence, related memory can be allocated
+// only when necessary based on a runtime criterion.
 template<typename VecField>
-class UpwindConstrainedTransportState
+struct UpwindConstrainedTransportTransverseState
 {
     using Field                     = VecField::field_type;
     constexpr static auto dimension = VecField::dimension;
 
-    // Bundles heterogeneous resources (Fields and VecFields), so they can be exposed by the runtime
-    // resource view list of UpwindConstrainedTransportState. Hence, related memory can be allocated
-    // only when necessary based on a runtime criterion.
-    struct TransverseResistiveState
+    NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        NO_DISCARD auto getCompileTimeResourcesViewList()
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(jt_x, rhot_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y);
-            else
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y, jt_z, rhot_z);
-        }
-
-        NO_DISCARD auto getCompileTimeResourcesViewList() const
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(jt_x, rhot_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y);
-            else
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y, jt_z, rhot_z);
-        }
-
-        /// those 'transverse' current and density fields are an average value on faces (hence _x,
-        /// _y, _z) of left and right states. The averaging formula depends on the Riemann solver.
-        VecField jt_x{"j_t_x", MHDQuantity::Vector::VecFlux_x};
-        VecField jt_y{"j_t_y", MHDQuantity::Vector::VecFlux_y};
-        VecField jt_z{"j_t_z", MHDQuantity::Vector::VecFlux_z};
-
-        Field rhot_x{"rho_t_x", MHDQuantity::Scalar::ScalarFlux_x};
-        Field rhot_y{"rho_t_y", MHDQuantity::Scalar::ScalarFlux_y};
-        Field rhot_z{"rho_t_z", MHDQuantity::Scalar::ScalarFlux_z};
-    };
-
-public:
-    UpwindConstrainedTransportState() = default;
-    explicit UpwindConstrainedTransportState(bool const isHall)
-    {
-        if (isHall)
-            transverse_state_.emplace_back();
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(jt_x, rhot_x);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y);
+        else
+            return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y, jt_z, rhot_z);
     }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(jt_x, rhot_x);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y);
+        else
+            return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y, jt_z, rhot_z);
+    }
+
+    template<typename View>
+    auto as(auto&& a, auto&&... args) const
+    {
+        return View{{a(jt_x, args...)},   {a(jt_y, args...)},   {a(jt_z, args...)},
+                    {a(rhot_x, args...)}, {a(rhot_y, args...)}, {a(rhot_z, args...)}};
+    }
+
+    /// those 'transverse' current and density fields are an average value on faces (hence _x,
+    /// _y, _z) of left and right states. The averaging formula depends on the Riemann solver.
+    VecField jt_x{"j_t_x", MHDQuantity::Vector::VecFlux_x};
+    VecField jt_y{"j_t_y", MHDQuantity::Vector::VecFlux_y};
+    VecField jt_z{"j_t_z", MHDQuantity::Vector::VecFlux_z};
+
+    Field rhot_x{"rho_t_x", MHDQuantity::Scalar::ScalarFlux_x};
+    Field rhot_y{"rho_t_y", MHDQuantity::Scalar::ScalarFlux_y};
+    Field rhot_z{"rho_t_z", MHDQuantity::Scalar::ScalarFlux_z};
+};
+
+
+// the fields and accessors shared by UpwindConstrainedTransportState and its view
+//  basic::UpwindConstrainedTransportState, Derived::transverse_state() gives the transverse state
+template<typename Derived, typename VecField>
+struct UpwindConstrainedTransportFields
+{
+    using Field                     = VecField::field_type;
+    constexpr static auto dimension = VecField::dimension;
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
@@ -92,35 +98,26 @@ public:
                 "Error - UpwindConstrainedTransportState - dimension not supported");
     }
 
-    NO_DISCARD std::vector<TransverseResistiveState>& getRunTimeResourcesViewList()
-    {
-        return transverse_state_;
-    }
-    NO_DISCARD std::vector<TransverseResistiveState> const& getRunTimeResourcesViewList() const
-    {
-        return transverse_state_;
-    }
-
     template<auto direction>
     auto& getJt()
     {
         if constexpr (direction == Direction::X)
-            return transverse_state_[0].jt_x;
+            return transverse().jt_x;
         else if constexpr (direction == Direction::Y)
-            return transverse_state_[0].jt_y;
+            return transverse().jt_y;
         else if constexpr (direction == Direction::Z)
-            return transverse_state_[0].jt_z;
+            return transverse().jt_z;
     }
 
     template<auto direction>
     auto& getRhot() const
     {
         if constexpr (direction == Direction::X)
-            return transverse_state_[0].rhot_x;
+            return transverse().rhot_x;
         else if constexpr (direction == Direction::Y)
-            return transverse_state_[0].rhot_y;
+            return transverse().rhot_y;
         else if constexpr (direction == Direction::Z)
-            return transverse_state_[0].rhot_z;
+            return transverse().rhot_z;
     }
 
     template<auto direction>
@@ -157,11 +154,11 @@ public:
         jT(Component::Z)(idx) = jt.z;
 
         if constexpr (direction == Direction::X)
-            transverse_state_[0].rhot_x(idx) = rhot;
+            transverse().rhot_x(idx) = rhot;
         else if constexpr (direction == Direction::Y)
-            transverse_state_[0].rhot_y(idx) = rhot;
+            transverse().rhot_y(idx) = rhot;
         else if constexpr (direction == Direction::Z)
-            transverse_state_[0].rhot_z(idx) = rhot;
+            transverse().rhot_z(idx) = rhot;
     }
 
     /// those 'transverse' velocity fields are an average value on faces (hence _x,
@@ -190,6 +187,109 @@ public:
         dR_z{"dR_z", MHDQuantity::Scalar::ScalarFlux_z};
 
 private:
+    auto& transverse() { return static_cast<Derived&>(*this).transverse_state(); }
+    auto& transverse() const { return static_cast<Derived const&>(*this).transverse_state(); }
+};
+
+} // namespace PHARE::core
+
+
+namespace PHARE::core::basic
+{
+// view of an UpwindConstrainedTransportTransverseState
+template<typename VecField>
+struct UpwindConstrainedTransportTransverseState
+{
+    using Field = VecField::field_type;
+
+    VecField jt_x{}, jt_y{}, jt_z{};
+    Field rhot_x{}, rhot_y{}, rhot_z{};
+};
+
+// view of an UpwindConstrainedTransportState (e.g. of one tile), the transverse state is null
+// views if not Hall
+template<typename VecField>
+struct UpwindConstrainedTransportState
+    : core::UpwindConstrainedTransportFields<UpwindConstrainedTransportState<VecField>, VecField>
+{
+    using transverse_type = UpwindConstrainedTransportTransverseState<VecField>;
+
+    NO_DISCARD auto& transverse_state() { return transverse_; }
+    NO_DISCARD auto& transverse_state() const { return transverse_; }
+
+    transverse_type transverse_{};
+    bool hall = false;
+};
+
+} // namespace PHARE::core::basic
+
+
+namespace PHARE::core
+{
+
+template<typename VecField>
+class UpwindConstrainedTransportState
+    : public UpwindConstrainedTransportFields<UpwindConstrainedTransportState<VecField>, VecField>
+{
+    using Super
+        = UpwindConstrainedTransportFields<UpwindConstrainedTransportState<VecField>, VecField>;
+    using TransverseResistiveState = UpwindConstrainedTransportTransverseState<VecField>;
+
+    friend Super;
+
+public:
+    using vecfield_type = VecField;
+
+    template<typename VF>
+    using view_t = basic::UpwindConstrainedTransportState<VF>;
+
+    UpwindConstrainedTransportState() = default;
+    explicit UpwindConstrainedTransportState(bool const isHall)
+    {
+        if (isHall)
+            transverse_state_.emplace_back();
+    }
+
+    NO_DISCARD std::vector<TransverseResistiveState>& getRunTimeResourcesViewList()
+    {
+        return transverse_state_;
+    }
+    NO_DISCARD std::vector<TransverseResistiveState> const& getRunTimeResourcesViewList() const
+    {
+        return transverse_state_;
+    }
+
+    template<typename View>
+    auto as(auto&& a, auto&&... args) const
+    {
+        using Transverse_v = View::transverse_type;
+
+        auto const& s = static_cast<Super const&>(*this);
+        return View{{{a(s.vt_x, args...)},
+                     {a(s.vt_y, args...)},
+                     {a(s.vt_z, args...)},
+                     {a(s.aL_x, args...)},
+                     {a(s.aR_x, args...)},
+                     {a(s.dL_x, args...)},
+                     {a(s.dR_x, args...)},
+                     {a(s.aL_y, args...)},
+                     {a(s.aR_y, args...)},
+                     {a(s.dL_y, args...)},
+                     {a(s.dR_y, args...)},
+                     {a(s.aL_z, args...)},
+                     {a(s.aR_z, args...)},
+                     {a(s.dL_z, args...)},
+                     {a(s.dR_z, args...)}},
+                    transverse_state_.empty()
+                        ? Transverse_v{}
+                        : transverse_state_[0].template as<Transverse_v>(a, args...),
+                    !transverse_state_.empty()};
+    }
+
+private:
+    NO_DISCARD auto& transverse_state() { return transverse_state_[0]; }
+    NO_DISCARD auto& transverse_state() const { return transverse_state_[0]; }
+
     // this vector is expected to hold at most one element. This is weird, but this is the only way
     // the resource manager can handle heterogeneous runtime resources for now.
     std::vector<TransverseResistiveState> transverse_state_;
