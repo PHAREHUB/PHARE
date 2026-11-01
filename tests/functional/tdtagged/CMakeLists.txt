@@ -10,7 +10,8 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  # serial and MPI would write the same output directories: register one of them
+  # with MPI, 4 ranks rather than the default 2: level 0 then has patch boundaries
+  # (x = 50, 150) that the sheets cross, which exercises tagging across patches
   if(testMPI)
     phare_mpi_python3_exec(11 4 test-td-tagged td1dtagged.py ${CMAKE_CURRENT_BINARY_DIR})
   else()
