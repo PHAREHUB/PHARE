@@ -1,0 +1,10 @@
+# error on the Hall splitting w_whistler - w_aic against cold theory at k_grid (di = 1), mean over the run's modes
+# dx 0.8: 20 runs; dx 0.4: one run per order; dx 0.2: one run, order 1 (dx scan, 2026-11-01)
+order,dx,err_mean,err_std
+1,0.8,-1.1248e-01,7.9856e-04
+2,0.8,-1.6846e-01,4.6248e-04
+3,0.8,-2.2416e-01,4.3895e-04
+1,0.4,-3.0730e-02,
+2,0.4,-4.0291e-02,
+3,0.4,-5.0578e-02,
+1,0.2,-6.5e-03,

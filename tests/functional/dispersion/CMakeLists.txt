@@ -14,4 +14,6 @@ if(HighFive)
   else()
     phare_python3_exec(11 test-dispersion dispersion.py ${CMAKE_CURRENT_BINARY_DIR})
   endif()
+  # 6 runs (3 interpolation orders x 2 resolutions), ~80 s in Release: nightly, not every PR
+  phare_test_labels(test-dispersion nightly)
 endif()

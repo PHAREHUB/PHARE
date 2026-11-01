@@ -64,6 +64,7 @@ Warning: This documentation is a work in progress. It is not complete and may co
    :hidden:
 
    numerics/domain_boundary_conditions
+   numerics/hybrid_dispersion_test
 
 
 .. Getting and Building
