@@ -72,18 +72,26 @@ void operate_on_span(auto* dst, auto const* src, std::size_t const size)
 }
 
 
+namespace detail
+{
+    auto* span_data(auto& field, auto const& start)
+    {
+        // a span is contiguous in memory only for C ordering
+        static_assert(std::decay_t<decltype(field)>::is_c_ordered);
+        return &field(start);
+    }
+} // namespace detail
+
+
 // dst.field = Operator(dst.field, src.field) over two same-shaped boxes, e.g. to copy or
 //  add one patch's region into another's
 template<typename Operator>
 void operate_on_fields(auto& dst, auto const& src)
 {
-    // a span is contiguous in memory only for C ordering
-    static_assert(std::decay_t<decltype(dst.field)>::is_c_ordered);
-    static_assert(std::decay_t<decltype(src.field)>::is_c_ordered);
-
     for_each_span(dst.lcl_box, src.lcl_box,
                   [&](auto const& dst_start, auto const& src_start, auto const size) {
-                      operate_on_span<Operator>(&dst.field(dst_start), &src.field(src_start), size);
+                      operate_on_span<Operator>(detail::span_data(dst.field, dst_start),
+                                                detail::span_data(src.field, src_start), size);
                   });
 }
 
@@ -93,7 +101,7 @@ template<typename Operator>
 void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t seek)
 {
     for_each_span(lcl_box, [&](auto const& start, auto const size) {
-        operate_on_span<Operator>(&field(start), vec.data() + seek, size);
+        operate_on_span<Operator>(detail::span_data(field, start), vec.data() + seek, size);
         seek += size;
     });
 }
@@ -107,7 +115,8 @@ void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
     vec.resize(seek + lcl_box.size());
 
     for_each_span(lcl_box, [&](auto const& start, auto const size) {
-        operate_on_span<SetEqual<value_type>>(vec.data() + seek, &field(start), size);
+        operate_on_span<SetEqual<value_type>>(vec.data() + seek, detail::span_data(field, start),
+                                              size);
         seek += size;
     });
 }
