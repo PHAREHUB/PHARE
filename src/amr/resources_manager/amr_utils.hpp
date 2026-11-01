@@ -137,6 +137,13 @@ namespace amr
         return coarseIdx;
     }
 
+    //! coarse box covering the given fine box, see toCoarseIndex for negative indices
+    template<std::size_t dim>
+    NO_DISCARD core::Box<int, dim> coarsen(core::Box<int, dim> const& box)
+    {
+        return {toCoarseIndex(box.lower), toCoarseIndex(box.upper)};
+    }
+
     /**
      * @brief refinedPosition returns an index refined index with the given ratio
      * bound

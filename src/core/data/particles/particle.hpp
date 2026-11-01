@@ -52,12 +52,12 @@ struct Particle
 
     Particle() = default;
 
-    double weight = 0;
+    double weight = 0; // 8
 
     // {} zero initialization
-    std::array<int, dim> iCell{};
-    std::array<double, dim> delta{};
-    std::array<double, 3> v{};
+    std::array<int, dim> iCell{};    // 4 * dim
+    std::array<double, dim> delta{}; // 8 * dim
+    std::array<double, 3> v{};       // 8 * 3
 
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {

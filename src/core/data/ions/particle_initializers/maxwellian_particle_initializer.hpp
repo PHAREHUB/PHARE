@@ -1,10 +1,12 @@
 #ifndef PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 #define PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 
+#include <cmath>
 #include <memory>
 #include <random>
 #include <cassert>
 #include <functional>
+#include <stdexcept>
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
@@ -38,15 +40,13 @@ public:
     static constexpr auto dimension = GridLayout::dimension;
     using InputFunction             = initializer::InitFunction<dimension>;
 
-    MaxwellianParticleInitializer(InputFunction density,
-                                  std::array<InputFunction, 3> const& bulkVelocity,
-                                  std::array<InputFunction, 3> const& thermalVelocity,
-                                  std::uint32_t const& nbrParticlesPerCell,
-                                  std::optional<std::size_t> seed = {},
-                                  Basis const basis               = Basis::Cartesian,
-                                  std::array<InputFunction, 3> const& magneticField
-                                  = {nullptr, nullptr, nullptr},
-                                  double densityCutOff = 1e-5)
+    MaxwellianParticleInitializer(
+        InputFunction density, std::array<InputFunction, 3> const& bulkVelocity,
+        std::array<InputFunction, 3> const& thermalVelocity,
+        std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
+        Basis const basis                                 = Basis::Cartesian,
+        std::array<InputFunction, 3> const& magneticField = {nullptr, nullptr, nullptr},
+        double const densityCutOff = 1e-5, double const over_alloc_factor = .05)
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}
@@ -55,7 +55,10 @@ public:
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
         , rngSeed_{seed}
+        , over_alloc_factor_{over_alloc_factor}
     {
+        if (!std::isfinite(over_alloc_factor_) or over_alloc_factor_ < 0)
+            throw std::runtime_error("over_alloc_factor must be finite and non-negative");
     }
 
 
@@ -82,6 +85,19 @@ public:
     }
 
 private:
+    //! number of cells on the outer layer of the box, where incoming particles first land
+    //! a box 2 cells or less wide in some direction has no interior, all its cells count
+    NO_DISCARD static std::size_t surface_cell_count_(auto const& box)
+    {
+        std::size_t all = 1, interior = 1;
+        for (auto const n : box.shape())
+        {
+            all *= n;
+            interior *= n > 2 ? n - 2 : 0;
+        }
+        return all - interior;
+    }
+
     using Particle = typename ParticleArray::value_type;
     InputFunction density_;
     std::array<InputFunction, 3> bulkVelocity_;
@@ -92,6 +108,7 @@ private:
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
     std::optional<std::size_t> rngSeed_;
+    double over_alloc_factor_ = .05;
 };
 
 
@@ -166,6 +183,17 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto const [n, V, Vth] = fns();
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
+
+    auto const expected_size = std::accumulate(n, n + ndCellIndices.size(), std::size_t{0},
+                                               [&](auto const& sum, auto const& density_value) {
+                                                   return (density_value >= densityCutOff_)
+                                                              ? sum + nbrParticlePerCell_
+                                                              : sum;
+                                               });
+
+    auto const incoming_estimate
+        = (surface_cell_count_(layout.AMRBox()) * (nbrParticlePerCell_ * over_alloc_factor_));
+    particles.reserve(expected_size + incoming_estimate);
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
     {

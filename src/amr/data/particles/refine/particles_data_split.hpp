@@ -6,6 +6,8 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/amr_constants.hpp"
+#include "amr/utilities/box/amr_box.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/particles/particles_data.hpp"
 
 #include "split.hpp" // IWYU pragma: keep
@@ -20,8 +22,8 @@ namespace PHARE
 {
 namespace amr
 {
-    enum class ParticlesDataSplitType {
-        coarseBoundary,
+    enum class ParticlesDataSplitType : std::uint8_t {
+        coarseBoundary = 0,
         interior,
         coarseBoundaryOld,
         coarseBoundaryNew
@@ -52,6 +54,12 @@ namespace amr
     template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
+        using Particle_t = typename ParticleArray::value_type;
+        static constexpr bool putParticlesInCoarseBoundary
+            = splitType == ParticlesDataSplitType::coarseBoundary
+              || splitType == ParticlesDataSplitType::coarseBoundaryOld
+              || splitType == ParticlesDataSplitType::coarseBoundaryNew;
+
     public:
         static constexpr auto dim           = Splitter::dimension;
         static constexpr auto interpOrder   = Splitter::interp_order;
@@ -98,7 +106,7 @@ namespace amr
                 = std::dynamic_pointer_cast<ParticlesData<ParticleArray>>(
                     source.getPatchData(sourceComponent));
 
-            // Finnaly we need the cartesion geometry of both patch.
+            // Finaly we need the cartesion geometry of both patch.
             auto patchGeomDestination
                 = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
                     destination.getPatchGeometry());
@@ -132,9 +140,16 @@ namespace amr
             }
         }
 
+        template<typename Fn>
+        static void reserve_(ParticleArray& particles, Fn&& counter)
+        { // only reserve for regular refinement of domain to start with
+          // on top of what's there, e.g. particles copied from the old level on regrid
+            if constexpr (!putParticlesInCoarseBoundary)
+                particles.reserve(particles.size() + counter() * nbRefinedPart);
+        }
 
         /** @brief given two ParticlesData (destination and source),
-         * an overlap , a ratio and the geometry of both patches, perform the
+         * an overlap, a ratio and the geometry of both patches, perform the
          * splitting of coarse particles onto the destination patch
          */
         void refine_(ParticlesData<ParticleArray>& destParticlesData,
@@ -169,6 +184,15 @@ namespace amr
             // same for destinationGhostBox and destinationDomainBox the later will allow to get an
             // index relative to the interior
 
+            auto const count_expected = [&]() {
+                std::size_t incoming_estimate = 0;
+                for (auto const& destinationBox : destBoxes)
+                    incoming_estimate += srcInteriorParticles.nbr_particles_in(
+                        coarsen(phare_box_from<dim>(getSplitBox(destinationBox))));
+                return incoming_estimate;
+            };
+            reserve_(destDomainParticles, count_expected);
+
             Splitter split;
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
@@ -195,11 +219,6 @@ namespace amr
 
                         // we need to know in which of interior or levelGhostParticlesXXXX
                         // arrays we must put particles
-
-                        bool constexpr putParticlesInCoarseBoundary
-                            = splitType == ParticlesDataSplitType::coarseBoundary
-                              || splitType == ParticlesDataSplitType::coarseBoundaryOld
-                              || splitType == ParticlesDataSplitType::coarseBoundaryNew;
 
 
 
