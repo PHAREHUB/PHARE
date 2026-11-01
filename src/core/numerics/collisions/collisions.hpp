@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
+#include <numeric>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -49,6 +51,7 @@ struct CollisionInfo
     double const nu0;
     std::int64_t const every;
     ScatteringLaw const law;
+    bool const exactConservation;
     std::uint64_t const seed;
 
     NO_DISCARD bool isActive() const { return nu0 > 0.; }
@@ -65,6 +68,8 @@ struct CollisionCounters
     std::size_t pairs   = 0;
     std::size_t skipped = 0; // pairs with no relative velocity, e.g. split siblings
     std::size_t large_s = 0; // s > 1 for a pair moving faster than 0.1 of the block thermal speed
+    std::size_t unconverged = 0; // blocks whose energy could not be fully restored
+    double residualEnergy   = 0; // energy those blocks gained, in units of n0 mp VA^2
 };
 
 
@@ -281,9 +286,9 @@ public:
         if (groups_.empty())
             makeGroups_(ions);
 
-        Constexprifier{law}([&]<ScatteringLaw lawV>() {
+        Constexprifier{law, exactConservation}([&]<ScatteringLaw lawV, bool exactV>() {
             for (auto const& cell : cells)
-                collideCell_<lawV>(ions, cell, cellKey_(stepKey, cell), dt);
+                collideCell_<lawV, exactV>(ions, cell, cellKey_(stepKey, cell), dt);
         });
     }
 
@@ -332,13 +337,21 @@ private:
             return collisions::splitmix64(h);
         };
 
-        order_.clear();
-        for (std::size_t i = 0; i < slots.size(); ++i)
-            order_.emplace_back(hash(slots[i]), i);
-        std::sort(order_.begin(), order_.end());
+        for (auto& slot : slots)
+            slot.key = hash(slot);
+        sortBy_(slots, [](auto const& a, auto const& b) { return a.key < b.key; });
+    }
+
+    // sorts through an index, cheaper than moving slots around
+    void sortBy_(std::vector<Slot>& slots, auto&& less)
+    {
+        index_.resize(slots.size());
+        std::iota(index_.begin(), index_.end(), std::size_t{0});
+        std::sort(index_.begin(), index_.end(),
+                  [&](auto const i, auto const j) { return less(slots[i], slots[j]); });
 
         sorted_.clear();
-        for (auto const& [_, i] : order_)
+        for (auto const i : index_)
             sorted_.push_back(slots[i]);
         slots.swap(sorted_);
     }
@@ -361,6 +374,166 @@ private:
             }
         auto const meanSq = (mean[0] * mean[0] + mean[1] * mean[1] + mean[2] * mean[2]) / (w * w);
         return std::sqrt(std::max(0., sq / w - meanSq) / 3.);
+    }
+
+    // weighted sums of a block, m_p = m w_p being the mass of a macro-particle
+    struct Sums
+    {
+        std::array<double, 3> momentum{}; // sum m_p v
+        double energy = 0;                // sum m_p v^2 / 2
+        double mass   = 0;                // sum m_p
+        double massW  = 0;                // sum m_p w
+    };
+
+    static Sums sums_(auto const&... groups)
+    {
+        Sums sums;
+        auto const add = [&](Group const& g) {
+            for (auto const& slot : g.slots)
+            {
+                auto const mp = g.mass * slot.weight;
+                for (std::size_t i = 0; i < 3; ++i)
+                {
+                    sums.momentum[i] += mp * slot.v[i];
+                    sums.energy += 0.5 * mp * slot.v[i] * slot.v[i];
+                }
+                sums.mass += mp;
+                sums.massW += mp * slot.weight;
+            }
+        };
+        (add(groups), ...);
+        return sums;
+    }
+
+    // equal weights: every pair conserves exactly, nothing to restore
+    static bool equalWeights_(auto const&... groups)
+    {
+        auto const w   = std::get<0>(std::forward_as_tuple(groups...)).slots.front().weight;
+        auto const all = [&](Group const& g) {
+            return std::all_of(g.slots.begin(), g.slots.end(),
+                               [&](auto const& slot) { return slot.weight == w; });
+        };
+        return (all(groups) and ...);
+    }
+
+    // Angus et al. 2025, Eqs. 17-24: the weighted acceptance conserves momentum and energy only
+    // on average. A velocity shift proportional to the weight restores the momentum the block had
+    // before its pairs scattered, then zero-angle exchanges of relative energy between neighbours
+    // of each group restore its energy, shared between two groups in proportion to their mean
+    // weight times their energy in the block's centre of mass frame.
+    void conserve_(Sums const& before, Group& g)
+    {
+        if (equalWeights_(g))
+            return;
+        shiftMomentum_(before, g);
+        record_(absorb_(g, sums_(g).energy - before.energy));
+    }
+
+    void conserve_(Sums const& before, Group& g, Group& h)
+    {
+        if (equalWeights_(g, h))
+            return;
+        shiftMomentum_(before, g, h);
+        auto const dE = sums_(g, h).energy - before.energy;
+        if (dE == 0.)
+            return;
+
+        auto const centreOfMass = [&](std::size_t i) { return before.momentum[i] / before.mass; };
+        auto const share        = [&](Group const& group) {
+            double energy = 0, weight = 0;
+            for (auto const& slot : group.slots)
+            {
+                weight += slot.weight;
+                for (std::size_t i = 0; i < 3; ++i)
+                {
+                    auto const dv = slot.v[i] - centreOfMass(i);
+                    energy += 0.5 * group.mass * slot.weight * dv * dv;
+                }
+            }
+            return weight / group.slots.size() * energy;
+        };
+
+        // a single particle cannot exchange energy, and groups at rest in the centre of mass
+        // frame have no share: the other group takes it all
+        auto const shareG = share(g), shareH = share(h);
+        auto const dEg = g.slots.size() == 1 or shareG == 0.   ? 0.
+                         : h.slots.size() == 1 or shareH == 0. ? dE
+                                                               : dE * shareG / (shareG + shareH);
+        record_(absorb_(g, dEg) + absorb_(h, dE - dEg));
+    }
+
+    static void shiftMomentum_(Sums const& before, auto&... groups)
+    {
+        auto const after = sums_(groups...);
+        auto const shift = [&](Group& g) {
+            for (auto& slot : g.slots)
+                for (std::size_t i = 0; i < 3; ++i)
+                    slot.v[i]
+                        -= slot.weight * (after.momentum[i] - before.momentum[i]) / after.massW;
+        };
+        (shift(groups), ...);
+    }
+
+    // removes dE from the group through zero-angle exchanges between neighbours, heaviest first,
+    // and returns what could not be removed
+    double absorb_(Group& g, double dE)
+    {
+        auto constexpr maxSweeps = 10;
+        auto& slots              = g.slots;
+        auto const n             = slots.size();
+        if (dE == 0. or n < 2)
+            return dE;
+
+        // heaviest first, ties in the shuffled order: a total order, the same on every platform
+        sortBy_(slots, [](auto const& a, auto const& b) {
+            return std::tuple{-a.weight, a.key} < std::tuple{-b.weight, b.key};
+        });
+        // partners close in that order, one place apart then two, three...: split siblings share a
+        // weight, sit next to each other and have no relative energy to exchange
+        for (auto sweep = 0; sweep < maxSweeps and dE != 0.; ++sweep)
+        {
+            auto const distance = static_cast<std::size_t>(1 + sweep / 2);
+            for (auto p = static_cast<std::size_t>(sweep % 2); p + distance < n and dE != 0.;
+                 p += 2)
+                exchange_(slots[p], slots[p + distance], g.mass, dE);
+        }
+        return dE;
+    }
+
+    // inelastic event at zero angle: the pair gives up U of its relative energy, at most 5 %,
+    // and keeps its momentum
+    static void exchange_(Slot& a, Slot& b, double const mass, double& dE)
+    {
+        auto constexpr energyFraction = 0.05;
+        auto const ma                 = mass * a.weight;
+        auto const mb                 = mass * b.weight;
+        auto const mu                 = ma * mb / (ma + mb);
+        std::array const u{a.v[0] - b.v[0], a.v[1] - b.v[1], a.v[2] - b.v[2]};
+        auto const eRel = 0.5 * mu * (u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
+        if (eRel <= 0.)
+            return;
+
+        auto U = std::copysign(energyFraction * eRel, dE);
+        if (std::abs(U) >= std::abs(dE))
+            U = std::exchange(dE, 0.);
+        else
+            dE -= U;
+
+        auto const factor = std::sqrt(1. - U / eRel) - 1.;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            a.v[i] += mu / ma * factor * u[i];
+            b.v[i] -= mu / mb * factor * u[i];
+        }
+    }
+
+    void record_(double const residual)
+    {
+        if (residual != 0.)
+        {
+            ++counters_.unconverged;
+            counters_.residualEnergy += residual;
+        }
     }
 
     template<ScatteringLaw law>
@@ -393,7 +566,7 @@ private:
         collisions::scatter(a.v, b.v, ga.mass, gb.mass, cosChi, phi, updateA, updateB);
     }
 
-    template<ScatteringLaw law>
+    template<ScatteringLaw law, bool exact>
     void collideCell_(Ions& ions, auto const& cell, std::uint64_t const key, double const dt)
     {
         for (auto& group : groups_)
@@ -426,11 +599,14 @@ private:
             auto draw           = collisions::Stream{blockKey};
             auto const n        = slots.size();
             auto const vth      = thermalSpeed_(slots);
+            auto const before   = exact ? sums_(g) : Sums{};
             sortRandomly_(slots, blockKey);
             collisions::forEachIntraPair(n, [&](auto const i, auto const j, double const factor) {
                 collidePair_<law>(slots[i], slots[j], g, g,
                                   collisions::intraStrength(n, factor) * dt, vth, draw);
             });
+            if constexpr (exact)
+                conserve_(before, g);
         }
 
         for (std::size_t ig = 0; ig < groups_.size(); ++ig)
@@ -442,8 +618,9 @@ private:
                 if (g.slots.empty() or h.slots.empty())
                     continue;
 
-                auto draw      = collisions::Stream{collisions::combine(key, block)};
-                auto const vth = thermalSpeed_(g.slots, h.slots);
+                auto draw         = collisions::Stream{collisions::combine(key, block)};
+                auto const vth    = thermalSpeed_(g.slots, h.slots);
+                auto const before = exact ? sums_(g, h) : Sums{};
                 collisions::shuffle(g.slots, draw);
                 collisions::shuffle(h.slots, draw);
 
@@ -456,6 +633,8 @@ private:
                         collidePair_<law>(large.slots[i], small.slots[j], large, small, strength,
                                           vth, draw);
                     });
+                if constexpr (exact)
+                    conserve_(before, g, h);
             }
 
         for (auto const& g : groups_)
@@ -464,9 +643,9 @@ private:
     }
 
     std::vector<Group> groups_;
-    std::vector<std::size_t> groupOf_;                         // population index -> group index
-    std::vector<std::pair<std::uint64_t, std::size_t>> order_; // sort scratch
-    std::vector<Slot> sorted_;                                 // sort scratch
+    std::vector<std::size_t> groupOf_; // population index -> group index
+    std::vector<std::size_t> index_;   // sort scratch
+    std::vector<Slot> sorted_;         // sort scratch
     CollisionCounters counters_;
 };
 
