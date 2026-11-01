@@ -10,6 +10,11 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  phare_python3_exec(11 test-td-tagged td1dtagged.py ${CMAKE_CURRENT_BINARY_DIR})
+  # serial and MPI would write the same output directories: register one of them
+  if(testMPI)
+    phare_mpi_python3_exec(11 4 test-td-tagged td1dtagged.py ${CMAKE_CURRENT_BINARY_DIR})
+  else()
+    phare_python3_exec(11 test-td-tagged td1dtagged.py ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 
 endif()

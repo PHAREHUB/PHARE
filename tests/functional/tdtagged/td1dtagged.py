@@ -9,7 +9,6 @@ import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-from tests.diagnostic import all_timestamps
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 
 mpl.use("Agg")
@@ -62,15 +61,15 @@ def vz(x):
 
 
 def vthx(x):
-    return T(x)
+    return np.sqrt(T(x))
 
 
 def vthy(x):
-    return T(x)
+    return np.sqrt(T(x))
 
 
 def vthz(x):
-    return T(x)
+    return np.sqrt(T(x))
 
 
 vvv = {
@@ -83,14 +82,15 @@ vvv = {
 }
 
 
-# used to only test on the early particle diagnostic files
-particle_diagnostics = {"count": 10, "idx": 0}
+# the only dump time, at which all checks are done
+final_time = 11.0
+nppc = 100
 
 
 def simulation_params(diagdir, **extra):
     params = {
         "interp_order": 1,
-        "time_step_nbr": 500,
+        "final_time": final_time,
         "time_step": 0.04,
         "cells": 200,
         "hyper_resistivity": 0.01,
@@ -107,11 +107,19 @@ def simulation_params(diagdir, **extra):
 def config(**options):
     sim = ph.Simulation(**options)
     ph.MaxwellianFluidModel(
-        bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
+        bx=bx,
+        by=by,
+        bz=bz,
+        protons={
+            "charge": 1,
+            "density": density,
+            "nbr_part_per_cell": nppc,
+            **vvv,
+        },
     )
     ph.ElectronModel(closure="isothermal", Te=0.12)
 
-    timestamps = all_timestamps(sim)
+    timestamps = [final_time]
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
@@ -122,7 +130,7 @@ def config(**options):
         for quantity in ["domain"]:
             ph.ParticleDiagnostics(
                 quantity=quantity,
-                write_timestamps=timestamps[: particle_diagnostics["count"] + 1],
+                write_timestamps=timestamps,
                 population_name=pop,
             )
 
@@ -142,11 +150,15 @@ def noRefinement(diagdir):
 def make_figure():
     from scipy.optimize import curve_fit
 
+    from pyphare.pharesee.plotting import zoom_effect
+
     rwT = Run("./withTagging")
     rNoRef = Run("./noRefinement")
 
-    plot_time = 11
-    v = 2
+    params = simulation_params("")
+    L = params["cells"] * params["dl"]
+    plot_time = final_time
+    v = vx(0)
 
     BH = rwT.GetB(plot_time)
     BwT = rwT.GetB(plot_time, merged=True, interp="linear")
@@ -163,41 +175,62 @@ def make_figure():
     xjzNoRef = JNoRef["Jz"][1][0]
     jzNoRef = JNoRef["Jz"][0](xjzNoRef)
 
-    fig, axarr = plt.subplots(nrows=3, figsize=(8, 8))
+    def by_expected(x):
+        # initial profile carried at v without deformation, periodic domain
+        x0 = np.mod(x - v * plot_time, L)
+        return -1 + 2 * (S(x0, L * 0.25, 1) - S(x0, L * 0.75, 1))
 
-    def S(x, x0, l):
-        return 0.5 * (1 + np.tanh((x - x0) / l))
+    # sheets start at L/4 and 3L/4, zoom windows follow them
+    sheets = [np.mod(x0 + v * plot_time, L) for x0 in (0.25 * L, 0.75 * L)]
+    windows = [(xs - 22, xs + 23) for xs in sheets]
 
-    def by(x):
-        L = 200
-        v1 = -1
-        v2 = 1
-        return v1 + (v2 - v1) * (S(x, L * 0.25, 1) - S(x, L * 0.75, 1))
+    fig, axd = plt.subplot_mosaic(
+        [["full", "full"], ["byL", "byR"], ["jzL", "jzR"]],
+        figsize=(11, 9),
+        layout="constrained",
+    )
+    fig.suptitle(
+        f"1D tangential discontinuities advected at V = {v:g}, t = {plot_time:g}"
+    )
 
-    wT0 = 150.0
+    ax0 = axd["full"]
+    ax0.plot(xbyNoRef, byNoRef, color="k", label="no refinement")
+    ax0.plot(xbywT, bywT, color="royalblue", label="tagging, 3 levels")
+    ax0.plot(
+        xbyNoRef,
+        by_expected(xbyNoRef),
+        color="darkorange",
+        ls="--",
+        label="initial profile moved by V t",
+    )
+    ax0.set_ylabel("By")
+    ax0.set_xlim(0, L)
 
-    ax0, ax1, ax2 = axarr
+    for side, (xmin, xmax), xs in zip("LR", windows, sheets):
+        axby, axjz = axd["by" + side], axd["jz" + side]
+        axby.plot(xbyNoRef, byNoRef, color="k")
+        axby.plot(xbywT, bywT, color="royalblue")
+        axby.plot(xbyNoRef, by_expected(xbyNoRef), color="darkorange", ls="--")
+        axby.set_ylim((-1.5, 2))
+        axby.set_ylabel("By")
+        axjz.plot(xjzNoRef, jzNoRef, color="k")
+        axjz.plot(xjzwT, jzwT, color="royalblue")
+        axjz.set_ylabel("Jz")
+        axjz.set_xlabel("x")
+        for ax in (axby, axjz):
+            ax.set_xlim((xmin, xmax))
+        zoom_effect(ax0, axby, xmin, xmax)
+        for ax in (ax0, axby, axjz):
+            ax.axvline(xs, color="r", lw=1)
+    axd["jzL"].set_ylim((-0.5, 1.5))
+    axd["jzR"].set_ylim((-1.5, 0.5))
 
-    ax0.plot(xbyNoRef, byNoRef, color="k", ls="-")
-    ax0.plot(xbywT, bywT, color="royalblue", ls="-")
-    ax0.plot(xbyNoRef, by(xbyNoRef), color="darkorange", ls="--")
-
-    ax1.set_xlim((wT0, 195))
-    ax1.set_ylim((-1.5, 2))
-    ax1.plot(xbyNoRef, byNoRef, color="k", ls="-")
-    ax1.plot(xbywT, bywT, color="royalblue", ls="-")
-
-    ax2.plot(xjzwT, jzwT)
-    ax2.plot(xjzNoRef, jzNoRef, color="k")
-    ax2.set_xlim((wT0, 195))
-    ax2.set_ylim((-1.5, 0.5))
-
-    # draw level patches
+    # refined patches of the tagged run, level i drawn in the band [i/4, (i+1)/4]
     for ilvl, level in BH.levels().items():
         for patch in level.patches:
             x0 = patch.origin[0]
             x1 = (patch.box.upper[0] + 1) * patch.layout.dl[0]
-            for ax in (ax1, ax2, ax0):
+            for ax in axd.values():
                 ax.axvspan(
                     x0,
                     x1,
@@ -208,56 +241,73 @@ def make_figure():
                     ymax=(ilvl + 1) / 4,
                 )
 
-    from pyphare.pharesee.plotting import zoom_effect
-
-    zoom_effect(ax0, ax1, wT0, 195)
-
-    for ax in (ax0, ax1, ax2):
-        ax.axvline(wT0 + plot_time * v, color="r")
+    handles, labels = ax0.get_legend_handles_labels()
+    handles += [
+        plt.Line2D([], [], color="r", lw=1),
+        mpl.patches.Patch(color="royalblue", alpha=0.2, ec="k"),
+    ]
+    labels += ["expected sheet position", "patches of levels 0, 1, 2 (bottom to top)"]
+    fig.legend(handles, labels, loc="outside lower center", ncol=5, fontsize="small")
 
     fig.savefig("tdtagged1d.png")
 
     # select data around the rightward TD
-    idx = np.where((xbywT > 150) & (xbywT < 190))
+    xmin, xmax = windows[1]
+    idx = np.where((xbywT > xmin) & (xbywT < xmax))
     xx = xbywT[idx]
     bby = bywT[idx]
 
-    # now we will fit by_fit to the data
-    # and we expect to find x0=172 and L=1
-    # or close enough
-    def by_fit(x, x0, L):
+    # fit the right sheet: expect thickness 1 at x = 3L/4 + V t
+    def by_fit(x, x0, l):
         v1 = 1
         v2 = -1
-        return v1 + (v2 - v1) * S(x, x0, L)
+        return v1 + (v2 - v1) * S(x, x0, l)
 
-    popt, _pcov = curve_fit(by_fit, xx, bby, p0=(150, 1))
-    x0, L = popt
+    popt, _pcov = curve_fit(by_fit, xx, bby, p0=(xmin, 1))
+    x0, l = popt
 
-    if np.abs(L - 1) > 0.5:
-        raise RuntimeError(f"L (={L}) too far from 1.O")
-    if np.abs(x0 - (150 + plot_time * v)) > 0.5:
-        raise RuntimeError(f"x0 (={x0}) too far from 172")
-
-
-test = HybridAdvanceTest()
+    if np.abs(l - 1) > 0.5:
+        raise RuntimeError(f"L (={l}) too far from 1.0")
+    if np.abs(x0 - sheets[1]) > 0.5:
+        raise RuntimeError(f"x0 (={x0}) too far from {sheets[1]}")
 
 
-def get_time(path, time):
-    if time is not None:
-        time = f"{time:.10f}"
+def check_refined_particles(diagdir):
     from pyphare.pharesee.hierarchy import hierarchy_from
 
-    return hierarchy_from(h5_filename=path + "/ions_pop_protons_domain.h5", times=time)
+    datahier = hierarchy_from(
+        h5_filename=diagdir + "/ions_pop_protons_domain.h5", times=f"{final_time:.10f}"
+    )
+    HybridAdvanceTest().base_test_domain_particles_on_refined_level(
+        datahier, final_time
+    )
 
 
-def post_advance(new_time):
-    if (
-        particle_diagnostics["idx"] < particle_diagnostics["count"]
-        and cpp.mpi_rank() == 0
-    ):
-        particle_diagnostics["idx"] += 1
-        datahier = get_time(ph.global_vars.sim.diag_options["options"]["dir"], new_time)
-        test.base_test_domain_particles_on_refined_level(datahier, new_time)
+def check_invariants(diagdir):
+    """exact on the periodic L0: particle count, mean By (= 0) and mean Bz (= 0.5)"""
+    run = Run(diagdir)
+
+    cells = simulation_params(diagdir)["cells"]
+    n_L0 = sum(
+        patch.patch_datas["protons_domain"].size()
+        for patch in run.GetParticles(final_time, "protons").level(0).patches
+    )
+    if n_L0 != cells * nppc:
+        raise RuntimeError(f"L0 particle count {n_L0} != {cells * nppc}")
+
+    B = run.GetB(final_time, all_primal=False)  # native grid, no duplicated nodes
+    for qty, expected in (("By", 0.0), ("Bz", 0.5)):
+        values = np.concatenate(
+            [
+                patch.patch_datas[qty][patch.patch_datas[qty].box]
+                for patch in B.level(0).patches
+            ]
+        )
+        # conserved to round-off, but dumps may be single precision
+        tol = max(np.finfo(values.dtype).eps, 1e-12)
+        mean = np.mean(values, dtype=np.float64)
+        if np.abs(mean - expected) > tol:
+            raise RuntimeError(f"L0 mean {qty} = {mean} != {expected}")
 
 
 def main():
@@ -265,13 +315,14 @@ def main():
     Simulator(sim).run().reset()
     ph.global_vars.sim = None
 
-    Simulator(
-        withTagging(diagdir="withTagging"), post_advance=post_advance
-    ).run().reset()
+    Simulator(withTagging(diagdir="withTagging")).run().reset()
     ph.global_vars.sim = None
 
     if not sim.dry_run and cpp.mpi_rank() == 0:
         make_figure()
+        check_refined_particles("withTagging")
+        for diagdir in ("noRefinement", "withTagging"):
+            check_invariants(diagdir)
 
 
 if __name__ == "__main__":
