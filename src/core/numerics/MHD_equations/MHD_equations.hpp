@@ -29,8 +29,6 @@ public:
         auto const GeneralisedPressure = P + 0.5 * (B.x * B.x + B.y * B.y + B.z * B.z);
 
         // HD-only energy: kinetic + thermal. No magnetic terms.
-        // All magnetic energy transport (B²V - (V·B)B = E×B in ideal MHD) is
-        // provided by the CT Poynting correction in apply_poynting_correction().
         // Including B² here would double-count with the Poynting flux.
         auto const Ehd = 0.5 * rho * (V.x * V.x + V.y * V.y + V.z * V.z) + P / (gamma_ - 1.0);
 
@@ -100,7 +98,6 @@ private:
 
         // Hall energy flux ((BdotJ*B - BdotB*J)/rho) is already captured by the CT
         // Poynting correction via E×B, where E includes the Hall term (J×B)/rho.
-        // Adding it here would double-count with apply_poynting_correction().
         if constexpr (direction == Direction::X)
         {
             F_B.y += -JxB_z * invRho;

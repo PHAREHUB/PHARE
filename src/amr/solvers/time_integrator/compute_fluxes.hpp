@@ -26,8 +26,6 @@ class ComputeFluxes
     using FVMethod_t     = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FVMethodInfo_t = FVMethod_t::info_type;
 
-    using PoyntingCorrection_t = Dispatchers_t::template PoyntingCorrection_t<FVMethodStrategy>;
-
     constexpr static auto Hall = FVMethod_t::Hall;
 
     template<typename T>
@@ -35,6 +33,8 @@ class ComputeFluxes
 
     using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
+
+    using PoyntingCorrection_t = Dispatchers_t::template PoyntingCorrection_t<Rec>;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
@@ -89,7 +89,7 @@ public:
 
         bc.fillElectricGhosts(state.E, level, newTime);
 
-        PoyntingCorrection_t{level, model, fVMethodInfo_}(ct_, state, fluxes);
+        PoyntingCorrection_t{level, model}(ct_, state, fluxes);
     }
 
     void registerResources(MHDModel& model)

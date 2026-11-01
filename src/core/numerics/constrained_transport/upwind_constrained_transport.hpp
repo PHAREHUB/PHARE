@@ -59,8 +59,8 @@ private:
     {
         if constexpr (dimension == 2)
         {
-            auto const z = EdgeB_t::template states<Component::X, Component::Z>(ct_state, B, idx);
-            auto const& [aL, aR, dL, dR, BzL, BzR] = z;
+            auto const [aL, aR, dL, dR, BzL, BzR]
+                = EdgeB_t::template states<Component::X, Component::Z>(ct_state, B, idx);
 
             auto FL = BzL * ct_state.vt_y(Component::Y)(idx)
                       - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
@@ -68,9 +68,6 @@ private:
                       - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
 
             Ex(idx) = -(aL * FL + aR * FR) + (dR * BzR - dL * BzL);
-
-            // Store upwind-averaged Bz at Ex location (y-face in 2D) for Poynting correction
-            ct_state.Bt_z_at_Ex(idx) = z.edge();
 
             if constexpr (Hall)
             {
@@ -92,10 +89,10 @@ private:
         }
         else if constexpr (dimension == 3)
         {
-            auto const z = EdgeB_t::template states<Component::X, Component::Z>(ct_state, B, idx);
-            auto const y = EdgeB_t::template states<Component::X, Component::Y>(ct_state, B, idx);
-            auto const& [aS, aN, dS, dN, BzS, BzN] = z;
-            auto const& [aB, aT, dB, dT, ByB, ByT] = y;
+            auto const [aS, aN, dS, dN, BzS, BzN]
+                = EdgeB_t::template states<Component::X, Component::Z>(ct_state, B, idx);
+            auto const [aB, aT, dB, dT, ByB, ByT]
+                = EdgeB_t::template states<Component::X, Component::Y>(ct_state, B, idx);
 
             auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
                 ct_state.vt_z(Component::Y), idx);
@@ -104,10 +101,6 @@ private:
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
-
-            // Store edge-B at Ex location for Poynting energy correction (3D)
-            ct_state.Bt_y_at_Ex(idx) = y.edge();
-            ct_state.Bt_z_at_Ex(idx) = z.edge();
 
             if constexpr (Hall)
             {
@@ -131,8 +124,8 @@ private:
     {
         if constexpr (dimension <= 2)
         {
-            auto const z = EdgeB_t::template states<Component::Y, Component::Z>(ct_state, B, idx);
-            auto const& [aL, aR, dL, dR, BzL, BzR] = z;
+            auto const [aL, aR, dL, dR, BzL, BzR]
+                = EdgeB_t::template states<Component::Y, Component::Z>(ct_state, B, idx);
 
             auto FL = BzL * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
@@ -140,10 +133,6 @@ private:
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
 
             Ey(idx) = (aL * FL + aR * FR) - (dR * BzR - dL * BzL);
-
-            // Store upwind-averaged Bz at Ey location (x-face in 2D; also used in 1D) for
-            // the Poynting correction
-            ct_state.Bt_z_at_Ey(idx) = z.edge();
 
             if constexpr (Hall)
             {
@@ -165,10 +154,10 @@ private:
         }
         else if constexpr (dimension == 3)
         {
-            auto const z = EdgeB_t::template states<Component::Y, Component::Z>(ct_state, B, idx);
-            auto const x = EdgeB_t::template states<Component::Y, Component::X>(ct_state, B, idx);
-            auto const& [aW, aE, dW, dE, BzW, BzE] = z;
-            auto const& [aB, aT, dB, dT, BxB, BxT] = x;
+            auto const [aW, aE, dW, dE, BzW, BzE]
+                = EdgeB_t::template states<Component::Y, Component::Z>(ct_state, B, idx);
+            auto const [aB, aT, dB, dT, BxB, BxT]
+                = EdgeB_t::template states<Component::Y, Component::X>(ct_state, B, idx);
 
             auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
                 ct_state.vt_z(Component::X), idx);
@@ -177,10 +166,6 @@ private:
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
-
-            // Store edge-B at Ey location for Poynting energy correction (3D)
-            ct_state.Bt_x_at_Ey(idx) = x.edge();
-            ct_state.Bt_z_at_Ey(idx) = z.edge();
 
             if constexpr (Hall)
             {
@@ -202,8 +187,8 @@ private:
     {
         if constexpr (dimension == 1)
         {
-            auto const y = EdgeB_t::template states<Component::Z, Component::Y>(ct_state, B, idx);
-            auto const& [aL, aR, dL, dR, ByL, ByR] = y;
+            auto const [aL, aR, dL, dR, ByL, ByR]
+                = EdgeB_t::template states<Component::Z, Component::Y>(ct_state, B, idx);
 
             auto FL = ByL * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
@@ -211,9 +196,6 @@ private:
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
 
             Ez(idx) = -(aL * FL + aR * FR) + (dR * ByR - dL * ByL);
-
-            // Store upwind-averaged By at Ez location (1D) for the Poynting correction
-            ct_state.Bt_y_at_Ez(idx) = y.edge();
 
             if constexpr (Hall)
             {
@@ -235,10 +217,10 @@ private:
         }
         else if constexpr (dimension >= 2)
         {
-            auto const y = EdgeB_t::template states<Component::Z, Component::Y>(ct_state, B, idx);
-            auto const x = EdgeB_t::template states<Component::Z, Component::X>(ct_state, B, idx);
-            auto const& [aW, aE, dW, dE, ByW, ByE] = y;
-            auto const& [aS, aN, dS, dN, BxS, BxN] = x;
+            auto const [aW, aE, dW, dE, ByW, ByE]
+                = EdgeB_t::template states<Component::Z, Component::Y>(ct_state, B, idx);
+            auto const [aS, aN, dS, dN, BxS, BxN]
+                = EdgeB_t::template states<Component::Z, Component::X>(ct_state, B, idx);
 
             auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
                 ct_state.vt_x(Component::Y), idx);
@@ -247,10 +229,6 @@ private:
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);
-
-            // Store edge-B at Ez location for Poynting energy correction (2D+)
-            ct_state.Bt_x_at_Ez(idx) = x.edge();
-            ct_state.Bt_y_at_Ez(idx) = y.edge();
 
             if constexpr (Hall)
             {
