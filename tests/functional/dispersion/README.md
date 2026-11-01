@@ -15,7 +15,7 @@ their frequency $\omega$ and compares it to the theoretical dispersion relation,
 | **ctest** | `py3_test-dispersion` (level 11, label `nightly`) |
 
 ```{eval-rst}
-.. plot:: numerics/hybrid_dispersion/figures.py dispersion
+.. plot:: ../../tests/functional/dispersion/doc/figures.py dispersion
    :alt: PHARE measured frequencies against theory
 ```
 
@@ -61,7 +61,7 @@ branch, the ion velocity must be set accordingly.
 ## 2. How the test measures $\omega$
 
 ```{eval-rst}
-.. plot:: numerics/hybrid_dispersion/figures.py method
+.. plot:: ../../tests/functional/dispersion/doc/figures.py method
    :alt: loaded field, its spectrum and the phase of each mode
 ```
 
@@ -105,7 +105,7 @@ discretization effects shift $\omega$ in a known way, and the test compares agai
 $\omega$ corrected for both.
 
 ```{eval-rst}
-.. plot:: numerics/hybrid_dispersion/figures.py corrections
+.. plot:: ../../tests/functional/dispersion/doc/figures.py corrections
    :alt: grid derivative and particle shape corrections
 ```
 
@@ -152,7 +152,7 @@ and with it, all 48 points (16 modes $\times$ 3 orders) agree to better than 0.4
 ## 4. Pass/fail criteria and calibration
 
 ```{eval-rst}
-.. plot:: numerics/hybrid_dispersion/figures.py calibration_spread
+.. plot:: ../../tests/functional/dispersion/doc/figures.py calibration_spread
    :alt: relative error of all 48 points, mean and spread over independent runs
 ```
 
