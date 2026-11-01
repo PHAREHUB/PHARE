@@ -6,6 +6,7 @@
 #include "core/data/particles/particle_array.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/boundary/boundary_defs.hpp"
+#include "core/numerics/collisions/collisions.hpp"
 
 #include "core/models/options/mhd_options_def.hpp"
 
@@ -167,6 +168,11 @@ PYBIND11_MODULE(cpp_etc, m)
         .value("reflective", core::BoundaryType::Reflective)
         .value("super_magnetofast_inflow", core::BoundaryType::SuperMagnetofastInflow)
         .value("open", core::BoundaryType::Open);
+
+    py::enum_<core::ScatteringLaw>(m, "ScatteringLaw")
+        .value("nanbu", core::ScatteringLaw::nanbu)
+        .value("takizuka_abe", core::ScatteringLaw::takizuka_abe)
+        .value("bobylev", core::ScatteringLaw::bobylev);
 
     declareDim<1>(m);
     declareDim<2>(m);

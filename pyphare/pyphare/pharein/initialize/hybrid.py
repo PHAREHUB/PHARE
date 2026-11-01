@@ -1,3 +1,7 @@
+import itertools
+
+import numpy as np
+
 from .dict_populator import DictPopulator
 
 
@@ -12,10 +16,68 @@ def populateDict(sim):
     dp.add_double("simulation/algo/ohm/resistivity", sim.resistivity)
     dp.add_double("simulation/algo/ohm/hyper_resistivity", sim.hyper_resistivity)
     dp.add_enum_int("simulation/algo/ohm/hyper_mode", "HyperMode", sim.hyper_mode)
+    _populate_collisions(dp, sim)
 
     _populate_populations(dp, sim)
     _populate_electromagnetic(dp, sim)
     _populate_electrons(dp, sim)
+
+
+def _populate_collisions(dp, sim):
+    if sim.collisions is None:
+        return
+    path = "simulation/algo/collisions/"
+    collisions = sim.collisions
+    dp.add_double(path + "nu0", collisions["nu0"])
+    dp.add_int(path + "every", collisions["every"])
+    dp.add_enum_int(path + "scheme", "ScatteringLaw", collisions["scheme"])
+    dp.add_bool(path + "exact_conservation", collisions["exact_conservation"])
+    dp.add_size_t(path + "seed", collisions["seed"])
+    _warn_on_collision_accuracy(sim)
+
+
+def _warn_on_collision_accuracy(sim, threshold=0.02):
+    """
+    s at the thermal relative speed, on a sample of the initial profiles of each pair of
+    populations: the relaxation rates are off by roughly 0.23 sqrt(s) (see collisions.hpp)
+    """
+    collisions = sim.collisions
+    model = sim.model.model_dict
+    coords = np.meshgrid(
+        *[
+            np.linspace(0, n * dl, min(n, 16), endpoint=False)
+            for n, dl in zip(sim.cells, sim.dl)
+        ],
+        indexing="ij",
+    )
+    coords = [c.ravel() for c in coords]
+
+    def thermal_speed_squared(pop):
+        return sum(np.asarray(model[pop][f"vth{k}"](*coords)) ** 2 for k in "xyz") / 3.0
+
+    worst, worst_pair = 0.0, None
+    for a, b in itertools.combinations_with_replacement(sim.model.populations, 2):
+        ma, mb = model[a]["mass"], model[b]["mass"]
+        za, zb = model[a]["charge"], model[b]["charge"]
+        density = np.maximum(model[a]["density"](*coords), model[b]["density"](*coords))
+        u = np.sqrt(thermal_speed_squared(a) + thermal_speed_squared(b))
+        s = (
+            collisions["nu0"]
+            * (za * zb) ** 2
+            * density
+            * sim.time_stepper.time_step
+            * collisions["every"]
+            / ((ma * mb / (ma + mb)) ** 2 * u**3)
+        )
+        if s.max() > worst:
+            worst, worst_pair = s.max(), (a, b)
+
+    if worst > threshold:
+        print(
+            f"WARNING: collisions: s at the thermal speed reaches {worst:.2g} for {worst_pair},"
+            f" relaxation rates off by roughly {0.23 * np.sqrt(worst):.0%};"
+            f" reduce the time step or 'every' to get below {threshold}"
+        )
 
 
 def _populate_populations(dp, sim):
