@@ -345,12 +345,15 @@ def main():
     for interp_order in INTERP_ORDERS:
         rows = []
         for name in names:
-            Simulator(config(name, interp_order, **RUNS[name])).run().reset()
+            sim = config(name, interp_order, **RUNS[name])
+            Simulator(sim).run().reset()
             ph.global_vars.sim = None
+            if sim.dry_run:  # nothing was written, nothing to analyse
+                continue
             if cpp.mpi_rank() == 0:
                 rows += analyse(name, interp_order, **RUNS[name])
 
-        if cpp.mpi_rank() == 0:
+        if rows and cpp.mpi_rank() == 0:
             print(f"interpolation order {interp_order}")
             print(
                 f"{'run':7} {'branch':9} {'m':>2} {'k':>7} {'w_th':>9} {'w_scheme':>9} {'w_num':>9} "

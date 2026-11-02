@@ -12,7 +12,7 @@ their frequency $\omega$ and compares it to the theoretical dispersion relation,
 | **runs** | 2 resolutions $\times$ 3 interpolation orders = 6 one-dimensional runs |
 | **cost** | about 80 s in total (Release build, one core) |
 | **pass if** | every $\omega$ is within 1% of the expected value, and no wave is lost |
-| **ctest** | `py3_test-dispersion` (level 11, label `nightly`) |
+| **ctest** | `py3_test-dispersion` (level 10: every PR build; label `physics`) |
 
 ```{eval-rst}
 .. plot:: ../../tests/functional/dispersion/doc/figures.py dispersion
