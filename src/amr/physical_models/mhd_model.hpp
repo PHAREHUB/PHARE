@@ -117,7 +117,7 @@ public:
         auto const has_bcs = dict.contains("grid") && dict["grid"].contains("domain_boundaries");
         boundaryManager    = std::make_shared<boundary_manager_type>(
             has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
-            scalarQuantities, vectorQuantities, gamma_);
+            scalarQuantities, vectorQuantities, gamma_, externalFieldManager.updater());
     }
 
     void initializeExternalField(level_t& level, double time) override

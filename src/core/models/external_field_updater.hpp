@@ -51,20 +51,27 @@ public:
      */
     virtual void operator()(state_type& state, GridLayoutT const& layout, double time)
     {
-        static_assert(std::same_as<value_type, double>);
-
-        auto& buffer
-            = field_scratch().get_no_copy(alloc_size<vecfield_type>(tensor_type::E, layout))();
-        auto potential
-            = view_on<vecfield_type>("external_field_potential", buffer, tensor_type::E, layout);
-
-        computePotential(potential, time, layout);
-        curlOnGhostBox_(state.B0(), potential, layout);
+        computeB0(state.B0(), layout, time);
         if (isTimeDependent())
         {
+            auto potential = potential_(layout);
             computePotentialTimeDerivative(potential, time, layout);
             curlOnGhostBox_(state.dB0dt(), potential, layout);
         }
+    }
+
+    /**
+     * @brief fill only the external field B0 at a given time, not its time derivative
+     *
+     * @param B0 the face-centered vecfield receiving the external field
+     * @param layout the current grid layout
+     * @param time the current time
+     */
+    virtual void computeB0(vecfield_type& B0, GridLayoutT const& layout, double time)
+    {
+        auto potential = potential_(layout);
+        computePotential(potential, time, layout);
+        curlOnGhostBox_(B0, potential, layout);
     }
 
     virtual void computePotential(vecfield_type& a0, double time, GridLayoutT const& layout) = 0;
@@ -75,6 +82,15 @@ public:
     NO_DISCARD virtual bool isTimeDependent() const = 0;
 
 private:
+    NO_DISCARD static vecfield_type potential_(GridLayoutT const& layout)
+    {
+        static_assert(std::same_as<value_type, double>);
+
+        auto& buffer
+            = field_scratch().get_no_copy(alloc_size<vecfield_type>(tensor_type::E, layout))();
+        return view_on<vecfield_type>("external_field_potential", buffer, tensor_type::E, layout);
+    }
+
     void curlOnGhostBox_(vecfield_type& out, vecfield_type const& in, GridLayoutT const& layout)
     {
         auto& outX = out(component_type::X);

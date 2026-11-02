@@ -4,10 +4,12 @@
 #include "core/data/tensorfield/tensorfield_traits.hpp"
 #include "core/data/vecfield/vecfield_traits.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_antisymmetric.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_b1_from_total_dirichlet.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_dirichlet.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_neumann.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_etot1_from_inflow_state.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_neumann.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_none.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_symmetric.hpp"
@@ -67,6 +69,22 @@ struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::DivergenceFree
     // only makes sense for a vector field
     template<IsVecField VecFieldT, typename GridLayoutT>
     using type = FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecFieldT, GridLayoutT>;
+};
+
+template<>
+struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::B1FromTotalDirichlet>
+{
+    // only makes sense for a vector field
+    template<IsVecField VecFieldT, typename GridLayoutT>
+    using type = FieldBoundaryConditionB1FromTotalDirichlet<VecFieldT, GridLayoutT>;
+};
+
+template<>
+struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::Etot1FromInflowState>
+{
+    // only makes sense for a scalar field
+    template<IsField FieldT, typename GridLayoutT>
+    using type = FieldBoundaryConditionEtot1FromInflowState<FieldT, GridLayoutT>;
 };
 
 template<FieldBoundaryConditionType type, IsScalarOrTensorField ScalarOrTensorFieldT,
