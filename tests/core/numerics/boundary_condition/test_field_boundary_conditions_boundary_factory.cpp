@@ -1,12 +1,14 @@
 #include "gtest/gtest.h"
 
 #include "core/boundary/boundary_factory.hpp"
+#include "core/models/external_field_updater.hpp"
 #include "initializer/data_provider.hpp"
 
 #include "tests/core/numerics/boundary_condition/mhd_bc_test_fixtures.hpp"
 
 #include <array>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,6 +22,7 @@ using Factory = BoundaryFactory<GridLayoutMHD1D, FieldMHD<1>>;
 using Scalar  = MHDQuantity::Scalar;
 using Vector  = MHDQuantity::Vector;
 using FBC     = FieldBoundaryConditionType;
+using UpdaterPtr = std::shared_ptr<Factory::external_field_updater_type>;
 
 double constexpr heatCapacityRatio = 5.0 / 3.0;
 
@@ -55,10 +58,25 @@ struct ExpectedDispatch
     std::map<Vector, FBC> vectors;
 };
 
-void checkDispatch(BoundaryType const type, ExpectedDispatch const& expected)
+struct StaticUpdaterStub : Factory::external_field_updater_type
+{
+    using vecfield_type = Factory::external_field_updater_type::vecfield_type;
+
+    void computePotential(vecfield_type&, double, GridLayoutMHD1D const&) override {}
+    void computePotentialTimeDerivative(vecfield_type&, double, GridLayoutMHD1D const&) override {}
+    bool isTimeDependent() const override { return false; }
+};
+
+UpdaterPtr anExternalFieldUpdater()
+{
+    return std::make_shared<StaticUpdaterStub>();
+}
+
+void checkDispatch(BoundaryType const type, ExpectedDispatch const& expected,
+                   UpdaterPtr const& updater = nullptr)
 {
     auto boundary = Factory::create(BoundaryLocation::XLower, dictFor(type), mhdScalars, mhdVectors,
-                                    heatCapacityRatio);
+                                    heatCapacityRatio, updater);
     ASSERT_NE(boundary, nullptr) << "factory returned null for type " << static_cast<int>(type);
 
     for (auto const& [qty, expectedType] : expected.scalars)
@@ -108,13 +126,39 @@ TEST(BoundaryFactory, Open)
                                         {Vector::rhoV, FBC::Neumann}}});
 }
 
-TEST(BoundaryFactory, SuperMagnetofastInflow)
+TEST(BoundaryFactory, InflowWithoutUpdaterKeepsMasterConditions)
 {
     checkDispatch(BoundaryType::SuperMagnetofastInflow,
                   {{{Scalar::rho, FBC::Dirichlet}, {Scalar::Etot1, FBC::Dirichlet}},
                    {{Vector::B1, FBC::DivergenceFreeTransverseDirichlet},
                     {Vector::E, FBC::Dirichlet},
                     {Vector::rhoV, FBC::Dirichlet}}});
+}
+
+TEST(BoundaryFactory, InflowWithExternalFieldDispatch)
+{
+    checkDispatch(BoundaryType::SuperMagnetofastInflow,
+                  {{{Scalar::rho, FBC::Dirichlet}, {Scalar::Etot1, FBC::Etot1FromInflowState}},
+                   {{Vector::B1, FBC::B1FromTotalDirichlet},
+                    {Vector::E, FBC::Dirichlet},
+                    {Vector::rhoV, FBC::Dirichlet}}},
+                  anExternalFieldUpdater());
+}
+
+TEST(BoundaryFactory, ReflectiveAndOpenIgnoreTheExternalField)
+{
+    checkDispatch(BoundaryType::Reflective,
+                  {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot1, FBC::Neumann}},
+                   {{Vector::B1, FBC::DivergenceFreeTransverseNeumann},
+                    {Vector::E, FBC::AntiSymmetric},
+                    {Vector::rhoV, FBC::Symmetric}}},
+                  anExternalFieldUpdater());
+    checkDispatch(BoundaryType::Open,
+                  {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot1, FBC::Neumann}},
+                   {{Vector::B1, FBC::DivergenceFreeTransverseNeumann},
+                    {Vector::E, FBC::None},
+                    {Vector::rhoV, FBC::Neumann}}},
+                  anExternalFieldUpdater());
 }
 
 TEST(BoundaryFactory, SuperMagnetofastInflowImposesTotalEnergyFromInflowState)

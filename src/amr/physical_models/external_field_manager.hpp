@@ -37,6 +37,8 @@ public:
     NO_DISCARD state_type& state() { return state_; }
     NO_DISCARD state_type const& state() const { return state_; }
 
+    NO_DISCARD std::shared_ptr<updater_type> const& updater() const { return updater_; }
+
     void initialize(auto& resourcesManager, auto& level, double const time)
     {
         if (!isEnabled())
@@ -56,7 +58,7 @@ public:
     }
 
 private:
-    std::unique_ptr<updater_type> updater_;
+    std::shared_ptr<updater_type> updater_;
     state_type state_;
 };
 
