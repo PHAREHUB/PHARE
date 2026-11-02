@@ -113,6 +113,22 @@ namespace amr
         }
 
 
+        void fillTransient(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                           double const fillTime) const
+        {
+            for (auto const& [_, refiner] : refiners_)
+                refiner.fillTransient(hierarchy, level, fillTime);
+        }
+
+
+        void removeLevel(int const levelNumber)
+        {
+            for (auto& [_, refiner] : refiners_)
+                refiner.removeLevel(levelNumber);
+        }
+
+
         /** @brief this overload will execute communications for all quantities in the pool. */
         void fill(int const levelNumber, double const initDataTime) const
         {

@@ -108,6 +108,9 @@ namespace amr
             schedules_[levelNumber][algo.get()] = schedule;
         }
 
+        /** @brief removeLevel erases all schedules held for the given level number. */
+        void removeLevel(int const levelNumber) { schedules_.erase(levelNumber); }
+
         // oevrload with  rvalue schedule
         void add(std::unique_ptr<Algorithm> const& algo, std::shared_ptr<Schedule>&& schedule,
                  int levelNumber)

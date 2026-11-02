@@ -324,40 +324,19 @@ namespace solver
 
             bool const isRegriddingL0 = isRegridding and levelNumber == 0;
 
-            if (isRegriddingL0)
             {
+                PHARE_LOG_SCOPE(1, "Multiphys::initializeLevelData::registerLevel");
                 messenger.registerLevel(hierarchy, levelNumber);
             }
-            else if (isRegridding)
-            {
-                // regriding the current level has broken schedules for which
-                // this level is the source or destination
-                // we therefore need to rebuild them
-                auto const finestLvlNbr = hierarchy->getFinestLevelNumber();
-                auto nextFiner = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
 
-                for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
-                {
-                    messenger.registerLevel(hierarchy, ilvl);
-                }
+            if (isRegridding and not isRegriddingL0)
                 solver.onRegrid();
-            }
-            else
-            {
-                // we're not regriding, just making a new level
-                messenger.registerLevel(hierarchy, levelNumber);
-            }
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
 
             if (isRegriddingL0)
-            {
-                for (auto ilvl = 1; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
-                    messenger.registerLevel(hierarchy, ilvl);
-
                 solver.onRegrid();
-            }
             else
                 load_balancer_manager_->estimate(*level, model);
         }
@@ -389,6 +368,13 @@ namespace solver
                 }
                 restartInitialized_ = true;
             }
+
+            PHARE_LOG_SCOPE(1, "Multiphys::resetHierarchyConfiguration::onHierarchyChanged");
+            // coarsestLevel and finestLevel cannot bound the levels to notify: after a level 0
+            // rebalance SAMRAI passes (0, 0) while finer levels read level 0 directly or through
+            // recursive coarse interpolation. Each messenger works out what is stale.
+            for (auto ilvl = 0; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
+                getMessengerWithCoarser_(ilvl).onHierarchyChanged(hierarchy, ilvl);
         }
 
 
