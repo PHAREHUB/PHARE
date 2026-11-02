@@ -1,17 +1,19 @@
 """
-External magnetic field resolution and validation for pharein.Simulation.
+External magnetic field declarations for pharein.
 """
 
 import inspect
 import math
 import numbers
-from dataclasses import dataclass, field
 from functools import partial
 
 from ..core import phare_utilities
+from . import global_vars
 
 _AXES = ("x", "y", "z")
 _CPPDICT_PATH = "simulation/external_field"
+_POTENTIAL_NAMES = ("a0x", "a0y", "a0z")
+_DERIVATIVE_NAMES = ("da0x_dt", "da0y_dt", "da0z_dt")
 
 
 def _add_vector(component_adder, path, components):
@@ -20,15 +22,15 @@ def _add_vector(component_adder, path, components):
         component_adder(f"{path}/{axis}", component)
 
 
-def _check_components(name, dict, expected):
-    values = phare_utilities.listify(dict[name])
+def _check_components(name, values, expected):
+    values = phare_utilities.listify(values)
 
     if len(values) != expected:
         raise ValueError(
-            f"Error: external_field '{name}' must have {expected} components, got {len(values)}"
+            f"Error: external field '{name}' must have {expected} components, got {len(values)}"
         )
     if not all(phare_utilities.is_scalar(v) for v in values):
-        raise ValueError(f"Error: external_field '{name}' components must be scalars")
+        raise ValueError(f"Error: external field '{name}' components must be scalars")
 
     return tuple(float(v) for v in values)
 
@@ -37,120 +39,26 @@ def _check_radius(radius):
     """A finite, non-negative scalar, 0 standing for a point dipole."""
     if isinstance(radius, bool) or not isinstance(radius, numbers.Real):
         raise TypeError(
-            f"Error: dipole external_field 'radius' must be a number, got {radius!r}"
+            f"Error: dipole external field 'radius' must be a number, got {radius!r}"
         )
     if not math.isfinite(radius) or radius < 0.0:
         raise ValueError(
-            f"Error: dipole external_field 'radius' must be finite and >= 0, got {radius}"
+            f"Error: dipole external field 'radius' must be finite and >= 0, got {radius}"
         )
     return float(radius)
 
 
-def _check_callables(name, dict):
-    """
-    Read a vector of callables from the external_field dict.
-    """
-    values = phare_utilities.listify(dict[name])
-
-    if len(values) != len(_AXES):
-        raise ValueError(
-            f"Error: external_field '{name}' must have {len(_AXES)} components "
-            f"(one per axis, whatever the dimensionality), got {len(values)}"
-        )
-    if not all(v is None or callable(v) for v in values):
-        raise ValueError(
-            f"Error: external_field '{name}' components must be callables or 'None'"
-        )
-
-    return tuple(values)
-
-
-@dataclass
-class ExternalField:
-    """
-    Base class of the external field descriptions.
-
-    'type' names the C++ ExternalFieldUpdaterType member this description maps onto.
-    """
-
-    type = None
-
-    def populate_dict(self, dp, ndim):
-        """Mirror the public `external_field` dict shape (type + per-type params) on the C++ side.
-
-        `dp` is a DictPopulator (see pharein.initialize): an object exposing
-        add_string/add_double/add_int/add_enum_int/... - passed in rather than imported, to
-        avoid a circular import between this module and pharein.initialize.
-        """
-        dp.add_enum_int(
-            "simulation/external_field/type", "ExternalFieldUpdaterType", self.type
-        )
-
-
-@dataclass
-class DipoleExternalField(ExternalField):
-    """
-    A static magnetic dipole of moment 'moment' placed at 'position',
-    with uniform field below inside 'radius'.
-    """
-
-    type = "dipole"
-
-    position: tuple
-    moment: tuple
-    radius: float
-
-    def populate_dict(self, dp, ndim):
-        super().populate_dict(dp, ndim)
-        _add_vector(dp.add_double, "simulation/external_field/position", self.position)
-        _add_vector(dp.add_double, "simulation/external_field/moment", self.moment)
-        dp.add_double("simulation/external_field/radius", self.radius)
-
-
-@dataclass
-class UserDefinedExternalField(ExternalField):
-    """
-    A external magnetic field prescribed via pharein
-    """
-
-    type = "user-defined"
-
-    is_time_dependent: bool
-    potential: tuple
-    potential_time_derivative: tuple | None
-    resolved: bool = field(default=False, kw_only=True, repr=False, compare=False)
-
-    def populate_dict(self, dp, ndim):
-        super().populate_dict(dp, ndim)
-        dp.add_bool(f"{_CPPDICT_PATH}/is_time_dependent", self.is_time_dependent)
-        add_space_time_function = partial(dp.add_space_time_function, ndim)
-        _add_vector(
-            add_space_time_function, f"{_CPPDICT_PATH}/potential", self.potential
-        )
-        if self.is_time_dependent:
-            _add_vector(
-                add_space_time_function,
-                f"{_CPPDICT_PATH}/potential_time_derivative",
-                self.potential_time_derivative,
+def _check_callables(names, values):
+    for name, value in zip(names, values):
+        if value is not None and not callable(value):
+            raise ValueError(
+                f"Error: external field '{name}' must be a callable or 'None'"
             )
-
-
-# ------------------------------------------------------------------------------
-def _check_keys(keys, allowed, type):
-    extra = set(keys) - allowed
-    if extra:
-        raise ValueError(
-            f"Error: invalid external_field keys for type '{type}': {sorted(extra)}, "
-            f"allowed {sorted(allowed)}"
-        )
+    return tuple(values)
 
 
 def _get_signature_size(f):
     return len(inspect.signature(f).parameters)
-
-
-def _is_signature_time_dependent(f, ndim):
-    return _get_signature_size(f) == ndim + 1
 
 
 def _contains_consistent_signature_sizes(list):
@@ -161,12 +69,14 @@ def _contains_consistent_signature_sizes(list):
     return len({_get_signature_size(f) for f in list if f is not None}) <= 1
 
 
-def _check_that_vector_of_callable_is_valid(list, name):
+def _check_that_vector_of_callable_is_valid(list, names):
     if phare_utilities.all_none(*list):
-        raise ValueError(f"Error: user-defined '{name}' contains only 'None'")
+        raise ValueError(
+            f"Error: a user-defined external field requires one of {', '.join(names)}"
+        )
     if not _contains_consistent_signature_sizes(list):
         raise ValueError(
-            f"Error: elements in '{name}' have not a consistent signature."
+            f"Error: {', '.join(names)} do not have a consistent signature."
         )
 
 
@@ -175,7 +85,7 @@ def _first_callable(list):
     return next(f for f in list if f is not None)
 
 
-def _check_signature_size(list, name, ndim, is_time_dependent):
+def _check_signature_size(list, names, ndim, is_time_dependent):
     """
     Every provided component takes the 'ndim' coordinates, and the time as a last
     argument when the field is time dependent.
@@ -183,20 +93,20 @@ def _check_signature_size(list, name, ndim, is_time_dependent):
     expected = ndim + 1 if is_time_dependent else ndim
     arguments = "coordinates and time" if is_time_dependent else "coordinates"
 
-    for axis, f in zip(_AXES, list):
+    for name, f in zip(names, list):
         if f is None:
             continue
         size = _get_signature_size(f)
         if size != expected:
             raise ValueError(
-                f"Error: external_field '{name}' component 'a{axis}' takes {size} "
+                f"Error: external field '{name}' takes {size} "
                 f"argument(s), expected {expected} ({arguments})"
             )
         try:
             inspect.signature(f).bind(*([None] * expected))
         except TypeError as exc:
             raise ValueError(
-                f"Error: external_field '{name}' component 'a{axis}' must accept "
+                f"Error: external field '{name}' must accept "
                 f"{expected} positional argument(s) ({arguments})"
             ) from exc
 
@@ -226,150 +136,199 @@ def _normalized_components(list, ndim, is_time_dependent):
     return tuple(as_space_time(f) for f in list)
 
 
-def _resolve_dict_user_defined_external_field(external_field, *, ndim):
-    _check_keys(
-        external_field,
-        {"type", "potential", "potential_time_derivative"},
-        "user-defined",
-    )
-    if "potential" not in external_field:
-        raise ValueError("Error: a user-defined external field requires 'potential'")
-    potential = _check_callables("potential", external_field)
-    _check_that_vector_of_callable_is_valid(potential, "potential")
-
-    # the signature size of the components the user did provide tells whether the
-    # potential depends on time; potential[0] may be None, hence _first_callable
-    size = _get_signature_size(_first_callable(potential))
-    if size not in (ndim, ndim + 1):
-        raise ValueError(
-            f"Error: external_field 'potential' components must take {ndim} "
-            f"coordinate(s), optionally followed by the time, "
-            f"got {size} argument(s)"
-        )
-    is_time_dependent = _is_signature_time_dependent(_first_callable(potential), ndim)
-
-    _check_signature_size(potential, "potential", ndim, is_time_dependent)
-
-    if ndim == 1 and potential[0] is not None:
-        raise ValueError(
-            "Error: in 1D, first component of the potential cannot"
-            " contribute to the external magnetic field. Expected as None."
-        )
-
-    potential = _normalized_components(potential, ndim, is_time_dependent)
-
-    has_derivative = "potential_time_derivative" in external_field
-    if is_time_dependent and not has_derivative:
-        raise ValueError(
-            "Error: a time-dependent 'potential' requires 'potential_time_derivative'"
-        )
-    if has_derivative and not is_time_dependent:
-        raise ValueError(
-            "Error: 'potential_time_derivative' was given but 'potential' does "
-            "not depend on time"
-        )
-
-    potential_time_derivative = None
-    if is_time_dependent:
-        potential_time_derivative = _check_callables(
-            "potential_time_derivative", external_field
-        )
-        _check_that_vector_of_callable_is_valid(
-            potential_time_derivative, "potential_time_derivative"
-        )
-        _check_signature_size(
-            potential_time_derivative,
-            "potential_time_derivative",
-            ndim,
-            is_time_dependent,
-        )
-        potential_time_derivative = _normalized_components(
-            potential_time_derivative, ndim, is_time_dependent
-        )
-
-    return UserDefinedExternalField(
-        is_time_dependent, potential, potential_time_derivative, resolved=True
-    )
-
-
-def _resolve_dict_external_field(external_field, *, ndim):
-    valid_types = ("dipole", "user-defined")
-    type_ = external_field.get("type")
-    if type_ == "dipole":
-        _check_keys(external_field, {"type", "position", "moment", "radius"}, type_)
-        if ndim == 1:
-            raise ValueError("Error: a dipole external_field makes no sense in 1D")
-        for key in ("position", "moment", "radius"):
-            if key not in external_field:
-                raise ValueError(f"Error: dipole external_field requires '{key}'")
-
-        position = _check_components("position", external_field, ndim)
-        moment = _check_components("moment", external_field, ndim)
-
-        if all(m == 0.0 for m in moment):
-            raise ValueError("Error: dipole external_field 'moment' cannot be zero")
-
-        radius = _check_radius(external_field["radius"])
-
-        return DipoleExternalField(position, moment, radius)
-    if type_ == "user-defined":
-        return _resolve_dict_user_defined_external_field(external_field, ndim=ndim)
-    raise ValueError(
-        f"Error: external_field dict requires 'type' in {valid_types}, got {type_!r}"
-    )
-
-
-def _resolve_instance_external_field(external_field, *, ndim):
-    if type(external_field) is DipoleExternalField:
-        return _resolve_dict_external_field(
-            {
-                "type": "dipole",
-                "position": external_field.position,
-                "moment": external_field.moment,
-                "radius": external_field.radius,
-            },
-            ndim=ndim,
-        )
-
-    if type(external_field) is UserDefinedExternalField:
-        if external_field.resolved:
-            return external_field
-        declaration = {"type": "user-defined", "potential": external_field.potential}
-        if external_field.potential_time_derivative is not None:
-            declaration["potential_time_derivative"] = (
-                external_field.potential_time_derivative
-            )
-        resolved = _resolve_dict_user_defined_external_field(declaration, ndim=ndim)
-        if resolved.is_time_dependent != external_field.is_time_dependent:
-            raise ValueError(
-                "Error: user-defined external_field 'is_time_dependent' is "
-                f"{external_field.is_time_dependent}, but the signature of its "
-                "'potential' components says otherwise"
-            )
-        return resolved
-
-    raise ValueError(
-        f"Error: unsupported external_field type {type(external_field).__name__}"
-    )
-
-
-def resolve_external_field(ndim, **kwargs):
+class ExternalMagneticField:
     """
-    Resolve the public 'external_field' Simulation option into a validated ExternalField,
-    or None when no external field is declared.
+    Base class of the external magnetic field declarations, not declarable itself:
+    declare a :class:`~pyphare.pharein.DipoleExternalField` or a
+    :class:`~pyphare.pharein.UserDefinedExternalField`.
+
+    'type' names the C++ ExternalFieldUpdaterType member a declaration maps onto.
     """
-    external_field = kwargs.get("external_field")
 
-    if external_field is None:
-        return None
+    type = None
 
-    if isinstance(external_field, ExternalField):
-        return _resolve_instance_external_field(external_field, ndim=ndim)
-
-    if not isinstance(external_field, dict):
+    def __init__(self):
         raise TypeError(
-            "Error: external_field must be a dict or an ExternalField, got "
-            f"{type(external_field).__name__}"
+            "Error: ExternalMagneticField is not declarable, "
+            "declare a DipoleExternalField or a UserDefinedExternalField"
         )
 
-    return _resolve_dict_external_field(external_field, ndim=ndim)
+    @staticmethod
+    def _declaring_simulation():
+        sim = global_vars.sim
+        if sim is None:
+            raise RuntimeError("A simulation must be declared before an external field")
+        if sim.model is not None:
+            raise RuntimeError("An external field must be declared before the model")
+        if sim.external_field is not None:
+            raise RuntimeError("An external field is already declared")
+        return sim
+
+    def populate_dict(self, dp, ndim):
+        """Mirror the declaration (type + per-type params) on the C++ side.
+
+        `dp` is a DictPopulator (see pharein.initialize): an object exposing
+        add_string/add_double/add_int/add_enum_int/... - passed in rather than imported, to
+        avoid a circular import between this module and pharein.initialize.
+
+        :meta private:
+        """
+        dp.add_enum_int(f"{_CPPDICT_PATH}/type", "ExternalFieldUpdaterType", self.type)
+
+
+class DipoleExternalField(ExternalMagneticField):
+    """
+    A static magnetic dipole, prescribed as the external (background) magnetic
+    field B0 of a Hybrid or MHD simulation, in 2D or 3D. Declare it at most once,
+    after the :class:`~pyphare.pharein.Simulation` and before the model.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        import pyphare.pharein as ph
+
+        ph.Simulation(...)
+        ph.DipoleExternalField(position=(10.0, 10.0), moment=(0.0, 1.0), radius=1.0)
+        ph.MaxwellianFluidModel(...)
+
+    **Parameters**:
+
+        * **position** (*tuple*), the dipole center, one component per dimension.
+        * **moment** (*tuple*), the dipole moment, one component per dimension, not zero.
+        * **radius** (*float*), finite and >= 0: inside this radius around the center the
+          field is uniform, which removes the singularity at the center. 0 is the point
+          dipole.
+    """
+
+    type = "dipole"
+
+    def __init__(self, *, position, moment, radius):
+        sim = self._declaring_simulation()
+        ndim = sim.ndim
+
+        if ndim == 1:
+            raise ValueError("Error: a dipole external field makes no sense in 1D")
+
+        self.position = _check_components("position", position, ndim)
+        self.moment = _check_components("moment", moment, ndim)
+
+        if all(m == 0.0 for m in self.moment):
+            raise ValueError("Error: dipole external field 'moment' cannot be zero")
+
+        self.radius = _check_radius(radius)
+
+        sim.set_external_field(self)
+
+    def populate_dict(self, dp, ndim):
+        super().populate_dict(dp, ndim)
+        _add_vector(dp.add_double, f"{_CPPDICT_PATH}/position", self.position)
+        _add_vector(dp.add_double, f"{_CPPDICT_PATH}/moment", self.moment)
+        dp.add_double(f"{_CPPDICT_PATH}/radius", self.radius)
+
+
+class UserDefinedExternalField(ExternalMagneticField):
+    """
+    An external (background) magnetic field B0 = curl(A0) given by the components of
+    its vector potential A0, for a Hybrid or MHD simulation. Declare it at most once,
+    after the :class:`~pyphare.pharein.Simulation` and before the model.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        import pyphare.pharein as ph
+
+        ph.Simulation(...)
+
+        def az(x, y):
+            return x * y
+
+        ph.UserDefinedExternalField(a0z=az)
+        ph.MaxwellianFluidModel(...)
+
+    **Parameters**:
+
+        * **a0x**, **a0y**, **a0z** (*function*), default None, the components of A0,
+          functions of the spatial coordinates (e.g. ``a0z(x, y)`` in 2D). A ``None``
+          component is zero; at least one is given. In 1D, ``a0x`` does not contribute to
+          the field and must stay ``None``. The potential is time dependent when its
+          components also take the time as a last argument (e.g. ``a0z(x, y, t)``).
+        * **da0x_dt**, **da0y_dt**, **da0z_dt** (*function*), default None, the time
+          derivative of A0, functions of the spatial coordinates and the time. Required
+          (at least one) when the potential is time dependent, forbidden otherwise.
+    """
+
+    type = "user-defined"
+
+    def __init__(
+        self,
+        *,
+        a0x=None,
+        a0y=None,
+        a0z=None,
+        da0x_dt=None,
+        da0y_dt=None,
+        da0z_dt=None,
+    ):
+        sim = self._declaring_simulation()
+        ndim = sim.ndim
+
+        potential = _check_callables(_POTENTIAL_NAMES, (a0x, a0y, a0z))
+        _check_that_vector_of_callable_is_valid(potential, _POTENTIAL_NAMES)
+
+        size = _get_signature_size(_first_callable(potential))
+        if size not in (ndim, ndim + 1):
+            raise ValueError(
+                f"Error: external field {', '.join(_POTENTIAL_NAMES)} must take {ndim} "
+                f"coordinate(s), optionally followed by the time, "
+                f"got {size} argument(s)"
+            )
+        is_time_dependent = size == ndim + 1
+
+        _check_signature_size(potential, _POTENTIAL_NAMES, ndim, is_time_dependent)
+
+        if ndim == 1 and a0x is not None:
+            raise ValueError(
+                "Error: in 1D, a0x cannot contribute to the external magnetic field. "
+                "Expected as None."
+            )
+
+        derivative = (da0x_dt, da0y_dt, da0z_dt)
+        has_derivative = not phare_utilities.all_none(*derivative)
+        if is_time_dependent and not has_derivative:
+            raise ValueError(
+                "Error: a time-dependent potential requires one of "
+                f"{', '.join(_DERIVATIVE_NAMES)}"
+            )
+        if has_derivative and not is_time_dependent:
+            raise ValueError(
+                f"Error: {', '.join(_DERIVATIVE_NAMES)} given but the potential "
+                "does not depend on time"
+            )
+
+        potential_time_derivative = None
+        if is_time_dependent:
+            derivative = _check_callables(_DERIVATIVE_NAMES, derivative)
+            _check_signature_size(derivative, _DERIVATIVE_NAMES, ndim, True)
+            potential_time_derivative = _normalized_components(derivative, ndim, True)
+
+        self.is_time_dependent = is_time_dependent
+        self.potential = _normalized_components(potential, ndim, is_time_dependent)
+        self.potential_time_derivative = potential_time_derivative
+
+        sim.set_external_field(self)
+
+    def populate_dict(self, dp, ndim):
+        super().populate_dict(dp, ndim)
+        dp.add_bool(f"{_CPPDICT_PATH}/is_time_dependent", self.is_time_dependent)
+        add_space_time_function = partial(dp.add_space_time_function, ndim)
+        _add_vector(
+            add_space_time_function, f"{_CPPDICT_PATH}/potential", self.potential
+        )
+        if self.is_time_dependent:
+            _add_vector(
+                add_space_time_function,
+                f"{_CPPDICT_PATH}/potential_time_derivative",
+                self.potential_time_derivative,
+            )
