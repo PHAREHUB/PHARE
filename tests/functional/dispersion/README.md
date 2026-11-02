@@ -121,7 +121,9 @@ The whistler, $\omega \approx k^2 d_i$, feels it twice. At 8 cells per wavelengt
 ($k\Delta x = 0.79$) this alone shifts the whistler by $-5\%$; at 16 cells by $-1.2\%$.
 
 **(b) Particle shape.** Particles deposit their moments and receive fields through a
-B-spline shape of order $p$, whose spread (variance) is $(p+1)\Delta x^2/12$. The measured
+B-spline shape of order $p$, whose spread (variance) is $(p+1)\Delta x^2/12$: an order-$p$
+B-spline is $p+1$ top-hats of width $\Delta x$ convolved together, each top-hat has variance
+$\Delta x^2/12$, and variances add (order 1, the linear "hat", gives $\Delta x^2/6$). The measured
 effect is that the Hall term is weakened as if
 
 $$
@@ -130,7 +132,8 @@ $$ (eq:disp_di_eff)
 
 At $\Delta x = 0.8\,d_i$ and $p = 1$ this makes the Hall splitting 11% too small; at
 $p = 3$, 21%. The effect scales as $\Delta x^2$ (measured at $\Delta x$ = 0.2, 0.4, 0.8)
-and as $p + 1$ (measured for $p$ = 1, 2, 3), and does not depend on the time step.
+and as $p + 1$ (measured for $p$ = 1, 2, 3: errors in the ratio 1 : 1.49 : 2.0, against
+2 : 3 : 4 = 1 : 1.5 : 2 predicted), and does not depend on the time step.
 Formula {eq}`eq:disp_di_eff` is empirical: it fits all measurements, but has not been
 derived.
 
