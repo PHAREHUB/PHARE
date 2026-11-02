@@ -162,8 +162,9 @@ def run(ndim, interp, seed=1):
     sim = config(
         ndim, interp, case["cells"], case["patch"], case["ppc"], case["steps"], seed
     )
-    simulator = Simulator(sim).initialize()
+    simulator = Simulator(sim)
     try:
+        simulator.initialize()
         history = [invariants(simulator, masses, Te, ndim)]
         every = max(1, case["steps"] // nbr_measures)
         for step in range(1, case["steps"] + 1):

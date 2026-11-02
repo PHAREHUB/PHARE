@@ -64,6 +64,7 @@ def run_one(ndim, interp, cells, dl, patch, dt, steps, ppc, vth, Te, seed):
     from tests.simulator.invariants import invariants
 
     ph.NO_GUI()
+    ph.global_vars.sim = None
     sim = ph.Simulation(
         time_step=dt,
         time_step_nbr=steps,
@@ -99,6 +100,8 @@ def run_one(ndim, interp, cells, dl, patch, dt, steps, ppc, vth, Te, seed):
     masses = {"protons": 1.0}
     # one log per process would collide: all runs are rank 0 in the same directory
     simulator = Simulator(sim, log_to_file=False).initialize()
+    if sim.dry_run:  # pull-request CI only checks that the setup is valid
+        return None
     every = max(1, steps // nbr_measures)
     series = {"t": [], "K": [], "W_B": [], "U_e": [], "N": [], "n_min": []}
 
@@ -371,10 +374,12 @@ def check_scaling(scan_rates):
     print(f"energy drift ~ ppc^{slope:.2f}")
     dts = mean["time step dt"]
     spread = max(dts.values()) / min(dts.values()) - 1
-    orders = mean["interpolation order"]
+    orders = {order: abs(drift) for order, drift in mean["interpolation order"].items()}
     checks = {
         f"drift ~ 1/ppc (slope {slope:.2f}, expected -1 +- 0.4)": abs(slope + 1) < 0.4,
-        f"time step does not matter (spread {spread:.1%} < 10%)": spread < 0.1,
+        "energy drifts up for every time step": min(dts.values()) > 0,
+        f"time step does not matter (spread {spread:.1%} < 10%)": min(dts.values()) > 0
+        and spread < 0.1,
         "order 2 drifts at least 1.5x less than order 1": orders[2] < orders[1] / 1.5,
         "order 3 drifts at least 2x less than order 1": orders[3] < orders[1] / 2,
     }
@@ -488,7 +493,20 @@ def plot_scaling(scan_rates, filename="conservation_numerics.png"):
 # --------------------------------------------------------------------- main
 
 
+def dry_run():
+    """builds every configuration without running it (PHARE_DRY_RUN=1)"""
+    jobs = [dict(map_run, vth=v, Te=Te, seed=1) for Te in map_Te for v in map_vth]
+    jobs += [
+        dict(variant(p, v), seed=1) for p, values in scans.values() for v in values
+    ]
+    for job in jobs:
+        run_one(**job)
+    print(f"dry run: {len(jobs)} configurations built")
+
+
 def main():
+    if os.environ.get("PHARE_DRY_RUN", "0") == "1":
+        return dry_run()
     start = time.time()
     results = regime_map()
     failures = check_map(results)
