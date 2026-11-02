@@ -285,28 +285,33 @@ namespace amr
 
         void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
+            // the level is new: drop the schedules of the level it replaces, rebuild same-level
             sameLevelBuiltOn_.erase(levelNumber);
             interLevelBuiltOn_.erase(levelNumber);
             removeInterLevelSchedules_(levelNumber);
-
             buildSameLevelSchedules_(hierarchy, levelNumber);
             sameLevelBuiltOn_[levelNumber] = levelsOf_(hierarchy, levelNumber, levelNumber);
+
+            // inter-level schedules read the coarser levels, which may still be replaced before
+            // the hierarchy settles (e.g. a level-0 rebalance), so onHierarchyChanged builds them
         }
 
 
 
-        // Schedule construction is collective. The staleness decisions below are the same on
-        // every rank because SAMRAI replaces a level collectively.
+        // Rebuilds the schedules of levelNumber that were built from a level since replaced.
+        // Building a schedule is MPI-collective: all ranks take the same branches, because
+        // SAMRAI replaces a level on all ranks at once.
         void onHierarchyChanged(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
-            if (!isCurrent_(sameLevelBuiltOn_, hierarchy, levelNumber, levelNumber))
+            if (!builtOnCurrentLevels_(sameLevelBuiltOn_, hierarchy, levelNumber, levelNumber))
             {
                 buildSameLevelSchedules_(hierarchy, levelNumber);
                 sameLevelBuiltOn_[levelNumber] = levelsOf_(hierarchy, levelNumber, levelNumber);
             }
 
             if (levelNumber != rootLevelNumber
-                and !isCurrent_(interLevelBuiltOn_, hierarchy, rootLevelNumber, levelNumber))
+                and !builtOnCurrentLevels_(interLevelBuiltOn_, hierarchy, rootLevelNumber,
+                                           levelNumber))
             {
                 interLevelBuiltOn_.erase(levelNumber);
                 removeInterLevelSchedules_(levelNumber);
@@ -537,8 +542,8 @@ namespace amr
         }
 
         // whether the schedules of level hi were built against the current levels lo..hi
-        static bool isCurrent_(auto const& builtOn, hierarchy_ptr const& hierarchy, int const lo,
-                               int const hi)
+        static bool builtOnCurrentLevels_(auto const& builtOn, hierarchy_ptr const& hierarchy,
+                                          int const lo, int const hi)
         {
             auto const it = builtOn.find(hi);
             if (it == builtOn.end())

@@ -207,28 +207,33 @@ namespace amr
 
         void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
+            // the level is new: drop the schedules of the level it replaces, rebuild same-level
             sameLevelBuiltOn_.erase(levelNumber);
             interLevelBuiltOn_.erase(levelNumber);
             removeInterLevelSchedules_(levelNumber);
-
             buildSameLevelSchedules_(hierarchy, levelNumber);
             sameLevelBuiltOn_[levelNumber] = levelsOf_(hierarchy, levelNumber, levelNumber);
+
+            // inter-level schedules read the coarser levels, which may still be replaced before
+            // the hierarchy settles (e.g. a level-0 rebalance), so onHierarchyChanged builds them
         }
 
 
 
-        // Schedule construction is collective. The staleness decisions below are the same on
-        // every rank because SAMRAI replaces a level collectively.
+        // Rebuilds the schedules of levelNumber that were built from a level since replaced.
+        // Building a schedule is MPI-collective: all ranks take the same branches, because
+        // SAMRAI replaces a level on all ranks at once.
         void onHierarchyChanged(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
-            if (!isCurrent_(sameLevelBuiltOn_, hierarchy, levelNumber, levelNumber))
+            if (!builtOnCurrentLevels_(sameLevelBuiltOn_, hierarchy, levelNumber, levelNumber))
             {
                 buildSameLevelSchedules_(hierarchy, levelNumber);
                 sameLevelBuiltOn_[levelNumber] = levelsOf_(hierarchy, levelNumber, levelNumber);
             }
 
             if (levelNumber != rootLevelNumber
-                and !isCurrent_(interLevelBuiltOn_, hierarchy, rootLevelNumber, levelNumber))
+                and !builtOnCurrentLevels_(interLevelBuiltOn_, hierarchy, rootLevelNumber,
+                                           levelNumber))
             {
                 interLevelBuiltOn_.erase(levelNumber);
                 removeInterLevelSchedules_(levelNumber);
@@ -270,7 +275,7 @@ namespace amr
 
             if (levelNumber != rootLevelNumber)
             {
-                fillLevelGhostParticlesOld_(hierarchy, level, initDataTime);
+                lvlGhostPartOldRefiners_.fillTransient(hierarchy, level, initDataTime);
                 copyLevelGhostOldToPushable_(*level, model);
             }
 
@@ -328,7 +333,7 @@ namespace amr
             domainParticlesRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
             PHARE_LOG_STOP(3, "hybhybmessengerStrat::initLevel : interior part fill schedule");
 
-            fillLevelGhostParticlesOld_(hierarchy, levelPtr, initDataTime);
+            lvlGhostPartOldRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
 
 
             // levelGhostParticles will be pushed during the advance phase
@@ -726,8 +731,8 @@ namespace amr
         }
 
         // whether the schedules of level hi were built against the current levels lo..hi
-        static bool isCurrent_(auto const& builtOn, hierarchy_ptr const& hierarchy, int const lo,
-                               int const hi)
+        static bool builtOnCurrentLevels_(auto const& builtOn, hierarchy_ptr const& hierarchy,
+                                          int const lo, int const hi)
         {
             auto const it = builtOn.find(hi);
             if (it == builtOn.end())
@@ -920,13 +925,6 @@ namespace amr
 
 
 
-
-        void fillLevelGhostParticlesOld_(std::shared_ptr<hierarchy_t> const& hierarchy,
-                                         std::shared_ptr<level_t> const& level,
-                                         double const fillTime)
-        {
-            lvlGhostPartOldRefiners_.fillTransient(hierarchy, level, fillTime);
-        }
 
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
         {
