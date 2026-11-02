@@ -1,6 +1,4 @@
 add_subdirectory(alfven_wave)
-add_subdirectory(td)
-add_subdirectory(translation)
 add_subdirectory(tdtagged)
 add_subdirectory(shock)
 add_subdirectory(dispersion)
