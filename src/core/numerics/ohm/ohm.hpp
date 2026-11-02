@@ -1,6 +1,7 @@
 #ifndef PHARE_OHM_HPP
 #define PHARE_OHM_HPP
 
+#include "core/def.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -63,41 +64,40 @@ private:
     void solve_(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                 VecField const& J, VecField& Enew) const
     {
-        using Pack = OhmPack<VecField, Field>;
-
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPe = grad(layout_, Pe);
+        auto const decay = [](auto const& vf) {
+            basic::Field const x = vf(Component::X), y = vf(Component::Y), z = vf(Component::Z);
+            return basic::TensorField<std::remove_const_t<decltype(x)>, 1>{x, y, z};
+        };
 
-        layout_.evalOnBox(Exnew, [&](auto&... args) {
-            this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
+        auto const gradPe     = grad(layout_, Pe);
+        basic::Field const ni = n;
+        auto const ve = decay(Ve), b = decay(B), j = decay(J);
+        auto e          = decay(Enew);
+        auto const self = *this;
+
+        layout_.evalOnBox(Exnew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            self.template E_Eq_<Component::X, isResistive, isHyperResistive>(e, ni, ve, b, j,
+                                                                             gradPe.x, ijk...);
         });
-        layout_.evalOnBox(Eynew, [&](auto&... args) {
-            this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
+        layout_.evalOnBox(Eynew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            self.template E_Eq_<Component::Y, isResistive, isHyperResistive>(e, ni, ve, b, j,
+                                                                             gradPe.y, ijk...);
         });
-        layout_.evalOnBox(Eznew, [&](auto&... args) {
-            this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
+        layout_.evalOnBox(Eznew, [=] _PHARE_ALL_FN_(auto const&... ijk) mutable {
+            self.template E_Eq_<Component::Z, isResistive, isHyperResistive>(e, ni, ve, b, j,
+                                                                             gradPe.z, ijk...);
         });
     }
 
-    template<typename VecField, typename Field>
-    struct OhmPack
-    {
-        VecField& Exyz;
-        Field const& n;
-        VecField const &Ve, &B, &J;
-    };
 
-
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
-             typename... IDXs>
-    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename VecField, typename Field,
+             typename GradPe, typename... IDXs>
+    void E_Eq_(VecField& E, Field const& n, VecField const& Ve, VecField const& B,
+               VecField const& J, GradPe const& gradPe, IDXs const&... ijk) const _PHARE_ALL_FN_
     {
-        auto const& [E, n, Ve, B, J] = pack;
-        auto& Exyz                   = E(Tag);
+        auto& Exyz = E(Tag);
 
         static_assert(Components::check<Tag>());
 
@@ -115,7 +115,8 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    auto ideal_(VecField const& Ve, VecField const& B,
+                MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         if constexpr (component == Component::X)
         {
@@ -166,7 +167,8 @@ private:
 
 
     template<auto component, typename Field, typename GradPe>
-    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
+    auto pressure_(Field const& n, GradPe const& gradPe,
+                   MeshIndex<Field::dimension> index) const _PHARE_ALL_FN_
     {
         if constexpr (component == Component::X)
         {
@@ -208,7 +210,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto resistive_(VecField const& J, MeshIndex<dimension> index) const
+    auto resistive_(VecField const& J, MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         auto const& Jxyx = J(component);
 
@@ -233,7 +235,7 @@ private:
 
     template<auto component, typename VecField, typename Field>
     auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                         MeshIndex<VecField::dimension> index) const
+                         MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     {
         // if compile error, fix this function
         static_assert(static_cast<std::underlying_type_t<HyperMode>>(HyperMode::count) == 2);
@@ -247,16 +249,17 @@ private:
 
 
     template<auto component, typename VecField>
-    auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto constant_hyperresistive_(VecField const& J,
+                                  MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
         return -nu * laplacian(layout_, J(component), index);
     }
 
     template<auto component, typename VecField, typename Field>
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                                 MeshIndex<VecField::dimension> index) const
+                                 MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     {
-        auto const lvlCoeff = 1. / std::pow(4, layout_.levelNumber());
+        auto const lvlCoeff = 1. / core::pow(4., layout_.levelNumber());
 
         auto constexpr min_density = 0.1;
         auto computeHR             = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() {

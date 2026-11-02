@@ -109,7 +109,10 @@ namespace amr
      *
      * obj1 and obj2 become unusable again at the end of the scope of dataOnPatch
      *
-     *
+     *  struct ResourcesUserTypes{
+     *     using patch_data_type = SAMRAI::hier::PatchData;  // subclass thereof
+     *     using variable_type   = SAMRAI::hier::Variable;   // subclass thereof
+     *  };
      */
     template<typename GridLayoutT, typename Grid_t, typename... ResourcesUserTypes>
     class ResourcesManager
@@ -295,6 +298,14 @@ namespace amr
         }
 
 
+        void print_resources() const
+        {
+            for (auto& [key, _] : nameToResourceInfo_)
+            {
+                PHARE_LOG_LINE_SS(key);
+            }
+        }
+
         void registerForRestarts() const
         {
             auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
@@ -324,6 +335,7 @@ namespace amr
                 ids.emplace_back(info.id);
             return ids;
         }
+
 
         auto getIDsList(auto&&... keys) const
         {
@@ -422,6 +434,7 @@ namespace amr
             Level_t& level;
             std::tuple<Args&...> args;
         };
+
 
 
 

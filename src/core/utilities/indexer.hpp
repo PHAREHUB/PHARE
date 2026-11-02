@@ -2,7 +2,7 @@
 #define PHARE_INDEXER_H
 
 #include "core/def.hpp"
-#include "core/data/vector.hpp"
+#include "core/vector.hpp"
 #include "core/utilities/span.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 
@@ -47,22 +47,22 @@ struct IndexerStorage<StorageMode::SPAN, opts>
     IndexerStorage& operator=(IndexerStorage const&)     = default;
     IndexerStorage& operator=(IndexerStorage&&) noexcept = default;
 
-    NO_DISCARD auto data() const { return indexes_.data(); }
-    NO_DISCARD auto data() { return indexes_.data(); }
-    NO_DISCARD std::size_t size() const { return indexes_.size(); }
-    NO_DISCARD bool is_empty() const { return indexes_.size() == 0; }
+    NO_DISCARD auto data() const _PHARE_ALL_FN_ { return indexes_.data(); }
+    NO_DISCARD auto data() _PHARE_ALL_FN_ { return indexes_.data(); }
+    NO_DISCARD std::size_t size() const _PHARE_ALL_FN_ { return indexes_.size(); }
+    NO_DISCARD bool is_empty() const _PHARE_ALL_FN_ { return indexes_.size() == 0; }
 
-    NO_DISCARD auto begin() { return indexes_.begin(); }
-    NO_DISCARD auto begin() const { return indexes_.begin(); }
-    NO_DISCARD auto cbegin() const { return indexes_.begin(); }
-    NO_DISCARD auto end() { return indexes_.end(); }
-    NO_DISCARD auto end() const { return indexes_.end(); }
-    NO_DISCARD auto cend() const { return indexes_.end(); }
+    NO_DISCARD auto begin() _PHARE_ALL_FN_ { return indexes_.begin(); }
+    NO_DISCARD auto begin() const _PHARE_ALL_FN_ { return indexes_.begin(); }
+    NO_DISCARD auto cbegin() const _PHARE_ALL_FN_ { return indexes_.begin(); }
+    NO_DISCARD auto end() _PHARE_ALL_FN_ { return indexes_.end(); }
+    NO_DISCARD auto end() const _PHARE_ALL_FN_ { return indexes_.end(); }
+    NO_DISCARD auto cend() const _PHARE_ALL_FN_ { return indexes_.end(); }
 
-    NO_DISCARD auto& operator[](std::size_t i) { return indexes_[i]; }
-    NO_DISCARD auto& operator[](std::size_t i) const { return indexes_[i]; }
-    NO_DISCARD auto& back() { return indexes_[indexes_.size() - 1]; }
-    NO_DISCARD auto& front() const { return indexes_[0]; }
+    NO_DISCARD auto& operator[](std::size_t i) _PHARE_ALL_FN_ { return indexes_[i]; }
+    NO_DISCARD auto& operator[](std::size_t i) const _PHARE_ALL_FN_ { return indexes_[i]; }
+    NO_DISCARD auto& back() _PHARE_ALL_FN_ { return indexes_[indexes_.size() - 1]; }
+    NO_DISCARD auto& front() const _PHARE_ALL_FN_ { return indexes_[0]; }
 
     void sort() { std::sort(indexes_.begin(), indexes_.end()); }
     void swap(auto const& a, auto const& b) { std::swap(indexes_[a], indexes_[b]); }
@@ -95,32 +95,33 @@ template<auto opts>
 struct IndexerStorage<StorageMode::VECTOR, opts>
     : Indexer<IndexerOptions{opts.alloc_mode, StorageMode::SPAN}>
 {
-    using View  = Indexer<IndexerOptions{opts.alloc_mode, StorageMode::SPAN}>;
-    using vec_t = std::vector<std::size_t>;
+    using View       = Indexer<IndexerOptions{opts.alloc_mode, StorageMode::SPAN}>;
+    using vec_helper = PHARE::Vector<std::size_t, opts.alloc_mode>;
+    using vec_t      = typename vec_helper::vector_t;
 
     IndexerStorage() = default;
 
     IndexerStorage(IndexerStorage const& other)
         : View{}
-        , vec_{other.vec_}
+        , vec_{vec_helper::from(other.vec_)}
     {
     }
 
     IndexerStorage(IndexerStorage&& other) noexcept
         : View{}
-        , vec_{std::move(other.vec_)}
+        , vec_{vec_helper::from(std::move(other.vec_))}
     {
     }
 
     IndexerStorage& operator=(IndexerStorage const& other)
     {
-        vec_ = other.vec_;
+        vec_helper::copy(vec_, other.vec_);
         return *this;
     }
 
     IndexerStorage& operator=(IndexerStorage&& other) noexcept
     {
-        vec_ = std::move(other.vec_);
+        vec_ = vec_helper::from(std::move(other.vec_));
         return *this;
     }
 

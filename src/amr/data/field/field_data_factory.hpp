@@ -60,7 +60,7 @@ namespace amr
          * it is expected that this routines will create a functional fieldData
          * (ie with a gridlayout and a FieldImpl)
          */
-        std ::shared_ptr<SAMRAI::hier::PatchData>
+        std::shared_ptr<SAMRAI::hier::PatchData>
         allocate(SAMRAI::hier::Patch const& patch) const final
         {
             auto const& domain = patch.getBox();

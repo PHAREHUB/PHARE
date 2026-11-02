@@ -13,11 +13,9 @@ namespace PHARE
 {
 namespace core
 {
-    enum class Direction { X, Y, Z };
-
+    enum class Direction : std::uint8_t { X = 0, Y, Z };
     enum class Side { Lower = -1, Upper = 1 };
-
-    enum class QtyCentering : std::uint16_t { primal = 0, dual = 1 };
+    enum class QtyCentering : std::uint8_t { primal = 0, dual = 1 };
 
 
     template<std::size_t dim>

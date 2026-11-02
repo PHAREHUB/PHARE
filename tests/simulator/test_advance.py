@@ -1,4 +1,4 @@
-#
+# tests/simulator/test_advance.py
 #  Common base class across hybrid and mhd tests
 #   see
 #      tests/simulator/advance/test_advance_mhd.py
@@ -365,7 +365,7 @@ class AdvanceTestBase(SimulatorTest):
             quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
         from pyphare.pharein import global_vars
-        from tests.amr.data.field.refine.test_refine_field import (
+        from tests.simulator.utilities.test_refine_field import (
             refine_time_interpolate,
         )
 
@@ -376,9 +376,9 @@ class AdvanceTestBase(SimulatorTest):
         checks = 0
         ndim = global_vars.sim.ndim
         lvl_steps = level_time_steps(global_vars.sim)
-        assert (
-            len(lvl_steps) == 2
-        ), "this test is only configured for L0 -> L1 refinement comparisons"
+        assert len(lvl_steps) == 2, (
+            "this test is only configured for L0 -> L1 refinement comparisons"
+        )
 
         coarse_ilvl = 0
         fine_ilvl = 1

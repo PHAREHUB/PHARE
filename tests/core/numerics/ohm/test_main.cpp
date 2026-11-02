@@ -8,6 +8,11 @@
 #include "simulator/simulator.h"     // static allocator init - probably should be isolated
 #endif
 
+#if defined(HAVE_RAJA) and defined(HAVE_UMPIRE)
+#include "SAMRAI/tbox/Collectives.h" // tbox::parallel_synchronize();
+#include "simulator/simulator.h"     // static allocator init - probably should be isolated
+#endif
+
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 

@@ -1,3 +1,11 @@
+//  tests/core/numerics/ohm/test_tileset_ohm.cpp
+//
+// #define PHARE_UNDEF_ASSERT
+
+#include "core/logger.hpp"    // scope timing
+#include "core/def/phlop.hpp" // scope timing
+
+#include "core/def/phare_config.hpp"
 
 #include "core/utilities/types.hpp"
 #include "core/numerics/ohm/ohm.hpp"
@@ -47,7 +55,11 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
     using enum AllocatorMode;
     auto constexpr static n_components = 3;
 
-    double diff           = 1e-15;
+    double diff = 1e-15;
+
+    // if constexpr (alloc_mode == GPU_UNIFIED)
+    //     diff *= 1e3; // atomic no order guaranteed
+
     auto const& patch_box = layout.AMRBox();
 
     for (std::size_t c = 0; c < n_components; ++c)
@@ -163,6 +175,9 @@ struct OhmTileTest : public ::testing::Test
 using Permutations_t = testing::Types< // ! notice commas !
 
      TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU>
+PHARE_WITH_GPU(
+    ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED>
+)
 
 >;
 // clang-format on
@@ -188,6 +203,9 @@ TYPED_TEST(OhmTileTest, dispatch)
 
 int main(int argc, char** argv)
 {
+    PHARE_WITH_PHLOP(phlop::threaded::ScopeTimerMan::INSTANCE().init();)
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    auto const ret = RUN_ALL_TESTS();
+    PHARE_WITH_PHLOP(phlop::threaded::ScopeTimerMan::reset();)
+    return ret;
 }

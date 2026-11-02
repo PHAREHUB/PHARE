@@ -14,6 +14,8 @@
 
 #include "gridlayoutdefs.hpp"
 
+#include "core/data/grid/detail/detail.hpp"
+
 #include <array>
 #include <tuple>
 #include <cstddef>
@@ -142,21 +144,21 @@ namespace core
         /**
          * @brief returns the mesh size in the 'dim' dimensions
          */
-        NO_DISCARD std::array<double, dimension> const& meshSize() const noexcept
+        NO_DISCARD std::array<double, dimension> const& meshSize() const noexcept _PHARE_ALL_FN_
         {
             return meshSize_;
         }
 
 
 
-        NO_DISCARD double inverseMeshSize(Direction direction) const noexcept
+        NO_DISCARD double inverseMeshSize(Direction direction) const noexcept _PHARE_ALL_FN_
         {
             return inverseMeshSize_[static_cast<std::uint32_t>(direction)];
         }
 
 
 
-        NO_DISCARD std::array<double, dimension> inverseMeshSize() const noexcept
+        NO_DISCARD std::array<double, dimension> inverseMeshSize() const noexcept _PHARE_ALL_FN_
         {
             return inverseMeshSize_;
         }
@@ -167,10 +169,10 @@ namespace core
          * @brief nbrCells returns the number of cells in the physical domain
          * described by the gridlayout
          */
-        NO_DISCARD auto& nbrCells() const { return nbrPhysicalCells_; }
+        NO_DISCARD auto& nbrCells() const _PHARE_ALL_FN_ { return nbrPhysicalCells_; }
 
 
-        NO_DISCARD auto const& AMRBox() const { return AMRBox_; }
+        NO_DISCARD auto const& AMRBox() const _PHARE_ALL_FN_ { return AMRBox_; }
 
 
 
@@ -266,7 +268,7 @@ namespace core
          * centering and in a given direction that is in the physical domain, i.e. not a ghost node.
          */
         NO_DISCARD std::uint32_t physicalStartIndex(QtyCentering centering,
-                                                    Direction direction) const
+                                                    Direction direction) const _PHARE_ALL_FN_
         {
             auto const icentering = static_cast<std::uint32_t>(centering);
             auto const iDir       = static_cast<std::uint32_t>(direction);
@@ -535,7 +537,8 @@ namespace core
          * The next index is not just indexCenter+1 because this depends on the number
          * of ghost nodes for dual and primal nodes.
          */
-        NO_DISCARD auto static nextIndex(QtyCentering centering, std::uint32_t indexCenter)
+        NO_DISCARD auto static nextIndex(QtyCentering centering,
+                                         std::uint32_t indexCenter) _PHARE_ALL_FN_
         {
             return indexCenter + nextIndexTable_[centering2int(centering)];
         }
@@ -545,7 +548,8 @@ namespace core
          * @brief prevIndex does the same thing as nextIndex but returns the index
          * of the node of a given centering just to the left of indexCenter.
          */
-        NO_DISCARD auto static prevIndex(QtyCentering centering, std::uint32_t indexCenter)
+        NO_DISCARD auto static prevIndex(QtyCentering centering,
+                                         std::uint32_t indexCenter) _PHARE_ALL_FN_
         {
             return indexCenter + prevIndexTable_[centering2int(centering)];
         }
@@ -595,7 +599,7 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto AMRToLocal(Point<T, dimension> const& AMRPoint) const
+        NO_DISCARD auto AMRToLocal(Point<T, dimension> const& AMRPoint) const _PHARE_ALL_FN_
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
             Point<std::uint32_t, dimension> localPoint;
@@ -634,7 +638,7 @@ namespace core
 
         template<auto func, typename Field>
         NO_DISCARD static typename Field::type project(Field const& field,
-                                                       MeshIndex<dimension> index)
+                                                       MeshIndex<dimension> index) _PHARE_ALL_FN_
         {
             auto constexpr wps = func();
 
@@ -701,7 +705,8 @@ namespace core
         /**
          * @brief returns the centering of a scalar hybrid quantity in each directions
          */
-        NO_DISCARD constexpr static std::array<QtyCentering, dimension> centering(Scalar quantity)
+        NO_DISCARD constexpr static std::array<QtyCentering, dimension>
+        centering(Scalar quantity) _PHARE_ALL_FN_
         {
             return implT::centering(quantity);
         }
@@ -712,13 +717,13 @@ namespace core
          * @brief returns the centering of a vector hybrid quantity in each directions
          */
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 3>
-        centering(Vector quantity)
+        centering(Vector quantity) _PHARE_ALL_FN_
         {
             return implT::centering(quantity);
         }
 
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 6>
-        centering(Tensor quantity)
+        centering(Tensor quantity) _PHARE_ALL_FN_
         {
             return for_N_make_array<6>(
                 [](auto) { return ConstArray<QtyCentering, dimension>(QtyCentering::primal); });
@@ -727,7 +732,7 @@ namespace core
         template<typename HasQuantity>
         NO_DISCARD constexpr static auto centering(HasQuantity const& hasQuantity)
             requires(has_physicalQuantity_v<HasQuantity>)
-
+        _PHARE_ALL_FN_
         {
             return centering(hasQuantity.physicalQuantity());
         }
@@ -739,7 +744,7 @@ namespace core
          * @return An std::array<std::uint32_t, dim> object, containing the size to which allocate
          * arrays of an HybridQuantity::Quantity 'qty' in every directions.
          */
-        NO_DISCARD std::array<std::uint32_t, dimension> allocSize(Scalar qty) const
+        NO_DISCARD std::array<std::uint32_t, dimension> allocSize(Scalar qty) const _PHARE_ALL_FN_
         {
             std::uint32_t iQty = static_cast<std::uint32_t>(qty);
 
@@ -1144,7 +1149,7 @@ namespace core
             evalOnAnyBox(field, shrink(ghostBoxFor(field), shrinkby), fn, args...);
         }
 
-        auto levelNumber() const { return levelNumber_; }
+        auto levelNumber() const _PHARE_ALL_FN_ { return levelNumber_; }
 
 
         // function to take a part of a gridlayout
@@ -1169,8 +1174,15 @@ namespace core
         {
             static_assert(!is_field_tile_set_v<Field>);
 
-            // span by span walk, see core/utilities/box/box_spans.hpp
-            for_each_point(box, [&](auto const& bix) { fn(bix, args...); });
+            if constexpr (Field::alloc_mode == AllocatorMode::CPU)
+            {
+                // span by span walk, see core/utilities/box/box_spans.hpp
+                for_each_point(box, [&](auto const& bix) { fn(bix, args...); });
+            }
+            else
+            {
+                gpu::GridLayout::evalOnBox(fn, box, args...);
+            }
         }
 
         template<typename Field, typename Fn>
@@ -1228,7 +1240,10 @@ namespace core
 
 
 
-        NO_DISCARD std::uint32_t static constexpr dualOffset_() noexcept { return 1; }
+        NO_DISCARD std::uint32_t static constexpr dualOffset_() noexcept _PHARE_ALL_FN_
+        {
+            return 1;
+        }
 
 
         /**
@@ -1236,7 +1251,7 @@ namespace core
          * directions depending on the multi-dimensional centering.
          */
         NO_DISCARD std::array<std::uint32_t, dimension> physicalNodeNbrFromCentering_(
-            std::array<QtyCentering, dimension> const& qtyCenterings) const
+            std::array<QtyCentering, dimension> const& qtyCenterings) const _PHARE_ALL_FN_
         {
             std::array<std::uint32_t, dimension> nodeNbr;
 
@@ -1257,8 +1272,8 @@ namespace core
          * The calculation is easy : there are nbrPhysicalCells + 1 nodes in the domain
          * + 2 times the number of ghost nodes.
          */
-        NO_DISCARD std::array<std::uint32_t, dimension>
-        nodeNbrFromCentering_(std::array<QtyCentering, dimension> const& qtyCenterings) const
+        NO_DISCARD std::array<std::uint32_t, dimension> nodeNbrFromCentering_(
+            std::array<QtyCentering, dimension> const& qtyCenterings) const _PHARE_ALL_FN_
         {
             std::array<std::uint32_t, dimension> nbrNodes
                 = physicalNodeNbrFromCentering_(qtyCenterings);

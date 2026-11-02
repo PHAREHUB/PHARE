@@ -2,6 +2,7 @@
 #define PHARE_CORE_GRID_GRIDLAYOUTYEE_MHD_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/enum_table.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -198,20 +199,27 @@ public:
     // ------------------------------------------------------------------------
 public:
     NO_DISCARD constexpr static std::array<QtyCentering, dim>
-    centering(MHDQuantity::Scalar const qty)
+    centering(MHDQuantity::Scalar const qty) _PHARE_ALL_FN_
     {
         auto const idx = static_cast<std::size_t>(qty);
         if (idx >= scalarCentering_.size())
-            throw std::runtime_error("Wrong MHDQuantity");
+        {
+            throw_runtime_error("Wrong MHDQuantity");
+            return ConstArray<QtyCentering, dim>(QtyCentering::primal);
+        }
         return scalarCentering_[idx];
     }
 
     NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
-    centering(MHDQuantity::Vector const qty)
+    centering(MHDQuantity::Vector const qty) _PHARE_ALL_FN_
     {
         auto const idx = static_cast<std::size_t>(qty);
         if (idx >= vectorCentering_.size())
-            throw std::runtime_error("Wrong MHDQuantity");
+        {
+            throw_runtime_error("Wrong MHDQuantity");
+            return ConstArray<std::array<QtyCentering, dim>, 3>(
+                ConstArray<QtyCentering, dim>(QtyCentering::primal));
+        }
         return vectorCentering_[idx];
     }
 

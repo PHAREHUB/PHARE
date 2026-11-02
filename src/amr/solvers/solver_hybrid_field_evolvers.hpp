@@ -2,6 +2,7 @@
 #define PHARE_AMR_SOLVERS_SOLVER_HYBRID_FIELD_EVOLVERS_HPP
 
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/data/field/field.hpp"
 #include "core/data/field/field_tiles.hpp"
 
 #include "amr/solvers/solver_field_evolvers.hpp"

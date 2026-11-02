@@ -33,6 +33,6 @@ else()
 
   add_subdirectory(${SAMRAI_SRCDIR})
   unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY CACHE) # undoes what samrai does, so ctest can continue to work
-  include_directories(${CMAKE_BINARY_DIR}/include) # this is needed to find build-dir/include/SAMRAI/SAMRAI_config.h
+  # include_directories(${CMAKE_BINARY_DIR}/include) # this is needed to find build-dir/include/SAMRAI/SAMRAI_config.h
 
 endif(DEFINED SAMRAI_ROOT)

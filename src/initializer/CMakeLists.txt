@@ -14,7 +14,7 @@ set(SOURCE_CPP data_provider.cpp)
 set(PYBIND11_CPP_STANDARD -std=c++17)
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_CPP} ${SOURCE_INC})
-target_link_libraries(${PROJECT_NAME} PUBLIC cppdict)
+target_link_libraries(${PROJECT_NAME} PUBLIC cppdict magic_enum)
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PHARE_BASE_LIBS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})

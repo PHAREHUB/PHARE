@@ -1,11 +1,21 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_MASK_HPP
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_MASK_HPP
 
-#include "core/def.hpp"
-#include "core/data/ndarray/ndarray_base.hpp"
 
 #include <array>
+#include <tuple>
+#include <vector>
 #include <cstdint>
+#include <numeric>
+#include <iostream>
+#include <stdexcept>
+
+
+#include "core/def.hpp"
+#include "core/vector.hpp"
+#include "core/utilities/types.hpp"
+
+#include "core/data/ndarray/ndarray_base.hpp"
 
 namespace PHARE::core
 {
@@ -63,6 +73,8 @@ private:
 };
 
 
+
+
 class NdArrayMask
 {
 public:
@@ -79,7 +91,17 @@ public:
     }
 
     template<typename Array>
-    void fill(Array& array, typename Array::type val) const;
+    void fill(Array& array, typename Array::type val) const
+    {
+        if constexpr (Array::dimension == 1)
+            fill1D(array, val);
+
+        else if constexpr (Array::dimension == 2)
+            fill2D(array, val);
+
+        else if constexpr (Array::dimension == 3)
+            fill3D(array, val);
+    }
 
     template<typename Array>
     void fill1D(Array& array, typename Array::type val) const
@@ -94,13 +116,104 @@ public:
     }
 
     template<typename Array>
-    void fill2D(Array& array, typename Array::type val) const;
+    void fill2D(Array& array, typename Array::type val) const
+    {
+        auto shape = array.shape();
+
+        // left border
+        for (std::size_t i = min_; i <= max_; ++i)
+            for (std::size_t j = min_; j <= shape[1] - 1 - max_; ++j)
+                array(i, j) = val;
+
+        // right border
+        for (std::size_t i = shape[0] - 1 - max_; i <= shape[0] - 1 - min_; ++i)
+            for (std::size_t j = min_; j <= shape[1] - 1 - max_; ++j)
+                array(i, j) = val;
+
+
+        for (std::size_t i = min_; i <= shape[0] - 1 - min_; ++i)
+        {
+            // bottom border
+            for (std::size_t j = min_; j <= max_; ++j)
+                array(i, j) = val;
+
+            // top border
+            for (std::size_t j = shape[1] - 1 - max_; j <= shape[1] - 1 - min_; ++j)
+                array(i, j) = val;
+        }
+    }
+
 
     template<typename Array>
-    void fill3D(Array& array, typename Array::type val) const;
+    void fill3D(Array& array, typename Array::type val) const
+    {
+        auto shape = array.shape();
+
+        // left border
+        for (auto i = min_; i <= shape[0] - 1 - max_; ++i)
+            for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
+                for (auto k = min_; k <= max_; ++k)
+                    array(i, j, k) = val;
+
+        // // right border
+        for (auto i = min_; i <= shape[0] - 1 - max_; ++i)
+            for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
+                for (auto k = shape[2] - 1 - max_; k <= shape[2] - 1 - min_; ++k)
+                    array(i, j, k) = val;
+
+        for (auto i = min_; i <= shape[0] - 1 - min_; ++i)
+        {
+            // bottom border
+            for (auto j = min_; j <= max_; ++j)
+                for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
+                    array(i, j, k) = val;
+
+            // top border
+            for (auto j = shape[1] - 1 - max_; j <= shape[1] - 1 - min_; ++j)
+                for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
+                    array(i, j, k) = val;
+        }
+
+        // front
+        for (auto i = min_; i <= max_; ++i)
+            for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
+                for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
+                    array(i, j, k) = val;
+
+        // back
+        for (auto i = shape[0] - 1 - max_; i <= shape[0] - 1 - min_; ++i)
+            for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
+                for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
+                    array(i, j, k) = val;
+    }
 
     template<typename Array>
-    NO_DISCARD auto nCells(Array const& array);
+    NO_DISCARD auto nCells(Array const& array)
+    {
+        auto shape = array.shape();
+
+        std::size_t cells = 0;
+
+        for (auto i = min_; i <= max_; ++i)
+        {
+            if constexpr (Array::dimension == 1)
+                cells += 2;
+
+            if constexpr (Array::dimension == 2)
+                cells += (shape[0] - (i * 2) - 2) * 2 + (shape[1] - (i * 2) - 2) * 2 + 4;
+
+            if constexpr (Array::dimension == 3)
+            {
+                auto [x, y, z] = shape;
+                x -= i * 2;
+                y -= i * 2;
+                z -= i * 2;
+                cells += (x * y * 2) + (y * (z - 2) * 2) + ((z - 2) * (x - 2) * 2);
+            }
+        }
+        return cells;
+    }
+
 
     NO_DISCARD auto min() const { return min_; };
     NO_DISCARD auto max() const { return max_; };
@@ -109,116 +222,7 @@ private:
     std::size_t min_ = 0, max_ = 0;
 };
 
-template<typename Array>
-void NdArrayMask::fill(Array& array, typename Array::type val) const
-{
-    if constexpr (Array::dimension == 1)
-        fill1D(array, val);
 
-    else if constexpr (Array::dimension == 2)
-        fill2D(array, val);
-
-    else if constexpr (Array::dimension == 3)
-        fill3D(array, val);
-}
-
-template<typename Array>
-void NdArrayMask::fill2D(Array& array, typename Array::type val) const
-{
-    auto shape = array.shape();
-
-    // left border
-    for (std::size_t i = min_; i <= max_; ++i)
-        for (std::size_t j = min_; j <= shape[1] - 1 - max_; ++j)
-            array(i, j) = val;
-
-    // right border
-    for (std::size_t i = shape[0] - 1 - max_; i <= shape[0] - 1 - min_; ++i)
-        for (std::size_t j = min_; j <= shape[1] - 1 - max_; ++j)
-            array(i, j) = val;
-
-
-    for (std::size_t i = min_; i <= shape[0] - 1 - min_; ++i)
-    {
-        // bottom border
-        for (std::size_t j = min_; j <= max_; ++j)
-            array(i, j) = val;
-
-        // top border
-        for (std::size_t j = shape[1] - 1 - max_; j <= shape[1] - 1 - min_; ++j)
-            array(i, j) = val;
-    }
-}
-
-template<typename Array>
-void NdArrayMask::fill3D(Array& array, typename Array::type val) const
-{
-    auto shape = array.shape();
-
-    // left border
-    for (auto i = min_; i <= shape[0] - 1 - max_; ++i)
-        for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
-            for (auto k = min_; k <= max_; ++k)
-                array(i, j, k) = val;
-
-    // // right border
-    for (auto i = min_; i <= shape[0] - 1 - max_; ++i)
-        for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
-            for (auto k = shape[2] - 1 - max_; k <= shape[2] - 1 - min_; ++k)
-                array(i, j, k) = val;
-
-    for (auto i = min_; i <= shape[0] - 1 - min_; ++i)
-    {
-        // bottom border
-        for (auto j = min_; j <= max_; ++j)
-            for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
-                array(i, j, k) = val;
-
-        // top border
-        for (auto j = shape[1] - 1 - max_; j <= shape[1] - 1 - min_; ++j)
-            for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
-                array(i, j, k) = val;
-    }
-
-    // front
-    for (auto i = min_; i <= max_; ++i)
-        for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
-            for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
-                array(i, j, k) = val;
-
-    // back
-    for (auto i = shape[0] - 1 - max_; i <= shape[0] - 1 - min_; ++i)
-        for (auto j = min_; j <= shape[1] - 1 - max_; ++j)
-            for (auto k = min_; k <= shape[2] - 1 - min_; ++k)
-                array(i, j, k) = val;
-}
-
-template<typename Array>
-NO_DISCARD auto NdArrayMask::nCells(Array const& array)
-{
-    auto shape = array.shape();
-
-    std::size_t cells = 0;
-
-    for (auto i = min_; i <= max_; ++i)
-    {
-        if constexpr (Array::dimension == 1)
-            cells += 2;
-
-        if constexpr (Array::dimension == 2)
-            cells += (shape[0] - (i * 2) - 2) * 2 + (shape[1] - (i * 2) - 2) * 2 + 4;
-
-        if constexpr (Array::dimension == 3)
-        {
-            auto [x, y, z] = shape;
-            x -= i * 2;
-            y -= i * 2;
-            z -= i * 2;
-            cells += (x * y * 2) + (y * (z - 2) * 2) + ((z - 2) * (x - 2) * 2);
-        }
-    }
-    return cells;
-}
 
 
 template<typename Array, typename Mask>

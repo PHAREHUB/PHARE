@@ -153,6 +153,7 @@ TYPED_TEST(ParticleArrayConstructionTest, test_move_on_create)
     std::vector<ParticleArray_t> vecs;
     vecs.emplace_back(this->setup_particles());
     vecs.back().template on_appended<ParticleType::Domain>();
+    check_particles_views(vecs.back());
 }
 
 } // namespace PHARE::core

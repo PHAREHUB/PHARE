@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 #define PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 
+
 #include "core/def.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
@@ -13,6 +14,7 @@
 namespace PHARE::core::basic
 {
 
+
 template<typename VecFieldT>
 class Electromag
 {
@@ -21,13 +23,13 @@ public:
     static constexpr std::size_t dimension = VecFieldT::dimension;
 
     template<typename V>
-    auto as(auto&& a, auto&&... args)
+    auto as(auto&& a, auto&&... args) _PHARE_ALL_FN_
     {
         return V{{a(E, args...)}, {a(B, args...)}};
     }
 
     template<typename V>
-    auto as(auto&& a, auto&&... args) const
+    auto as(auto&& a, auto&&... args) const _PHARE_ALL_FN_
     {
         return V{{a(E, args...)}, {a(B, args...)}};
     }
@@ -106,8 +108,12 @@ namespace core
             B.copyData(source.B);
         }
 
+
         auto operator()() { return std::forward_as_tuple(E, B); }
         auto operator()() const { return std::forward_as_tuple(E, B); }
+
+
+
 
         Super& super() { return *this; }
         Super const& super() const { return *this; }
@@ -119,7 +125,23 @@ namespace core
         VecFieldInitializer<dimension> Binit_;
     };
 
+
 } // namespace core
 } // namespace PHARE
+
+
+namespace PHARE::core
+{
+
+void check_electromag(auto const& em) _PHARE_ALL_FN_
+{
+#if PHARE_DEBUG && !PHARE_HAVE_GPU
+    check_tensor_field(em.E);
+    check_tensor_field(em.B);
+#endif
+}
+
+} // namespace PHARE::core
+
 
 #endif

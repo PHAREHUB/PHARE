@@ -95,7 +95,7 @@ public:
 
 // mock of electromag just so that the Pusher gives something to
 // the Interpolator
-class Electromag
+class ElectromagMock
 {
 };
 
@@ -169,7 +169,7 @@ protected:
     double dt;
     double tstart, tend;
     std::size_t nt;
-    Electromag em;
+    ElectromagMock em;
     Interpolator interpolator;
     DummySelector selector;
     // BoundaryCondition bc;
@@ -326,7 +326,7 @@ protected:
     double tstart;
     double tend;
     std::size_t nt;
-    Electromag em;
+    ElectromagMock em;
     Interpolator interpolator;
     double dx = 0.1;
     Box<double, 1> domain;

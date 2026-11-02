@@ -9,7 +9,7 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 phare_python3_exec(9 validation           test_validation.py      ${CMAKE_CURRENT_BINARY_DIR})
-phare_python3_exec(9 data-wrangler        data_wrangler.py        ${CMAKE_CURRENT_BINARY_DIR})
+phare_python3_exec(9 data-wrangler        test_data_wrangler.py        ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(periodicity test_init_periodicity.py ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(mhd_only_api test_mhd_only_api.py ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(time_step test_time_step.py ${CMAKE_CURRENT_BINARY_DIR})

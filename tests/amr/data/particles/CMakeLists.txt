@@ -25,3 +25,8 @@ function(_add_amr_particles_test src_name)
 
 endfunction(_add_amr_particles_test)
 
+file(COPY "test_particles_schedules_inputs" DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+_add_amr_particles_test(test_particles_data)
+_add_amr_particles_test(test_particles_schedules)
+

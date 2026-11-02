@@ -30,6 +30,35 @@ namespace PHARE::pydata
 {
 
 
+
+template<typename Type, std::size_t dimension>
+void declarePatchData(py::module& m, std::string const& key)
+{
+    using PatchDataType = PatchData<Type, dimension>;
+    py::class_<PatchDataType>(m, key.c_str(), py::module_local())
+        .def_readonly("patchID", &PatchDataType::patchID)
+        .def_readonly("origin", &PatchDataType::origin)
+        .def_readonly("lower", &PatchDataType::lower)
+        .def_readonly("upper", &PatchDataType::upper)
+        .def_readonly("nGhosts", &PatchDataType::nGhosts)
+        .def_readonly("data", &PatchDataType::data);
+}
+
+template<SimOpts opts>
+void declareParticles(py::module& m)
+{
+    using core_types    = core::PHARE_Types<opts>;
+    using ParticleArray = core_types::Hybrid::ParticleArray_t;
+    std::string name    = "ParticleArray";
+    py::class_<ParticleArray, std::shared_ptr<ParticleArray>>(m, name.c_str(), py::module_local());
+    // .def_readonly("size", &ParticleArray::size);
+    // .def("__getitem__",
+    //      [](ParticleArray& self, std::size_t const idx) -> auto& { return self[idx]; })
+
+    declarePatchData<ParticleArray, opts.dimension>(m, "PatchDataParticleArray");
+    declarePatchData<ParticleArray*, opts.dimension>(m, "PatchDataParticleArrayPtr");
+}
+
 template<typename Simulator, typename PyClass>
 void declareSimulator(PyClass&& sim)
 {
@@ -75,7 +104,11 @@ void inline declare_macro_sim(py::module& m)
     });
 
 
+    declarePatchData<py_array_t<double>, opts.dimension>(m, "PatchPyArrayDouble");
+
     declare_etc<opts>(m);
+    if constexpr (has_hybrid_v<opts>)
+        declareParticles<opts>(m);
 }
 
 

@@ -16,7 +16,7 @@ namespace PHARE::pydata
 {
 template<std::size_t dim, bool _const_ = false, typename PyArrayTuple>
 core::ParticleArray<core::ParticleArrayOptions{dim, core::LayoutMode::SoA, core::StorageMode::SPAN,
-                                               core::AllocatorMode::CPU, _const_}>
+                                               AllocatorMode::CPU, _const_}>
 contiguousViewFrom(PyArrayTuple& py_particles)
 {
     return {makeSpan<int>(std::get<0>(py_particles)),     // iCell

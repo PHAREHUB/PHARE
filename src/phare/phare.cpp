@@ -8,7 +8,6 @@
 #include "simulator/simulator_runtime.hpp"
 
 #include "phare.hpp"
-
 #include "simulator/simulator.hpp"
 
 #include <atomic>

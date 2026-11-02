@@ -5,9 +5,6 @@ class PatchLevel:
         self.level_number = lvl_nbr
         self.patches = patches
 
-    def __iter__(self):
-        return self.patches.__iter__()
-
     def level_range(self):
         name = next(iter(self.patches[0].patch_datas.keys()))
         return min([patch.patch_datas[name].x.min() for patch in self.patches]), max(
@@ -18,6 +15,9 @@ class PatchLevel:
         if type(idx) is int:
             return self.patches[idx]
         raise IndexError(f"PatchLevel::__getitem__ unhandled input type: {type(idx)}")
+
+    def __iter__(self):
+        return self.patches.__iter__()
 
     @property
     def cell_width(self):

@@ -40,7 +40,7 @@ constexpr SimOpts mhdOpts(MHDOpts::ReconstructionType reconstruction)
                    .interp_order        = 0,
                    .nbRefinedPart       = 0,
                    .layout_mode         = core::LayoutMode::AoSMapped,
-                   .alloc_mode          = core::AllocatorMode::CPU,
+                   .alloc_mode          = AllocatorMode::CPU,
                    .reconstruction_type = reconstruction,
                    .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
                    .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov};

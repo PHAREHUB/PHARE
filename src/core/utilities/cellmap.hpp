@@ -131,7 +131,7 @@ public:
     template<typename... Args>
     CellMap(Args&&... args)
         requires std::is_constructible_v<Super, Args&&...>
-        : Super{std::forward<Args>(args)...}
+    _PHARE_ALL_FN_ : Super{std::forward<Args>(args)...}
     {
     }
 

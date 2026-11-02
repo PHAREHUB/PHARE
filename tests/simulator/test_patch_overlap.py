@@ -174,12 +174,12 @@ class PatchOverlapTest(SimulatorTest):
 
     def check_shared_nodes_are_equal(self, ilvl, pairs):
         getters = {
-            "Bx": "getBx", "By": "getBy", "Bz": "getBz",
-            "Ex": "getEx", "Ey": "getEy", "Ez": "getEz",
-            "rho": "getDensity",
+            "Bx": ("getB", "x"), "By": ("getB", "y"), "Bz": ("getB", "z"),
+            "Ex": ("getE", "x"), "Ey": ("getE", "y"), "Ez": ("getE", "z"),
+            "rho": ("getN", "protons"),
         }  # fmt: skip
         for qty, getter in getters.items():
-            by_id = {p.patchID: p for p in self.level_patches(ilvl, getter)}
+            by_id = {p.patchID: p for p in self.level_patches(ilvl, *getter)}
             for owner, other in pairs:
                 owner_values, other_values = shared_nodes(
                     by_id[owner.patchID], by_id[other.patchID], qty
@@ -188,7 +188,7 @@ class PatchOverlapTest(SimulatorTest):
                 np.testing.assert_array_equal(owner_values, other_values, err_msg=qty)
 
     def check_density_is_not_duplicated(self, ilvl, pairs):
-        by_id = {p.patchID: p for p in self.level_patches(ilvl, "getDensity")}
+        by_id = {p.patchID: p for p in self.level_patches(ilvl, "getN", "protons")}
         for owner, other in pairs:
             values, _ = shared_nodes(by_id[owner.patchID], by_id[other.patchID], "rho")
             # the initial density is 1, it doubles if both patches hold the particles
@@ -198,13 +198,13 @@ class PatchOverlapTest(SimulatorTest):
         self.simulator = Simulator(config()).initialize()
 
         ilvl = 2
-        pairs = overlapping_pairs(self.level_patches(ilvl, "getBx"))
+        pairs = overlapping_pairs(self.level_patches(ilvl, "getB", "x"))
         self.assertGreater(len(pairs), 0, "the configuration no longer has an overlap")
 
         for step in range(time_step_nbr + 1):
             if step > 0:
                 self.simulator.advance()
-            pairs = overlapping_pairs(self.level_patches(ilvl, "getBx"))
+            pairs = overlapping_pairs(self.level_patches(ilvl, "getB", "x"))
             self.check_particles_are_on_owner_only(ilvl, pairs)
             self.check_shared_nodes_are_equal(ilvl, pairs)
             self.check_density_is_not_duplicated(ilvl, pairs)

@@ -3,6 +3,7 @@
 
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/enum_table.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -125,20 +126,27 @@ public:
     // ------------------------------------------------------------------------
 public:
     NO_DISCARD constexpr static std::array<QtyCentering, dim>
-    centering(HybridQuantity::Scalar const qty)
+    centering(HybridQuantity::Scalar const qty) _PHARE_ALL_FN_
     {
         auto const idx = static_cast<std::size_t>(qty);
         if (idx >= scalarCentering_.size())
-            throw std::runtime_error("Wrong hybridQuantity");
+        {
+            throw_runtime_error("Wrong hybridQuantity");
+            return ConstArray<QtyCentering, dim>(QtyCentering::primal);
+        }
         return scalarCentering_[idx];
     }
 
     NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
-    centering(HybridQuantity::Vector const qty)
+    centering(HybridQuantity::Vector const qty) _PHARE_ALL_FN_
     {
         auto const idx = static_cast<std::size_t>(qty);
         if (idx >= vectorCentering_.size())
-            throw std::runtime_error("Wrong hybridQuantity");
+        {
+            throw_runtime_error("Wrong hybridQuantity");
+            return ConstArray<std::array<QtyCentering, dim>, 3>(
+                ConstArray<QtyCentering, dim>(QtyCentering::primal));
+        }
         return vectorCentering_[idx];
     }
 

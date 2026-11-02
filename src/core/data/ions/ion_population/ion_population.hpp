@@ -49,6 +49,7 @@ namespace core
 
 
 
+
         NO_DISCARD auto const& particleInitializerInfo() const
         {
             assert(particleInitializerInfo_.contains("density"));
@@ -146,5 +147,7 @@ namespace core
     };
 } // namespace core
 } // namespace PHARE
+
+
 
 #endif

@@ -132,8 +132,8 @@ public:
 
     auto& grids() const { return xyz; }
 
-    auto& operator[](std::size_t const i) { return xyz[i]; }
-    auto& operator[](std::size_t const i) const { return xyz[i]; }
+    auto& operator[](std::size_t const i) _PHARE_ALL_FN_ { return xyz[i]; }
+    auto& operator[](std::size_t const i) const _PHARE_ALL_FN_ { return xyz[i]; }
 
 
     template<auto o>

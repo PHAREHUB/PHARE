@@ -1,0 +1,11 @@
+# --- GPU layout comparisons (dim,interp,nbRefinedPart,layout,allocator) ---
+# tests/simulator/layouts compare each tiled layout against the AoSMapped CPU reference,
+# interp 1 and the default nbRefinedPart per dim
+# --- reference ---
+1,1,2,AoSMapped,CPU
+2,1,4,AoSMapped,CPU
+3,1,6,AoSMapped,CPU
+# --- AoSPCTS ---
+1,1,2,AoSPCTS,GPU_UNIFIED
+2,1,4,AoSPCTS,GPU_UNIFIED
+3,1,6,AoSPCTS,GPU_UNIFIED

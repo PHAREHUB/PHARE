@@ -1,0 +1,45 @@
+CartesianGridGeometry
+{
+    domain_boxes = [ (0) , (64) ]
+    x_lo = 0.0
+    x_up = 1.0
+    periodic_dimension = 1
+}
+Main
+{
+    dim = 1
+}
+PatchHierarchy
+{
+    max_levels  =   1
+    // vector of coarse ratio with dim dimension
+
+    largest_patch_size
+    {
+        level_0 =   32
+        // All finer level will use same values in as level_0
+    }
+    smallest_patch_size
+    {
+        level_0 =   32
+        // All finer level will use same values in as level_0
+     }
+}
+LoadBalancer
+{
+}
+StandardTagAndInitialize
+{
+
+}
+GriddingAlgorithm
+{
+}
+TimeRefinementIntegrator
+{
+    start_time  =   0.0
+    end_time    =   1.0
+    max_integrator_steps    =   20
+    regrid_interval = 1
+    tag_buffer = 10
+}

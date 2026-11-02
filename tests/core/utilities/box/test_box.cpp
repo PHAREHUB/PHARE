@@ -382,7 +382,7 @@ TEST(BoxReverseIterator, handlesUnsignedInteger)
         {
             dummy = *it;
         }
-        auto expected = Point<std::uint32_t, 2>{0, 0};
+        auto expected = Point<std::uint32_t, 2>{0u, 0u};
         EXPECT_EQ(expected, dummy);
     }
 
@@ -392,7 +392,7 @@ TEST(BoxReverseIterator, handlesUnsignedInteger)
         {
             dummy = *it;
         }
-        auto expected = Point<std::uint32_t, 3>{0, 0, 0};
+        auto expected = Point<std::uint32_t, 3>{0u, 0u, 0u};
         EXPECT_EQ(expected, dummy);
     }
 }
