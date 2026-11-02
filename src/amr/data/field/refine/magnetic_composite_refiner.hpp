@@ -70,7 +70,9 @@ private:
      * With one, round out to whole coarse cells (coarse_cell_round_out.hpp), then re-clip: the
      * overlap arrives already clipped to the allocation, so rounding can push it back out. Widening
      * the gather is safe because the fill writes only still-NaN fine indices, and the fine indices
-     * rounded in share the coarse anchors, and the stencil reach, of those already gathered.
+     * rounded in share the coarse anchors, and the stencil reach, of those already gathered. Faces
+     * a rounded B copy already wrote (copiesWholeCoarseCells) are kept, so the touch-up reads
+     * same-level data wherever it exists.
      */
     static SAMRAI::hier::Box
     gatherRegion_(SAMRAI::hier::Box const& overlap,
