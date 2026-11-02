@@ -586,6 +586,43 @@ TYPED_TEST(OhmTest, ThatIsothermalPressureTermIsCurlFree)
 }
 
 
+// with V = B = J = 0 and a uniform Pe, Ohm's law gives E = -grad(Pe)/n = 0 whatever n does.
+// The density takes two values only, so that many edges also see equal densities on both nodes
+TYPED_TEST(OhmTest, ThatUniformPressureGivesNoElectricField)
+{
+    using Ohm_t = TestFixture::Ohm_t;
+
+    auto& layout    = this->layout;
+    auto const zero = [&](auto& field) {
+        layout.evalOnGhostBox(field, [&](auto const&... ijk) { field(ijk...) = 0.; });
+    };
+    for (auto* vecfield : {&this->V, &this->B, &this->J})
+        for (auto const component : {Component::X, Component::Y, Component::Z})
+            zero((*vecfield)(component));
+
+    auto k = 0;
+    layout.evalOnGhostBox(this->n, [&](auto const&... ijk) {
+        auto const hash = std::sin(12.9898 * ++k) * 43758.5453;
+        this->n(ijk...) = hash - std::floor(hash) < 0.5 ? 1. : 1.7;
+        this->P(ijk...) = 0.3;
+    });
+
+    auto const dict = [] {
+        PHARE::initializer::PHAREDict dict;
+        dict["resistivity"]       = 0.0;
+        dict["hyper_resistivity"] = 0.0;
+        return dict;
+    }();
+    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
+
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+    {
+        auto& Ec = this->Enew(c);
+        layout.evalOnBox(Ec, [&](auto const&... ijk) { EXPECT_EQ(Ec(ijk...), 0.); });
+    }
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

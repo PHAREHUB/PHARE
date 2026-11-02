@@ -176,10 +176,23 @@ private:
     }
 
 
-    // -grad(Pe)/n is evaluated as -(<Te> D(ln n) + D(Te)), with Te = Pe/n on the nodes.
-    // For a uniform Te this is exactly the discrete gradient of Te ln(n), whose discrete curl
-    // vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
-    // Dividing D(Pe) by the edge average of n is not a discrete gradient and does create some.
+    // logarithmic mean (n1 - n0) / (ln n1 - ln n0) of two positive densities, written with
+    // e = (n1 - n0) / (n1 + n0) as m e / atanh(e), m the arithmetic mean: no n1/n0 ratio to
+    // overflow, accurate when n1 ~ n0, and equal to m in the limit n1 = n0.
+    static double logMean_(double const n0, double const n1)
+    {
+        auto const m = 0.5 * (n0 + n1);
+        auto const e = (n1 - n0) / (n1 + n0);
+        return e == 0. ? m : m * e / std::atanh(e);
+    }
+
+
+    // -grad(Pe)/n is evaluated as -D(Pe) / n_L, with n_L the logarithmic mean of n on the two
+    // nodes of the edge. This keeps two exact properties of the continuous term:
+    // - a uniform Pe gives no force, whatever n does;
+    // - a uniform Te gives -Te D(ln n), the discrete gradient of Te ln(n), whose discrete curl
+    //   vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
+    // Dividing by the arithmetic mean of n, as before, breaks the second one.
     // n must be > 0 on both nodes, as it already must be for the electron velocity.
     template<auto component, typename Field>
     auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
@@ -189,13 +202,11 @@ private:
         if constexpr (d < dimension)
         {
             // E_d is dual along d, its two neighbouring nodes are index and index+1 along d
-            auto const n0  = detail::shifted<d>(n, index, 0);
-            auto const n1  = detail::shifted<d>(n, index, 1);
-            auto const Te0 = detail::shifted<d>(Pe, index, 0) / n0;
-            auto const Te1 = detail::shifted<d>(Pe, index, 1) / n1;
+            auto const nL
+                = logMean_(detail::shifted<d>(n, index, 0), detail::shifted<d>(n, index, 1));
+            auto const dPe = detail::shifted<d>(Pe, index, 1) - detail::shifted<d>(Pe, index, 0);
 
-            return -layout_.inverseMeshSize(static_cast<Direction>(d))
-                   * (0.5 * (Te0 + Te1) * std::log(n1 / n0) + (Te1 - Te0));
+            return -layout_.inverseMeshSize(static_cast<Direction>(d)) * dPe / nL;
         }
         else
         {

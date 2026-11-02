@@ -37,14 +37,18 @@ class TestVariables:
 
 def pressure_term(n, P, axis, dl):
     """-grad(P)/n on the edges between consecutive nodes along axis, written as
-    -(<Te> D(ln n) + D(Te)) with Te = P/n on the nodes, as in Ohm::pressure_"""
-    Te = P / n
+    -D(P) / n_L with n_L the logarithmic mean of n on the two nodes, as in Ohm::pressure_"""
     lo = [slice(None)] * n.ndim
     hi = [slice(None)] * n.ndim
     lo[axis] = slice(None, -1)
     hi[axis] = slice(1, None)
     lo, hi = tuple(lo), tuple(hi)
-    return -(0.5 * (Te[lo] + Te[hi]) * np.log(n[hi] / n[lo]) + (Te[hi] - Te[lo])) / dl
+    n0, n1 = n[lo], n[hi]
+    same = n1 == n0
+    nL = np.where(
+        same, n0, (n1 - n0) / np.where(same, 1.0, np.log(n1) - np.log(n0))
+    )
+    return -(P[hi] - P[lo]) / (dl * nL)
 
 
 # ------------------------------------------------------------------------------
