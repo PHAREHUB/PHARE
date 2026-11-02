@@ -10,6 +10,6 @@ endif()
 if(HighFive AND testMPI)
 
   ## These test use dump diagnostics so require HighFive!
-  phare_mpi_python3_exec(11 10 mhd_shock_periodic periodic.py ${CMAKE_CURRENT_BINARY_DIR})
-  phare_mpi_python3_exec(11 10 mhd_shock_with_boundaries with_boundaries.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(11 10 mhd_shock_periodic shock_periodic.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(11 10 mhd_shock_with_boundaries shock_with_boundaries.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()

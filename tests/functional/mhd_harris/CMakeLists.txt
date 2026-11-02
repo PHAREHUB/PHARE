@@ -12,7 +12,7 @@ if(HighFive AND testMPI)
   # exec level 11
   # mpirun -n 10
 
-  phare_mpi_python3_exec(11 10 mhd_harris_periodic periodic.py ${CMAKE_CURRENT_BINARY_DIR})
-  phare_mpi_python3_exec(11 10 mhd_harris_with_boundaries with_boundaries.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(11 10 mhd_harris_periodic harris_periodic.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(11 10 mhd_harris_with_boundaries harris_with_boundaries.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif(HighFive AND testMPI)
