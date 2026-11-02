@@ -1,3 +1,4 @@
+import json
 import os
 
 import matplotlib as mpl
@@ -214,87 +215,100 @@ def config_2d():
     return sim
 
 
+# Each check compares the density PHARE computes from the particles with the density
+# given as input. Particles are drawn at random (no seed), so the spread of the difference
+# is particle noise and changes from run to run. The largest spread accepted per patch,
+# for each (dimension, quantity), is read from THRESHOLDS_FILE. Those values were measured
+# over many runs by res/calibration/density_check/calibrate.py: rerun it to update them
+# when this test's setup changes (cells, particles per cell, masses, charges, densities).
+THRESHOLDS_FILE = "density_check_thresholds.json"
+
+
+def load_thresholds():
+    """{"1d": {"mass": t, "charge": t}, "2d": {...}} from THRESHOLDS_FILE.
+
+    CMake copies the file next to this test in the build directory; when the test
+    runs from the source tree, it is read from res/calibration/density_check/.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(here, THRESHOLDS_FILE),
+        os.path.join(
+            here,
+            *[os.pardir] * 3,
+            "res",
+            "calibration",
+            "density_check",
+            THRESHOLDS_FILE,
+        ),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            with open(path) as f:
+                return {
+                    dim: {qty: v["threshold"] for qty, v in qties.items()}
+                    for dim, qties in json.load(f)["thresholds"].items()
+                }
+    raise FileNotFoundError(f"{THRESHOLDS_FILE} not found in {candidates}")
+
+
+def computed_and_expected(ndim, quantity, time=0.0):
+    """(computed, expected) hierarchies of the total ion mass or charge density."""
+    r = Run(os.path.join(os.curdir, f"nCheck_{ndim}d"))
+    densities = {
+        1: (densityMain_1d, densityBeam_1d),
+        2: (densityMain_2d, densityBeam_2d),
+    }[ndim]
+    if quantity == "mass":
+        h = r.GetMassDensity(time)
+        func = {1: ions_mass_density_func1d, 2: ions_mass_density_func2d}[ndim]
+        return h, hierarchy_from(hier=h, func=func, masses=masses, densities=densities)
+    h = r.GetNi(time)
+    func = {1: ions_charge_density_func1d, 2: ions_charge_density_func2d}[ndim]
+    return h, hierarchy_from(hier=h, func=func, charges=charges, densities=densities)
+
+
+def patch_sigmas(h, H, time=0.0):
+    """Standard deviation of (computed - expected) on each patch."""
+    sigmas = []
+    for lvl_h, lvl_H in zip(h.levels(time).values(), H.levels(time).values()):
+        for patch_h, patch_H in zip(lvl_h.patches, lvl_H.patches):
+            dset_h = patch_h.patch_datas["value"][patch_h.box]
+            dset_H = patch_H.patch_datas["value"][patch_H.box]
+            sigmas.append(float(np.std(dset_h - dset_H)))
+    return sigmas
+
+
 def main():
     Simulator(config_1d()).run().reset()
     ph.global_vars.sim = None
     Simulator(config_2d()).run().reset()
 
-    def assert_close_enough(h, H):
-        for lvl_h, lvl_H in zip(h.levels(time).values(), H.levels(time).values()):
-            for patch_h, patch_H in zip(lvl_h.patches, lvl_H.patches):
-                pd_h = patch_h.patch_datas["value"]
-                pd_H = patch_H.patch_datas["value"]
-
-                dset_h = pd_h[patch_h.box]
-                dset_H = pd_H[patch_H.box]
-
-                std = np.std(dset_h - dset_H)
-                print(f"dim = {pd_H.ndim}, sigma(user v - actual v) = {std}")
-                assert std < 0.062  # empirical value obtained from print just above
+    thresholds = load_thresholds()
+    hiers = {}
+    for ndim in (1, 2):
+        for quantity in ("mass", "charge"):
+            h, H = computed_and_expected(ndim, quantity)
+            hiers[(ndim, quantity)] = (h, H)
+            threshold = thresholds[f"{ndim}d"][quantity]
+            for sigma in patch_sigmas(h, H):
+                print(
+                    f"dim = {ndim}, {quantity}, sigma(user v - actual v) = {sigma}, threshold = {threshold}"
+                )
+                assert sigma < threshold
 
     _fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(6, 8))
-
-    # 1d stuffs
-    run_path = os.path.join(os.curdir, "nCheck_1d")
-    time = 0.0
-    r = Run(run_path)
-
-    h1 = r.GetMassDensity(time)
-    h2 = r.GetNi(time)
-
-    H1 = hierarchy_from(
-        hier=h1,
-        func=ions_mass_density_func1d,
-        masses=masses,
-        densities=(densityMain_1d, densityBeam_1d),
-    )
-    H2 = hierarchy_from(
-        hier=h2,
-        func=ions_charge_density_func1d,
-        charges=charges,
-        densities=(densityMain_1d, densityBeam_1d),
-    )
-
-    assert_close_enough(h1, H1)
-    assert_close_enough(h2, H2)
-
     cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-    h1.plot(ax=ax1, ls="-", lw=2.0, color=cycle[0])
-    H1.plot(ax=ax1, ls="-", lw=2.0, color=cycle[1])
-
-    h2.plot(ax=ax2, ls="-", lw=2.0, color=cycle[0])
-    H2.plot(ax=ax2, ls="-", lw=2.0, color=cycle[1])
-
-    ax1.set_title("mass density : 1d")
-    ax2.set_title("charge density : 1d")
-
-    # 2d stuffs
-    run_path = os.path.join(os.curdir, "nCheck_2d")
-    time = 0.0
-    r = Run(run_path)
-
-    h1 = r.GetMassDensity(time)
-    h2 = r.GetNi(time)
-
-    H1 = hierarchy_from(
-        hier=h1,
-        func=ions_mass_density_func2d,
-        masses=masses,
-        densities=(densityMain_2d, densityBeam_2d),
-    )
-    H2 = hierarchy_from(
-        hier=h2,
-        func=ions_charge_density_func2d,
-        charges=charges,
-        densities=(densityMain_2d, densityBeam_2d),
-    )
-
-    assert_close_enough(h1, H1)
-    assert_close_enough(h2, H2)
+    for ax, quantity in ((ax1, "mass"), (ax2, "charge")):
+        h, H = hiers[(1, quantity)]
+        h.plot(ax=ax, ls="-", lw=2.0, color=cycle[0])
+        H.plot(ax=ax, ls="-", lw=2.0, color=cycle[1])
+        ax.set_title(f"{quantity} density : 1d")
 
     cmap = mpl.colormaps["viridis"]
-
+    h1, H1 = hiers[(2, "mass")]
+    h2, H2 = hiers[(2, "charge")]
     h1.plot(ax=ax3, vmin=3.75, vmax=5, cmap=cmap, title="computed mass density : 2d")
     H1.plot(ax=ax4, vmin=3.75, vmax=5, cmap=cmap, title="expected mass density : 2d")
     h2.plot(ax=ax5, vmin=2.2, vmax=3, cmap=cmap, title="computed charge density : 2d")
