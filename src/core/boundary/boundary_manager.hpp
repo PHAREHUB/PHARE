@@ -83,6 +83,7 @@ public:
     using vector_field_type     = VecField<field_type, physical_quantity_type>;
     using scalar_condition_type = IFieldBoundaryCondition<field_type, GridLayoutT>;
     using vector_condition_type = IFieldBoundaryCondition<vector_field_type, GridLayoutT>;
+    using external_field_updater_type = boundary_factory_type::external_field_updater_type;
 
     /** @brief Describes how the master boundary is chosen at corner and edges */
     enum class PriorityPolicy : std::uint8_t {
@@ -98,11 +99,14 @@ public:
      * @param scalar_quantities List of scalar quantities to manage.
      * @param vector_quantities List of vector quantities to manage.
      * @param gamma Heat capacity ratio, required to compute the inflow total energy
+     * @param externalFieldUpdater Updater of the external field B0, null when there is none.
      */
     BoundaryManager(PHARE::initializer::PHAREDict const& dict,
                     std::vector<typename physical_quantity_type::Scalar> const& scalarQuantities,
                     std::vector<typename physical_quantity_type::Vector> const& vectorQuantities,
-                    double const gamma            = 0.0,
+                    double const gamma = 0.0,
+                    std::shared_ptr<external_field_updater_type> const& externalFieldUpdater
+                    = nullptr,
                     PriorityPolicy priorityPolicy = PriorityPolicy::ByDirection)
 
         : gamma_{gamma}
@@ -114,8 +118,9 @@ public:
         for (auto const& [key, subdict] : dict)
         {
             auto const location   = getBoundaryLocationFromString(key);
-            boundaries_[location] = boundary_factory_type::create(
-                location, *subdict, scalarQuantities, vectorQuantities, gamma_);
+            boundaries_[location]
+                = boundary_factory_type::create(location, *subdict, scalarQuantities,
+                                                vectorQuantities, gamma_, externalFieldUpdater);
         }
     }
 

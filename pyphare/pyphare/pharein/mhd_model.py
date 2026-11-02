@@ -129,6 +129,9 @@ class MHDModel:
         global_vars.sim.set_model(self)
 
     def validate_inflow_normal_b(self, sim, rtol=1e-6):
+        if not self.model_dict["b_is_total"] and sim.external_field is not None:
+            return
+
         domain = sim.simulation_domain()
         b_functions = [self.model_dict[name] for name in ("bx", "by", "bz")]
 

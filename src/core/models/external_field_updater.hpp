@@ -50,13 +50,27 @@ public:
     virtual void operator()(state_type& state, vecfield_type& scratch, GridLayoutT const& layout,
                             double time)
     {
-        computePotential(scratch, time, layout);
-        curlOnGhostBox_(state.B0(), scratch, layout);
+        computeB0(state.B0(), scratch, layout, time);
         if (isTimeDependent())
         {
             computePotentialTimeDerivative(scratch, time, layout);
             curlOnGhostBox_(state.dB0dt(), scratch, layout);
         }
+    }
+
+    /**
+     * @brief fill only the external field B0 at a given time, not its time derivative
+     *
+     * @param B0 the face-centered vecfield receiving the external field
+     * @param scratch E-centered work vecfield, holding the vector potential on output
+     * @param layout the current grid layout
+     * @param time the current time
+     */
+    virtual void computeB0(vecfield_type& B0, vecfield_type& scratch, GridLayoutT const& layout,
+                           double time)
+    {
+        computePotential(scratch, time, layout);
+        curlOnGhostBox_(B0, scratch, layout);
     }
 
     virtual void computePotential(vecfield_type& a0, double time, GridLayoutT const& layout) = 0;
