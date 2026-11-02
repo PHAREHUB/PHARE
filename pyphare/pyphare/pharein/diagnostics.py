@@ -337,7 +337,9 @@ class ElectromagDiagnostics(Diagnostics):
         ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 
     **quantity**, one of: "E" (electric field), "B" (magnetic field),
-    "B0" (external magnetic field, requires the Simulation ``external_field``).
+    "B0" (external magnetic field, requires a
+    :class:`~pyphare.pharein.DipoleExternalField` or a
+    :class:`~pyphare.pharein.UserDefinedExternalField`).
     """
 
     em_quantities = ("E", "B", "B0")
@@ -358,7 +360,8 @@ class ElectromagDiagnostics(Diagnostics):
             raise ValueError(error_msg.format(kwargs["quantity"]))
         if kwargs["quantity"] == "B0" and global_vars.sim.external_field is None:
             raise RuntimeError(
-                "Error: 'B0' diagnostics require an external_field in the Simulation"
+                "Error: 'B0' diagnostics require an external field "
+                "(DipoleExternalField or UserDefinedExternalField)"
             )
         self.quantity = "/EM_" + kwargs["quantity"]
 

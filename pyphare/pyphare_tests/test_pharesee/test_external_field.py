@@ -62,11 +62,8 @@ class ExternalFieldReadbackTest(unittest.TestCase):
                 "format": "phareh5",
                 "options": {"dir": self.diag_dir(), "mode": "overwrite"},
             },
-            external_field={
-                "type": "user-defined",
-                "potential": (None, None, az_const),
-            },
         )
+        ph.UserDefinedExternalField(a0z=az_const)
 
         def density(x, y):
             return 1.0
