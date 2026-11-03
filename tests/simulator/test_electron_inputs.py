@@ -7,6 +7,7 @@
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import startMPI
 
@@ -80,10 +81,12 @@ class ElectronInputsTest(unittest.TestCase):
                 with self.assertRaisesRegex(TypeError, "pressure_closure/Te"):
                     ph.populateDict()
 
-
     def test_a_negative_net_charge_is_refused(self):
         setup_simulation(
-            density=lambda x: -1.0 + 0 * x, sim_args={"min_initial_density": 0.01}, closure="isothermal", Te=0.1
+            density=lambda x: -1.0 + 0 * x,
+            sim_args={"min_initial_density": 0.01},
+            closure="isothermal",
+            Te=0.1,
         )
         with self.assertRaisesRegex(ValueError, "below min_initial_density"):
             ph.populateDict()
@@ -97,14 +100,18 @@ class ElectronInputsTest(unittest.TestCase):
         ph.populateDict()
 
         setup_simulation(
-            density=hole, sim_args={"min_initial_density": 0.01}, closure="isothermal", Te=0.1
+            density=hole,
+            sim_args={"min_initial_density": 0.01},
+            closure="isothermal",
+            Te=0.1,
         )
         with self.assertRaisesRegex(ValueError, "below min_initial_density"):
             ph.populateDict()
 
-
     def test_min_initial_density_must_be_a_finite_non_negative_number(self):
-        setup_simulation(sim_args={"min_initial_density": "0.01"}, closure="isothermal", Te=0.1)
+        setup_simulation(
+            sim_args={"min_initial_density": "0.01"}, closure="isothermal", Te=0.1
+        )
         with self.assertRaises(TypeError):
             ph.populateDict()
         for bad in (-1.0, float("inf"), float("nan")):
@@ -127,7 +134,6 @@ class ElectronInputsTest(unittest.TestCase):
         setup_simulation(density=lambda x: np.inf + 0 * x, closure="isothermal", Te=0.1)
         with self.assertRaisesRegex(ValueError, "inf"):
             ph.populateDict()
-
 
 
 if __name__ == "__main__":

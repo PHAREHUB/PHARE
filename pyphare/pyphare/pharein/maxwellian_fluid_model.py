@@ -240,7 +240,9 @@ class MaxwellianFluidModel:
         else:
             raise ValueError("Unknown dimension")
 
-    def validate_density(self, sim, min_initial_density, max_points_per_chunk=1_000_000):
+    def validate_density(
+        self, sim, min_initial_density, max_points_per_chunk=1_000_000
+    ):
         """
         the electrons have the ions' charge density: the electron velocity
         Ve = (sum_s q_s F_s - J)/n and Ohm's law divide by it, so it must not go below
@@ -268,7 +270,9 @@ class MaxwellianFluidModel:
 
         lowest, where = np.inf, None
         for start in range(0, len(nodes[0]), slab):
-            coords = np.meshgrid(nodes[0][start : start + slab], *nodes[1:], indexing="ij")
+            coords = np.meshgrid(
+                nodes[0][start : start + slab], *nodes[1:], indexing="ij"
+            )
             total = np.zeros(coords[0].shape)
             for pop in self.populations:
                 density = self.model_dict[pop]["density"]
