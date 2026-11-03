@@ -27,7 +27,10 @@ public:
         auto const P   = u.P;
 
         auto const GeneralisedPressure = P + 0.5 * (B.x * B.x + B.y * B.y + B.z * B.z);
-        auto const TotalEnergy         = eosPToEtot(gamma_, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
+
+        // HD-only energy: kinetic + thermal. No magnetic terms.
+        // Including B² here would double-count with the Poynting flux.
+        auto const Ehd = 0.5 * rho * (V.x * V.x + V.y * V.y + V.z * V.z) + P / (gamma_ - 1.0);
 
         if constexpr (direction == Direction::X)
         {
@@ -38,8 +41,7 @@ public:
             auto F_Bx    = 0.0;
             auto F_By    = B.y * V.x - V.y * B.x;
             auto F_Bz    = B.z * V.x - V.z * B.x;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.x
-                           - B.x * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (Ehd + P) * V.x;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -52,8 +54,7 @@ public:
             auto F_Bx    = B.x * V.y - V.x * B.y;
             auto F_By    = 0.0;
             auto F_Bz    = B.z * V.y - V.z * B.y;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.y
-                           - B.y * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (Ehd + P) * V.y;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -66,8 +67,7 @@ public:
             auto F_Bx    = B.x * V.z - V.x * B.z;
             auto F_By    = B.y * V.z - V.y * B.z;
             auto F_Bz    = 0.0;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.z
-                           - B.z * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (Ehd + P) * V.z;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -79,40 +79,16 @@ public:
         PerIndex f = compute<direction>(u);
 
         if constexpr (Hall)
-            hall_contribution_<direction>(u.rho, u.B, J, f.B, f.P);
+            hall_contribution_<direction>(u.rho, u.B, J, f.B);
 
         return f;
-    }
-
-    template<auto direction>
-    void dissipative_contributions(auto const& Et, auto const& Bt, auto& F_B, auto& F_Etot) const
-    {
-        if constexpr (direction == Direction::X)
-        {
-            F_B.y += -Et.z;
-            F_B.z += Et.y;
-            F_Etot += Et.y * Bt.z - Et.z * Bt.y;
-        }
-        if constexpr (direction == Direction::Y)
-        {
-            F_B.x += Et.z;
-            F_B.z += -Et.x;
-            F_Etot += Et.z * Bt.x - Et.x * Bt.z;
-        }
-        if constexpr (direction == Direction::Z)
-        {
-            F_B.x += -Et.y;
-            F_B.y += Et.x;
-            F_Etot += Et.x * Bt.y - Et.y * Bt.x;
-        }
     }
 
 private:
     double const gamma_;
 
     template<auto direction>
-    void hall_contribution_(auto const& rho, auto const& B, auto const& J, auto& F_B,
-                            auto& F_Etot) const
+    void hall_contribution_(auto const& rho, auto const& B, auto const& J, auto& F_B) const
     {
         auto const invRho = 1.0 / rho;
 
@@ -120,26 +96,22 @@ private:
         auto const JxB_y = J.z * B.x - J.x * B.z;
         auto const JxB_z = J.x * B.y - J.y * B.x;
 
-        auto const BdotJ = B.x * J.x + B.y * J.y + B.z * J.z;
-        auto const BdotB = B.x * B.x + B.y * B.y + B.z * B.z;
-
+        // Hall energy flux ((BdotJ*B - BdotB*J)/rho) is already captured by the CT
+        // Poynting correction via E×B, where E includes the Hall term (J×B)/rho.
         if constexpr (direction == Direction::X)
         {
             F_B.y += -JxB_z * invRho;
             F_B.z += JxB_y * invRho;
-            F_Etot += (BdotJ * B.x - BdotB * J.x) * invRho;
         }
         if constexpr (direction == Direction::Y)
         {
             F_B.x += JxB_z * invRho;
             F_B.z += -JxB_x * invRho;
-            F_Etot += (BdotJ * B.y - BdotB * J.y) * invRho;
         }
         if constexpr (direction == Direction::Z)
         {
             F_B.x += -JxB_y * invRho;
             F_B.y += JxB_x * invRho;
-            F_Etot += (BdotJ * B.z - BdotB * J.z) * invRho;
         }
     }
 };

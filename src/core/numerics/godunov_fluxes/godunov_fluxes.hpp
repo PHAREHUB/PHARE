@@ -95,8 +95,7 @@ public:
     }
 
     template<typename State, typename Fluxes>
-    void operator()(auto& ct_state, auto const& dissipative_electric_state, State& state,
-                    Fluxes& fluxes)
+    void operator()(auto& ct_state, State& state, Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
 
@@ -145,16 +144,6 @@ public:
                                                           {indices...});
                     }
                 });
-
-            if (is_resistive_ || is_hyper_resistive_)
-                layout_.evalOnBox(fluxes.template expose_centering<direction>(),
-                                  [&](auto&... indices) {
-                                      auto F = fluxes.template get_dir<direction>({indices...});
-                                      auto const [Et, Bt] = transverse_on_face_<direction>(
-                                          dissipative_electric_state.E(), state.B, {indices...});
-                                      equations_.template dissipative_contributions<direction>(
-                                          Et, Bt, F.B, F.Etot());
-                                  });
         });
     }
 
@@ -162,43 +151,6 @@ public:
     bool isHyperResistive() const { return is_hyper_resistive_; }
 
 private:
-    template<auto direction>
-    auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
-    {
-        using implT        = GridLayout::implT;
-        auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
-
-        auto const& Ex = E(Component::X);
-        auto const& Ey = E(Component::Y);
-        auto const& Ez = E(Component::Z);
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
-
-        if constexpr (direction == Direction::X)
-            return std::make_pair(
-                PerIndexVector<double>{nan,
-                                       GridLayout::template project<implT::edgeYToFaceX>(Ey, idx),
-                                       GridLayout::template project<implT::edgeZToFaceX>(Ez, idx)},
-                PerIndexVector<double>{nan, GridLayout::template project<implT::ByToFaceX>(By, idx),
-                                       GridLayout::template project<implT::BzToFaceX>(Bz, idx)});
-        else if constexpr (direction == Direction::Y)
-            return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<implT::edgeXToFaceY>(Ex, idx),
-                                       nan,
-                                       GridLayout::template project<implT::edgeZToFaceY>(Ez, idx)},
-                PerIndexVector<double>{GridLayout::template project<implT::BxToFaceY>(Bx, idx), nan,
-                                       GridLayout::template project<implT::BzToFaceY>(Bz, idx)});
-        else
-            return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<implT::edgeXToFaceZ>(Ex, idx),
-                                       GridLayout::template project<implT::edgeYToFaceZ>(Ey, idx),
-                                       nan},
-                PerIndexVector<double>{GridLayout::template project<implT::BxToFaceZ>(Bx, idx),
-                                       GridLayout::template project<implT::ByToFaceZ>(By, idx),
-                                       nan});
-    }
-
     GridLayout layout_;
     bool const is_resistive_;
     bool const is_hyper_resistive_;

@@ -34,11 +34,12 @@ class ComputeFluxes
     using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
+    using PoyntingCorrection_t = Dispatchers_t::template PoyntingCorrection_t<Rec>;
+
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
 
-    using VecField    = MHDModel::vecfield_type;
-    using Equations_t = FVMethod_t::Equations_t;
+    using VecField = MHDModel::vecfield_type;
 
 
 public:
@@ -76,7 +77,7 @@ public:
             DissipativeElectricField_t{level, model, fVMethodInfo_}(dissipative_electric_state_,
                                                                     state);
 
-        FVMethod_t{level, model, fVMethodInfo_}(ct_, dissipative_electric_state_, state, fluxes);
+        FVMethod_t{level, model, fVMethodInfo_}(ct_, state, fluxes);
         TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.J);
 
         // unecessary if we decide to store both primitive and conservative variables
@@ -87,6 +88,8 @@ public:
                                constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
 
         bc.fillElectricGhosts(state.E, level, newTime);
+
+        PoyntingCorrection_t{level, model}(ct_, state, fluxes);
     }
 
     void registerResources(MHDModel& model)

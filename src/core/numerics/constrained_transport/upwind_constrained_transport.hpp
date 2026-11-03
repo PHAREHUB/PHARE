@@ -5,6 +5,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/constrained_transport/upwind_edge_b.hpp"
 #include "core/utilities/index/index.hpp"
 
 #include <cmath>
@@ -18,6 +19,7 @@ class UpwindConstrainedTransport : UpwindConstrainedTransportInfo
 {
     using Super                     = UpwindConstrainedTransportInfo;
     using Reconstruction_t          = Reconstruction<GridLayout>;
+    using EdgeB_t                   = UpwindEdgeB<GridLayout, Reconstruction>;
     constexpr static auto dimension = GridLayout::dimension;
     using Super::hyper_mode;
 
@@ -57,16 +59,15 @@ private:
     {
         if constexpr (dimension == 2)
         {
-            auto [BzL, BzR]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
+            auto const [aL, aR, dL, dR, BzL, BzR]
+                = EdgeB_t::template states<Component::X, Component::Z>(ct_state, B, idx);
 
             auto FL = BzL * ct_state.vt_y(Component::Y)(idx)
                       - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
             auto FR = BzR * ct_state.vt_y(Component::Y)(idx)
                       - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
 
-            Ex(idx) = -(ct_state.aL_y(idx) * FL + ct_state.aR_y(idx) * FR)
-                      + (ct_state.dR_y(idx) * BzR - ct_state.dL_y(idx) * BzL);
+            Ex(idx) = -(aL * FL + aR * FR) + (dR * BzR - dL * BzL);
 
             if constexpr (Hall)
             {
@@ -81,47 +82,22 @@ private:
                 auto HallL = -JxB_x_L * invRho;
                 auto HallR = -JxB_x_R * invRho;
 
-                auto F_Bz_y = ct_state.aL_y(idx) * HallL + ct_state.aR_y(idx) * HallR;
+                auto F_Bz_y = aL * HallL + aR * HallR;
 
                 Ex(idx) += -F_Bz_y;
             }
         }
         else if constexpr (dimension == 3)
         {
-            auto aS = 0.5
-                      * (ct_state.aL_y(idx)
-                         + ct_state.aL_y(layout_.template previous<Direction::Z>(idx)));
-            auto aN = 0.5
-                      * (ct_state.aR_y(idx)
-                         + ct_state.aR_y(layout_.template previous<Direction::Z>(idx)));
-            auto aB = 0.5
-                      * (ct_state.aL_z(idx)
-                         + ct_state.aL_z(layout_.template previous<Direction::Y>(idx)));
-            auto aT = 0.5
-                      * (ct_state.aR_z(idx)
-                         + ct_state.aR_z(layout_.template previous<Direction::Y>(idx)));
-            auto dS = 0.5
-                      * (ct_state.dL_y(idx)
-                         + ct_state.dL_y(layout_.template previous<Direction::Z>(idx)));
-            auto dN = 0.5
-                      * (ct_state.dR_y(idx)
-                         + ct_state.dR_y(layout_.template previous<Direction::Z>(idx)));
-            auto dB = 0.5
-                      * (ct_state.dL_z(idx)
-                         + ct_state.dL_z(layout_.template previous<Direction::Y>(idx)));
-            auto dT = 0.5
-                      * (ct_state.dR_z(idx)
-                         + ct_state.dR_z(layout_.template previous<Direction::Y>(idx)));
+            auto const [aS, aN, dS, dN, BzS, BzN]
+                = EdgeB_t::template states<Component::X, Component::Z>(ct_state, B, idx);
+            auto const [aB, aT, dB, dT, ByB, ByT]
+                = EdgeB_t::template states<Component::X, Component::Y>(ct_state, B, idx);
 
             auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
                 ct_state.vt_z(Component::Y), idx);
             auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
                 ct_state.vt_y(Component::Z), idx);
-
-            auto [BzS, BzN]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
-            auto [ByB, ByT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B(Component::Y), idx);
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
@@ -148,16 +124,15 @@ private:
     {
         if constexpr (dimension <= 2)
         {
-            auto [BzL, BzR]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Z), idx);
+            auto const [aL, aR, dL, dR, BzL, BzR]
+                = EdgeB_t::template states<Component::Y, Component::Z>(ct_state, B, idx);
 
             auto FL = BzL * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
             auto FR = BzR * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
 
-            Ey(idx) = (ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
-                      - (ct_state.dR_x(idx) * BzR - ct_state.dL_x(idx) * BzL);
+            Ey(idx) = (aL * FL + aR * FR) - (dR * BzR - dL * BzL);
 
             if constexpr (Hall)
             {
@@ -172,46 +147,22 @@ private:
                 auto HallL = JxB_y_L * invRho;
                 auto HallR = JxB_y_R * invRho;
 
-                auto F_Bz_x = ct_state.aL_x(idx) * HallL + ct_state.aR_x(idx) * HallR;
+                auto F_Bz_x = aL * HallL + aR * HallR;
 
                 Ey(idx) += F_Bz_x;
             }
         }
         else if constexpr (dimension == 3)
         {
-            auto aW = 0.5
-                      * (ct_state.aL_x(idx)
-                         + ct_state.aL_x(layout_.template previous<Direction::Z>(idx)));
-            auto aE = 0.5
-                      * (ct_state.aR_x(idx)
-                         + ct_state.aR_x(layout_.template previous<Direction::Z>(idx)));
-            auto aB = 0.5
-                      * (ct_state.aL_z(idx)
-                         + ct_state.aL_z(layout_.template previous<Direction::X>(idx)));
-            auto aT = 0.5
-                      * (ct_state.aR_z(idx)
-                         + ct_state.aR_z(layout_.template previous<Direction::X>(idx)));
-            auto dW = 0.5
-                      * (ct_state.dL_x(idx)
-                         + ct_state.dL_x(layout_.template previous<Direction::Z>(idx)));
-            auto dE = 0.5
-                      * (ct_state.dR_x(idx)
-                         + ct_state.dR_x(layout_.template previous<Direction::Z>(idx)));
-            auto dB = 0.5
-                      * (ct_state.dL_z(idx)
-                         + ct_state.dL_z(layout_.template previous<Direction::X>(idx)));
-            auto dT = 0.5
-                      * (ct_state.dR_z(idx)
-                         + ct_state.dR_z(layout_.template previous<Direction::X>(idx)));
+            auto const [aW, aE, dW, dE, BzW, BzE]
+                = EdgeB_t::template states<Component::Y, Component::Z>(ct_state, B, idx);
+            auto const [aB, aT, dB, dT, BxB, BxT]
+                = EdgeB_t::template states<Component::Y, Component::X>(ct_state, B, idx);
 
             auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
                 ct_state.vt_z(Component::X), idx);
             auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
                 ct_state.vt_x(Component::Z), idx);
-            auto [BzW, BzE]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Z), idx);
-            auto [BxB, BxT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B(Component::X), idx);
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
@@ -236,16 +187,15 @@ private:
     {
         if constexpr (dimension == 1)
         {
-            auto [ByL, ByR]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Y), idx);
+            auto const [aL, aR, dL, dR, ByL, ByR]
+                = EdgeB_t::template states<Component::Z, Component::Y>(ct_state, B, idx);
 
             auto FL = ByL * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
             auto FR = ByR * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
 
-            Ez(idx) = -(ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
-                      + (ct_state.dR_x(idx) * ByR - ct_state.dL_x(idx) * ByL);
+            Ez(idx) = -(aL * FL + aR * FR) + (dR * ByR - dL * ByL);
 
             if constexpr (Hall)
             {
@@ -260,47 +210,22 @@ private:
                 auto HallL = -JxB_z_L * invRho;
                 auto HallR = -JxB_z_R * invRho;
 
-                auto F_By_x = ct_state.aL_x(idx) * HallL + ct_state.aR_x(idx) * HallR;
+                auto F_By_x = aL * HallL + aR * HallR;
 
                 Ez(idx) += -F_By_x;
             }
         }
         else if constexpr (dimension >= 2)
         {
-            auto aW = 0.5
-                      * (ct_state.aL_x(idx)
-                         + ct_state.aL_x(layout_.template previous<Direction::Y>(idx)));
-            auto aE = 0.5
-                      * (ct_state.aR_x(idx)
-                         + ct_state.aR_x(layout_.template previous<Direction::Y>(idx)));
-            auto aS = 0.5
-                      * (ct_state.aL_y(idx)
-                         + ct_state.aL_y(layout_.template previous<Direction::X>(idx)));
-            auto aN = 0.5
-                      * (ct_state.aR_y(idx)
-                         + ct_state.aR_y(layout_.template previous<Direction::X>(idx)));
-            auto dW = 0.5
-                      * (ct_state.dL_x(idx)
-                         + ct_state.dL_x(layout_.template previous<Direction::Y>(idx)));
-            auto dE = 0.5
-                      * (ct_state.dR_x(idx)
-                         + ct_state.dR_x(layout_.template previous<Direction::Y>(idx)));
-            auto dS = 0.5
-                      * (ct_state.dL_y(idx)
-                         + ct_state.dL_y(layout_.template previous<Direction::X>(idx)));
-            auto dN = 0.5
-                      * (ct_state.dR_y(idx)
-                         + ct_state.dR_y(layout_.template previous<Direction::X>(idx)));
+            auto const [aW, aE, dW, dE, ByW, ByE]
+                = EdgeB_t::template states<Component::Z, Component::Y>(ct_state, B, idx);
+            auto const [aS, aN, dS, dN, BxS, BxN]
+                = EdgeB_t::template states<Component::Z, Component::X>(ct_state, B, idx);
 
             auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
                 ct_state.vt_x(Component::Y), idx);
             auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
                 ct_state.vt_y(Component::X), idx);
-
-            auto [BxS, BxN]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::X), idx);
-            auto [ByW, ByE]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Y), idx);
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);

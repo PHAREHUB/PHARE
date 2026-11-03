@@ -6,6 +6,7 @@
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/constrained_transport/dissipative_electric_field.hpp"
 #include "core/numerics/constrained_transport/upwind_constrained_transport.hpp"
+#include "core/numerics/constrained_transport/poynting_correction.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
@@ -108,14 +109,14 @@ public:
     }
 
 
-    void operator()(auto& ct_state, auto& dissipative_electric_state, auto& state, auto& fluxes)
+    void operator()(auto& ct_state, auto& state, auto& fluxes)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, state, fluxes))
+        for (auto& patch : rm.enumerate(level, ct_state, state, fluxes))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type finite_volume_method{info, layout};
-            finite_volume_method(ct_state, dissipative_electric_state, state, fluxes);
+            finite_volume_method(ct_state, state, fluxes);
         }
     }
 
@@ -234,6 +235,38 @@ public:
 
 
 
+// Applies the CT-based magnetic energy (Poynting) correction to the energy flux.
+template<typename GridLayout, typename Model, template<typename> typename Reconstruction>
+class PoyntingCorrectionTransformer
+{
+    using level_t   = Model::amr_types::level_t;
+    using core_type = core::PoyntingCorrection<GridLayout, Reconstruction>;
+
+public:
+    explicit PoyntingCorrectionTransformer(level_t& level, auto& model)
+        : level{level}
+        , model{model}
+    {
+    }
+
+    void operator()(auto& ct_state, auto& state, auto& fluxes)
+    {
+        auto& rm = *model.resourcesManager;
+        for (auto& patch : rm.enumerate(level, ct_state, state, fluxes))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            core_type poynting_correction{layout};
+            poynting_correction(ct_state, state, fluxes);
+        }
+    }
+
+    level_t& level;
+    Model& model;
+};
+
+
+
+
 template<typename Model>
 class RKUtilsTransformer
 {
@@ -270,6 +303,9 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
 
     template<typename FVMethodStrategy>
     using FVMethod_t = FVMethodTransformer<Model, FVMethodStrategy>;
+
+    template<template<typename> typename Reconstruction>
+    using PoyntingCorrection_t = PoyntingCorrectionTransformer<GridLayout, Model, Reconstruction>;
 
     using FiniteVolumeEuler_t = FiniteVolumeEulerTransformer<Model>;
 
