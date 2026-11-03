@@ -21,6 +21,11 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/ions/charge_flux/(x,y,z)
  * /t#/pl#/p#/ions/pop_(1,2,...)/density
  * /t#/pl#/p#/ions/pop_(1,2,...)/bulkVelocity/(x,y,z)
+ * /t#/pl#/p#/pressure  (in electrons_pressure.h5: like every quantity, the dataset
+ *                       sits directly under the patch, the tree only names the file)
+ *
+ * the electron pressure is only computed on domain nodes, its ghost nodes are not
+ * meaningful (pharesee drops them)
  */
 template<typename H5Writer>
 class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
@@ -163,6 +168,8 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
     std::string tree{"/ions/"};
     checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "mass_density",
                         "bulkVelocity", "charge_flux", "momentum_tensor");
+
+    checkCreateFileFor_(diagnostic, fileData_, std::string{"/electrons/"}, "pressure");
 }
 
 
@@ -228,6 +235,10 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
         infoVF(ions.chargeFlux(), "charge_flux", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         infoTF(ions.momentumTensor(), "momentum_tensor", patchAttributes[lvlPatchID]["ion"]);
+
+    if (isActiveDiag(diagnostic, "/electrons/", "pressure"))
+        infoDS(h5Writer.modelView().getElectrons().pressure(), "pressure",
+               patchAttributes[lvlPatchID]["electrons"]);
 }
 
 
@@ -295,6 +306,9 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
             initVF(path, attr["ion"], "charge_flux", null);
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
             initTF(path, attr["ion"], "momentum_tensor", null);
+
+        if (isActiveDiag(diagnostic, "/electrons/", "pressure"))
+            initDS(path, attr["electrons"], "pressure", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -339,6 +353,9 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         writeTF(path + "charge_flux", ions.chargeFlux());
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         writeTF(path + "momentum_tensor", ions.momentumTensor());
+
+    if (isActiveDiag(diagnostic, "/electrons/", "pressure"))
+        writeDS(path + "pressure", h5Writer.modelView().getElectrons().pressure());
 }
 
 

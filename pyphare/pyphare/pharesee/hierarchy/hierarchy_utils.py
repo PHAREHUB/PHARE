@@ -39,6 +39,7 @@ field_qties = {
     "density": "rho",
     "mass_density": "rho",
     "charge_density": "rho",
+    "pressure": "P",
     "tags": "tags",
     "rho": "mhdRho",
     "V_x": "mhdVx",

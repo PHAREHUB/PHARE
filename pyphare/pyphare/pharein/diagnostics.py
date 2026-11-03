@@ -380,6 +380,7 @@ class FluidDiagnostics_(Diagnostics):
         "bulkVelocity",
         "charge_flux",
         "momentum_tensor",
+        "electron_pressure",
     )
     type = "fluid"
 
@@ -392,6 +393,12 @@ class FluidDiagnostics_(Diagnostics):
 
     def _setSubTypeAttributes(self, **kwargs):
         self.population_name = None
+        if kwargs["quantity"] == "electron_pressure":
+            if "population_name" in kwargs:
+                raise ValueError("Error: 'electron_pressure' takes no population_name")
+            self.quantity = "/electrons/pressure"
+            return
+
         if "population_name" not in kwargs and kwargs["quantity"] == "flux":
             raise ValueError("Error: missing population_name")
         elif "population_name" in kwargs:
@@ -479,6 +486,9 @@ class FluidDiagnostics:
 
         * "charge_flux" - charge flux sum_s q_s n_s V_s, the ion current
           density used in the electron velocity
+        * "electron_pressure" - the electron pressure given by the electron
+          closure (written to ``electrons_pressure.h5``; only domain nodes are
+          meaningful), read back with ``Run.GetPe``
 
     **population_name** (``str``), name of the ion population this
     diagnostics applies to, as declared in
