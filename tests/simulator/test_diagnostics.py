@@ -302,13 +302,19 @@ class DiagnosticsTest(SimulatorTest):
     def _check_electron_pressure(self, sim):
         # isothermal closure, on the domain nodes of every level
         out_dir = sim.diag_options["options"]["dir"]
-        pe_hier = hierarchy_from(h5_filename=os.path.join(out_dir, "electrons_pressure.h5"))
-        n_hier = hierarchy_from(h5_filename=os.path.join(out_dir, "ions_charge_density.h5"))
+        pe_hier = hierarchy_from(
+            h5_filename=os.path.join(out_dir, "electrons_pressure.h5")
+        )
+        n_hier = hierarchy_from(
+            h5_filename=os.path.join(out_dir, "ions_charge_density.h5")
+        )
         Te = sim.electrons.closure.Te
 
         def domain_values(patch):
             data = next(iter(patch.patch_datas.values()))
-            return np.asarray(data.dataset)[tuple(slice(g, -g) for g in data.ghosts_nbr)]
+            return np.asarray(data.dataset)[
+                tuple(slice(g, -g) for g in data.ghosts_nbr)
+            ]
 
         def check(time, compare):
             checked = 0
@@ -329,7 +335,9 @@ class DiagnosticsTest(SimulatorTest):
         # dumped density (particle noise): Te * n on average
         check(
             0.001,
-            lambda pe, n: self.assertAlmostEqual(pe.mean() / (Te * n.mean()), 1.0, delta=0.05),
+            lambda pe, n: self.assertAlmostEqual(
+                pe.mean() / (Te * n.mean()), 1.0, delta=0.05
+            ),
         )
 
     def test_dump_elapsed_time_diags(self, ndim=1, interp=1):
