@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Measure the particle-noise spread checked by tests/simulator/initialize/density_check.py.
+
+That test (ctest: py3_init-densities) loads unseeded random particles, computes the ion
+mass and charge densities, and checks per patch that std(computed - expected) stays below
+a threshold. The spread is particle noise, so it changes from run to run. This script runs
+the test's own 1D and 2D setups many times, in separate processes, and reports for each
+(dimension, quantity) the mean, standard deviation and maximum of that spread over all
+patches and runs. The proposed threshold is mean + SIGMAS * sd, rounded up to 3 decimals.
+
+With --write, the results go to density_check_thresholds.json next to this script; the
+test reads its thresholds from that file. Rerun this script, and commit the new file,
+whenever the test's setup changes (cells, particles per cell, masses, charges, densities).
+
+This is not a test and is not run by ctest.
+
+usage, from the repository root (BUILD = a PHARE build directory with the 1D and 2D
+interp-1 modules, e.g. cpp_1_1_2 and cpp_2_1_4):
+
+    python3 res/calibration/density_check/calibrate.py --build-dir BUILD --runs-1d 1000 --runs-2d 100 --jobs 10 [--write]
+"""
+
+import argparse
+import datetime
+import importlib.util
+import json
+import math
+import os
+import subprocess
+import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.abspath(os.path.join(HERE, os.pardir, os.pardir, os.pardir))
+TEST = os.path.join(REPO, "tests", "simulator", "initialize", "density_check.py")
+OUTPUT = os.path.join(HERE, "density_check_thresholds.json")
+SIGMAS = 5
+QUANTITIES = ("mass", "charge")
+
+
+def single_run(ndim):
+    """Run the test's setup in the current directory, print {quantity: [sigma per patch]}."""
+    sys.path[:0] = [REPO, os.path.join(REPO, "pyphare")]
+    spec = importlib.util.spec_from_file_location("density_check", TEST)
+    dc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dc)
+
+    config = {1: dc.config_1d, 2: dc.config_2d}[ndim]
+    dc.Simulator(config()).run().reset()
+    print(
+        json.dumps(
+            {q: dc.patch_sigmas(*dc.computed_and_expected(ndim, q)) for q in QUANTITIES}
+        )
+    )
+
+
+def launch(ndim, build_dir):
+    env = dict(os.environ, OMP_NUM_THREADS="1")
+    env["PYTHONPATH"] = os.pathsep.join(
+        p
+        for p in (build_dir, os.path.join(REPO, "pyphare"), REPO, env.get("PYTHONPATH"))
+        if p
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        out = subprocess.run(
+            [sys.executable, "-u", os.path.abspath(__file__), "--single", str(ndim)],
+            cwd=tmp,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    if out.returncode != 0:
+        raise RuntimeError(
+            f"{ndim}d run failed:\n{out.stdout[-2000:]}\n{out.stderr[-2000:]}"
+        )
+    return json.loads(out.stdout.strip().splitlines()[-1])
+
+
+def summary(results):
+    """{quantity: stats} over all patches of all runs."""
+    stats = {}
+    for q in QUANTITIES:
+        s = np.array([sigma for run in results for sigma in run[q]])
+        mean, sd = float(s.mean()), float(s.std(ddof=1))
+        stats[q] = {
+            "threshold": math.ceil((mean + SIGMAS * sd) * 1000) / 1000,
+            "mean": round(mean, 5),
+            "sd": round(sd, 5),
+            "max": round(float(s.max()), 5),
+            "patch_samples": int(s.size),
+        }
+    return stats
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--single", type=int, choices=(1, 2), help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--build-dir",
+        default="",
+        help="PHARE build directory (compiled python modules)",
+    )
+    parser.add_argument("--runs-1d", type=int, default=1000)
+    parser.add_argument("--runs-2d", type=int, default=100)
+    parser.add_argument("--jobs", type=int, default=os.cpu_count() // 2 or 1)
+    parser.add_argument(
+        "--write", action="store_true", help=f"write {os.path.basename(OUTPUT)}"
+    )
+    args = parser.parse_args()
+
+    if args.single:
+        return single_run(args.single)
+
+    build_dir = os.path.abspath(args.build_dir) if args.build_dir else ""
+    thresholds = {}
+    with ThreadPoolExecutor(args.jobs) as pool:
+        for ndim, runs in ((1, args.runs_1d), (2, args.runs_2d)):
+            results = list(pool.map(launch, [ndim] * runs, [build_dir] * runs))
+            thresholds[f"{ndim}d"] = summary(results)
+            for q, s in thresholds[f"{ndim}d"].items():
+                print(
+                    f"{ndim}d {q:6s} runs={runs} mean={s['mean']} sd={s['sd']} max={s['max']} -> threshold {s['threshold']}"
+                )
+
+    if args.write:
+        doc = {
+            "_comment": f"Generated by {os.path.relpath(__file__, REPO)}; read by tests/simulator/initialize/density_check.py. "
+            f"threshold = mean + {SIGMAS} sd of the per-patch std(computed - expected), rounded up to 3 decimals.",
+            "date": datetime.date.today().isoformat(),
+            "runs": {"1d": args.runs_1d, "2d": args.runs_2d},
+            "thresholds": thresholds,
+        }
+        with open(OUTPUT, "w") as f:
+            json.dump(doc, f, indent=2)
+            f.write("\n")
+        print(f"wrote {OUTPUT}")
+
+
+if __name__ == "__main__":
+    main()

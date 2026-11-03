@@ -5,6 +5,10 @@ project(test-simulator-init)
 if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(GLOB PYFILES "*.py")
   file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  # thresholds of density_check.py, measured by res/calibration/density_check/calibrate.py
+  # (an in-source build reads them from res/ directly)
+  configure_file(${PHARE_PROJECT_DIR}/res/calibration/density_check/density_check_thresholds.json
+                 ${CMAKE_CURRENT_BINARY_DIR}/density_check_thresholds.json COPYONLY)
 endif()
 
 if(HighFive)
