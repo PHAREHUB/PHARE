@@ -37,7 +37,7 @@ template<typename GridLayout>
 class ToPrimitiveConverter
 {
     constexpr static auto dimension = GridLayout::dimension;
-    using Q                         = GridLayout::Scalar;
+    using Scalar                    = GridLayout::Scalar;
 
 public:
     ToPrimitiveConverter(GridLayout const& layout)
@@ -106,9 +106,9 @@ private:
         auto const vx = rhoVx(index) / rho(index);
         auto const vy = rhoVy(index) / rho(index);
         auto const vz = rhoVz(index) / rho(index);
-        auto const bx = GridLayout::template project<Q::Bx, Q::rho>(Bx, index);
-        auto const by = GridLayout::template project<Q::By, Q::rho>(By, index);
-        auto const bz = GridLayout::template project<Q::Bz, Q::rho>(Bz, index);
+        auto const bx = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
+        auto const by = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
+        auto const bz = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
         P(index)      = eosEtotToP(gamma, rho(index), vx, vy, vz, bx, by, bz, Etot(index));
     }
 

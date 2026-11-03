@@ -43,7 +43,7 @@ private:
     using ParticleArray    = Ions::particle_array_type;
     using VecFieldT        = HybridModel::vecfield_type;
     using GridLayout       = HybridModel::gridlayout_type;
-    using Q                = GridLayout::Scalar;
+    using Scalar           = GridLayout::Scalar;
     using ResourcesManager = HybridModel::resources_manager_type;
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
@@ -353,9 +353,9 @@ double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& mode
             core::MeshIndex<dimension> const index{args...};
 
             auto const rho = n(index);
-            auto const bx  = GridLayout::template project<Q::Bx, Q::rho>(Bx, index);
-            auto const by  = GridLayout::template project<Q::By, Q::rho>(By, index);
-            auto const bz  = GridLayout::template project<Q::Bz, Q::rho>(Bz, index);
+            auto const bx  = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
+            auto const by  = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
+            auto const bz  = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
 
             auto const BdotB = bx * bx + by * by + bz * bz;
 

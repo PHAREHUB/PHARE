@@ -37,7 +37,7 @@ private:
     using VecFieldT   = MHDModel::vecfield_type;
     using MHDStateT   = MHDModel::state_type;
     using GridLayout  = MHDModel::gridlayout_type;
-    using Q           = GridLayout::Scalar;
+    using Scalar      = GridLayout::Scalar;
     using MHDQuantity = core::MHDQuantity;
     using Messenger   = TimeIntegratorStrategy::Messenger;
 
@@ -442,9 +442,9 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             auto const vy = rhoVy(index) / r;
             auto const vz = rhoVz(index) / r;
 
-            auto const bx = GridLayout::template project<Q::Bx, Q::rho>(Bx, index);
-            auto const by = GridLayout::template project<Q::By, Q::rho>(By, index);
-            auto const bz = GridLayout::template project<Q::Bz, Q::rho>(Bz, index);
+            auto const bx = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
+            auto const by = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
+            auto const bz = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
 
             auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
             auto const BdotB = bx * bx + by * by + bz * bz;

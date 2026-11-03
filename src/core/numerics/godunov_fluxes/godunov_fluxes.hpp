@@ -71,7 +71,7 @@ class Godunov : public GodunovInfo
     using Reconstructor_t           = Reconstructor<Reconstruction_t>;
     using RiemannSolver_t           = RiemannSolver;
     constexpr static auto dimension = GridLayout::dimension;
-    using Q                         = GridLayout::Scalar;
+    using Scalar                    = GridLayout::Scalar;
 
 public:
     using Info_t      = Super;
@@ -116,7 +116,8 @@ public:
                     if constexpr (Hall)
                     {
                         auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, Q::Jx, Q::Jy, Q::Jz, Q::rho>(state.J, {indices...});
+                            direction, Scalar::Jx, Scalar::Jy, Scalar::Jz, Scalar::rho>(
+                            state.J, {indices...});
 
                         auto const& j = std::forward_as_tuple(jL, jR);
 
@@ -175,22 +176,28 @@ private:
 
         if constexpr (direction == Direction::X)
             return std::make_pair(
-                PerIndexVector<double>{nan, GridLayout::template project<Q::Ey, Q::Bx>(Ey, idx),
-                                       GridLayout::template project<Q::Ez, Q::Bx>(Ez, idx)},
-                PerIndexVector<double>{nan, GridLayout::template project<Q::By, Q::Bx>(By, idx),
-                                       GridLayout::template project<Q::Bz, Q::Bx>(Bz, idx)});
+                PerIndexVector<double>{
+                    nan, GridLayout::template project<Scalar::Ey, Scalar::Bx>(Ey, idx),
+                    GridLayout::template project<Scalar::Ez, Scalar::Bx>(Ez, idx)},
+                PerIndexVector<double>{
+                    nan, GridLayout::template project<Scalar::By, Scalar::Bx>(By, idx),
+                    GridLayout::template project<Scalar::Bz, Scalar::Bx>(Bz, idx)});
         else if constexpr (direction == Direction::Y)
             return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<Q::Ex, Q::By>(Ex, idx), nan,
-                                       GridLayout::template project<Q::Ez, Q::By>(Ez, idx)},
-                PerIndexVector<double>{GridLayout::template project<Q::Bx, Q::By>(Bx, idx), nan,
-                                       GridLayout::template project<Q::Bz, Q::By>(Bz, idx)});
+                PerIndexVector<double>{
+                    GridLayout::template project<Scalar::Ex, Scalar::By>(Ex, idx), nan,
+                    GridLayout::template project<Scalar::Ez, Scalar::By>(Ez, idx)},
+                PerIndexVector<double>{
+                    GridLayout::template project<Scalar::Bx, Scalar::By>(Bx, idx), nan,
+                    GridLayout::template project<Scalar::Bz, Scalar::By>(Bz, idx)});
         else
             return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<Q::Ex, Q::Bz>(Ex, idx),
-                                       GridLayout::template project<Q::Ey, Q::Bz>(Ey, idx), nan},
-                PerIndexVector<double>{GridLayout::template project<Q::Bx, Q::Bz>(Bx, idx),
-                                       GridLayout::template project<Q::By, Q::Bz>(By, idx), nan});
+                PerIndexVector<double>{
+                    GridLayout::template project<Scalar::Ex, Scalar::Bz>(Ex, idx),
+                    GridLayout::template project<Scalar::Ey, Scalar::Bz>(Ey, idx), nan},
+                PerIndexVector<double>{
+                    GridLayout::template project<Scalar::Bx, Scalar::Bz>(Bx, idx),
+                    GridLayout::template project<Scalar::By, Scalar::Bz>(By, idx), nan});
     }
 
     GridLayout layout_;
