@@ -192,7 +192,7 @@ def drifting_load_config(sim):
     ph.ElectromagDiagnostics(
         quantity="B", write_timestamps=[0.0, sim.time_stepper.final_time]
     )
-    ph.LoadBalancer(active=True, mode="nppc", tol=0.05, on_init=True, every=3)
+    ph.LoadBalancer(mode="nppc", tol=0.05, on_init=True, every=3)
     return sim
 
 
