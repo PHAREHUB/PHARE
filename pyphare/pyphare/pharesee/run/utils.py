@@ -355,6 +355,8 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
     for name, pd_name in kwargs.items():
         pd = patchdatas[pd_name]
         nb_ghosts = int(pd.ghosts_nbr[0])
+        if nb_ghosts == 0 and "dual" in pd.centerings[:ndim]:
+            raise ValueError(f"{pd_name}: dual to primal needs at least one ghost")
 
         ds = pd.dataset
 
@@ -383,7 +385,7 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
 
 
 def _inner_slices(nb_ghosts):
-    inner = slice(nb_ghosts, -nb_ghosts)
+    inner = slice(nb_ghosts, -nb_ghosts or None)
     inner_shift_left = slice(nb_ghosts - 1 or None, -nb_ghosts)
     inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1 or None)
 
@@ -615,7 +617,7 @@ def overlap_mask_2d(x, y, dl, level, qty):
     return is_overlaped
 
 
-def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
+def flat_finest_field(hierarchy, qty, time=None):
     """
     returns 2 flattened arrays containing the data (with shape [Npoints])
     and the coordinates (with shape [Npoints, Ndim]) for the given
@@ -628,7 +630,7 @@ def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
     dim = hierarchy.ndim
 
     if dim == 1:
-        return flat_finest_field_1d(hierarchy, qty, time, neghosts)
+        return flat_finest_field_1d(hierarchy, qty, time)
     elif dim == 2:
         return flat_finest_field_2d(hierarchy, qty, time)
     elif dim == 3:
@@ -638,7 +640,7 @@ def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
         raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
 
 
-def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
+def flat_finest_field_1d(hierarchy, qty, time=None):
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
@@ -646,8 +648,7 @@ def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
 
         for ip, patch in enumerate(patches):
             pdata = patch[qty]
-            data = pdata[pdata.box]
-            (x,) = local_domain_coords(pdata)
+            data, (x,) = _interpolation_samples(pdata)
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -679,8 +680,7 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
 
         for ip, patch in enumerate(patches):
             pdata = patch[qty]
-            data = pdata[pdata.box]
-            x, y = local_domain_coords(pdata)
+            data, (x, y) = _interpolation_samples(pdata)
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 
@@ -712,3 +712,23 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                 tmp_y = np.concatenate((tmp_y, finest_y))
 
     return final_data, np.stack((tmp_x, tmp_y), axis=1)
+
+
+def _interpolation_samples(pdata):
+    """
+    domain data and coordinates, plus one ghost on dual axes
+    so samples reach the domain edges and interpolation there is not extrapolation
+    """
+    from pyphare.core import box as boxm
+
+    dual_ghost = [
+        int(c == "dual" and g > 0) for c, g in zip(pdata.centerings, pdata.ghosts_nbr)
+    ]
+    box = boxm.grow(pdata.box, dual_ghost)
+    lbox = boxm.amr_to_local(box, pdata.ghost_box)
+    lbox.upper += pdata.primal_directions()
+    coords = tuple(
+        getattr(pdata, "xyz"[i])[lbox.lower[i] : lbox.upper[i] + 1]
+        for i in range(pdata.ndim)
+    )
+    return pdata[box], coords
