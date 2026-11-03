@@ -373,8 +373,15 @@ class PatchHierarchyTest(unittest.TestCase):
 
         # Ez is primal in 2d, E keeps its ghosts with all_primal=False
         Ez = ScalarField.FROM(r.GetE(time, all_primal=False).Ez)
-        self.assertTrue(isinstance(Ni * Ez, ScalarField))
-        self.assertTrue(isinstance(np.multiply(Ni, Ez), ScalarField))
+        for NiEz in (Ni * Ez, np.multiply(Ni, Ez)):
+            self.assertTrue(isinstance(NiEz, ScalarField))
+            for ilvl, lvl in NiEz.levels(time).items():
+                for ip, patch in enumerate(lvl.patches):
+                    ni = patch_box_data(Ni.level(ilvl, time).patches[ip], "value")
+                    ez = patch_box_data(Ez.level(ilvl, time).patches[ip], "value")
+                    assert_fp_any_all_close(
+                        patch_box_data(patch, "value"), ni * ez, atol=1e-12
+                    )
 
         for ilvl, lvl in diff.levels(time).items():
             for ip, patch in enumerate(lvl.patches):
@@ -421,6 +428,9 @@ class PatchHierarchyTest(unittest.TestCase):
                 idx = data.shape[0] // 2
                 cut = pd.origin[0] + (idx + 0.1) * pd.layout.dl[0]
                 np.testing.assert_array_equal(patch(qty, x=cut), data[idx, :])
+                idy = data.shape[1] // 2
+                cut = pd.origin[1] + (idy + 0.1) * pd.layout.dl[1]
+                np.testing.assert_array_equal(patch(qty, y=cut), data[:, idy])
 
     def _test_hierarchy_cut(self):
         r = Run(self.diag_dir())
@@ -436,6 +446,30 @@ class PatchHierarchyTest(unittest.TestCase):
         self.assertLessEqual(np.diff(coords).max(), dl[1] + 1e-12)  # no gaps
         self.assertAlmostEqual(coords[0], 0)
         self.assertAlmostEqual(coords[-1], L)
+
+        # the time argument selects the data, compare with a single time hierarchy
+        t1 = timestamps[1]
+        Ni = r.GetNi([time, t1])
+        _, cut0 = Ni(x=12.95, time=time)
+        coords1, cut1 = Ni(x=12.95, time=t1)
+        ref_coords, ref_cut = r.GetNi(t1)(x=12.95)
+        self.assertFalse(np.array_equal(cut0, cut1))
+        np.testing.assert_array_equal(coords1, ref_coords)
+        np.testing.assert_array_equal(cut1, ref_cut)
+
+    def _test_magnetic_flux_bilinear(self):
+        """
+        B is dual on some axes, bilinear interpolation needs samples
+        beyond the domain to evaluate it on the domain edges
+        """
+        r = Run(self.diag_dir())
+        time = 0.0
+        domain = r.GetDomainSize()
+        dl = r.GetDl(r.GetB(time).finest_level(time))
+        xn, yn = (np.linspace(0, L, round(L / d) + 1) for L, d in zip(domain, dl))
+        Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
+        Az, _ = r.GetMagneticFlux(time, interp="bilinear", xn=xn, yn=yn, Xn=Xn, Yn=Yn)
+        self.assertFalse(np.isnan(Az).any())
 
     def _test_finest_ignores_ghosts(self):
         """
@@ -468,7 +502,7 @@ class PatchHierarchyTest(unittest.TestCase):
         for test in [method for method in dir(self) if method.startswith("_test_")]:
             getattr(self, test)()
             checks += 1
-        self.assertEqual(checks, 23)  # update if you add new tests
+        self.assertEqual(checks, 24)  # update if you add new tests
 
 
 if __name__ == "__main__":
