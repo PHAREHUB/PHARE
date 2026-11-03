@@ -35,6 +35,7 @@ def dump_all_diags(pops=(), flush_every=100, timestamps=None):
         "bulkVelocity",
         "charge_flux",
         "pressure_tensor",
+        "electron_pressure",
     ]:
         ph.FluidDiagnostics(
             quantity=quantity, write_timestamps=timestamps, flush_every=flush_every
