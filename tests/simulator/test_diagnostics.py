@@ -297,32 +297,40 @@ class DiagnosticsTest(SimulatorTest):
         )
 
         self._check_diags(sim, ["0.0000000000", "0.0010000000"])
-        self._check_electron_pressure(sim, 0.0010000000)
+        self._check_electron_pressure(sim)
 
-    def _check_electron_pressure(self, sim, time):
-        # isothermal closure: the dumped pressure is Te * the density of the last stage
-        # of the step, which is not the dumped density (particle noise): finite on the
-        # domain nodes and Te * n on average. It is only set by the first step.
+    def _check_electron_pressure(self, sim):
+        # isothermal closure, on the domain nodes of every level
         out_dir = sim.diag_options["options"]["dir"]
         pe_hier = hierarchy_from(h5_filename=os.path.join(out_dir, "electrons_pressure.h5"))
         n_hier = hierarchy_from(h5_filename=os.path.join(out_dir, "ions_charge_density.h5"))
         Te = sim.electrons.closure.Te
 
-        checked = 0
-        for ilvl in pe_hier.levels(time):
-            for pe_patch, n_patch in zip(
-                pe_hier.level(ilvl, time).patches, n_hier.level(ilvl, time).patches
-            ):
-                pe = next(iter(pe_patch.patch_datas.values()))
-                n = next(iter(n_patch.patch_datas.values()))
-                domain = tuple(slice(g, -g) for g in pe.ghosts_nbr)
-                pe_domain = np.asarray(pe.dataset)[domain]
-                self.assertTrue(np.all(np.isfinite(pe_domain)))
-                self.assertAlmostEqual(
-                    pe_domain.mean() / (Te * np.asarray(n.dataset)[domain].mean()), 1.0, delta=0.05
-                )
-                checked += 1
-        self.assertGreater(checked, 0)
+        def domain_values(patch):
+            data = next(iter(patch.patch_datas.values()))
+            return np.asarray(data.dataset)[tuple(slice(g, -g) for g in data.ghosts_nbr)]
+
+        def check(time, compare):
+            checked = 0
+            for ilvl in pe_hier.levels(time):
+                for pe_patch, n_patch in zip(
+                    pe_hier.level(ilvl, time).patches, n_hier.level(ilvl, time).patches
+                ):
+                    pe, n = domain_values(pe_patch), domain_values(n_patch)
+                    self.assertTrue(np.all(np.isfinite(pe)))
+                    compare(pe, n)
+                    checked += 1
+            self.assertGreater(checked, 0)
+
+        # the initial pressure is Te * the initial density
+        check(0.0, lambda pe, n: np.testing.assert_allclose(pe, Te * n, rtol=1e-5))
+
+        # later it is Te * the density of the last stage of the step, which is not the
+        # dumped density (particle noise): Te * n on average
+        check(
+            0.001,
+            lambda pe, n: self.assertAlmostEqual(pe.mean() / (Te * n.mean()), 1.0, delta=0.05),
+        )
 
     def test_dump_elapsed_time_diags(self, ndim=1, interp=1):
         print(f"test_dump_elapsed_time_diags dim/interp:{ndim}/{interp}")
