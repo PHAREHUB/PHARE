@@ -5,6 +5,7 @@
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/types.hpp"
+#include "core/utilities/random.hpp"
 
 #include "amr/samrai.hpp"
 
@@ -19,6 +20,8 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <sstream>
+#include <cstdint>
 #include <optional>
 
 
@@ -66,13 +69,16 @@ namespace amr
                 pdrm->registerPatchDataForRestart(id);
         }
 
+        // portable (not std::hash) as it is persisted in restart files
         static std::string registeredResourcesHash()
         {
-            std::string hsh;
+            std::uint64_t hsh = 0;
             for (auto const res_map_ptr : INSTANCE().resources_)
                 for (auto const& [name, _] : *res_map_ptr)
-                    hsh = core::as_portable_hash(hsh + name);
-            return hsh;
+                    hsh = core::hash_combine(hsh, core::fnv1a64(name));
+            std::stringstream ss;
+            ss << std::hex << hsh;
+            return ss.str();
         }
     };
 
