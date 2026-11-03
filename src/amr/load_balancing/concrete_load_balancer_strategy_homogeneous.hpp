@@ -8,6 +8,7 @@
 #include <string>
 
 #include "amr/load_balancing/load_balancer_strategy.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
@@ -44,11 +45,8 @@ template<typename Model>
 void ConcreteLoadBalancerStrategyHomogeneous<Model>::compute(
     level_t& level, PHARE::solver::IPhysicalModel<amr_types>& model)
 {
-    for (auto& patch : level)
-    {
-        auto const& layout     = layoutFromPatch<gridlayout_type>(*patch);
-        auto patch_data_lb     = dynamic_cast<cell_data_t*>(patch->getPatchData(this->id_).get());
-        auto load_balancer_val = patch_data_lb->getPointer();
+    onLevel(make_model_level_accessor(level, dynamic_cast<Model&>(model)), [&](auto& view) {
+        auto load_balancer_val = view.template getPatchDataAs<cell_data_t>(this->id_).getPointer();
 
         // The view on "load_balancer_val" do not have any ghost cells, meaning that this patch
         // data lies on a box defind by the nbr of cells in the physical domain
@@ -60,8 +58,8 @@ void ConcreteLoadBalancerStrategyHomogeneous<Model>::compute(
 
         // The lb_view is a CellData, meaning that it is dual as the index of an amr box
 
-        std::fill(load_balancer_val, load_balancer_val + core::product(layout.nbrCells()), 1);
-    }
+        std::fill(load_balancer_val, load_balancer_val + core::product(view.layout.nbrCells()), 1);
+    });
 }
 
 } // namespace PHARE::amr
