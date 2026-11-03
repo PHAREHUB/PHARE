@@ -289,7 +289,7 @@ TEST(BzToEz, combinationOk)
 
 
 // ---------------------------------------------------------------------------
-// Primitive B — dual-direction prolongation (coarse->fine, ratio 2).
+// Dual-direction prolongation (coarse->fine, ratio 2).
 // Self-contained algebraic checks (no Python-generated reference files).
 // ---------------------------------------------------------------------------
 
