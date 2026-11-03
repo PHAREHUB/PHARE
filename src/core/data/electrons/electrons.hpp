@@ -19,6 +19,7 @@ public:
     using VecField   = typename Ions::vecfield_type;
     using Field      = typename Ions::field_type;
     using GridLayout = typename Ions::gridlayout_type;
+    using Q          = GridLayout::Scalar;
 
     StandardHybridElectronFluxComputer(Ions& ions, VecField& J)
         : ions_{ions}
@@ -86,12 +87,9 @@ public:
         layout.evalOnBox(Ne, [&](auto const&... args) {
             auto arr = std::array{args...};
 
-            auto const JxOnVx = GridLayout::template project<HybridQuantity::Scalar::Jx,
-                                                             HybridQuantity::Scalar::Vx>(Jx, arr);
-            auto const JyOnVy = GridLayout::template project<HybridQuantity::Scalar::Jy,
-                                                             HybridQuantity::Scalar::Vy>(Jy, arr);
-            auto const JzOnVz = GridLayout::template project<HybridQuantity::Scalar::Jz,
-                                                             HybridQuantity::Scalar::Vz>(Jz, arr);
+            auto const JxOnVx = GridLayout::template project<Q::Jx, Q::Vx>(Jx, arr);
+            auto const JyOnVy = GridLayout::template project<Q::Jy, Q::Vy>(Jy, arr);
+            auto const JzOnVz = GridLayout::template project<Q::Jz, Q::Vz>(Jz, arr);
 
             Vex(arr) = (Fx(arr) - JxOnVx) / Ne(arr);
             Vey(arr) = (Fy(arr) - JyOnVy) / Ne(arr);

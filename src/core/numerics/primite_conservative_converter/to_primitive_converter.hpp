@@ -3,7 +3,6 @@
 
 
 #include "core/utilities/index/index.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -38,6 +37,7 @@ template<typename GridLayout>
 class ToPrimitiveConverter
 {
     constexpr static auto dimension = GridLayout::dimension;
+    using Q                         = GridLayout::Scalar;
 
 public:
     ToPrimitiveConverter(GridLayout const& layout)
@@ -106,16 +106,10 @@ private:
         auto const vx = rhoVx(index) / rho(index);
         auto const vy = rhoVy(index) / rho(index);
         auto const vz = rhoVz(index) / rho(index);
-        auto const bx
-            = GridLayout::template project<MHDQuantity::Scalar::Bx, MHDQuantity::Scalar::rho>(
-                Bx, index);
-        auto const by
-            = GridLayout::template project<MHDQuantity::Scalar::By, MHDQuantity::Scalar::rho>(
-                By, index);
-        auto const bz
-            = GridLayout::template project<MHDQuantity::Scalar::Bz, MHDQuantity::Scalar::rho>(
-                Bz, index);
-        P(index) = eosEtotToP(gamma, rho(index), vx, vy, vz, bx, by, bz, Etot(index));
+        auto const bx = GridLayout::template project<Q::Bx, Q::rho>(Bx, index);
+        auto const by = GridLayout::template project<Q::By, Q::rho>(By, index);
+        auto const bz = GridLayout::template project<Q::Bz, Q::rho>(Bz, index);
+        P(index)      = eosEtotToP(gamma, rho(index), vx, vy, vz, bx, by, bz, Etot(index));
     }
 
 

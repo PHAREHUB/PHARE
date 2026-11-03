@@ -7,7 +7,6 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -41,7 +40,7 @@ class Ohm : public OhmInfo
 {
     using Super                     = OhmInfo;
     constexpr static auto dimension = GridLayout::dimension;
-    using Q                         = HybridQuantity::Scalar;
+    using Q                         = GridLayout::Scalar;
 
 public:
     explicit Ohm(OhmInfo const& info, GridLayout const& layout)

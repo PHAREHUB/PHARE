@@ -26,6 +26,8 @@ namespace core
     template<std::size_t dim>
     struct WeightPoint
     {
+        static constexpr std::size_t dimension = dim;
+
         Point<int, dim> indexes{};
         double coef{0.0};
     };
@@ -176,16 +178,6 @@ namespace core
     }
 
 
-    namespace detail
-    {
-        template<std::size_t dim, std::size_t n>
-        constexpr std::size_t weightPointDim(std::array<WeightPoint<dim>, n> const&)
-        {
-            return dim;
-        }
-    } // namespace detail
-
-
     template<auto... dirs>
     NO_DISCARD consteval auto tensorProduct(auto const&... rows)
     {
@@ -202,8 +194,8 @@ namespace core
             }(),
             "tensorProduct directions must be pairwise distinct");
 
-        constexpr std::size_t dim
-            = detail::weightPointDim(std::get<0>(std::tuple<std::decay_t<decltype(rows)>...>{}));
+        using Row0 = std::tuple_element_t<0, std::tuple<std::decay_t<decltype(rows)>...>>;
+        constexpr std::size_t dim   = Row0::value_type::dimension;
         constexpr std::size_t total = (std::tuple_size_v<std::decay_t<decltype(rows)>> * ...);
 
         std::array<WeightPoint<dim>, total> result{};

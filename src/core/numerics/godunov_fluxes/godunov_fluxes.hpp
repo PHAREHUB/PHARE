@@ -1,7 +1,6 @@
 #ifndef PHARE_CORE_NUMERICS_GODUNOV_FLUXES_HPP
 #define PHARE_CORE_NUMERICS_GODUNOV_FLUXES_HPP
 
-#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"
@@ -72,6 +71,7 @@ class Godunov : public GodunovInfo
     using Reconstructor_t           = Reconstructor<Reconstruction_t>;
     using RiemannSolver_t           = RiemannSolver;
     constexpr static auto dimension = GridLayout::dimension;
+    using Q                         = GridLayout::Scalar;
 
 public:
     using Info_t      = Super;
@@ -116,9 +116,7 @@ public:
                     if constexpr (Hall)
                     {
                         auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, MHDQuantity::Scalar::Jx, MHDQuantity::Scalar::Jy,
-                            MHDQuantity::Scalar::Jz, MHDQuantity::Scalar::rho>(state.J,
-                                                                               {indices...});
+                            direction, Q::Jx, Q::Jy, Q::Jz, Q::rho>(state.J, {indices...});
 
                         auto const& j = std::forward_as_tuple(jL, jR);
 
@@ -166,7 +164,6 @@ private:
     template<auto direction>
     auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
     {
-        using M            = MHDQuantity::Scalar;
         auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
 
         auto const& Ex = E(Component::X);
@@ -178,22 +175,22 @@ private:
 
         if constexpr (direction == Direction::X)
             return std::make_pair(
-                PerIndexVector<double>{nan, GridLayout::template project<M::Ey, M::Bx>(Ey, idx),
-                                       GridLayout::template project<M::Ez, M::Bx>(Ez, idx)},
-                PerIndexVector<double>{nan, GridLayout::template project<M::By, M::Bx>(By, idx),
-                                       GridLayout::template project<M::Bz, M::Bx>(Bz, idx)});
+                PerIndexVector<double>{nan, GridLayout::template project<Q::Ey, Q::Bx>(Ey, idx),
+                                       GridLayout::template project<Q::Ez, Q::Bx>(Ez, idx)},
+                PerIndexVector<double>{nan, GridLayout::template project<Q::By, Q::Bx>(By, idx),
+                                       GridLayout::template project<Q::Bz, Q::Bx>(Bz, idx)});
         else if constexpr (direction == Direction::Y)
             return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<M::Ex, M::By>(Ex, idx), nan,
-                                       GridLayout::template project<M::Ez, M::By>(Ez, idx)},
-                PerIndexVector<double>{GridLayout::template project<M::Bx, M::By>(Bx, idx), nan,
-                                       GridLayout::template project<M::Bz, M::By>(Bz, idx)});
+                PerIndexVector<double>{GridLayout::template project<Q::Ex, Q::By>(Ex, idx), nan,
+                                       GridLayout::template project<Q::Ez, Q::By>(Ez, idx)},
+                PerIndexVector<double>{GridLayout::template project<Q::Bx, Q::By>(Bx, idx), nan,
+                                       GridLayout::template project<Q::Bz, Q::By>(Bz, idx)});
         else
             return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<M::Ex, M::Bz>(Ex, idx),
-                                       GridLayout::template project<M::Ey, M::Bz>(Ey, idx), nan},
-                PerIndexVector<double>{GridLayout::template project<M::Bx, M::Bz>(Bx, idx),
-                                       GridLayout::template project<M::By, M::Bz>(By, idx), nan});
+                PerIndexVector<double>{GridLayout::template project<Q::Ex, Q::Bz>(Ex, idx),
+                                       GridLayout::template project<Q::Ey, Q::Bz>(Ey, idx), nan},
+                PerIndexVector<double>{GridLayout::template project<Q::Bx, Q::Bz>(Bx, idx),
+                                       GridLayout::template project<Q::By, Q::Bz>(By, idx), nan});
     }
 
     GridLayout layout_;
