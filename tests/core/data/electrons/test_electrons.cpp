@@ -124,9 +124,8 @@ public:
 };
 
 
-
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
-struct ElectronsTest : public ::testing::Test
+struct ElectronsFixture
 {
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
@@ -160,7 +159,8 @@ struct ElectronsTest : public ::testing::Test
     PartPackND pack{"particles", &domainParticles, &patchGhostParticles, &levelGhostParticles};
 
     IonsT ions;
-    Electrons<IonsT> electrons;
+    StandardHybridElectronFluxComputerT fluxCompute;
+    Electrons<StandardHybridElectronFluxComputerT> electrons;
 
     template<typename... Args>
     auto static _ions(Args&... args)
@@ -190,8 +190,8 @@ struct ElectronsTest : public ::testing::Test
     }
 
 
-    ElectronsTest()
-        : electromag{createDict<dim>()["electromag"]}
+    ElectronsFixture(PHARE::initializer::PHAREDict const& dict = createDict<dim>())
+        : electromag{dict["electromag"]}
         , J{"J", layout, HybridQuantity::Vector::J}
         , F{"protons_flux", layout, HybridQuantity::Vector::V}
         , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
@@ -210,22 +210,22 @@ struct ElectronsTest : public ::testing::Test
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , ions{_ions(F, ionChargeDensity, ionMassDensity, protonParticleDensity,
                      protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack)}
-        , electrons{createDict<dim>()["electrons"], ions, J}
+        , fluxCompute{ions, J}
+        , electrons{dict["electrons"], fluxCompute}
     {
+        // the pressure closure refers to the flux computer of the model: one to set
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
-
+        auto&& pc  = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto&& pe  = std::get<0>(pc.getCompileTimeResourcesViewList());
 
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
+        pe.setBuffer(&Pe);
+        EXPECT_TRUE(pc.isUsable());
 
-
-        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
-        auto const& [_, P] = pc.getCompileTimeResourcesViewList();
-        P.setBuffer(&Pe);
 
         auto const& [Jx, Jy, Jz] = J();
         auto const& [Fx, Fy, Fz] = chargeFlux();
-
 
         if constexpr (dim == 1)
         {
@@ -303,6 +303,12 @@ struct ElectronsTest : public ::testing::Test
             });
         }
     }
+};
+
+
+template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
+struct ElectronsTest : public ElectronsFixture<TypeInfo>, public ::testing::Test
+{
 };
 
 
@@ -405,7 +411,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
     using GridYee   = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
+
     electrons.update(layout);
+
+
     auto& Ne = electrons.density();
 
     auto check = [&layout]<auto projector>(auto const& Vecomp, auto const& Fcomp, auto const& Jcomp,
@@ -521,7 +530,22 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 }
 
 
+TEST(ElectronsFactoryTest, ThatAnUnknownClosureNameThrows)
+{
+    auto dict = createDict<1>();
 
+    dict["electrons"]["pressure_closure"]["name"] = std::string{"adiabatic"};
+
+    try
+    {
+        ElectronsFixture<std::pair<DimConst<1>, InterpConst<1>>> fixture{dict};
+        FAIL() << "expected an unknown closure to throw";
+    }
+    catch (std::runtime_error const& e)
+    {
+        EXPECT_NE(std::string{e.what()}.find("adiabatic"), std::string::npos);
+    }
+}
 
 // two populations with different q/m drifting relative to each other:
 // the electron velocity must be (sum_s q_s F_s - J) / Ne, see issue #1466
@@ -627,14 +651,14 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , popBuffers{{{pops[0].name, layout}, {pops[1].name, layout}}}
         , ions{makeIons()}
-        , electrons{dict["electrons"], ions, J}
+        , electrons{dict["electrons"], StandardHybridElectronFluxComputer<IonsT>{ions, J}}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
-        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
-        auto const& [_, P] = pc.getCompileTimeResourcesViewList();
+        auto&& pc            = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto const& [P] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
 
         // uniform moments everywhere, ghost nodes included
@@ -664,7 +688,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     std::array<PopulationBuffers, nbrPops> popBuffers;
 
     IonsT ions;
-    Electrons<IonsT> electrons;
+    Electrons<StandardHybridElectronFluxComputer<IonsT>> electrons;
 };
 
 
@@ -700,8 +724,6 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
         });
     }
 }
-
-
 
 
 int main(int argc, char** argv)
