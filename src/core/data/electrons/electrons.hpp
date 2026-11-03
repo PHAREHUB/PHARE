@@ -279,6 +279,11 @@ public:
 
     void initialize(GridLayout const& layout) override {}
 
+    // the pressure only depends on the density: it is set on a new level, or a regridded
+    // one, as soon as its density is known
+    void seedPressure(GridLayout const& layout) override { computePressure(layout, 0.0); }
+    void pressureFromEntropy(GridLayout const& layout) override { computePressure(layout, 0.0); }
+
     void computePressure(GridLayout const& /*layout*/, double const /* dt */) override
     {
         static_assert(Field::is_contiguous, "Error - assumes Field date is contiguous");
