@@ -814,8 +814,8 @@ namespace amr
             // the entropy of the electron closure is only set on the domain nodes: its ghosts
             // come from neighbor patches and, at level borders, from the coarser level
             for (auto const& name : info->ghostElectronEntropy)
-                electronEntropyGhostRefiners_.addStaticRefiner(name, fieldRefineOp_, name,
-                                                               nonOverwriteInteriorFieldFillPattern);
+                electronEntropyGhostRefiners_.addStaticRefiner(
+                    name, fieldRefineOp_, name, nonOverwriteInteriorFieldFillPattern);
             electronEntropyGhostNames_ = info->ghostElectronEntropy;
 
             // time interpolated between the coarser level's state at time n (ghostElectronEntropy)
@@ -851,9 +851,8 @@ namespace amr
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
                                                     info->initElectric);
 
-            electronEntropyInitRefiners_.addStaticRefiners(info->initElectronEntropy,
-                                                           fieldRefineOp_,
-                                                           info->initElectronEntropy);
+            electronEntropyInitRefiners_.addStaticRefiners(
+                info->initElectronEntropy, fieldRefineOp_, info->initElectronEntropy);
 
 
             domainParticlesRefiners_.addStaticRefiners(

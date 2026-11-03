@@ -369,7 +369,7 @@ public:
     void pressureFromEntropy(GridLayout const& layout) override
     {
         auto const& sOld = get_from_variants(resources, sOld_);
-        auto const& N_ = this->flux_.density();
+        auto const& N_   = this->flux_.density();
 
         layout.evalOnBox(this->Pe_, [&](auto const&... ijk) {
             auto const n = N_(ijk...);
@@ -394,7 +394,7 @@ public:
             throw std::runtime_error("Error - polytropic closure not usable");
 
         auto const& N_ = this->flux_.density();
-        auto& sOld       = get_from_variants(resources, sOld_);
+        auto& sOld     = get_from_variants(resources, sOld_);
 
         layout.evalOnBox(sOld, [&](auto const&... ijk) {
             auto const n = N_(ijk...);
@@ -460,7 +460,7 @@ public:
     void startSubcycles(GridLayout const& /*layout*/) override
     {
         auto const& sOld = get_from_variants(resources, sOld_);
-        auto& s        = get_from_variants(resources, s_);
+        auto& s          = get_from_variants(resources, s_);
         std::copy(std::begin(sOld), std::end(sOld), std::begin(s));
     }
 
@@ -741,10 +741,7 @@ public:
     void computeDensity() { momentModel_.computeDensity(); }
     void computeBulkVelocity(GridLayout const& layout) { momentModel_.computeBulkVelocity(layout); }
     void seedPressure(GridLayout const& layout) { momentModel_.seedPressure(layout); }
-    void pressureFromEntropy(GridLayout const& layout)
-    {
-        momentModel_.pressureFromEntropy(layout);
-    }
+    void pressureFromEntropy(GridLayout const& layout) { momentModel_.pressureFromEntropy(layout); }
     void beginStep(GridLayout const& layout) { momentModel_.beginStep(layout); }
     NO_DISCARD auto stepStateName() const { return momentModel_.stepStateName(); }
     NO_DISCARD auto subcycles(GridLayout const& layout, double const dt) const

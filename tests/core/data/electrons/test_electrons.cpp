@@ -783,7 +783,6 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
 
 
 
-
 // the tests below drive the closures alone, through a flux computer that only
 // hands out a density and an electron velocity set by the test
 
@@ -1331,7 +1330,8 @@ TEST(PolytropicElectronPressureClosure, usabilityCoversTheRuntimeResources)
 {
     closure_test::Fixture1D f;
     // as the model sees it
-    auto const& closure = static_cast<ElectronPressureClosure<closure_test::FakeElectronFlux<1>> const&>(f.closure);
+    auto const& closure
+        = static_cast<ElectronPressureClosure<closure_test::FakeElectronFlux<1>> const&>(f.closure);
     EXPECT_TRUE(closure.isUsable());
     EXPECT_FALSE(closure.isSettable());
 

@@ -306,8 +306,9 @@ namespace amr
         }
 
         /**
-         * @brief fillElectronSubcycleGhosts fills the ghost nodes, from neighbor patches and time interpolated from the coarser level,
-         * of the working state of a sub-cycled electron closure, between its sub-steps.
+         * @brief fillElectronSubcycleGhosts fills the ghost nodes, from neighbor patches and time
+         * interpolated from the coarser level, of the working state of a sub-cycled electron
+         * closure, between its sub-steps.
          */
         void fillElectronSubcycleGhosts(level_t const& level, double const fillTime)
         {
