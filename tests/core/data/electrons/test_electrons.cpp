@@ -712,7 +712,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
-        auto&& pc            = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto&& pc       = std::get<1>(emm.getCompileTimeResourcesViewList());
         auto const& [P] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
 
