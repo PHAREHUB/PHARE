@@ -135,8 +135,8 @@ public:
     ElectronPressureClosure& operator=(ElectronPressureClosure const&) = delete;
 
     // a copy of this closure, bound to the given flux computer
-    NO_DISCARD virtual std::unique_ptr<ElectronPressureClosure> clone(FluxComputer const& flux) const
-        = 0;
+    NO_DISCARD virtual std::unique_ptr<ElectronPressureClosure>
+    clone(FluxComputer const& flux) const = 0;
 
     virtual ~ElectronPressureClosure() {}
 
@@ -148,14 +148,10 @@ public:
     // closure keeps for itself (resources) are, like Pe_
     NO_DISCARD virtual bool isUsable() const
     {
-        return core::isUsable(Pe_) and std::all_of(std::begin(resources), std::end(resources),
-                                                   [](auto const& var) {
-                                                       return std::visit(
-                                                           [](auto const& r) {
-                                                               return r.isUsable();
-                                                           },
-                                                           var);
-                                                   });
+        return core::isUsable(Pe_)
+               and std::all_of(std::begin(resources), std::end(resources), [](auto const& var) {
+                      return std::visit([](auto const& r) { return r.isUsable(); }, var);
+                  });
     }
 
     NO_DISCARD virtual bool isSettable() const
@@ -330,10 +326,7 @@ public:
 
     void computeDensity() { fluxComput_.computeDensity(); }
     void computeBulkVelocity(GridLayout const& layout) { fluxComput_.computeBulkVelocity(layout); }
-    void computePressure(GridLayout const& layout)
-    {
-        pressureClosure_->computePressure(layout);
-    }
+    void computePressure(GridLayout const& layout) { pressureClosure_->computePressure(layout); }
 
 private:
     initializer::PHAREDict dict_;
@@ -363,10 +356,7 @@ public:
     // sub-steps (e.g. ghost filling) can drive them instead of update() below.
     void computeDensity() { momentModel_.computeDensity(); }
     void computeBulkVelocity(GridLayout const& layout) { momentModel_.computeBulkVelocity(layout); }
-    void computePressure(GridLayout const& layout)
-    {
-        momentModel_.computePressure(layout);
-    }
+    void computePressure(GridLayout const& layout) { momentModel_.computePressure(layout); }
 
     void update(GridLayout const& layout)
     {
