@@ -1,3 +1,5 @@
+import numbers
+
 from .dict_populator import DictPopulator
 
 
@@ -69,8 +71,17 @@ def _populate_electrons(dp, sim):
     if sim.electrons is None:
         raise RuntimeError("Error - no electrons registered to this Simulation")
 
-    for item in sim.electrons.dict_path():
-        if isinstance(item[1], str):
-            dp.add_string("simulation/" + item[0], item[1])
+    # the check is only made if asked for, so that existing inputs are unchanged
+    min_density = sim.min_initial_density
+    sim.model.validate_density(sim, 0.0 if min_density is None else min_density)
+
+    for path, value in sim.electrons.dict_path():
+        if isinstance(value, str):
+            dp.add_string("simulation/" + path, value)
+        elif isinstance(value, numbers.Real) and not isinstance(value, bool):
+            dp.add_double("simulation/" + path, value)
         else:
-            dp.add_double("simulation/" + item[0], item[1])
+            raise TypeError(
+                f"electrons entry '{path}' should be a str, int or float,"
+                f" got {type(value).__name__}"
+            )
