@@ -6,6 +6,7 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/types.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -20,6 +21,7 @@
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 
 namespace PHARE::amr
@@ -48,34 +50,23 @@ namespace detail
 
 
     /**
-     * @brief The 1-D prolongation weights of one FineSite: along that direction the fine value is
-     * Σ_i weight[i] · coarse(I + offset[i]).
+     * @brief Call `fn` with `site` as a compile-time constant, so a stencil built from it stays a
+     * constexpr table.
      */
-    template<std::size_t order>
-    struct ProlongationRow
+    template<typename Fn>
+    decltype(auto) withSite(FineSite const site, Fn&& fn)
     {
-        // the widest row, a dual child, reads offsets -order/2 .. +order/2
-        static constexpr std::size_t capacity = order + 1;
+        using enum FineSite;
 
-        std::array<int, capacity> offset{};
-        std::array<double, capacity> weight{};
-        std::size_t size = 0;
-    };
-
-    template<std::size_t order, std::size_t n>
-    NO_DISCARD consteval ProlongationRow<order>
-    toProlongationRow(std::array<core::WeightPoint<1>, n> const& weightPoints)
-    {
-        static_assert(n <= ProlongationRow<order>::capacity);
-
-        ProlongationRow<order> row;
-        for (auto const& wp : weightPoints)
+        switch (site)
         {
-            row.offset[row.size] = wp.indexes[0];
-            row.weight[row.size] = wp.coef;
-            ++row.size;
+            case OnCoarseNode: return fn(std::integral_constant<FineSite, OnCoarseNode>{});
+            case BetweenCoarseNodes:
+                return fn(std::integral_constant<FineSite, BetweenCoarseNodes>{});
+            case LeftChild: return fn(std::integral_constant<FineSite, LeftChild>{});
+            case RightChild: return fn(std::integral_constant<FineSite, RightChild>{});
         }
-        return row;
+        throw std::logic_error("unknown FineSite");
     }
 
 
@@ -87,7 +78,8 @@ namespace detail
      *   - BetweenCoarseNodes   : midpoint of nodes I and I+1 (directionalInterp, PrimalToDual)
      *   - LeftChild, RightChild: the ±¼ child of cell I, which means back to it
      *                            (directionalProlongation)
-     * and the fine value is the tensor product of those rows applied to the coarse field.
+     * and the fine value is the tensor product of those rows applied to the coarse field. Every
+     * combination of sites is a compile-time stencil, selected per fine index.
      *
      * Stateless: the kernels below are thin IFieldRefineKernel adapters over it that differ only
      * in the region they hand it, so a kernel costs one virtual call per overlap box.
@@ -122,12 +114,12 @@ namespace detail
 
             for (auto const fineIndex : phare_box_from<dimension>(region))
             {
-                std::array<Row const*, dimension> rows;
+                std::array<FineSite, dimension> fineSites;
                 for (std::size_t d = 0; d < dimension; ++d)
-                    rows[d] = &row_(fineSite(centering[d], fineIndex[d]));
+                    fineSites[d] = fineSite(centering[d], fineIndex[d]);
 
                 auto const anchor = AMRToLocal(toCoarseIndex<dimension>(fineIndex), sourceFieldBox);
-                auto const value  = gather_(sourceField, anchor, rows);
+                auto const value  = gather_<>(sourceField, anchor, fineSites);
 
                 assignIfUnset_(destinationField, AMRToLocal(fineIndex, destFieldBox), value);
             }
@@ -135,62 +127,45 @@ namespace detail
 
     private:
         using Point_t = core::Point<int, dimension>;
-        using Row     = ProlongationRow<order>;
 
-        static constexpr Row onCoarseNode_
-            = toProlongationRow<order>(std::array{core::WeightPoint<1>{core::Point<int, 1>{}, 1.}});
-        static constexpr Row betweenCoarseNodes_ = toProlongationRow<order>(
-            core::directionalInterp<1, 0, core::InterpDir::PrimalToDual, order>());
-        static constexpr Row leftChild_
-            = toProlongationRow<order>(core::directionalProlongation<1, 0, -1, order>());
-        static constexpr Row rightChild_
-            = toProlongationRow<order>(core::directionalProlongation<1, 0, +1, order>());
-
-        static Row const& row_(FineSite const site)
+        // the 1-D row of direction `dir` for a fine index at `site`
+        template<std::size_t dir, FineSite site>
+        static consteval auto row_()
         {
-            switch (site)
-            {
-                case FineSite::OnCoarseNode: return onCoarseNode_;
-                case FineSite::BetweenCoarseNodes: return betweenCoarseNodes_;
-                case FineSite::LeftChild: return leftChild_;
-                case FineSite::RightChild: return rightChild_;
-            }
-            throw std::logic_error("unknown FineSite");
+            if constexpr (site == FineSite::OnCoarseNode)
+                return std::array{core::WeightPoint<dimension>{Point_t{}, 1.}};
+            else if constexpr (site == FineSite::BetweenCoarseNodes)
+                return core::directionalInterp<dimension, dir, core::InterpDir::PrimalToDual,
+                                               order>();
+            else if constexpr (site == FineSite::LeftChild)
+                return core::directionalProlongation<dimension, dir, -1, order>();
+            else
+                return core::directionalProlongation<dimension, dir, +1, order>();
         }
 
-        // the tensor product of the rows, applied around the coarse anchor
+        // Recursive: each call moves the next direction's runtime fine site into the compile-time
+        // `site` pack. Once every direction is in it, the stencil is the constexpr tensor product
+        // of their rows, summed around the coarse anchor.
+        template<FineSite... site>
         static double gather_(FieldT const& src, Point_t const& anchor,
-                              std::array<Row const*, dimension> const& rows)
+                              std::array<FineSite, dimension> const& fineSites)
         {
-            auto const& x = *rows[0];
-            double value  = 0.;
+            if constexpr (sizeof...(site) == dimension)
+            {
+                return core::for_N_fold<dimension>([&](auto... dir) {
+                    constexpr auto stencil = core::tensorProduct<decltype(dir)::value...>(
+                        row_<decltype(dir)::value, site>()...);
 
-            if constexpr (dimension == 1)
-            {
-                for (std::size_t i = 0; i < x.size; ++i)
-                    value += x.weight[i] * src(anchor[0] + x.offset[i]);
-            }
-            else if constexpr (dimension == 2)
-            {
-                auto const& y = *rows[1];
-                for (std::size_t i = 0; i < x.size; ++i)
-                    for (std::size_t j = 0; j < y.size; ++j)
-                        value += (x.weight[i] * y.weight[j])
-                                 * src(anchor[0] + x.offset[i], anchor[1] + y.offset[j]);
+                    return core::sum_from(
+                        stencil, [&](auto const& w) { return w.coef * src(anchor + w.indexes); });
+                });
             }
             else
             {
-                auto const& y = *rows[1];
-                auto const& z = *rows[2];
-                for (std::size_t i = 0; i < x.size; ++i)
-                    for (std::size_t j = 0; j < y.size; ++j)
-                        for (std::size_t k = 0; k < z.size; ++k)
-                            value += (x.weight[i] * y.weight[j] * z.weight[k])
-                                     * src(anchor[0] + x.offset[i], anchor[1] + y.offset[j],
-                                           anchor[2] + z.offset[k]);
+                return withSite(fineSites[sizeof...(site)], [&](auto next) {
+                    return gather_<site..., decltype(next)::value>(src, anchor, fineSites);
+                });
             }
-
-            return value;
         }
 
         // Writes only fine indices still NaN, so a value already in place (a same-level copy, or
