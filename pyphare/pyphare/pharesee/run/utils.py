@@ -367,7 +367,10 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
 
         ds_ = np.zeros(ds_shape)
 
-        inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
+        if all(c == "primal" for c in pd.centerings[:ndim]):  # e.g. vtkhdf
+            inner, chunks = _ppp_to_ppp_domain_slicing(nb_ghosts=nb_ghosts, ndim=ndim)
+        else:
+            inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
 
         for chunk in chunks:
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
