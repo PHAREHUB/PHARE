@@ -123,6 +123,8 @@ FluidDiagnosticWriter<H5Writer>::HybridFluidInitializer::operator()(auto const i
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
     if (isActiveDiag(diagnostic, tree, "charge_flux"))
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
+    if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
+        return file_initializer.template initTensorFieldFileLevel<2>(ilvl);
 
     for (auto& pop : ions)
     {
@@ -133,6 +135,8 @@ FluidDiagnosticWriter<H5Writer>::HybridFluidInitializer::operator()(auto const i
             return file_initializer.initFieldFileLevel(ilvl);
         else if (isActiveDiag(diagnostic, pop_tree, "flux"))
             return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
+        else if (isActiveDiag(diagnostic, pop_tree, "momentum_tensor"))
+            return file_initializer.template initTensorFieldFileLevel<2>(ilvl);
     }
 
     return std::nullopt;
@@ -195,7 +199,8 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
             if (auto ret = MhdFluidInitializer{this, diagnostic, initializer}(ilvl))
                 return ret;
 
-        return std::nullopt;
+        throw std::runtime_error("pharevtkhdf: unsupported fluid diagnostic quantity "
+                                 + diagnostic.quantity);
     };
 
     modelView.onLevels(
@@ -242,6 +247,8 @@ void FluidDiagnosticWriter<H5Writer>::HybridFluidWriter::operator()(auto const& 
         file_writer.template writeTensorField<1>(ions.velocity(), layout);
     else if (isActiveDiag(diagnostic, tree, "charge_flux"))
         file_writer.template writeTensorField<1>(ions.chargeFlux(), layout);
+    else if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
+        file_writer.template writeTensorField<2>(ions.momentumTensor(), layout);
     else
     {
         for (auto& pop : ions)
@@ -253,6 +260,8 @@ void FluidDiagnosticWriter<H5Writer>::HybridFluidWriter::operator()(auto const& 
                 file_writer.writeField(pop.chargeDensity(), layout);
             else if (isActiveDiag(diagnostic, pop_tree, "flux"))
                 file_writer.template writeTensorField<1>(pop.flux(), layout);
+            else if (isActiveDiag(diagnostic, pop_tree, "momentum_tensor"))
+                file_writer.template writeTensorField<2>(pop.momentumTensor(), layout);
         }
     }
 }
@@ -318,7 +327,9 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::HybridFluidComputer::operator()()
 {
-    // to implement
+    auto& h5Writer = writer->h5Writer_;
+    h5Writer.modelView().computeMomentumTensor(diagnostic.quantity, h5Writer.timestamp(),
+                                               h5Writer.minLevel, h5Writer.maxLevel);
 }
 
 
@@ -373,7 +384,7 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     }
     else if constexpr (solver::is_hybrid_model_v<Model_t>)
     {
-        // to implement
+        HybridFluidComputer{this, diagnostic}();
     }
 }
 

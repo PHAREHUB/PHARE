@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/amr_constants.hpp"
@@ -15,6 +16,7 @@
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -207,6 +209,72 @@ public:
             for (std::uint8_t c = 0; c < N; ++c)
                 std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+    }
+
+    /** @brief deposits the momentum tensor requested by `quantity`, which the solver does not
+     *  maintain: "/ions/momentum_tensor" (every population, then summed) or
+     *  "/ions/pop/<name>/momentum_tensor" (that population). Any other quantity is a no-op.
+     *  Must run between the last substep and the next first one: there the level ghost
+     *  particles of the step just done are in levelGhostParticlesOld, ...New is empty. */
+    void computeMomentumTensor(std::string const& quantity, double const time,
+                               std::size_t const minLvl, std::size_t const maxLvl)
+    {
+        using GridLayout                   = Super::GridLayout;
+        static constexpr auto interp_order = GridLayout::options.interp_order;
+        core::MomentumTensorInterpolator<Super::dimension, interp_order> interpolator;
+
+        auto& ions = this->model_.state.ions;
+
+        auto const interpolate_domain = [&](auto& pop, auto& layout) {
+            auto& pop_momentum_tensor = pop.momentumTensor();
+            pop_momentum_tensor.zero();
+            interpolator(pop.domainParticles(), pop_momentum_tensor, layout, pop.mass());
+        };
+
+        auto const interpolate_ghost = [&](auto& pop, auto& layout) {
+            interpolator(pop.levelGhostParticlesOld(), pop.momentumTensor(), layout, pop.mass());
+        };
+
+        if (quantity == "/ions/momentum_tensor")
+        {
+            this->visitHierarchy(
+                [&](auto& layout, auto&&...) {
+                    for (auto& pop : ions)
+                        interpolate_domain(pop, layout);
+                },
+                minLvl, maxLvl);
+
+            this->onLevels(
+                [&](auto& lvl) {
+                    for (std::size_t i = 0; i < ions.size(); ++i)
+                        fillPopMomTensor(lvl, time, i);
+                },
+                minLvl, maxLvl);
+
+            this->visitHierarchy(
+                [&](auto& layout, auto&&...) {
+                    for (auto& pop : ions)
+                        interpolate_ghost(pop, layout);
+                    ions.computeFullMomentumTensor();
+                },
+                minLvl, maxLvl);
+            return;
+        }
+
+        for (std::size_t i = 0; i < ions.size(); ++i)
+        {
+            auto& pop = ions[i];
+            if (quantity != "/ions/pop/" + pop.name() + "/momentum_tensor")
+                continue;
+
+            this->visitHierarchy([&](auto& layout, auto&&...) { interpolate_domain(pop, layout); },
+                                 minLvl, maxLvl);
+
+            this->onLevels([&](auto& lvl) { fillPopMomTensor(lvl, time, i); }, minLvl, maxLvl);
+
+            this->visitHierarchy([&](auto& layout, auto&&...) { interpolate_ghost(pop, layout); },
+                                 minLvl, maxLvl);
+        }
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
