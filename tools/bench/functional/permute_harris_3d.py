@@ -49,7 +49,6 @@ permutables = [
     ("max_nbr_levels", [2]),
     ("tag_buffer", [3, 4]),  # , 5
     ("tagging_threshold", [0.1]),  # , 0.2, 0.3, 0.4
-    ("tile_size", [3]),  # , 4 , 5, 6, 7, 8
 ]
 
 
@@ -73,7 +72,7 @@ def config(**kwargs):
         dl=kwargs.get("dl", dl),
         cells=kwargs.get("cells", cells),
         max_nbr_levels=kwargs.get("max_nbr_levels", 1),
-        clustering={"method": "tile", "tile_size": kwargs.get("tile_size", 8)},
+        clustering="tile",
         tag_buffer=kwargs.get("tag_buffer", 3),
         nesting_buffer=kwargs.get("nesting_buffer", 1),
         tagging_threshold=kwargs.get("tagging_threshold", 0.1),

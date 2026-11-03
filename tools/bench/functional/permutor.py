@@ -33,8 +33,7 @@ def sort_summaries(path):
     def key(line):
         tb = float(re.search(r"'tag_buffer': (\d+)", line).group(1))
         tt = float(re.search(r"'tagging_threshold': ([0-9.]+)", line).group(1))
-        ts = float(re.search(r"'tile_size': ([0-9.]+)", line).group(1))
-        return (tb, tt, ts)
+        return (tb, tt)
 
     lines.sort(key=key)
 
