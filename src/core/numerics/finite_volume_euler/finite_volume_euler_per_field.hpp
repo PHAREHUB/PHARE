@@ -3,7 +3,6 @@
 
 
 #include "core/utilities/constants.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <tuple>
@@ -28,9 +27,13 @@ public:
     template<typename Field, typename... Fluxes>
     void operator()(Field const& U, Field& Unew, Fluxes const&... fluxes) const
     {
-        layout_.evalOnBox(Unew, [&](auto&... args) mutable {
-            finite_volume_euler_(U, Unew, {args...}, fluxes...);
-        });
+        // evalOnBox calls fn(index, self, args...): fn is captureless, state is forwarded
+        layout_.evalOnBox(
+            Unew,
+            [](auto const& i, auto const& self, auto&&... args) {
+                self.finite_volume_euler_(i, args...);
+            },
+            *this, U, Unew, fluxes...);
     }
 
 private:
@@ -38,7 +41,7 @@ private:
     double dt_;
 
     template<typename Field, typename... Fluxes>
-    void finite_volume_euler_(Field const& U, Field& Unew, MeshIndex<Field::dimension> index,
+    void finite_volume_euler_(auto const& index, Field const& U, Field& Unew,
                               Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);

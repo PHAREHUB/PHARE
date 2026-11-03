@@ -2,7 +2,6 @@
 #define PHARE_UPWIND_CONSTRAINED_TRANSPORT_UTILS_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -124,7 +123,7 @@ public:
     }
 
     template<auto direction>
-    void save(auto const vt, auto const& coefs, MeshIndex<dimension> const& idx)
+    void save(auto const vt, auto const& coefs, auto const& idx)
     {
         auto assign_fields = [&](auto& vT, auto& aL, auto& aR, auto& dL, auto& dR) {
             vT(Component::X)(idx) = vt.x;
@@ -146,8 +145,7 @@ public:
     }
 
     template<auto direction>
-    void save(auto const& vt, auto const& jt, auto const rhot, auto const& coefs,
-              MeshIndex<dimension> const& idx)
+    void save(auto const& vt, auto const& jt, auto const rhot, auto const& coefs, auto const& idx)
     {
         save<direction>(vt, coefs, idx); // vt + uct coefficients
 

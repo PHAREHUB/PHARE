@@ -48,18 +48,23 @@ public:
             amount[i] = box.amount;
         }
 
-        auto eval = [&](auto& Jc, auto&& fn) {
+        // evalOn* calls fn(point, trailingArgs...); trailing args (Jc, curlB component)
+        // are passed through it rather than captured, so the lambdas stay capture-free
+        auto const eval = [&](auto& Jc, auto&& fn, auto const& curlBc) {
             if constexpr (box.mode == AmpereMode::ShrinkedGhost)
-                layout_.evalOnShrinkedGhostBox(Jc, amount, fn);
+                layout_.evalOnShrinkedGhostBox(Jc, amount, fn, Jc, curlBc);
             else
-                layout_.evalOnBiggerBox(Jc, amount, fn);
+                layout_.evalOnBiggerBox(Jc, amount, fn, Jc, curlBc);
         };
 
         auto const curlB = curl(layout_, B);
 
-        eval(Jx, [&](auto const&... ijk) { Jx(ijk...) = curlB.x({ijk...}); });
-        eval(Jy, [&](auto const&... ijk) { Jy(ijk...) = curlB.y({ijk...}); });
-        eval(Jz, [&](auto const&... ijk) { Jz(ijk...) = curlB.z({ijk...}); });
+        auto constexpr JEq
+            = [](auto const& ijk, auto& Jc, auto const& curlBc) { Jc(ijk) = curlBc(ijk); };
+
+        eval(Jx, JEq, curlB.x);
+        eval(Jy, JEq, curlB.y);
+        eval(Jz, JEq, curlB.z);
     }
 
 

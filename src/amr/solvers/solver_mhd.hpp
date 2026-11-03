@@ -13,7 +13,6 @@
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
-#include "core/utilities/index/index.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -425,48 +424,50 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             dt = std::min(dt, diffusive / (2.0 * eta_ * invdx2));
         }
 
-        auto const& rhoVx = rhoV(core::Component::X);
-        auto const& rhoVy = rhoV(core::Component::Y);
-        auto const& rhoVz = rhoV(core::Component::Z);
-        auto const& Bx    = B(core::Component::X);
-        auto const& By    = B(core::Component::Y);
-        auto const& Bz    = B(core::Component::Z);
-
         // wave cfl constraint
-        layout.evalOnBox(rho, [&](auto&... args) mutable {
-            core::MeshIndex<dimension> const index{args...};
+        // evalOnBox calls fn(index, args...): fn is captureless, state (and the dt being
+        // reduced) is forwarded
+        layout.evalOnBox(
+            rho,
+            [](auto const& index, double& dt, auto const& rho, auto const& rhoV, auto const& B,
+               auto const& Etot, double const gamma, bool const isHall, auto const& meshSize,
+               double const wave) {
+                auto const& [rhoVx, rhoVy, rhoVz] = rhoV();
+                auto const& [Bx, By, Bz]          = B();
 
-            auto const r  = rho(index);
-            auto const vx = rhoVx(index) / r;
-            auto const vy = rhoVy(index) / r;
-            auto const vz = rhoVz(index) / r;
+                auto const r  = rho(index);
+                auto const vx = rhoVx(index) / r;
+                auto const vy = rhoVy(index) / r;
+                auto const vz = rhoVz(index) / r;
 
-            auto const bx
-                = GridLayout::template project<GridLayout::implT::faceXToCellCenter>(Bx, index);
-            auto const by
-                = GridLayout::template project<GridLayout::implT::faceYToCellCenter>(By, index);
-            auto const bz
-                = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
+                auto const bx
+                    = GridLayout::template project<GridLayout::implT::faceXToCellCenter>(Bx, index);
+                auto const by
+                    = GridLayout::template project<GridLayout::implT::faceYToCellCenter>(By, index);
+                auto const bz
+                    = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
 
-            auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
-            auto const BdotB = bx * bx + by * by + bz * bz;
+                auto const P     = core::eosEtotToP(gamma, r, vx, vy, vz, bx, by, bz, Etot(index));
+                auto const BdotB = bx * bx + by * by + bz * bz;
 
-            std::array<double, 3> const v{vx, vy, vz};
-            std::array<double, 3> const b{bx, by, bz};
+                std::array<double, 3> const v{vx, vy, vz};
+                std::array<double, 3> const b{bx, by, bz};
 
-            // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
-            double invDtWave = 0;
-            for (std::size_t d = 0; d < dimension; ++d)
-            {
-                auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
-                // Hall whistler
-                auto const cw = isHall_ ? std::numbers::pi
+                // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
+                double invDtWave = 0;
+                for (std::size_t d = 0; d < dimension; ++d)
+                {
+                    auto const cfast = core::compute_fast_magnetosonic_(gamma, r, b[d], BdotB, P);
+                    // Hall whistler
+                    auto const cw = isHall
+                                        ? std::numbers::pi
                                               * core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
                                         : 0.0;
-                invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
-            }
-            dt = std::min(dt, wave / invDtWave);
-        });
+                    invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
+                }
+                dt = std::min(dt, wave / invDtWave);
+            },
+            dt, rho, rhoV, B, Etot, gamma_, isHall_, meshSize, wave);
     }
 
     return dt;
@@ -480,13 +481,14 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::mhdNaNCheck_(MHDMod
     auto& rm  = model.resourcesManager;
     auto& rho = model.state.rho;
 
-    auto check_nans = [&](auto const& field, auto const& origin,
-                          core::MeshIndex<MHDModel::dimension> const& index) {
+    // captureless, evalOnGhostBox calls check_nans(index, args...)
+    auto constexpr check_nans = [](auto const& index, auto const& field, auto const& origin,
+                                   int const ilvl, double const time) {
         if (std::isnan(field(index)))
         {
             std::stringstream ss;
             ss << "NaN detected in MHD field at index " << index << " on patch of origin " << origin
-               << " on level " << level.getLevelNumber() << " at time " << time;
+               << " on level " << ilvl << " at time " << time;
             core::DictionaryException ex{"cause", ss.str()};
             throw ex;
         }
@@ -495,8 +497,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::mhdNaNCheck_(MHDMod
     for (auto const& patch : rm->enumerate(level, rho))
     {
         auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-        layout.evalOnGhostBox(
-            rho, [&](auto const&... args) { check_nans(rho, layout.origin(), {args...}); });
+        layout.evalOnGhostBox(rho, check_nans, rho, layout.origin(), level.getLevelNumber(), time);
     }
 }
 

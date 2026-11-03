@@ -2,7 +2,6 @@
 #define PHARE_CORE_NUMERICS_RECONSTRUCTIONS_RECONSTRUCTOR_HPP
 
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include <utility>
 
@@ -15,7 +14,7 @@ public:
     using GridLayout = Reconstruction::GridLayout_t;
 
     template<auto direction, typename State>
-    static auto reconstruct(State const& S, MeshIndex<GridLayout::dimension> index)
+    static auto reconstruct(State const& S, auto const& index)
     {
         auto [rhoL, rhoR] = Reconstruction::template reconstruct<direction>(S.rho, index);
         auto [VxL, VxR] = Reconstruction::template reconstruct<direction>(S.V(Component::X), index);
@@ -37,7 +36,7 @@ public:
 
     template<auto direction, auto ProjectionX, auto ProjectionY, auto ProjectionZ,
              typename VecField>
-    static auto center_reconstruct(VecField const& U, MeshIndex<VecField::dimension> index)
+    static auto center_reconstruct(VecField const& U, auto const& index)
     {
         auto const& Ux = U(Component::X);
         auto const& Uy = U(Component::Y);
@@ -66,7 +65,7 @@ public:
 
     // The normal direction for B is already face centered, so we only reconstruct the transverse
     template<auto direction, typename VecField>
-    static auto transverse_reconstruct(VecField const& B, MeshIndex<VecField::dimension> index)
+    static auto transverse_reconstruct(VecField const& B, auto const& index)
     {
         auto constexpr transverse = []() { // probably should be a util function somewhere
             if constexpr (direction == Direction::X)
@@ -99,8 +98,7 @@ public:
     }
 
     template<auto direction, typename VecField>
-    static auto reconstructed_laplacian(auto inverseMeshSize, VecField const& J,
-                                        MeshIndex<VecField::dimension> index)
+    static auto reconstructed_laplacian(auto inverseMeshSize, VecField const& J, auto const& index)
     {
         auto const& Jx = J(Component::X);
         auto const& Jy = J(Component::Y);
@@ -125,7 +123,7 @@ public:
 private:
     template<auto direction, auto Projection, typename Field>
     static auto reconstructed_laplacian_component_(auto inverseMeshSize, Field const& J,
-                                                   MeshIndex<Field::dimension> index)
+                                                   auto const& index)
     {
         auto d2 = [&](auto dir, auto const& prevValue, auto const& Value, auto const& nextValue) {
             return (inverseMeshSize[dir]) * (inverseMeshSize[dir])
@@ -135,8 +133,8 @@ private:
         auto const [JL, JR]
             = Reconstruction::template center_reconstruct<direction, Projection>(J, index);
 
-        MeshIndex<Field::dimension> prevX = GridLayout::template previous<Direction::X>(index);
-        MeshIndex<Field::dimension> nextX = GridLayout::template next<Direction::X>(index);
+        auto const prevX = GridLayout::template previous<Direction::X>(index);
+        auto const nextX = GridLayout::template next<Direction::X>(index);
 
         auto const [JL_X_1, JR_X_1]
             = Reconstruction::template center_reconstruct<direction, Projection>(J, prevX);
@@ -154,8 +152,8 @@ private:
         }
         else if constexpr (Field::dimension >= 2)
         {
-            MeshIndex<Field::dimension> prevY = GridLayout::template previous<Direction::Y>(index);
-            MeshIndex<Field::dimension> nextY = GridLayout::template next<Direction::Y>(index);
+            auto const prevY = GridLayout::template previous<Direction::Y>(index);
+            auto const nextY = GridLayout::template next<Direction::Y>(index);
 
             auto const [JL_Y_1, JR_Y_1]
                 = Reconstruction::template center_reconstruct<direction, Projection>(J, prevY);
@@ -173,9 +171,8 @@ private:
             }
             if constexpr (Field::dimension == 3)
             {
-                MeshIndex<Field::dimension> prevZ
-                    = GridLayout::template previous<Direction::Z>(index);
-                MeshIndex<Field::dimension> nextZ = GridLayout::template next<Direction::Z>(index);
+                auto const prevZ = GridLayout::template previous<Direction::Z>(index);
+                auto const nextZ = GridLayout::template next<Direction::Z>(index);
 
                 auto const [JL_Z_1, JR_Z_1]
                     = Reconstruction::template center_reconstruct<direction, Projection>(J, prevZ);
