@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
@@ -48,7 +49,10 @@ def config(diag_dir, **layout):
         gamma=gamma,
         largest_patch_size=20,
         smallest_patch_size=20,
-        diag_options={"format": "phareh5", "options": {"dir": diag_dir, "mode": "overwrite"}},
+        diag_options={
+            "format": "phareh5",
+            "options": {"dir": diag_dir, "mode": "overwrite"},
+        },
         **layout,
     )
 
@@ -79,7 +83,9 @@ def config(diag_dir, **layout):
         },
     )
     ph.ElectronModel(closure="polytropic", Pe=Pe)
-    ph.FluidDiagnostics(quantity="electron_pressure", write_timestamps=[0.0, final_time])
+    ph.FluidDiagnostics(
+        quantity="electron_pressure", write_timestamps=[0.0, final_time]
+    )
     ph.FluidDiagnostics(quantity="charge_density", write_timestamps=[0.0, final_time])
     return sim
 
@@ -111,7 +117,9 @@ class PolytropicBorderAdvectionTest(unittest.TestCase):
         # the bump starts on the coarse level, left of the box (15 < x < 35), and ends up
         # inside it
         diag_dir = out + "refined_box"
-        Simulator(config(diag_dir, refinement_boxes={"L0": {"B0": [(30,), (70,)]}})).run()
+        Simulator(
+            config(diag_dir, refinement_boxes={"L0": {"B0": [(30,), (70,)]}})
+        ).run()
         run = Run(diag_dir)
 
         x, s0 = entropy(run, 0.0, 1)

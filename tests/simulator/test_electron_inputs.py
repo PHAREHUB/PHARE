@@ -7,6 +7,7 @@
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import startMPI
 
@@ -107,18 +108,25 @@ class ElectronInputsTest(unittest.TestCase):
         ph.populateDict()
 
         setup_simulation(
-            density=hole, sim_args={"min_initial_density": 0.01}, closure="isothermal", Te=0.1
+            density=hole,
+            sim_args={"min_initial_density": 0.01},
+            closure="isothermal",
+            Te=0.1,
         )
         with self.assertRaisesRegex(ValueError, "below min_initial_density"):
             ph.populateDict()
 
     def test_a_negative_net_charge_is_refused(self):
-        setup_simulation(density=lambda x: -1.0 + 0 * x, closure="polytropic", Pe=lambda x: 0.1)
+        setup_simulation(
+            density=lambda x: -1.0 + 0 * x, closure="polytropic", Pe=lambda x: 0.1
+        )
         with self.assertRaisesRegex(ValueError, "below min_initial_density"):
             ph.populateDict()
 
     def test_min_initial_density_must_be_a_finite_non_negative_number(self):
-        setup_simulation(sim_args={"min_initial_density": "0.01"}, closure="isothermal", Te=0.1)
+        setup_simulation(
+            sim_args={"min_initial_density": "0.01"}, closure="isothermal", Te=0.1
+        )
         with self.assertRaises(TypeError):
             ph.populateDict()
         for bad in (-1.0, float("inf"), float("nan")):
@@ -155,12 +163,18 @@ class ElectronInputsTest(unittest.TestCase):
 
     def test_polytropic_gamma_is_not_an_electron_option(self):
         for name in ("gamma", "Gamma"):
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "Simulation"):
-                setup_simulation(closure="polytropic", Pe=lambda x: 0.1 + 0.0 * x, **{name: 2})
+            with (
+                self.subTest(name=name),
+                self.assertRaisesRegex(ValueError, "Simulation"),
+            ):
+                setup_simulation(
+                    closure="polytropic", Pe=lambda x: 0.1 + 0.0 * x, **{name: 2}
+                )
 
     def test_unknown_closure_is_refused(self):
         with self.assertRaisesRegex(ValueError, "CGL"):
             setup_simulation(closure="CGL")
+
 
 if __name__ == "__main__":
     unittest.main()

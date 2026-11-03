@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
@@ -59,7 +60,10 @@ def config(diag_dir, bz=None, timestamps=(0.0, final_time), **layout):
         gamma=gamma,
         largest_patch_size=20,
         smallest_patch_size=20,
-        diag_options={"format": "phareh5", "options": {"dir": diag_dir, "mode": "overwrite"}},
+        diag_options={
+            "format": "phareh5",
+            "options": {"dir": diag_dir, "mode": "overwrite"},
+        },
         **layout,
     )
 
@@ -136,8 +140,14 @@ class PolytropicUniformEntropyTest(unittest.TestCase):
 
         # the flow does compress: the density, and so Pe, changed
         compression = np.max(np.abs(n - n0) / n0)
-        deviation = {t: np.max(np.abs(si / P0 - 1)) for t, si in ((0.0, s_init), (final_time, s))}
-        print(name, f"max dn/n {compression:.2e}", {t: f"{d:.2e}" for t, d in deviation.items()})
+        deviation = {
+            t: np.max(np.abs(si / P0 - 1)) for t, si in ((0.0, s_init), (final_time, s))
+        }
+        print(
+            name,
+            f"max dn/n {compression:.2e}",
+            {t: f"{d:.2e}" for t, d in deviation.items()},
+        )
 
         self.assertGreater(compression, 0.05)
         # s is the user's, uniform, to round off: and not that of the noisy density
@@ -151,7 +161,6 @@ class PolytropicUniformEntropyTest(unittest.TestCase):
         self.run_and_check(
             "refined_box", 1, refinement_boxes={"L0": {"B0": [(30,), (70,)]}}
         )
-
 
     def test_regridding(self):
         # the refined level follows a structure convected by the flow: it is regridded, and
@@ -176,7 +185,9 @@ class PolytropicUniformEntropyTest(unittest.TestCase):
         boxes = [level_boxes(run.GetNi(t), t, 1) for t in times]
         print("level 1 boxes", dict(zip(times, boxes)))
         self.assertTrue(all(len(b) > 0 for b in boxes), "no refined level")
-        self.assertNotEqual(boxes[0], boxes[-1], "the refined level did not move: no regrid")
+        self.assertNotEqual(
+            boxes[0], boxes[-1], "the refined level did not move: no regrid"
+        )
 
         for t in times:
             _, s = entropy(run, t, 1)

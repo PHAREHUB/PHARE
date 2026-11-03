@@ -11,6 +11,7 @@ import copy
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.pharesee.run import Run
@@ -46,7 +47,10 @@ def config(diag_dir, restart_options):
         largest_patch_size=20,
         smallest_patch_size=20,
         refinement_boxes={"L0": {"B0": [(30,), (70,)]}},
-        diag_options={"format": "phareh5", "options": {"dir": diag_dir, "mode": "overwrite"}},
+        diag_options={
+            "format": "phareh5",
+            "options": {"dir": diag_dir, "mode": "overwrite"},
+        },
         restart_options=restart_options,
     )
 
@@ -102,7 +106,11 @@ class PolytropicRestartTest(unittest.TestCase):
     def test_restart(self):
         dir0, dir1 = out + "continuous", out + "restarted"
 
-        restart_options = {"dir": dir0, "mode": "overwrite", "timestamps": [restart_time]}
+        restart_options = {
+            "dir": dir0,
+            "mode": "overwrite",
+            "timestamps": [restart_time],
+        }
         Simulator(config(dir0, restart_options)).run().reset()
         ph.global_vars.sim = None
 
@@ -113,21 +121,31 @@ class PolytropicRestartTest(unittest.TestCase):
 
         run0, run1 = Run(dir0), Run(dir1)
         for ilvl in (0, 1):
-            x0_, pe0 = domain_nodes(run0.GetPe(final_time, all_primal=False), final_time, ilvl)
-            x1_, pe1 = domain_nodes(run1.GetPe(final_time, all_primal=False), final_time, ilvl)
+            x0_, pe0 = domain_nodes(
+                run0.GetPe(final_time, all_primal=False), final_time, ilvl
+            )
+            x1_, pe1 = domain_nodes(
+                run1.GetPe(final_time, all_primal=False), final_time, ilvl
+            )
             np.testing.assert_array_equal(x0_, x1_)
             # exactly the same in a serial run; with several ranks the sums of the
             # deposited moments are not made in the same order after a restart, which
             # changes the last bit of the float32 diagnostics
             rtol = 0 if cpp.mpi_size() == 1 else 1e-6
             np.testing.assert_allclose(
-                pe1, pe0, rtol=rtol, atol=0, err_msg=f"level {ilvl} differs after a restart"
+                pe1,
+                pe0,
+                rtol=rtol,
+                atol=0,
+                err_msg=f"level {ilvl} differs after a restart",
             )
 
         # the bump went on moving: at V t from where it started, not back at the start
         x, pe = domain_nodes(run1.GetPe(final_time, all_primal=False), final_time, 0)
         _, n = domain_nodes(run1.GetNi(final_time), final_time, 0)
-        peak = x[np.argmax(pe / n**gamma)]  # the entropy: Pe has the noise of the density
+        peak = x[
+            np.argmax(pe / n**gamma)
+        ]  # the entropy: Pe has the noise of the density
         print(f"bump peak at {peak}, expected about {x0 + V * final_time}")
         self.assertLess(abs(peak - (x0 + V * final_time)), 3.0)
 

@@ -17,6 +17,7 @@
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
@@ -55,7 +56,10 @@ def config(diag_dir, **layout):
         gamma=gamma,
         largest_patch_size=20,
         smallest_patch_size=20,
-        diag_options={"format": "phareh5", "options": {"dir": diag_dir, "mode": "overwrite"}},
+        diag_options={
+            "format": "phareh5",
+            "options": {"dir": diag_dir, "mode": "overwrite"},
+        },
         **layout,
     )
 
@@ -144,8 +148,12 @@ class PolytropicClosureTest(unittest.TestCase):
             # the coarse level is the fine one's where it is refined: Pe is synchronized
             # from the fine to the coarse level, so that both agree on shared nodes, which
             # a missing synchronization, or a stale coarse state, would not
-            xc, pec = domain_nodes(run.GetPe(final_time, all_primal=False), final_time, 0)
-            xf, pef = domain_nodes(run.GetPe(final_time, all_primal=False), final_time, 1)
+            xc, pec = domain_nodes(
+                run.GetPe(final_time, all_primal=False), final_time, 0
+            )
+            xf, pef = domain_nodes(
+                run.GetPe(final_time, all_primal=False), final_time, 1
+            )
             common = np.isin(np.round(xc, 9), np.round(xf, 9))
             inside = xc[common]
             keep = (inside > xf.min() + 2) & (inside < xf.max() - 2)
