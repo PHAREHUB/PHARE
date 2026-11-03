@@ -645,10 +645,11 @@ def flat_finest_field_1d(hierarchy, qty, time=None):
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         patches = lvl[ilvl].patches
+        domain_box = hierarchy.level_domain_box(ilvl)
 
         for ip, patch in enumerate(patches):
             pdata = patch[qty]
-            data, (x,) = _interpolation_samples(pdata)
+            data, (x,) = _interpolation_samples(pdata, domain_box)
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -677,10 +678,11 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         patches = lvl[ilvl].patches
+        domain_box = hierarchy.level_domain_box(ilvl)
 
         for ip, patch in enumerate(patches):
             pdata = patch[qty]
-            data, (x, y) = _interpolation_samples(pdata)
+            data, (x, y) = _interpolation_samples(pdata, domain_box)
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 
@@ -714,21 +716,19 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
     return final_data, np.stack((tmp_x, tmp_y), axis=1)
 
 
-def _interpolation_samples(pdata):
+def _interpolation_samples(pdata, domain_box):
     """
-    domain data and coordinates, plus one ghost on dual axes
-    so samples reach the domain edges and interpolation there is not extrapolation
+    domain data and coordinates, ghosts are not used as they may be invalid or absent
+    sides on the physical domain border are padded with a copy of the edge value
+    so samples reach past the domain edges and interpolation there is not extrapolation
     """
-    from pyphare.core import box as boxm
-
-    dual_ghost = [
-        int(c == "dual" and g > 0) for c, g in zip(pdata.centerings, pdata.ghosts_nbr)
-    ]
-    box = boxm.grow(pdata.box, dual_ghost)
-    lbox = boxm.amr_to_local(box, pdata.ghost_box)
-    lbox.upper += pdata.primal_directions()
-    coords = tuple(
-        getattr(pdata, "xyz"[i])[lbox.lower[i] : lbox.upper[i] + 1]
-        for i in range(pdata.ndim)
-    )
-    return pdata[box], coords
+    data = np.asarray(pdata[pdata.box])
+    coords = list(local_domain_coords(pdata))
+    pad = []
+    for i in range(pdata.ndim):
+        lo = int(pdata.box.lower[i] == domain_box.lower[i])
+        up = int(pdata.box.upper[i] == domain_box.upper[i])
+        c, dl = coords[i], pdata.dl[i]
+        coords[i] = np.concatenate(([c[0] - dl] * lo, c, [c[-1] + dl] * up))
+        pad.append((lo, up))
+    return np.pad(data, pad, mode="edge"), tuple(coords)
