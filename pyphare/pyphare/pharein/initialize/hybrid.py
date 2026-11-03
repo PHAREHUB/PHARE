@@ -1,5 +1,7 @@
 import numbers
 
+import numpy as np
+
 from .dict_populator import DictPopulator
 
 
@@ -71,17 +73,42 @@ def _populate_electrons(dp, sim):
     if sim.electrons is None:
         raise RuntimeError("Error - no electrons registered to this Simulation")
 
-    # the check is only made if asked for, so that existing inputs are unchanged
+    closure = sim.electrons.closure
+    # vacuum is not supported by the polytropic closure; for the others the check is asked for
     min_density = sim.min_initial_density
-    sim.model.validate_density(sim, 0.0 if min_density is None else min_density)
+    if min_density is None:
+        min_density = 0.01 if closure.name() == "polytropic" else 0.0
+    sim.model.validate_density(sim, min_density)
 
-    for path, value in sim.electrons.dict_path():
+    entries = list(sim.electrons.dict_path())
+    if closure.name() == "polytropic":
+        entries.append(("electrons/pressure_closure/s", _initial_entropy(sim, closure)))
+
+    for path, value in entries:
         if isinstance(value, str):
             dp.add_string("simulation/" + path, value)
         elif isinstance(value, numbers.Real) and not isinstance(value, bool):
             dp.add_double("simulation/" + path, value)
+        elif callable(value):
+            dp.add_init_function(sim.ndim, "simulation/" + path, value)
         else:
             raise TypeError(
-                f"electrons entry '{path}' should be a str, int or float,"
+                f"electrons entry '{path}' should be a str, int, float or callable,"
                 f" got {type(value).__name__}"
             )
+
+
+def _initial_entropy(sim, closure):
+    """
+    s = Pe/n^gamma from the user's Pe and ion densities: the initial entropy of
+    the polytropic closure, free of the noise of the deposited density
+    """
+    model = sim.model.model_dict
+    pops = sim.model.populations
+
+    def entropy(*x):
+        n = sum(model[pop]["charge"] * model[pop]["density"](*x) for pop in pops)
+        pe = closure.Pe(*x)
+        return np.broadcast_to(pe / n**closure.gamma, np.shape(x[0])).astype(np.float64)
+
+    return entropy

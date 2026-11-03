@@ -97,6 +97,18 @@ namespace amr
         {
         }
 
+        void fillElectronStepStateGhosts(level_t const& /*level*/,
+                                         double const /*fillTime*/) override
+        {
+        }
+
+        void fillElectronStepGhosts(level_t const& /*level*/, double const /*fillTime*/) override {}
+
+        void fillElectronSubcycleGhosts(level_t const& /*level*/,
+                                        double const /*fillTime*/) override
+        {
+        }
+
         void fillIonGhostParticles(IonsT& /*ions*/, level_t& /*level*/,
                                    double const /*fillTime*/) override
         {

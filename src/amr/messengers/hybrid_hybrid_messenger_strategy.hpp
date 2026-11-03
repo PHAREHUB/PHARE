@@ -19,6 +19,7 @@
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
+#include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
@@ -224,6 +225,9 @@ namespace amr
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
+            electronEntropyGhostRefiners_.registerLevel(hierarchy, level);
+            electronEntropyStepRefiners_.registerLevel(hierarchy, level);
+            electronEntropySubcycleRefiners_.registerLevel(hierarchy, level);
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
@@ -253,6 +257,7 @@ namespace amr
                     level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
 
                 electricInitRefiners_.registerLevel(hierarchy, level);
+                electronEntropyInitRefiners_.registerLevel(hierarchy, level);
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
@@ -261,6 +266,7 @@ namespace amr
                 electroSynchronizers_.registerLevel(hierarchy, level);
                 chargeDensitySynchronizers_.registerLevel(hierarchy, level);
                 ionChargeFluxSynchronizers_.registerLevel(hierarchy, level);
+                electronPressureSynchronizers_.registerLevel(hierarchy, level);
             }
         }
 
@@ -281,6 +287,10 @@ namespace amr
 
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            // the entropy of the electron closure, set on the coarser and the old level
+            // by the caller: the new level's pressure is then computed from it and the new
+            // density, once the particles are in
+            electronEntropyInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
 
@@ -376,6 +386,42 @@ namespace amr
 
             setNaNsOnVecfieldGhosts(E, level);
             elecGhostsRefiners_.fill(E, level.getLevelNumber(), fillTime);
+        }
+
+        // the static fill, at initialization and regrid, where the coarser level is at the
+        // same time: no time interpolation
+        void fillElectronStepStateGhosts(level_t const& level, double const fillTime) override
+        {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectronStepStateGhosts");
+
+            if (electronEntropyGhostNames_.empty())
+                return;
+
+            for (auto const& name : electronEntropyGhostNames_)
+                setNaNsOnNamedFieldGhosts(name, level);
+            electronEntropyGhostRefiners_.fill(level.getLevelNumber(), fillTime);
+        }
+
+        // level border ghosts of the state saved at the start of a step are time
+        // interpolated between the coarser level's states at times n (same state) and n+1
+        // (the working state of the closure, left at its final value by the coarser step)
+        void fillElectronStepGhosts(level_t const& level, double const fillTime) override
+        {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectronStepGhosts");
+
+            for (auto const& name : electronEntropyGhostNames_)
+                setNaNsOnNamedFieldGhosts(name, level);
+            electronEntropyStepRefiners_.fill(level.getLevelNumber(), fillTime);
+        }
+
+        // same for the working state, between the sub-steps
+        void fillElectronSubcycleGhosts(level_t const& level, double const fillTime) override
+        {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectronSubcycleGhosts");
+
+            for (auto const& name : electronEntropySubcycleNames_)
+                setNaNsOnNamedFieldGhosts(name, level);
+            electronEntropySubcycleRefiners_.fill(level.getLevelNumber(), fillTime);
         }
 
 
@@ -648,6 +694,7 @@ namespace amr
             electroSynchronizers_.sync(levelNumber);
             chargeDensitySynchronizers_.sync(levelNumber);
             ionChargeFluxSynchronizers_.sync(levelNumber);
+            electronPressureSynchronizers_.sync(levelNumber);
         }
 
         // this function coarsens the fluxSum onto the corresponding coarser fluxes (E in hybrid),
@@ -763,6 +810,29 @@ namespace amr
             chargeDensityPatchGhostsRefiners_.addStaticRefiner(
                 info->modelIonDensity, fieldRefineOp_, info->modelIonDensity,
                 nonOverwriteInteriorFieldFillPattern);
+
+            // the entropy of the electron closure is only set on the domain nodes: its ghosts
+            // come from neighbor patches and, at level borders, from the coarser level
+            for (auto const& name : info->ghostElectronEntropy)
+                electronEntropyGhostRefiners_.addStaticRefiner(name, fieldRefineOp_, name,
+                                                               nonOverwriteInteriorFieldFillPattern);
+            electronEntropyGhostNames_ = info->ghostElectronEntropy;
+
+            // time interpolated between the coarser level's state at time n (ghostElectronEntropy)
+            // and its working state, which it leaves at time n+1
+            electronEntropySubcycleNames_ = info->subcycleElectronEntropy;
+            for (std::size_t i = 0; i < info->subcycleElectronEntropy.size(); ++i)
+            {
+                auto const& old   = info->ghostElectronEntropy.at(i);
+                auto const& model = info->subcycleElectronEntropy[i];
+
+                electronEntropyStepRefiners_.addTimeRefiner(old, model, old, fieldRefineOp_,
+                                                            fieldTimeOp_, old,
+                                                            nonOverwriteInteriorFieldFillPattern);
+                electronEntropySubcycleRefiners_.addTimeRefiner(
+                    model, model, old, fieldRefineOp_, fieldTimeOp_, model,
+                    nonOverwriteInteriorFieldFillPattern);
+            }
         }
 
 
@@ -780,6 +850,10 @@ namespace amr
             // we could set the overwriteInteriorTFfillPattern it would be the same
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
                                                     info->initElectric);
+
+            electronEntropyInitRefiners_.addStaticRefiners(info->initElectronEntropy,
+                                                           fieldRefineOp_,
+                                                           info->initElectronEntropy);
 
 
             domainParticlesRefiners_.addStaticRefiners(
@@ -845,6 +919,11 @@ namespace amr
 
             chargeDensitySynchronizers_.add(info->modelIonDensity, fieldMomentsCoarseningOp_,
                                             info->modelIonDensity);
+
+            // Pe is primal like the moments: injection of the fine node values
+            electronPressureSynchronizers_.add(info->modelElectronPressure,
+                                               fieldMomentsCoarseningOp_,
+                                               info->modelElectronPressure);
         }
 
 
@@ -905,7 +984,7 @@ namespace amr
          * This is needed because the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
          */
-        void setNaNsOnFieldGhosts(FieldT& field)
+        void setNaNsOnFieldGhosts(auto& field)
         {
             auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
             field[core::NdArrayMask{0, nGhosts - 1}]
@@ -916,6 +995,15 @@ namespace amr
         {
             for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
                 setNaNsOnFieldGhosts(field);
+        }
+
+        // same for a field known by its name: the refiners of a field the solver does not
+        // hold, but the closure of the electrons does
+        void setNaNsOnNamedFieldGhosts(std::string const& name, level_t const& level)
+        {
+            auto&& [id] = resourcesManager_->getIDsList(name);
+            for (auto& patch : level)
+                setNaNsOnFieldGhosts(FieldData<GridLayoutT, GridT>::getField(*patch, id));
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
@@ -973,6 +1061,7 @@ namespace amr
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
+        InitRefinerPool electronEntropyInitRefiners_{resourcesManager_};
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost;
@@ -994,6 +1083,14 @@ namespace amr
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+
+        //! entropy of the electron closure: ghosts from neighbor patches and the coarser level
+        GhostRefinerPool electronEntropyGhostRefiners_{resourcesManager_};
+        std::vector<std::string> electronEntropyGhostNames_;
+        //! and from neighbor patches only, between the sub-steps of the closure
+        GhostRefinerPool electronEntropyStepRefiners_{resourcesManager_};
+        GhostRefinerPool electronEntropySubcycleRefiners_{resourcesManager_};
+        std::vector<std::string> electronEntropySubcycleNames_;
 
         // moment ghosts
         // There is no level ghost refiner for the moments: on level ghost nodes they come
@@ -1029,6 +1126,7 @@ namespace amr
 
         SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> ionChargeFluxSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> electronPressureSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
 
 
@@ -1053,6 +1151,7 @@ namespace amr
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
                 /*overwrite_interior=*/true);
 
+        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};
 

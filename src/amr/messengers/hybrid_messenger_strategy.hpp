@@ -75,6 +75,16 @@ namespace amr
             = 0;
 
 
+        // the entropy of the electron closure (see Electrons::stepStateName): ghosts filled
+        // from neighbor patches and the coarser level, then from neighbor patches only, for
+        // the sub-steps of the closure. Nothing to do without such a state
+        virtual void fillElectronStepStateGhosts(level_t const& level, double const fillTime) = 0;
+
+        virtual void fillElectronStepGhosts(level_t const& level, double const fillTime) = 0;
+
+        virtual void fillElectronSubcycleGhosts(level_t const& level, double const fillTime) = 0;
+
+
         virtual void fillIonGhostParticles(IonsT& ions, level_t& level, double const fillTime) = 0;
 
 

@@ -1128,7 +1128,7 @@ class Simulation:
 
         * **model_options** (``str`` or ``list``), {"HybridModel" (default), "MHDModel"}, which physics this simulation evolves.
         * **max_mhd_level** (``int``), default=0, number of AMR levels evolved with MHD. Must be <= `max_nbr_levels`; for an MHD simulation it is typically set equal to `max_nbr_levels` (every level is MHD).
-        * **gamma** (``float``), default=5/3, adiabatic index (heat capacity ratio) of the MHD fluid.
+        * **gamma** (``float``), default=5/3, adiabatic index (heat capacity ratio) of the MHD fluid. It is also the polytropic index of the hybrid polytropic electron closure (see :class:`~pyphare.pharein.ElectronModel`).
         * **eta** (``float``), default=0.0, MHD resistivity.
         * **nu** (``float``), default=0.0, MHD hyper-resistivity.
         * **hall** (``bool``), default=False, whether the Hall term is included in the MHD Ohm's law.
@@ -1149,7 +1149,8 @@ class Simulation:
         * **min_initial_density** (``float``), smallest initial ion charge density accepted on the
           grid nodes of the domain of level 0, checked when the dictionary is populated: the electron
           velocity and Ohm's law divide by it, and a net negative charge is refused. 0 disables the
-          check. Default None: no check
+          check. Default None: 0.01 with the polytropic electron closure, whose transport does not
+          support vacuum, and no check otherwise
     """
 
     @checker

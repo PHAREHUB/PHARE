@@ -67,6 +67,7 @@ class ElectronInputsTest(unittest.TestCase):
             {"closure": "isothermal", "Te": 0.12},
             {"closure": "isothermal", "Te": np.int64(1)},
             {"closure": "isothermal", "Te": np.float32(0.12)},
+            {"closure": "polytropic", "Pe": lambda x: 0.1},
         ]
         for electrons in cases:
             with self.subTest(**{k: repr(v) for k, v in electrons.items()}):
@@ -80,15 +81,24 @@ class ElectronInputsTest(unittest.TestCase):
                 with self.assertRaisesRegex(TypeError, "pressure_closure/Te"):
                     ph.populateDict()
 
+    def test_too_low_initial_density_is_refused_by_the_polytropic_closure(self):
+        def hole(x):
+            return 1.0 - 0.999 * np.exp(-(((x - 3.0) / 0.5) ** 2))
 
-    def test_a_negative_net_charge_is_refused(self):
-        setup_simulation(
-            density=lambda x: -1.0 + 0 * x, sim_args={"min_initial_density": 0.01}, closure="isothermal", Te=0.1
-        )
+        setup_simulation(density=hole, closure="polytropic", Pe=lambda x: 0.1)
         with self.assertRaisesRegex(ValueError, "below min_initial_density"):
             ph.populateDict()
 
-    def test_the_density_is_not_checked_unless_asked_for(self):
+        # a deliberately low density is accepted when min_initial_density allows it
+        setup_simulation(
+            density=hole,
+            sim_args={"min_initial_density": 1e-4},
+            closure="polytropic",
+            Pe=lambda x: 0.1,
+        )
+        ph.populateDict()
+
+    def test_other_closures_are_not_checked_unless_asked_for(self):
         def hole(x):
             return 1.0 - 0.999 * np.exp(-(((x - 3.0) / 0.5) ** 2))
 
@@ -102,6 +112,10 @@ class ElectronInputsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "below min_initial_density"):
             ph.populateDict()
 
+    def test_a_negative_net_charge_is_refused(self):
+        setup_simulation(density=lambda x: -1.0 + 0 * x, closure="polytropic", Pe=lambda x: 0.1)
+        with self.assertRaisesRegex(ValueError, "below min_initial_density"):
+            ph.populateDict()
 
     def test_min_initial_density_must_be_a_finite_non_negative_number(self):
         setup_simulation(sim_args={"min_initial_density": "0.01"}, closure="isothermal", Te=0.1)
@@ -128,7 +142,25 @@ class ElectronInputsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inf"):
             ph.populateDict()
 
+    def test_polytropic_gamma_is_the_simulation_one(self):
+        Pe = lambda x: 0.1 + 0.0 * x
+        sim = setup_simulation(closure="polytropic", Pe=Pe)
+        self.assertEqual(sim.electrons.closure.gamma, 5.0 / 3.0)
+        sim = setup_simulation(sim_args={"gamma": 2}, closure="polytropic", Pe=Pe)
+        self.assertEqual(sim.electrons.closure.gamma, 2.0)
 
+    def test_polytropic_needs_a_pressure(self):
+        with self.assertRaisesRegex(ValueError, "Pe"):
+            setup_simulation(closure="polytropic")
+
+    def test_polytropic_gamma_is_not_an_electron_option(self):
+        for name in ("gamma", "Gamma"):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "Simulation"):
+                setup_simulation(closure="polytropic", Pe=lambda x: 0.1 + 0.0 * x, **{name: 2})
+
+    def test_unknown_closure_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "CGL"):
+            setup_simulation(closure="CGL")
 
 if __name__ == "__main__":
     unittest.main()

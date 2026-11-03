@@ -20,7 +20,9 @@
 #include <SAMRAI/hier/Patch.h>
 #include "SAMRAI/hier/PatchLevel.h"
 
+#include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
@@ -180,11 +182,91 @@ private:
         return *level;
     }
 
-    void update_electrons(auto& level, auto& model)
+    // beginStep is true only for the first stage of a step (predictor1), where the
+    // ion moments and the electron pressure are still at time n: each stage then
+    // advances the pressure from that state rather than from the previous stage.
+    // The state saved by beginStep has its ghosts filled once, right after; the
+    // closure's working state, once per sub-step after the first.
+    void update_electrons(auto& level, auto& model, auto& fromCoarser, double const currentTime,
+                          double const newTime, bool const beginStep, bool const lastStage)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, model.state.electrons))
-            model.state.electrons.update(amr::layoutFromPatch<GridLayout>(*patch));
+        auto& rm        = *model.resourcesManager;
+        auto& electrons = model.state.electrons;
+        auto const dt   = newTime - currentTime;
+
+        // "not usable" failures are the same on every rank, they need no agreement. The
+        // one data dependent failure is the polytropic stability limit, checked below
+        // together with the number of sub-steps, in a single collective call per stage
+        auto const onEveryPatch = [&](auto&& fn) {
+            for (auto& patch : rm.enumerate(level, electrons))
+                fn(amr::layoutFromPatch<GridLayout>(*patch));
+        };
+
+        onEveryPatch([&](auto const& layout) {
+            electrons.computeDensity();
+            electrons.computeBulkVelocity(layout);
+        });
+
+        // times of the closure's states, needed by the time interpolation at the ghosts of
+        // the next finer level: the state saved at the start of the step is at currentTime,
+        // the working one is at newTime once the stage is done
+        auto const setStateTime = [&](std::optional<std::string> const& name, double const time) {
+            if (!name)
+                return;
+            auto const id = rm.getID(*name);
+            for (auto& patch : rm.enumerate(level, electrons))
+                patch->getPatchData(*id)->setTime(time);
+        };
+
+        if (beginStep)
+        {
+            onEveryPatch([&](auto const& layout) { electrons.beginStep(layout); });
+            setStateTime(electrons.stepStateName(), currentTime);
+            fromCoarser.fillElectronStepGhosts(level, currentTime);
+        }
+
+        if (!electrons.subcycleStateName())
+        {
+            onEveryPatch([&](auto const& layout) { electrons.computePressure(layout, dt); });
+            return;
+        }
+
+        // the closure's transport is sub-cycled where the electron flow crosses more
+        // than one cell per dt, with the same number of sub-steps on every patch of the
+        // level since the ghost filling between them is collective. A patch beyond the
+        // stability limit reports it as an out of range number of sub-steps, so that the
+        // ranks agree on the failure in the same reduction
+        constexpr auto failed = std::numeric_limits<std::size_t>::max();
+
+        std::size_t localSubcycles = 1;
+        try
+        {
+            onEveryPatch([&](auto const& layout) {
+                localSubcycles = std::max(localSubcycles, electrons.subcycles(layout, dt));
+                electrons.startSubcycles(layout);
+            });
+        }
+        catch (std::runtime_error const& ex)
+        {
+            PHARE_LOG_ERROR(ex.what());
+            localSubcycles = failed;
+        }
+        auto const nbrSubcycles = mpi::max(localSubcycles);
+        if (nbrSubcycles == failed)
+            throw std::runtime_error("Error - SolverPPC::update_electrons failed, see log");
+        auto const subDt = dt / nbrSubcycles;
+
+        // sub-step i advances from the state at currentTime + i*subDt, so do its ghosts
+        for (std::size_t i = 1; i < nbrSubcycles; ++i)
+        {
+            onEveryPatch([&](auto const& layout) { electrons.subcycle(layout, subDt); });
+            fromCoarser.fillElectronSubcycleGhosts(level, currentTime + i * subDt);
+        }
+        onEveryPatch([&](auto const& layout) { electrons.computePressure(layout, subDt); });
+
+        setStateTime(electrons.subcycleStateName(), newTime);
+        if (lastStage)
+            fromCoarser.fillElectronSubcycleGhosts(level, newTime);
     }
 
 
@@ -436,7 +518,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
-        update_electrons(level, model);
+        update_electrons(level, model, fromCoarser, currentTime, newTime, true, false);
         ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
@@ -474,7 +556,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ohm");
-        update_electrons(level, model);
+        update_electrons(level, model, fromCoarser, currentTime, newTime, false, false);
         ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
@@ -516,8 +598,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm");
-
-        update_electrons(level, model);
+        update_electrons(level, model, fromCoarser, currentTime, newTime, false, true);
         ohm(electromag.B, electromag.E, model.state.electrons);
         setTime(model.state.electromag.E);
     }

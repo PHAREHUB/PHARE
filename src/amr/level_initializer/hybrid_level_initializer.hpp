@@ -59,11 +59,36 @@ namespace solver
 
             auto& hybMessenger = dynamic_cast<HybridMessenger&>(messenger);
 
+            auto& electrons = hybridModel.state.electrons;
+            auto& rm        = *hybridModel.resourcesManager;
+
             PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level");
             if (isRegridding)
             {
                 PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
                 PHARE_LOG_START(3, "hybridLevelInitializer::initialize : regriding block");
+
+                // the regridded level takes the entropy of the electrons from the coarser
+                // level and from the old level, not their pressure: the pressure of the new
+                // level follows from it and its own density, below. It is the entropy of the
+                // current pressure, which beginStep sets on the domain nodes of these levels
+                if (electrons.stepStateName())
+                {
+                    auto const setEntropy = [&](auto& lvl) {
+                        for (auto& patch : rm.enumerate(lvl, electrons))
+                            electrons.beginStep(amr::layoutFromPatch<GridLayoutT>(*patch));
+                    };
+
+                    if (levelNumber > 0)
+                    {
+                        auto& coarser = amr_types::getLevel(*hierarchy, levelNumber - 1);
+                        setEntropy(coarser);
+                        hybMessenger.fillElectronStepStateGhosts(coarser, initDataTime);
+                    }
+                    if (oldLevel)
+                        setEntropy(*oldLevel);
+                }
+
                 messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
                 PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : regriding block");
             }
@@ -85,7 +110,6 @@ namespace solver
             }
 
             auto& ions = hybridModel.state.ions;
-            auto& rm   = *hybridModel.resourcesManager;
 
             // overlapping patches were each filled over their whole domain,
             // keep particles only on the patch owning their cell
@@ -133,6 +157,18 @@ namespace solver
             // Bold_ and Eold_ copies saved by prepareStep() (see end of this function).
 
 
+            // the pressure of a new level is not communicated, it is computed from the
+            // entropy of the electrons and the density just deposited: the entropy is the
+            // user's at the initial time, or the one the level was regridded with
+            for (auto& patch : rm.enumerate(level, electrons))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                if (isRegridding)
+                    electrons.pressureFromEntropy(layout);
+                else
+                    electrons.seedPressure(layout);
+            }
+
             // J is never messenger-communicated: compute it locally via Ampere on
             // physical+1 (exactly the layer Ohm reads) on EVERY level, init and
             // regrid paths included. B ghosts are filled on all paths above, so the
@@ -149,11 +185,27 @@ namespace solver
             // regrid paths and initLevel has done it on new finer levels
             if (!isRegridding and isRootLevel(levelNumber))
             {
-                auto& E         = hybridModel.state.electromag.E;
-                auto& electrons = hybridModel.state.electrons;
+                auto& E = hybridModel.state.electromag.E;
+
+                // split as in SolverPPC::update_electrons (see comment there)
+                for (auto& patch : rm.enumerate(level, electrons))
+                {
+                    electrons.computeDensity();
+                    electrons.computeBulkVelocity(amr::layoutFromPatch<GridLayoutT>(*patch));
+                }
 
                 for (auto& patch : rm.enumerate(level, electrons))
-                    electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
+                    electrons.beginStep(amr::layoutFromPatch<GridLayoutT>(*patch));
+
+                hybMessenger.fillElectronStepStateGhosts(level, 0.0);
+
+                // dt = 0: a single sub-step, no ghost fill in between
+                for (auto& patch : rm.enumerate(level, electrons))
+                {
+                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                    electrons.startSubcycles(layout);
+                    electrons.computePressure(layout, 0.0);
+                }
 
                 Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
                 setTime(E);

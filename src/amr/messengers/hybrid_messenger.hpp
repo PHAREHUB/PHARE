@@ -283,6 +283,38 @@ namespace amr
         }
 
 
+        /**
+         * @brief fillElectronStepStateGhosts fills the ghost nodes of the state saved by the
+         * electron closure at the start of a step, from neighbor patches and, at level borders,
+         * from the coarser level. Called once per step and level, after the state is set on all
+         * the patches.
+         */
+        void fillElectronStepStateGhosts(level_t const& level, double const fillTime)
+        {
+            strat_->fillElectronStepStateGhosts(level, fillTime);
+        }
+
+
+        /**
+         * @brief fillElectronStepGhosts fills the ghost nodes of the state saved by the
+         * closure at the start of the step, from neighbor patches and, at the level border,
+         * time interpolated at fillTime from the coarser level's states at times n and n+1
+         */
+        void fillElectronStepGhosts(level_t const& level, double const fillTime)
+        {
+            strat_->fillElectronStepGhosts(level, fillTime);
+        }
+
+        /**
+         * @brief fillElectronSubcycleGhosts fills the ghost nodes, from neighbor patches and time interpolated from the coarser level,
+         * of the working state of a sub-cycled electron closure, between its sub-steps.
+         */
+        void fillElectronSubcycleGhosts(level_t const& level, double const fillTime)
+        {
+            strat_->fillElectronSubcycleGhosts(level, fillTime);
+        }
+
+
 
         /**
          * @brief fillIonGhostParticles is called by a ISolver solving hybrid equations to fill the

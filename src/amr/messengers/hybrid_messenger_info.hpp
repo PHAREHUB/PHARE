@@ -41,11 +41,17 @@ namespace amr
         std::string modelElectric;
         std::string modelIonChargeFlux;
         std::string modelIonDensity;
+        std::string modelElectronPressure;
 
         // store names of vector fields that need to be initialized by refinement
         // moments are initialized by particles so only EM fields need to be init.
         std::vector<std::string> initMagnetic;
         std::vector<std::string> initElectric;
+
+        // the entropy of a closure that transports it (see Electrons::stepStateName) is
+        // refined from the coarser level, and from the old level where there is one, to
+        // initialize a regridded level: its pressure follows from it and the new density
+        std::vector<std::string> initElectronEntropy;
 
         // below are the names of the populations that need to be communicated
         // this is for initialization
@@ -62,6 +68,14 @@ namespace amr
         std::vector<std::string> sumBorderFields;
         std::vector<std::string> ghostMagnetic;
         std::vector<std::string> ghostElectric;
+
+        // the entropy needs its ghosts filled, from neighbor patches and the coarser level:
+        // ghostElectronEntropy is the state saved at the start of a step (time n of the
+        // coarser level), subcycleElectronEntropy the one the sub-steps advance, which
+        // holds time n+1 of the coarser level after its step. Both lists have the same
+        // order and the ghosts are time interpolated between the two, as for E and B
+        std::vector<std::string> ghostElectronEntropy;
+        std::vector<std::string> subcycleElectronEntropy;
 
 
         std::vector<std::string> maxBorderFields;

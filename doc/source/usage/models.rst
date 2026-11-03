@@ -104,12 +104,14 @@ Minimum density
 ^^^^^^^^^^^^^^^
 
 The electron velocity :math:`\mathbf{V}_e = (\sum_s q_s \mathbf{F}_s - \mathbf{J})/n`
-and Ohm's law divide by the ion charge density. If ``min_initial_density`` is given to
-``Simulation``, an initial condition whose total ion charge density goes below it, a net
-negative charge included, on any grid node of the domain of level 0, is refused. Without it
-no check is made, so that existing inputs with deliberately rarefied regions are unchanged;
-``min_initial_density=0`` disables it. It is made once, in Python, on the initial density:
-it does not see the density of refined levels nor its later evolution.
+and Ohm's law divide by the ion charge density. With the polytropic electron closure,
+whose transport does not support vacuum, ``Simulation`` therefore refuses an initial
+condition whose total ion charge density goes below ``min_initial_density`` (default 0.01),
+a net negative charge included, on any grid node of the domain of level 0. With the other
+closures the check is made only if ``min_initial_density`` is given, so that existing inputs
+with deliberately rarefied regions are unchanged; ``min_initial_density=0`` disables it. It
+is made once, in Python, on the initial density: it does not see the density of refined
+levels nor its later evolution.
 
 A Hybrid simulation also requires an ``ElectronModel`` block, see below.
 
@@ -128,6 +130,54 @@ closure, and is required in every Hybrid simulation.
     import pyphare.pharein as ph
 
     ph.ElectronModel(closure="isothermal", Te=0.2)
+
+Two closures are available:
+
+- ``closure="isothermal"`` with ``Te``: the electron temperature is constant in
+  space and time, and :math:`P_e = n T_e`.
+- ``closure="polytropic"`` with ``Pe``, a function of the coordinates giving the
+  initial electron pressure. The polytropic index is the ``gamma`` given to
+  ``Simulation`` (default 5/3). The electrons are adiabatic: :math:`s = P_e / n^\gamma` is carried by the electron flow,
+  :math:`\partial_t s + \mathbf{V}_e \cdot \nabla s = 0`, and
+  :math:`P_e = s\, n^\gamma`. With an initial pressure
+  :math:`P_e = P_0 (n/n_0)^\gamma`, :math:`s` is uniform and stays so: this is
+  the usual polytropic law. A non-uniform initial :math:`s` is transported.
+  :math:`s` is initialized from the analytic ``Pe`` and the analytic ion
+  density of the initial condition, not from the density deposited by the
+  particles, so that particle noise does not enter :math:`s`.
+
+.. code-block:: python
+
+    def Pe(*xyz):  # any dimension, same arguments as density
+        return 0.1 * density(*xyz) ** (5.0 / 3.0)
+
+    ph.ElectronModel(closure="polytropic", Pe=Pe)
+
+The transport uses a first-order upwind scheme in space and is first order in
+time (each predictor/corrector stage advances :math:`s` from the start of the
+step), stable only if :math:`C = \sum_d |V_{e,d}|\, \Delta t / \Delta x_d \le 1`
+at every node. Since :math:`V_e` contains :math:`J/n`, :math:`C` can exceed 1 in
+thin or rarefied current layers: each stage of the level is then sub-cycled in
+:math:`\lceil C_{max} \rceil` sub-steps, :math:`C_{max}` being the largest value
+on the level. Beyond :math:`C_{max} = 10` the simulation stops with an error;
+reduce ``time_step``.
+
+With several levels, :math:`s` (and not :math:`P_e`) is the quantity that is
+refined and transported across levels. When a level is regridded, :math:`s` is
+taken from the coarser level and from the old level where it overlaps the new
+one, and :math:`P_e` is recomputed from it and from the density of the new level, so
+:math:`P_e` stays consistent with the local density rather than being
+interpolated on its own. A level created at the initial time is seeded from the
+analytic profiles instead.
+At a level border, the ghost values of :math:`s` are interpolated in time
+between the coarser level's states at the beginning (:math:`t^n`) and the end
+(:math:`t^{n+1}`) of its step, as is done for :math:`E` and :math:`B`, which
+matters when the finer level sub-cycles in time.
+
+The electron pressure can be written with
+``FluidDiagnostics(quantity="electron_pressure")``. Vacuum is not supported (see
+the minimum density above): where the ion density drops to zero during a run,
+:math:`s` and :math:`P_e` are left unchanged at that node.
 
 Not needed for an MHD simulation.
 

@@ -22,6 +22,10 @@
 
 
 #include <string_view>
+#include <cmath>
+#include <functional>
+#include <complex>
+#include <numbers>
 
 using namespace PHARE::core;
 
@@ -91,8 +95,11 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<InitFunctionT>(by);
     dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<InitFunctionT>(bz);
 
-    dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
-    dict["electrons"]["pressure_closure"]["Te"]   = Te;
+    dict["electrons"]["pressure_closure"]["name"]  = std::string{"isothermal"};
+    dict["electrons"]["pressure_closure"]["Te"]    = Te;
+    dict["electrons"]["pressure_closure"]["gamma"] = 1.;
+    dict["electrons"]["pressure_closure"]["Pe"]    = static_cast<InitFunctionT>(ex); // todo?
+    dict["electrons"]["pressure_closure"]["s"]     = static_cast<InitFunctionT>(ex);
 
     return dict;
 }
@@ -126,6 +133,7 @@ public:
 
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
 struct ElectronsFixture
+
 {
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
@@ -152,6 +160,10 @@ struct ElectronsFixture
     UsableTensorField<dim> ionTensor, protonTensor;
 
     GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
+
+    GridND SeOld; // the polytropic closure's own fields
+    GridND Se;
+
 
     ParticleArray_t domainParticles{layout.AMRBox()};
     ParticleArray_t patchGhostParticles = domainParticles;
@@ -189,6 +201,24 @@ struct ElectronsFixture
         return ions;
     }
 
+    void initialize_variant_resources(auto& pressure_closure)
+    {
+        auto const visitors = variant_visitor_overloads{
+            [&](FieldND& f) {
+                if (f.name() == "Se_old")
+                    f.setBuffer(&SeOld);
+                else if (f.name() == "Se")
+                    f.setBuffer(&Se);
+            },
+            [](auto&) {
+                // if this happens you are missing an overload
+                throw std::runtime_error("should not happen");
+            },
+        };
+        for (auto& var : pressure_closure.getRunTimeResourcesViewList())
+            std::visit(visitors, var);
+    }
+
 
     ElectronsFixture(PHARE::initializer::PHAREDict const& dict = createDict<dim>())
         : electromag{dict["electromag"]}
@@ -208,6 +238,8 @@ struct ElectronsFixture
         , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
                               layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
+        , SeOld{"Se_old", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
+        , Se{"Se", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , ions{_ions(F, ionChargeDensity, ionMassDensity, protonParticleDensity,
                      protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack)}
         , fluxCompute{ions, J}
@@ -220,6 +252,7 @@ struct ElectronsFixture
         auto&& pe  = std::get<0>(pc.getCompileTimeResourcesViewList());
 
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
+        initialize_variant_resources(pc);
         pe.setBuffer(&Pe);
         EXPECT_TRUE(pc.isUsable());
 
@@ -350,8 +383,9 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
     auto& ions      = this->ions;
+    auto const dt   = 0.0;
 
-    electrons.update(layout);
+    electrons.update(layout, dt);
 
     auto& Ne = electrons.density();
     auto& Ni = ions.chargeDensity();
@@ -411,8 +445,9 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
     using GridYee   = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
+    auto const dt   = 0.0;
 
-    electrons.update(layout);
+    electrons.update(layout, dt);
 
 
     auto& Ne = electrons.density();
@@ -476,8 +511,9 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
+    auto const dt   = 0.0;
 
-    electrons.update(layout);
+    electrons.update(layout, dt);
 
     auto& Ne_ = electrons.density();
     auto& Pe_ = electrons.pressure();
@@ -546,6 +582,25 @@ TEST(ElectronsFactoryTest, ThatAnUnknownClosureNameThrows)
         EXPECT_NE(std::string{e.what()}.find("adiabatic"), std::string::npos);
     }
 }
+
+TEST(ElectronsFactoryTest, ThatConstThingsAreAsExpectedForPolytropic)
+{
+    auto dict = createDict<1>();
+
+    dict["electrons"]["pressure_closure"]["name"] = std::string{"polytropic"};
+
+    ElectronsFixture<std::pair<DimConst<1>, InterpConst<1>>> fixture{dict};
+
+    auto&& emm     = std::get<0>(fixture.electrons.getCompileTimeResourcesViewList());
+    auto const& pc = std::get<1>(emm.getCompileTimeResourcesViewList());
+
+    EXPECT_EQ(pc.stepStateName(), "Se_old");
+    EXPECT_EQ(pc.subcycleStateName(), "Se");
+
+    // the polytropic closure needs its step state ghosts filled: no one-call update
+    EXPECT_THROW(fixture.electrons.update(fixture.layout, 0.1), std::runtime_error);
+}
+
 
 // two populations with different q/m drifting relative to each other:
 // the electron velocity must be (sum_s q_s F_s - J) / Ne, see issue #1466
@@ -704,7 +759,7 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
     ions.computeChargeDensity();
     ions.computeBulkVelocity();
     ions.computeChargeFlux();
-    electrons.update(layout);
+    electrons.update(layout, /*dt=*/0.);
 
     double Ne = 0;
     std::array<double, 3> chargeFlux{0., 0., 0.};
@@ -726,9 +781,574 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
 }
 
 
+
+
+
+// the tests below drive the closures alone, through a flux computer that only
+// hands out a density and an electron velocity set by the test
+
+namespace closure_test
+{
+template<std::size_t dim>
+using GridLayout_t = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, 1}>::Hybrid::GridLayout_t;
+
+template<std::size_t dim>
+using Grid_t = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+
+template<std::size_t dim>
+struct FakeElectronFlux
+{
+    using GridLayout = GridLayout_t<dim>;
+    using VecField   = typename UsableVecField<dim>::Super;
+    using Field      = Field_t<dim>;
+
+    NO_DISCARD bool isUsable() const { return true; }
+    NO_DISCARD bool isSettable() const { return false; }
+
+    NO_DISCARD Field const& density() const { return *N; }
+    NO_DISCARD VecField const& velocity() const { return *V; }
+
+    Field const* N;
+    VecField const* V;
+};
+
+template<std::size_t dim>
+struct PolytropicClosureFixture
+{
+    using Field1 = Field_t<dim>;
+    using GridT  = Grid_t<dim>;
+
+    double gamma                            = 5. / 3.;
+    static constexpr double dx              = 0.1;
+    static constexpr std::uint32_t nbrCells = dim == 1 ? 50 : 20;
+    static constexpr double length          = dx * nbrCells;
+
+    PHARE::initializer::PHAREDict makeDict() const
+    {
+        PHARE::initializer::PHAREDict dict;
+        dict["pressure_closure"]["gamma"] = gamma;
+        dict["pressure_closure"]["Pe"]
+            = static_cast<PHARE::initializer::InitFunction<dim>>(makeSharedPtr<dim>());
+        dict["pressure_closure"]["s"]
+            = static_cast<PHARE::initializer::InitFunction<dim>>(makeSharedPtr<dim>());
+        return dict;
+    }
+
+    static auto makeLayout()
+    {
+        std::array<double, dim> meshSize, origin;
+        std::array<std::uint32_t, dim> cells;
+        meshSize.fill(dx);
+        origin.fill(0.);
+        cells.fill(nbrCells);
+        return GridLayout_t<dim>{meshSize, cells, PHARE::core::Point<double, dim>{origin}};
+    }
+
+    explicit PolytropicClosureFixture(double const gamma_ = 5. / 3.)
+        : gamma{gamma_}
+    {
+        Nf.setBuffer(&N);
+        closure.pressure().setBuffer(&Pe);
+
+        auto const visitors = variant_visitor_overloads{
+            [&](Field1& f) {
+                if (f.name() == "Se_old")
+                    f.setBuffer(&SeOld);
+                else if (f.name() == "Se")
+                    f.setBuffer(&Se);
+                else
+                    throw std::runtime_error("unexpected field resource " + f.name());
+            },
+            [](auto&) { throw std::runtime_error("unexpected resource"); },
+        };
+        for (auto& var : closure.getRunTimeResourcesViewList())
+            std::visit(visitors, var);
+    }
+
+    GridLayout_t<dim> layout = makeLayout();
+
+    // P, rho and V are all primal on Yee, so they share these indexes
+    std::uint32_t const start = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    std::uint32_t const end   = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+
+    // fn takes the node coordinates, ghost nodes included
+    void fill(auto&& field, auto&& fn)
+    {
+        layout.evalOnGhostBox(field, [&](auto const&... ijk) {
+            auto const index = std::array{ijk...};
+            std::array<double, dim> x;
+            for (std::size_t d = 0; d < dim; ++d)
+                x[d] = (static_cast<double>(index[d]) - start) * dx;
+            field(index) = std::apply(fn, x);
+        });
+    }
+
+    // what the model's ghost filling schedule does on a periodic single patch domain:
+    // a ghost node takes the domain node one period away, in every direction
+    void periodicGhosts(GridT& grid)
+    {
+        auto const wrap = [&](std::uint32_t i) {
+            if (i < start)
+                return i + nbrCells;
+            if (i > end)
+                return i - nbrCells;
+            return i;
+        };
+        layout.evalOnGhostBox(grid, [&](auto const&... ijk) {
+            auto const index = std::array{ijk...};
+            auto source      = index;
+            for (auto& i : source)
+                i = wrap(i);
+            if (source != index)
+                grid(index) = grid(source);
+        });
+    }
+
+    // as HybridMessenger::fillElectronStepStateGhosts between beginStep and computePressure,
+    // and fillElectronSubcycleGhosts between sub-steps
+    std::function<void(GridT&)> stepStateGhosts = [this](GridT& s) { periodicGhosts(s); };
+
+    // one stage, sub-cycled as SolverPPC::update_electrons does
+    void stage(double const dt)
+    {
+        auto const nbrSubcycles = closure.subcycles(layout, dt);
+        closure.startSubcycles(layout);
+        for (std::size_t i = 1; i < nbrSubcycles; ++i)
+        {
+            closure.subcycle(layout, dt / nbrSubcycles);
+            stepStateGhosts(Se);
+        }
+        closure.computePressure(layout, dt / nbrSubcycles);
+    }
+
+    void step(double const dt, std::size_t const nbrStages = 1)
+    {
+        closure.beginStep(layout);
+        stepStateGhosts(SeOld);
+        for (std::size_t s = 0; s < nbrStages; ++s)
+            stage(dt);
+    }
+
+    auto domainValues(GridT const& grid)
+    {
+        std::vector<double> values;
+        layout.evalOnBox(grid, [&](auto const&... ijk) { values.push_back(grid(ijk...)); });
+        return values;
+    }
+
+    GridT N{"N", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho), 1.};
+    GridT Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P), 0.};
+    GridT SeOld{"Se_old", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P),
+                0.};
+    GridT Se{"Se", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P), 0.};
+    UsableVecField<dim> V{"Ve", layout, HybridQuantity::Vector::V};
+
+    Field1 Nf{"N", HybridQuantity::Scalar::rho};
+    PHARE::initializer::PHAREDict dict = makeDict();
+    // the closure refers to it
+    FakeElectronFlux<dim> flux{&Nf, &V};
+    PolytropicElectronPressureClosure<FakeElectronFlux<dim>> closure{dict, flux};
+};
+
+using Fixture1D = PolytropicClosureFixture<1>;
+using Fixture2D = PolytropicClosureFixture<2>;
+
+} // namespace closure_test
+
+
+
+// SolverPPC calls computePressure in predictor1, predictor2 and the corrector,
+// each over the full dt: all must start from the beginStep state, or Pe
+// would be advanced three times per time step
+TEST(PolytropicElectronPressureClosure, stagesOfAStepDoNotAccumulate)
+{
+    closure_test::Fixture1D f;
+    auto constexpr pi = std::numbers::pi;
+    auto const Pe0    = [&](double x) { return 1. + 0.1 * std::sin(2 * pi * x / f.length); };
+
+    f.fill(f.V(Component::X), [](double) { return 1.; });
+    f.fill(f.Pe, Pe0);
+    f.step(0.05);
+    auto const oneStage = f.domainValues(f.Pe);
+
+    f.fill(f.Pe, Pe0);
+    f.step(0.05, /*nbrStages=*/3);
+    auto const threeStages = f.domainValues(f.Pe);
+
+    ASSERT_EQ(oneStage.size(), threeStages.size());
+    for (std::size_t i = 0; i < oneStage.size(); ++i)
+        EXPECT_DOUBLE_EQ(threeStages[i], oneStage[i]) << "at domain node " << i;
+
+    // and the stage did move Pe, so the equality above is not trivially true
+    f.fill(f.Pe, Pe0);
+    EXPECT_NE(oneStage, f.domainValues(f.Pe));
+}
+
+
+
+// at Courant number 1 first order upwind is exact: s moves by exactly one node,
+// downstream. An asymmetric profile makes a wrong upwind side visible.
+TEST(PolytropicElectronPressureClosure, courantOneShiftsByExactlyOneNodeDownstream)
+{
+    auto constexpr pi = std::numbers::pi;
+
+    for (double const v : {1., -1.})
+    {
+        SCOPED_TRACE("Ve = " + std::to_string(v));
+        closure_test::Fixture1D f;
+        auto const Pe0 = [&](double x) {
+            return 1. + 0.1 * std::sin(2 * pi * x / f.length)
+                   + 0.05 * std::cos(4 * pi * x / f.length);
+        };
+
+        f.fill(f.V(Component::X), [&](double) { return v; });
+        f.fill(f.Pe, Pe0);
+        f.step(f.dx / std::abs(v));
+
+        for (auto i = f.start; i <= f.end; ++i)
+        {
+            double const xi = (static_cast<double>(i) - f.start) * f.dx;
+            EXPECT_NEAR(f.Pe(i), Pe0(xi - v / std::abs(v) * f.dx), 1e-13) << "at node " << i;
+        }
+    }
+}
+
+
+
+// for a single Fourier mode on a periodic grid the scheme has a closed form
+// solution: s_i^n = 1 + a*Im(g^n exp(i k x_i)), with g the amplification factor
+// of the upwind scheme. This checks transport speed, direction and damping.
+TEST(PolytropicElectronPressureClosure, advectionMatchesTheExactDiscreteSolution)
+{
+    using namespace std::complex_literals;
+    auto constexpr pi = std::numbers::pi;
+
+    for (double const v : {1., -1.})
+    {
+        SCOPED_TRACE("Ve = " + std::to_string(v));
+        closure_test::Fixture1D f;
+
+        double const amplitude     = 0.1;
+        double const wavenumber    = 2 * pi * 5 / f.length; // 10 nodes per wavelength
+        double const courant       = 0.5;
+        double const dt            = courant * f.dx / std::abs(v);
+        double const theta         = wavenumber * f.dx;
+        std::size_t const nbrSteps = 200;
+
+        // v > 0: s_i - c (s_i - s_{i-1});  v < 0: s_i + c (s_{i+1} - s_i)
+        auto const g = v > 0 ? 1. - courant * (1. - std::exp(-1i * theta))
+                             : 1. + courant * (std::exp(1i * theta) - 1.);
+
+        f.fill(f.V(Component::X), [&](double) { return v; });
+        f.fill(f.Pe, [&](double x) { return 1. + amplitude * std::sin(wavenumber * x); });
+
+        for (std::size_t n = 0; n < nbrSteps; ++n)
+            f.step(dt);
+
+        auto const gn = std::pow(g, static_cast<double>(nbrSteps));
+        for (auto i = f.start; i <= f.end; ++i)
+        {
+            double const xi       = (static_cast<double>(i) - f.start) * f.dx;
+            double const expected = 1. + amplitude * std::imag(gn * std::exp(1i * wavenumber * xi));
+            EXPECT_NEAR(f.Pe(i), expected, 1e-12) << "at node " << i;
+        }
+    }
+}
+
+
+
+// the unsplit update is a convex combination only if the Courant numbers summed
+// over directions stay below 1: beyond, a stage takes ceil(C) sub-steps
+TEST(PolytropicElectronPressureClosure, subcyclesBeyondTheAdvectionStabilityLimit)
+{
+    closure_test::Fixture1D f;
+    f.fill(f.V(Component::X), [](double) { return 1.; });
+
+    EXPECT_EQ(f.closure.subcycles(f.layout, 0.5 * f.dx), 1u);
+    EXPECT_EQ(f.closure.subcycles(f.layout, 1.0 * f.dx), 1u);
+    EXPECT_EQ(f.closure.subcycles(f.layout, 1.5 * f.dx), 2u);
+    EXPECT_EQ(f.closure.subcycles(f.layout, 3.0 * f.dx), 3u); // not 4 from round off
+    EXPECT_EQ(f.closure.subcycles(f.layout, 9.2 * f.dx), 10u);
+}
+
+TEST(PolytropicElectronPressureClosure, stabilityLimitSumsTheDirectionsIn2D)
+{
+    closure_test::Fixture2D f;
+    f.fill(f.V(Component::X), [](double, double) { return 1.; });
+    f.fill(f.V(Component::Y), [](double, double) { return 1.; });
+
+    EXPECT_EQ(f.closure.subcycles(f.layout, 0.5 * f.dx), 1u);  // 0.5 + 0.5
+    EXPECT_EQ(f.closure.subcycles(f.layout, 0.75 * f.dx), 2u); // each 0.75 < 1, sum 1.5
+}
+
+// beyond 10 sub-steps the time step is refused, and Pe left as it was
+TEST(PolytropicElectronPressureClosure, throwsBeyondTenSubcycles)
+{
+    closure_test::Fixture1D f;
+    f.fill(f.V(Component::X), [](double) { return 1.; });
+    f.fill(f.Pe, [](double) { return 1.; });
+
+    EXPECT_NO_THROW(f.step(10.0 * f.dx));
+
+    auto const before = f.domainValues(f.Pe);
+    EXPECT_THROW(f.step(10.5 * f.dx), std::runtime_error);
+    EXPECT_EQ(before, f.domainValues(f.Pe));
+}
+
+// a single update beyond the stability limit, i.e. not sub-cycled, is refused
+TEST(PolytropicElectronPressureClosure, computePressureRefusesAnUnstableUpdate)
+{
+    closure_test::Fixture1D f;
+    f.fill(f.V(Component::X), [](double) { return 1.; });
+    f.fill(f.Pe, [](double) { return 1.; });
+    f.closure.beginStep(f.layout);
+    f.stepStateGhosts(f.SeOld);
+    f.closure.startSubcycles(f.layout);
+
+    auto const before = f.domainValues(f.Pe);
+    EXPECT_THROW(f.closure.computePressure(f.layout, 1.5 * f.dx), std::runtime_error);
+    EXPECT_THROW(f.closure.subcycle(f.layout, 1.5 * f.dx), std::runtime_error);
+    EXPECT_EQ(before, f.domainValues(f.Pe));
+}
+
+// at C = 3, three sub-steps at Courant number 1 move s by exactly three nodes: this
+// needs the ghosts of the working state refilled between the sub-steps
+TEST(PolytropicElectronPressureClosure, subcyclesShiftByExactlyOneNodeEach)
+{
+    auto constexpr pi = std::numbers::pi;
+
+    for (double const v : {1., -1.})
+    {
+        SCOPED_TRACE("Ve = " + std::to_string(v));
+        closure_test::Fixture1D f;
+        auto const Pe0 = [&](double x) {
+            return 1. + 0.1 * std::sin(2 * pi * x / f.length)
+                   + 0.05 * std::cos(4 * pi * x / f.length);
+        };
+
+        f.fill(f.V(Component::X), [&](double) { return v; });
+        f.fill(f.Pe, Pe0);
+        f.step(3 * f.dx / std::abs(v), /*nbrStages=*/3);
+
+        for (auto i = f.start; i <= f.end; ++i)
+        {
+            double const xi = (static_cast<double>(i) - f.start) * f.dx;
+            EXPECT_NEAR(f.Pe(i), Pe0(xi - 3 * v / std::abs(v) * f.dx), 1e-13) << "at node " << i;
+        }
+    }
+}
+
+// at C = 1.5 a step is two upwind updates at 0.75: the exact discrete solution of
+// the scheme with g(0.75)^(2n)
+TEST(PolytropicElectronPressureClosure, subcyclingMatchesTheExactDiscreteSolution)
+{
+    using namespace std::complex_literals;
+    auto constexpr pi = std::numbers::pi;
+
+    closure_test::Fixture1D f;
+
+    double const v             = 1.;
+    double const amplitude     = 0.1;
+    double const wavenumber    = 2 * pi * 5 / f.length;
+    double const dt            = 1.5 * f.dx / v;
+    double const subCourant    = 0.75;
+    double const theta         = wavenumber * f.dx;
+    std::size_t const nbrSteps = 100;
+
+    auto const g = 1. - subCourant * (1. - std::exp(-1i * theta));
+
+    f.fill(f.V(Component::X), [&](double) { return v; });
+    f.fill(f.Pe, [&](double x) { return 1. + amplitude * std::sin(wavenumber * x); });
+
+    for (std::size_t n = 0; n < nbrSteps; ++n)
+        f.step(dt);
+
+    auto const gn = std::pow(g, static_cast<double>(2 * nbrSteps));
+    for (auto i = f.start; i <= f.end; ++i)
+    {
+        double const xi       = (static_cast<double>(i) - f.start) * f.dx;
+        double const expected = 1. + amplitude * std::imag(gn * std::exp(1i * wavenumber * xi));
+        EXPECT_NEAR(f.Pe(i), expected, 1e-12) << "at node " << i;
+    }
+}
+
+
+
+// the 2D update is unsplit: for a single Fourier mode exp(i(kx x + ky y)) the
+// amplification factor is 1 - sum_d of the 1D upwind terms. A flow with vx > 0 and
+// vy < 0 checks both upwind sides and their combination.
+TEST(PolytropicElectronPressureClosure, advectionMatchesTheExactDiscreteSolutionIn2D)
+{
+    using namespace std::complex_literals;
+    auto constexpr pi = std::numbers::pi;
+
+    closure_test::Fixture2D f;
+
+    double const amplitude = 0.1;
+    double const vx = 1., vy = -0.5;
+    double const dt            = 0.4 * f.dx / (std::abs(vx) + std::abs(vy)); // sum of Courant 0.4
+    double const kx            = 2 * pi * 2 / f.length;
+    double const ky            = 2 * pi * 3 / f.length;
+    double const cx            = std::abs(vx) * dt / f.dx;
+    double const cy            = std::abs(vy) * dt / f.dx;
+    std::size_t const nbrSteps = 100;
+
+    auto const g
+        = 1. - cx * (1. - std::exp(-1i * kx * f.dx)) + cy * (std::exp(1i * ky * f.dx) - 1.);
+
+    f.fill(f.V(Component::X), [&](double, double) { return vx; });
+    f.fill(f.V(Component::Y), [&](double, double) { return vy; });
+    f.fill(f.Pe, [&](double x, double y) { return 1. + amplitude * std::sin(kx * x + ky * y); });
+
+    for (std::size_t n = 0; n < nbrSteps; ++n)
+        f.step(dt);
+
+    auto const gn = std::pow(g, static_cast<double>(nbrSteps));
+    f.layout.evalOnBox(f.Pe, [&](auto const&... ijk) {
+        auto const index      = std::array{ijk...};
+        double const x        = (static_cast<double>(index[0]) - f.start) * f.dx;
+        double const y        = (static_cast<double>(index[1]) - f.start) * f.dx;
+        double const expected = 1. + amplitude * std::imag(gn * std::exp(1i * (kx * x + ky * y)));
+        EXPECT_NEAR(f.Pe(index), expected, 1e-12) << "at node " << index[0] << "," << index[1];
+    });
+}
+
+
+
+// with a uniform s (Pe = P0 (N/N0)^gamma) the transport is inert and the closure
+// reduces to the algebraic polytropic law: Pe/N^gamma stays P0 whatever N does.
+// Here V = a*x and N follows dN/dt = -a*N exactly.
+TEST(PolytropicElectronPressureClosure, uniformEntropyGivesThePolytropicLaw)
+{
+    closure_test::Fixture1D f;
+
+    double const a     = 0.1;
+    double const dt    = 0.01;
+    double const P0    = 1.;
+    auto const density = [&](double t) { return std::exp(-a * t); };
+
+    f.fill(f.V(Component::X), [&](double x) { return a * x; });
+    f.fill(f.Pe, [&](double) { return P0; });
+
+    // V = a*x is not periodic: the uniform state's ghosts are its nearest domain value
+    auto const extrapolate = [&](auto& grid) {
+        for (std::size_t i = 0; i < f.start; ++i)
+            grid(i) = grid(f.start);
+        for (std::size_t i = f.end + 1; i < grid.size(); ++i)
+            grid(i) = grid(f.end);
+    };
+
+    double t = 0;
+    for (std::size_t n = 0; n < 100; ++n)
+    {
+        // as in SolverPPC: moments at time n for beginStep, at n+1 for the corrector
+        f.fill(f.N, [&](double) { return density(t); });
+        f.closure.beginStep(f.layout);
+        extrapolate(f.SeOld);
+
+        t += dt;
+        f.fill(f.N, [&](double) { return density(t); });
+        f.closure.startSubcycles(f.layout);
+        f.closure.computePressure(f.layout, dt);
+    }
+
+    for (auto i = f.start; i <= f.end; ++i)
+        EXPECT_NEAR(f.Pe(i), P0 * std::pow(density(t), f.gamma), 1e-12) << "at node " << i;
+}
+
+
+
+// the closure must use the gamma it is given, not a hard coded 5/3
+TEST(PolytropicElectronPressureClosure, usesTheGivenGamma)
+{
+    closure_test::Fixture1D f{1.4};
+
+    f.fill(f.V(Component::X), [](double) { return 0.; });
+    f.fill(f.Pe, [](double) { return 2.; });
+    f.closure.beginStep(f.layout);
+    f.stepStateGhosts(f.SeOld);
+
+    f.fill(f.N, [](double) { return 0.5; }); // density halved within the step
+    f.closure.startSubcycles(f.layout);
+    f.closure.computePressure(f.layout, 0.1);
+
+    for (auto i = f.start; i <= f.end; ++i)
+        EXPECT_NEAR(f.Pe(i), 2. * std::pow(0.5, 1.4), 1e-12) << "at node " << i;
+}
+
+
+
+// the initial entropy is the user's, not Pe over the deposited density: a noisy
+// density must not end up in s. The fixture's s(x) is the coordinate x.
+TEST(PolytropicElectronPressureClosure, seedingTheEntropyIgnoresTheNoiseOfTheDensity)
+{
+    closure_test::Fixture1D f;
+
+    f.layout.evalOnGhostBox(f.N, [&](auto const& i) { f.N(i) = 1. + 0.2 * (i % 2 ? 1. : -1.); });
+
+    f.closure.seedPressure(f.layout);
+    f.closure.beginStep(f.layout);
+
+    f.layout.evalOnBox(f.Pe, [&](auto const& i) {
+        auto const x = (static_cast<double>(i) - f.start) * f.dx;
+        EXPECT_NEAR(f.Pe(i), x * std::pow(f.N(i), f.gamma), 1e-12) << "at node " << i;
+        EXPECT_NEAR(f.SeOld(i), x, 1e-12) << "at node " << i;
+    });
+}
+
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
 
     return RUN_ALL_TESTS();
+}
+
+
+
+// a copy of a closure keeps what makes it the closure it is, not only what the base class
+// holds, and refers to the flux computer it is given
+TEST(PolytropicElectronPressureClosure, aCloneIsAPolytropicClosureOnTheGivenFlux)
+{
+    closure_test::Fixture1D f;
+    closure_test::FakeElectronFlux<1> otherFlux{&f.Nf, &f.V};
+
+    auto const copy = f.closure.clone(otherFlux);
+
+    using Polytropic = PolytropicElectronPressureClosure<closure_test::FakeElectronFlux<1>>;
+    EXPECT_NE(dynamic_cast<Polytropic*>(copy.get()), nullptr);
+    EXPECT_EQ(copy->stepStateName(), f.closure.stepStateName());
+    EXPECT_EQ(copy->subcycleStateName(), f.closure.subcycleStateName());
+    EXPECT_EQ(copy->getRunTimeResourcesViewList().size(),
+              f.closure.getRunTimeResourcesViewList().size());
+}
+
+
+// the fields the closure keeps for itself count for its usability, not only Pe: an
+// unset one is reported as such, rather than failing later where it is read
+TEST(PolytropicElectronPressureClosure, usabilityCoversTheRuntimeResources)
+{
+    closure_test::Fixture1D f;
+    // as the model sees it
+    auto const& closure = static_cast<ElectronPressureClosure<closure_test::FakeElectronFlux<1>> const&>(f.closure);
+    EXPECT_TRUE(closure.isUsable());
+    EXPECT_FALSE(closure.isSettable());
+
+    for (std::string const name : {"Se_old", "Se"})
+    {
+        for (auto& var : f.closure.getRunTimeResourcesViewList())
+            std::visit([&](auto& field) { field.setBuffer(nullptr); }, var);
+        EXPECT_FALSE(closure.isUsable());
+
+        // only the named one is set back: still unusable until all are
+        for (auto& var : f.closure.getRunTimeResourcesViewList())
+            std::visit(
+                [&](auto& field) {
+                    if (field.name() == name)
+                        field.setBuffer(name == "Se_old" ? &f.SeOld : &f.Se);
+                },
+                var);
+        EXPECT_FALSE(closure.isUsable()) << "with only " << name << " set";
+    }
 }

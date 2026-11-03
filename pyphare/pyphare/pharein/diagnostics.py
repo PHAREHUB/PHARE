@@ -488,7 +488,8 @@ class FluidDiagnostics:
           density used in the electron velocity
         * "electron_pressure" - the electron pressure given by the electron
           closure (written to ``electrons_pressure.h5``; only domain nodes are
-          meaningful), read back with ``Run.GetPe``
+          meaningful). Needed to read the pressure back with ``Run.GetPe`` for
+          closures other than the isothermal one
 
     **population_name** (``str``), name of the ion population this
     diagnostics applies to, as declared in

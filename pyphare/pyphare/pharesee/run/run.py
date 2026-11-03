@@ -164,7 +164,7 @@ class Run:
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
         """
         the electron pressure as dumped by FluidDiagnostics(quantity="electron_pressure"),
-        or, without that output, n*Te. Only domain nodes
+        or, without that output, n*Te for the isothermal closure. Only domain nodes
         of the dumped pressure are meaningful.
         """
         if os.path.exists(os.path.join(self.path, "electrons_pressure.h5")):
@@ -174,7 +174,13 @@ class Run:
             return ScalarField.FROM(compute_hier_from(_compute_to_primal, hier, scalar="P"))
 
         hier = self._get_hierarchy(time, "ions_charge_density.h5")
-        Te = hier.sim.electrons.closure.Te
+        closure = hier.sim.electrons.closure
+        if closure.name() != "isothermal":
+            raise ValueError(
+                f"no electron pressure output for the '{closure.name()}' closure:"
+                ' add FluidDiagnostics(quantity="electron_pressure")'
+            )
+        Te = closure.Te
 
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)

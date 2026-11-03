@@ -171,11 +171,26 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     hybridInfo.modelIonDensity    = state.ions.chargeDensityName();
     hybridInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
 
+    // electron pressure is a state for closures that evolve it (polytropic): the
+    // coarser level must take the finer one's where they overlap, consistently
+    // with the synchronized density, as for E
+    hybridInfo.modelElectronPressure = state.electrons.pressure().name();
+
     hybridInfo.initElectric.emplace_back(state.electromag.E.name());
     hybridInfo.initMagnetic.emplace_back(state.electromag.B.name());
 
     hybridInfo.ghostElectric.push_back(hybridInfo.modelElectric);
     hybridInfo.ghostMagnetic.push_back(hybridInfo.modelMagnetic);
+
+    // the entropy a closure saves at the start of a step (polytropic) and, where its
+    // transport is sub-cycled, the one it advances between sub-steps
+    if (auto const name = state.electrons.stepStateName())
+    {
+        hybridInfo.initElectronEntropy.push_back(*name);
+        hybridInfo.ghostElectronEntropy.push_back(*name);
+    }
+    if (auto const name = state.electrons.subcycleStateName())
+        hybridInfo.subcycleElectronEntropy.push_back(*name);
 
     auto transform_ = [](auto& ions, auto& inserter) {
         std::transform(std::begin(ions), std::end(ions), std::back_inserter(inserter),
