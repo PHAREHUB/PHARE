@@ -103,9 +103,8 @@ namespace detail
         }
 
     private:
-        using GridLayoutImpl = GridLayoutT::implT;
-        using Point_t        = core::Point<int, dimension>;
-        using WeightPoint_t  = core::WeightPoint<dimension>;
+        using Point_t       = core::Point<int, dimension>;
+        using WeightPoint_t = core::WeightPoint<dimension>;
 
         // 2 bits of choice per direction (dual<<1 | parity) → 4^dim combinations.
         static constexpr std::size_t nCombined = std::size_t{1} << (2 * dimension);
@@ -119,12 +118,12 @@ namespace detail
             if constexpr (choice == 0) // primal, parity 0: coincident node, exact copy
                 return std::array{WeightPoint_t{Point_t{}, 1.0}};
             else if constexpr (choice == 1) // primal, parity 1: half-point midpoint
-                return GridLayoutImpl::template directionalInterp<
-                    d, GridLayoutImpl::InterpDir::PrimalToDual, order>();
+                return core::directionalInterp<dimension, d, core::InterpDir::PrimalToDual,
+                                               order>();
             else if constexpr (choice == 2) // dual, parity 0: σ = −1 child
-                return GridLayoutImpl::template directionalProlongation<d, -1, order>();
+                return core::directionalProlongation<dimension, d, -1, order>();
             else // choice == 3 : dual, parity 1: σ = +1 child
-                return GridLayoutImpl::template directionalProlongation<d, +1, order>();
+                return core::directionalProlongation<dimension, d, +1, order>();
         }
 
         // full multi-D stencil (exact size) for the combined choice index (2 bits per direction).
@@ -136,12 +135,12 @@ namespace detail
             if constexpr (dimension == 1)
                 return oneDRow_<0, combined & 3u>();
             else if constexpr (dimension == 2)
-                return GridLayoutImpl::template tensorProduct<0, 1>(
-                    oneDRow_<0, combined & 3u>(), oneDRow_<1, (combined >> 2) & 3u>());
+                return core::tensorProduct<0, 1>(oneDRow_<0, combined & 3u>(),
+                                                 oneDRow_<1, (combined >> 2) & 3u>());
             else
-                return GridLayoutImpl::template tensorProduct<0, 1, 2>(
-                    oneDRow_<0, combined & 3u>(), oneDRow_<1, (combined >> 2) & 3u>(),
-                    oneDRow_<2, (combined >> 4) & 3u>());
+                return core::tensorProduct<0, 1, 2>(oneDRow_<0, combined & 3u>(),
+                                                    oneDRow_<1, (combined >> 2) & 3u>(),
+                                                    oneDRow_<2, (combined >> 4) & 3u>());
         }
 
         // gather the coarse contributions for one fine index using the exact stencil of choice

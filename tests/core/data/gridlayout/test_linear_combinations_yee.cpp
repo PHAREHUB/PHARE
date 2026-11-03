@@ -121,116 +121,170 @@ void runTestFile(std::string const& filename, Callable&& call)
 
 TEST(MomentToEx, combinationOk)
 {
-    runTestFile("linear_coefs_yee_momentToEx.txt",
-                []<typename Layout>() { return Layout::momentsToEx(); });
+    runTestFile("linear_coefs_yee_momentToEx.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::rho),
+                                  Layout::centering(HybridQuantity::Scalar::Ex)>();
+    });
 }
 
 TEST(MomentToEy, combinationOk)
 {
-    runTestFile("linear_coefs_yee_momentToEy.txt",
-                []<typename Layout>() { return Layout::momentsToEy(); });
+    runTestFile("linear_coefs_yee_momentToEy.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::rho),
+                                  Layout::centering(HybridQuantity::Scalar::Ey)>();
+    });
 }
 
 TEST(MomentToEz, combinationOk)
 {
-    runTestFile("linear_coefs_yee_momentToEz.txt",
-                []<typename Layout>() { return Layout::momentsToEz(); });
+    runTestFile("linear_coefs_yee_momentToEz.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::rho),
+                                  Layout::centering(HybridQuantity::Scalar::Ez)>();
+    });
 }
 
 TEST(ExToMoment, combinationOk)
 {
-    runTestFile("linear_coefs_yee_ExToMoment.txt",
-                []<typename Layout>() { return Layout::ExToMoments(); });
+    runTestFile("linear_coefs_yee_ExToMoment.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Ex),
+                                  Layout::centering(HybridQuantity::Scalar::rho)>();
+    });
 }
 
 TEST(EyToMoment, combinationOk)
 {
-    runTestFile("linear_coefs_yee_EyToMoment.txt",
-                []<typename Layout>() { return Layout::EyToMoments(); });
+    runTestFile("linear_coefs_yee_EyToMoment.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Ey),
+                                  Layout::centering(HybridQuantity::Scalar::rho)>();
+    });
 }
 
 TEST(EzToMoment, combinationOk)
 {
-    runTestFile("linear_coefs_yee_EzToMoment.txt",
-                []<typename Layout>() { return Layout::EzToMoments(); });
+    runTestFile("linear_coefs_yee_EzToMoment.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Ez),
+                                  Layout::centering(HybridQuantity::Scalar::rho)>();
+    });
 }
 
 TEST(JxToMoment, combinationOk)
 {
-    runTestFile("linear_coefs_yee_JxToMoment.txt",
-                []<typename Layout>() { return Layout::JxToMoments(); });
+    runTestFile("linear_coefs_yee_JxToMoment.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Jx),
+                                  Layout::centering(HybridQuantity::Scalar::rho)>();
+    });
 }
 
 TEST(JyToMoment, combinationOk)
 {
-    runTestFile("linear_coefs_yee_JyToMoment.txt",
-                []<typename Layout>() { return Layout::JyToMoments(); });
+    runTestFile("linear_coefs_yee_JyToMoment.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Jy),
+                                  Layout::centering(HybridQuantity::Scalar::rho)>();
+    });
 }
 
 TEST(JzToMoment, combinationOk)
 {
-    runTestFile("linear_coefs_yee_JzToMoment.txt",
-                []<typename Layout>() { return Layout::JzToMoments(); });
+    runTestFile("linear_coefs_yee_JzToMoment.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Jz),
+                                  Layout::centering(HybridQuantity::Scalar::rho)>();
+    });
 }
 
 TEST(ByToEx, combinationOk)
 {
-    runTestFile("linear_coefs_yee_ByToEx.txt", []<typename Layout>() { return Layout::ByToEx(); });
+    runTestFile("linear_coefs_yee_ByToEx.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::By),
+                                  Layout::centering(HybridQuantity::Scalar::Ex)>();
+    });
 }
 
 TEST(BzToEx, combinationOk)
 {
-    runTestFile("linear_coefs_yee_BzToEx.txt", []<typename Layout>() { return Layout::BzToEx(); });
+    runTestFile("linear_coefs_yee_BzToEx.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Bz),
+                                  Layout::centering(HybridQuantity::Scalar::Ex)>();
+    });
 }
 
 TEST(BxToEy, combinationOk)
 {
-    runTestFile("linear_coefs_yee_BxToEy.txt", []<typename Layout>() { return Layout::BxToEy(); });
+    runTestFile("linear_coefs_yee_BxToEy.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Bx),
+                                  Layout::centering(HybridQuantity::Scalar::Ey)>();
+    });
 }
 
 TEST(BzToEy, combinationOk)
 {
-    runTestFile("linear_coefs_yee_BzToEy.txt", []<typename Layout>() { return Layout::BzToEy(); });
+    runTestFile("linear_coefs_yee_BzToEy.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Bz),
+                                  Layout::centering(HybridQuantity::Scalar::Ey)>();
+    });
 }
 
 TEST(BxToEz, combinationOk)
 {
-    runTestFile("linear_coefs_yee_BxToEz.txt", []<typename Layout>() { return Layout::BxToEz(); });
+    runTestFile("linear_coefs_yee_BxToEz.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Bx),
+                                  Layout::centering(HybridQuantity::Scalar::Ez)>();
+    });
 }
 
 TEST(ByToEz, combinationOk)
 {
-    runTestFile("linear_coefs_yee_ByToEz.txt", []<typename Layout>() { return Layout::ByToEz(); });
+    runTestFile("linear_coefs_yee_ByToEz.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::By),
+                                  Layout::centering(HybridQuantity::Scalar::Ez)>();
+    });
 }
 
 TEST(JxToEx, combinationOk)
 {
-    runTestFile("linear_coefs_yee_JxToEx.txt", []<typename Layout>() { return Layout::JxToEx(); });
+    runTestFile("linear_coefs_yee_JxToEx.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Jx),
+                                  Layout::centering(HybridQuantity::Scalar::Ex)>();
+    });
 }
 
 TEST(JyToEy, combinationOk)
 {
-    runTestFile("linear_coefs_yee_JyToEy.txt", []<typename Layout>() { return Layout::JyToEy(); });
+    runTestFile("linear_coefs_yee_JyToEy.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Jy),
+                                  Layout::centering(HybridQuantity::Scalar::Ey)>();
+    });
 }
 
 TEST(JzToEz, combinationOk)
 {
-    runTestFile("linear_coefs_yee_JzToEz.txt", []<typename Layout>() { return Layout::JzToEz(); });
+    runTestFile("linear_coefs_yee_JzToEz.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Jz),
+                                  Layout::centering(HybridQuantity::Scalar::Ez)>();
+    });
 }
 
 TEST(BxToEx, combinationOk)
 {
-    runTestFile("linear_coefs_yee_BxToEx.txt", []<typename Layout>() { return Layout::BxToEx(); });
+    runTestFile("linear_coefs_yee_BxToEx.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Bx),
+                                  Layout::centering(HybridQuantity::Scalar::Ex)>();
+    });
 }
 
 TEST(ByToEy, combinationOk)
 {
-    runTestFile("linear_coefs_yee_ByToEy.txt", []<typename Layout>() { return Layout::ByToEy(); });
+    runTestFile("linear_coefs_yee_ByToEy.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::By),
+                                  Layout::centering(HybridQuantity::Scalar::Ey)>();
+    });
 }
 
 TEST(BzToEz, combinationOk)
 {
-    runTestFile("linear_coefs_yee_BzToEz.txt", []<typename Layout>() { return Layout::BzToEz(); });
+    runTestFile("linear_coefs_yee_BzToEz.txt", []<typename Layout>() {
+        return recenteringStencil<Layout::centering(HybridQuantity::Scalar::Bz),
+                                  Layout::centering(HybridQuantity::Scalar::Ez)>();
+    });
 }
 
 
@@ -240,7 +294,6 @@ TEST(BzToEz, combinationOk)
 // ---------------------------------------------------------------------------
 
 using PHARE::core::dirX;
-using ImplYee1 = PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t::implT;
 
 namespace
 {
@@ -270,7 +323,7 @@ auto applyRow(auto const& span, int ix, auto&& f)
 // order-2 dual prolongation weights: -1/8, 1, 1/8
 TEST(DualProlongation, order2WeightsMatchLadder)
 {
-    auto right = ImplYee1::directionalProlongation<dirX, +1, 2>(); // σ=+1
+    auto right = directionalProlongation<1, dirX, +1, 2>(); // σ=+1
     EXPECT_DOUBLE_EQ(coefAt(right, -1), -1. / 8.);
     EXPECT_DOUBLE_EQ(coefAt(right, 0), 1.);
     EXPECT_DOUBLE_EQ(coefAt(right, +1), 1. / 8.);
@@ -279,8 +332,8 @@ TEST(DualProlongation, order2WeightsMatchLadder)
 // consistency: weights sum to 1 (reproduces a constant field)
 TEST(DualProlongation, weightsSumToOne)
 {
-    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, +1, 2>()), 1.);
-    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, -1, 2>()), 1.);
+    EXPECT_DOUBLE_EQ(coefSum(directionalProlongation<1, dirX, +1, 2>()), 1.);
+    EXPECT_DOUBLE_EQ(coefSum(directionalProlongation<1, dirX, -1, 2>()), 1.);
 }
 
 // conservation: the two children average back to ū_I
@@ -293,8 +346,7 @@ TEST(DualProlongation, childrenMeanBackToCoarse)
         for (int o : {-2, -1, 1, 2})
             EXPECT_DOUBLE_EQ(0.5 * (coefAt(right, o) + coefAt(left, o)), 0.);
     };
-    check(ImplYee1::directionalProlongation<dirX, +1, 2>(),
-          ImplYee1::directionalProlongation<dirX, -1, 2>());
+    check(directionalProlongation<1, dirX, +1, 2>(), directionalProlongation<1, dirX, -1, 2>());
 }
 
 // exactness: on linear cell-averages u_i = a + b*i, each child reproduces a + b*(I ± 1/4)
@@ -304,8 +356,7 @@ TEST(DualProlongation, exactOnLinearData)
     auto f      = [](int i) { return a + b * i; };
     int const I = 5;
 
-    for (auto const& [row, sigma] :
-         {std::pair{ImplYee1::directionalProlongation<dirX, +1, 2>(), +1},
-          std::pair{ImplYee1::directionalProlongation<dirX, -1, 2>(), -1}})
+    for (auto const& [row, sigma] : {std::pair{directionalProlongation<1, dirX, +1, 2>(), +1},
+                                     std::pair{directionalProlongation<1, dirX, -1, 2>(), -1}})
         EXPECT_DOUBLE_EQ(applyRow(row, I, f), a + b * (I + sigma * 0.25));
 }
