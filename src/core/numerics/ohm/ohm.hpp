@@ -2,6 +2,7 @@
 #define PHARE_OHM_HPP
 
 
+#include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -74,19 +75,22 @@ private:
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPe = grad(layout_, Pe);
+        // pressure_ reads n and Pe on the two nodes on each side of an E edge
+        auto const isPrimal = [](auto const c) { return c == QtyCentering::primal; };
+        if (not all(layout_.centering(n), isPrimal) or not all(layout_.centering(Pe), isPrimal))
+            throw std::runtime_error("Error - Ohm - n and Pe must be primal");
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
+                Pack{Enew, n, Ve, Pe, B, J}, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
+                Pack{Enew, n, Ve, Pe, B, J}, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
+                Pack{Enew, n, Ve, Pe, B, J}, args...);
         });
     }
 
@@ -95,20 +99,21 @@ private:
     {
         VecField& Exyz;
         Field const& n;
-        VecField const &Ve, &B, &J;
+        VecField const& Ve;
+        Field const& Pe;
+        VecField const &B, &J;
     };
 
 
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
-             typename... IDXs>
-    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename... IDXs>
+    void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ve, B, J]     = pack;
+        auto const& [E, n, Ve, Pe, B, J] = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, gradPe, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, Pe, {ijk...});
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -171,42 +176,41 @@ private:
     }
 
 
-    template<auto component, typename Field, typename GradPe>
-    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
+    // logarithmic mean (n1 - n0) / (ln n1 - ln n0) of two positive densities, written with
+    // e = (n1 - n0) / (n1 + n0) as m e / atanh(e), m the arithmetic mean: no n1/n0 ratio to
+    // overflow, accurate when n1 ~ n0, and equal to m in the limit n1 = n0.
+    static double logMean_(double const n0, double const n1)
     {
-        if constexpr (component == Component::X)
-        {
-            auto const nOnEx = GridLayout::template project<Q::rho, Q::Ex>(n, index);
+        auto const m = 0.5 * (n0 + n1);
+        auto const e = (n1 - n0) / (n1 + n0);
+        return e == 0. ? m : m * e / std::atanh(e);
+    }
 
-            return -gradPe(index) / nOnEx;
+
+    // -grad(Pe)/n is evaluated as -D(Pe) / n_L, with n_L the logarithmic mean of n on the two
+    // nodes of the edge. This keeps two exact properties of the continuous term:
+    // - a uniform Pe gives no force, whatever n does;
+    // - a uniform Te gives -Te D(ln n), the discrete gradient of Te ln(n), whose discrete curl
+    //   vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
+    // Dividing by the arithmetic mean of n, as before, breaks the second one.
+    // n must be > 0 on both nodes, as it already must be for the electron velocity.
+    template<auto component, typename Field>
+    auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
+    {
+        constexpr auto d = detail::vector_component_index<component>();
+
+        if constexpr (d < dimension)
+        {
+            // E_d is dual along d, its two neighbouring nodes are index and index+1 along d
+            auto const nL
+                = logMean_(detail::shifted<d>(n, index, 0), detail::shifted<d>(n, index, 1));
+            auto const dPe = detail::shifted<d>(Pe, index, 1) - detail::shifted<d>(Pe, index, 0);
+
+            return -layout_.inverseMeshSize(static_cast<Direction>(d)) * dPe / nL;
         }
-
-        else if constexpr (component == Component::Y)
+        else
         {
-            if constexpr (Field::dimension >= 2)
-            {
-                auto const nOnEy = GridLayout::template project<Q::rho, Q::Ey>(n, index);
-
-                return -gradPe(index) / nOnEy;
-            }
-            else
-            {
-                return 0.;
-            }
-        }
-
-        else if constexpr (component == Component::Z)
-        {
-            if constexpr (Field::dimension >= 3)
-            {
-                auto const nOnEz = GridLayout::template project<Q::rho, Q::Ez>(n, index);
-
-                return -gradPe(index) / nOnEz;
-            }
-            else
-            {
-                return 0.;
-            }
+            return 0.;
         }
     }
 
