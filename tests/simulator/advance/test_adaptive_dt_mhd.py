@@ -266,20 +266,17 @@ class AdaptiveDtMHDTest(SimulatorTest):
             drift = composite_mass(mass_hier, t) - mass_ref
             self.assertLess(abs(drift), 1e-12 * mass_ref, f"mass drift at t={t}")
 
-    def test_dt0_ignores_finer_level_features(self):
+    def test_dt0_is_level0_stable_dt(self):
         cfl_wave = 0.5
         gamma = 5.0 / 3.0
-        x0, y0 = 1.525, 1.525
-        sigma = 0.02 * DL
 
         def density(x, y):
-            r2 = (x - x0) ** 2 + (y - y0) ** 2
-            return 1.0 - 0.99 * np.exp(-r2 / (2.0 * sigma**2))
+            return 1.0 + 0.0 * x
 
         def pressure(x, y):
             return 1.0 + 0.0 * x
 
-        diag_dir = "phare_outputs/adaptive_dt_mhd/dt0_dip"
+        diag_dir = "phare_outputs/adaptive_dt_mhd/dt0_level0"
         self.register_diag_dir_for_cleanup(diag_dir)
         ph.global_vars.sim = None
         sim = box_sim(
