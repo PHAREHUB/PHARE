@@ -1,3 +1,4 @@
+import itertools
 import unittest
 
 import numpy as np
@@ -85,6 +86,48 @@ def box_sim(
     ph.ElectromagDiagnostics(quantity="B", write_timestamps=write_timestamps)
     ph.MHDDiagnostics(quantity="rho", write_timestamps=write_timestamps)
     return sim
+
+
+def fast_magnetosonic(gamma, rho, b_dir, b2, p):
+    c02 = gamma * p / rho
+    ca2 = b2 / rho
+    cadir2 = b_dir * b_dir / rho
+    return np.sqrt(
+        (c02 + ca2) * 0.5
+        + np.sqrt((c02 + ca2) * (c02 + ca2) - 4.0 * c02 * cadir2) * 0.5
+    )
+
+
+def uniform_stable_dt(cfl_wave, gamma, rho, v, b, p, dl):
+    b2 = sum(bi * bi for bi in b)
+    inv_dt = sum(
+        (abs(v[d]) + fast_magnetosonic(gamma, rho, b[d], b2, p)) / dl[d]
+        for d in range(len(dl))
+    )
+    return cfl_wave / inv_dt
+
+
+def run_to_end(sim, final_time):
+    simulator = Simulator(sim)
+    simulator.initialize()
+    dts = []
+    while simulator.currentTime() < final_time - 1e-12:
+        t_before = simulator.currentTime()
+        simulator.advance()
+        dts.append(simulator.currentTime() - t_before)
+    simulator.reset()
+    return dts
+
+
+def finest_substeps(diag_dir):
+    hier = hierarchy_from(h5_filename=diag_dir + "/mhd_rho.h5")
+    times = sorted(hier.time_hier.keys(), key=float)
+    coarse = [float(t) for t in times if 0 in hier.levelNbrs(t)]
+    fine = [float(t) for t in times if 0 not in hier.levelNbrs(t)]
+    return [
+        sum(1 for t in fine if t_start < t < t_end) + 1
+        for t_start, t_end in itertools.pairwise(coarse)
+    ]
 
 
 def coarsened(qty, coarse_box, data_box, coarse_field, fine_field):
@@ -222,6 +265,101 @@ class AdaptiveDtMHDTest(SimulatorTest):
         for t in times[1:]:
             drift = composite_mass(mass_hier, t) - mass_ref
             self.assertLess(abs(drift), 1e-12 * mass_ref, f"mass drift at t={t}")
+
+    def test_dt0_ignores_finer_level_features(self):
+        cfl_wave = 0.5
+        gamma = 5.0 / 3.0
+        x0, y0 = 1.525, 1.525
+        sigma = 0.02 * DL
+
+        def density(x, y):
+            r2 = (x - x0) ** 2 + (y - y0) ** 2
+            return 1.0 - 0.99 * np.exp(-r2 / (2.0 * sigma**2))
+
+        def pressure(x, y):
+            return 1.0 + 0.0 * x
+
+        diag_dir = "phare_outputs/adaptive_dt_mhd/dt0_dip"
+        self.register_diag_dir_for_cleanup(diag_dir)
+        ph.global_vars.sim = None
+        sim = box_sim(
+            2,
+            diag_dir,
+            density,
+            pressure,
+            time_step={"mode": "adaptive", "cfl_wave": cfl_wave},
+            final_time=1.0,
+        )
+
+        expected = uniform_stable_dt(
+            cfl_wave, gamma, 1.0, (0.0, 0.0, 0.0), (0.1, 0.0, 0.0), 1.0, (DL, DL)
+        )
+
+        simulator = Simulator(sim)
+        simulator.initialize()
+        dt0 = simulator.timeStep()
+        dts = []
+        for _ in range(5):
+            simulator.advance()
+            dts.append(simulator.timeStep())
+        simulator.reset()
+
+        self.assertLess(abs(dt0 - expected), 1e-12 * expected, f"{dt0} != {expected}")
+        for dt in dts:
+            self.assertTrue(np.isfinite(dt))
+            self.assertGreater(dt, 0.0)
+
+    def test_finest_level_substeps_follow_stable_dt(self):
+        def density(x, y):
+            return 1.0 + 0.0 * x
+
+        def pressure(x, y):
+            return 1.0 + 0.0 * x
+
+        final_time = 0.1
+        diag_dir = "phare_outputs/adaptive_dt_mhd/substeps_adaptive"
+        self.register_diag_dir_for_cleanup(diag_dir)
+        ph.global_vars.sim = None
+        sim = box_sim(
+            2,
+            diag_dir,
+            density,
+            pressure,
+            time_step={"mode": "adaptive", "cfl_wave": 0.5},
+            final_time=final_time,
+            extra_diag_options={"fine_dump_lvl_max": 10},
+            write_timestamps=np.linspace(0, final_time, 201),
+        )
+        dts = run_to_end(sim, final_time)
+        adaptive_substeps = finest_substeps(diag_dir)
+
+        dt = dts[0]
+        time_step_nbr = 4
+        diag_dir = "phare_outputs/adaptive_dt_mhd/substeps_constant"
+        self.register_diag_dir_for_cleanup(diag_dir)
+        ph.global_vars.sim = None
+        sim = box_sim(
+            2,
+            diag_dir,
+            density,
+            pressure,
+            time_step=dt,
+            final_time=dt * time_step_nbr,
+            time_step_nbr=time_step_nbr,
+            extra_diag_options={"fine_dump_lvl_max": 10},
+            write_timestamps=dt * np.arange(time_step_nbr + 1),
+        )
+        run_to_end(sim, dt * time_step_nbr)
+        constant_substeps = finest_substeps(diag_dir)
+
+        print("adaptive substeps", adaptive_substeps, "dts", dts)
+        print("constant substeps", constant_substeps)
+
+        with self.subTest(mode="adaptive"):
+            self.assertGreater(len(adaptive_substeps), 2)
+            self.assertEqual(adaptive_substeps, [2] * len(adaptive_substeps))
+        with self.subTest(mode="constant"):
+            self.assertEqual(constant_substeps, [4] * time_step_nbr)
 
 
 if __name__ == "__main__":

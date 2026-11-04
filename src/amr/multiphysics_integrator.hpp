@@ -13,6 +13,9 @@
 
 #include "core/logger.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/timestamps.hpp"
+
+#include "mpi/mpi_utils.hpp"
 
 #include "load_balancing/load_balancer_manager.hpp"
 
@@ -97,6 +100,10 @@ namespace solver
             , simFuncs_{simFuncs}
             , dict_{dict}
             , load_balancer_manager_{nullptr}
+            , isAdaptive_{cppdict::get_value(dict, "time_step/mode", core::TimeStepType::constant)
+                          == core::TimeStepType::adaptive}
+            , cfl_{cppdict::get_value(dict, "time_step/cfl_wave", 0.),
+                   cppdict::get_value(dict, "time_step/cfl_diffusive", 0.)}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -339,6 +346,9 @@ namespace solver
                 solver.onRegrid();
             else
                 load_balancer_manager_->estimate(*level, model);
+
+            if (isAdaptive_)
+                newLevelDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_);
         }
 
 
@@ -417,9 +427,13 @@ namespace solver
         }
 
 
-        double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
+        double getMaxFinerLevelDt(int const finerLevelNumber, double const coarseDt,
                                   SAMRAI::hier::IntVector const& ratio) override
         {
+            if (auto const it = newLevelDt_.find(finerLevelNumber);
+                isAdaptive_ and it != newLevelDt_.end())
+                return std::min(coarseDt, it->second);
+
             // whistler waves require the dt ~ dx^2
             // so dividing the mesh size by ratio means dt
             // needs to be divided by ratio^2.
@@ -428,36 +442,9 @@ namespace solver
         }
 
 
-        /**
-         * @brief computeStableDt returns the adaptive L0 time step satisfying the
-         * CFL constraints on every existing level.
-         */
         double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability)
         {
-            double dt0 = std::numeric_limits<double>::max();
-
-            // factor converting a level-i dt into its equivalent on L0:
-            // l0ProjectionFactor = prod_{j<=i} ratio_j^2
-            double l0ProjectionFactor = 1.0;
-
-            for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
-            {
-                auto level = hierarchy.getPatchLevel(iLevel);
-
-                if (iLevel > 0)
-                {
-                    auto const r = static_cast<double>(level->getRatioToCoarserLevel().max());
-                    l0ProjectionFactor *= r * r;
-                }
-
-                // stable dt for the level, local to the mpi rank
-                auto const levelDt
-                    = getSolver_(iLevel).computeStableDt(getModel_(iLevel), *level, stability);
-
-                dt0 = std::min(dt0, levelDt * l0ProjectionFactor);
-            }
-
-            return mpi::min(dt0);
+            return levelStableDt_(0, *hierarchy.getPatchLevel(0), stability);
         }
 
 
@@ -554,6 +541,9 @@ namespace solver
             }
 
             load_balancer_manager_->estimate(*level, model);
+
+            if (isAdaptive_ and iLevel > 0)
+                return levelStableDt_(iLevel, *level, cfl_);
 
             return newTime;
         }
@@ -652,6 +642,16 @@ namespace solver
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
+        bool const isAdaptive_;
+        CFLNumbers const cfl_;
+        std::unordered_map<std::size_t, double> newLevelDt_;
+
+
+        double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level,
+                              CFLNumbers const& cfl)
+        {
+            return mpi::min(getSolver_(iLevel).computeStableDt(getModel_(iLevel), level, cfl));
+        }
 
 
         double substepWeight_(int const iLevel) const
