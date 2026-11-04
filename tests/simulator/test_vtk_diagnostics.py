@@ -241,26 +241,26 @@ class VTKDiagnosticsTest(SimulatorTest):
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
         local_out = self._run(ndim, interp, simInput)
 
-        if cpp.mpi_rank() == 0:
-            import h5py
+        import h5py
 
-            for pop, mass, charge in [("protons", 1, 1), ("alpha", 4, 2)]:
-                for qty in ["density", "charge_density", "flux"]:
-                    file = f"{local_out}/ions_pop_{pop}_{qty}.vtkhdf"
-                    with h5py.File(file, "r") as h5_file:
-                        self.assertEqual(h5_file.attrs["pop_mass"], mass)
-                        self.assertEqual(h5_file.attrs["pop_charge"], charge)
+        for pop, mass, charge in [("protons", 1, 1), ("alpha", 4, 2)]:
+            for qty in ["density", "charge_density", "flux"]:
+                file = f"{local_out}/ions_pop_{pop}_{qty}.vtkhdf"
+                with h5py.File(file, "r") as h5_file:
+                    self.assertEqual(h5_file.attrs["pop_mass"], mass)
+                    self.assertEqual(h5_file.attrs["pop_charge"], charge)
 
-            for path in sorted(glob.glob(f"{local_out}/*.vtkhdf")):
-                assert_vtkhdf_layout(self, path, ndim)
+        for path in sorted(glob.glob(f"{local_out}/*.vtkhdf")):
+            assert_vtkhdf_layout(self, path, ndim)
 
-            try:
-                from pyphare.pharesee.phare_vtk import plot as plot_vtk
+        try:
+            from pyphare.pharesee.phare_vtk import plot as plot_vtk
 
+            if cpp.mpi_rank() == 0:
                 plot_vtk(local_out + "/EM_B.vtkhdf", f"B{ndim}d_interp{interp}.vtk.png")
                 plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d_interp{interp}.vtk.png")
-            except ModuleNotFoundError:
-                print("WARNING: vtk python module not found - cannot make plots")
+        except ModuleNotFoundError:
+            print("WARNING: vtk python module not found - cannot make plots")
 
     def test_level_without_patches_on_some_ranks(self):
         ndim, interp = 2, 1
@@ -290,9 +290,8 @@ class VTKDiagnosticsTest(SimulatorTest):
         simInput["diag_options"]["options"]["fine_dump_lvl_max"] = 10
         local_out = self._run(ndim, interp, simInput)
 
-        if cpp.mpi_rank() == 0:
-            # full dump t0, 3 L1 fine dumps (L1 dt = L0 dt / ratio**2), full dump t1
-            self._assert_steps_per_level(local_out + "/EM_B.vtkhdf", 5)
+        # full dump t0, 3 L1 fine dumps (L1 dt = L0 dt / ratio**2), full dump t1
+        self._assert_steps_per_level(local_out + "/EM_B.vtkhdf", 5)
 
     def _assert_steps_per_level(self, path, n_steps):
         import h5py
