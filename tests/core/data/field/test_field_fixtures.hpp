@@ -69,9 +69,7 @@ template<std::size_t dim, typename PQ, typename D0, typename D1>
 EqualityReport compare_fields(Field<dim, PQ, D0> const& ref, Field<dim, PQ, D1> const& cmp,
                               double const diff = 1e-15)
 {
-    auto const same_sizes = ref.size() == cmp.size();
-
-    if (!same_sizes)
+    if (ref.shape() != cmp.shape())
         return EqualityReport{false, "Tensorfield shape/size mismatch"};
 
     std::stringstream log;

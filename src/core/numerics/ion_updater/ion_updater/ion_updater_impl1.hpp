@@ -110,12 +110,14 @@ private:
     }
 
     // pushes copies of the level ghosts, by batches, and deposits those entering an owned
-    // cell, the arrays are unchanged
+    // cell, the arrays are unchanged. Those out of the ghost box after the first half push are
+    // skipped
     void move_level_ghost_copy(auto& pop, auto const& em, auto const& boxing,
                                auto& interpolator) const;
 
-    // pushes the level ghosts in place, those entering an owned cell are deposited and moved to
-    // the domain array, those leaving the level ghost area are dropped
+    // pushes the level ghosts in place, those out of the ghost box after the first half push are
+    // dropped, those entering an owned cell are deposited and moved to the domain array, those
+    // leaving the level ghost area are dropped
     void move_level_ghost_ref(auto& pop, auto const& em, auto const& boxing,
                               auto& interpolator) const;
 
@@ -333,16 +335,20 @@ void IonUpdater1<Ions>::Pusher::move_level_ghost_copy(auto& pop, auto const& em,
     {
         std::size_t const n = std::min(batch_size, total - base);
 
-        // phase 1: copy + half advance (no change_icell — working on batch copies)
+        // phase 1: copy + half advance (no change_icell — working on batch copies), keep those
+        // still in the ghost box: fields are only interpolated there
+        std::size_t in = 0;
         for (std::size_t j = 0; j < n; ++j)
         {
-            batch[j] = level_ghost[base + j];
-            advance(batch[j]);
+            batch[in] = level_ghost[base + j];
+            advance(batch[in]);
+            if (isIn(Point{batch[in].iCell}, boxing.ghostBox))
+                ++in;
         }
 
         // phase 2: interpolate + accelerate + half advance, compact those entering owned domain
         std::size_t m = 0;
-        for (std::size_t j = 0; j < n; ++j)
+        for (std::size_t j = 0; j < in; ++j)
         {
             auto const& local_em = interpolator(batch[j], em, layout);
             accel_and_advance(batch[j], local_em);
@@ -365,14 +371,24 @@ void IonUpdater1<Ions>::Pusher::move_level_ghost_ref(auto& pop, auto const& em, 
     auto& level_ghost = pop.levelGhostParticles();
 
     pre_push(level_ghost);
+
+    { // those out of the ghost box are dropped before fields are interpolated on them
+        auto range        = makeIndexRange(level_ghost);
+        auto const inside = level_ghost.partition(
+            range, [&](auto const& cell) { return isIn(Point{cell}, boxing.ghostBox); });
+        level_ghost.erase(makeRange(level_ghost, inside.iend(), level_ghost.size()));
+    }
+
     accel_advance(level_ghost, em, interpolator);
 
     {
         auto range = makeIndexRange(level_ghost);
 
-        // partition: stays in level ghost area vs leaves (entered domain or non-level-ghost area)
+        // partition: stays in level ghost area vs leaves (entered domain or non-level-ghost area,
+        // or out of the ghost box)
         auto const stays = level_ghost.partition(range, [&](auto const& cell) {
-            return !core::isIn(cell, boxing.domainBox) && !boxing.isInNonLevelGhostBox(cell);
+            return isIn(Point{cell}, boxing.ghostBox) && !core::isIn(cell, boxing.domainBox)
+                   && !boxing.isInNonLevelGhostBox(cell);
         });
 
         auto const leaves = makeRange(level_ghost, stays.iend(), level_ghost.size());

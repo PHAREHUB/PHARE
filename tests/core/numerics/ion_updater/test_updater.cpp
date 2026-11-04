@@ -1032,6 +1032,37 @@ TYPED_TEST_SUITE(IonUpdaterOwnershipTest, Permutations, );
 
 
 
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostsLeavingTheGhostBoxAreDropped)
+{
+    if constexpr (TypeParam::impl == 0) // filters them in its pusher, but keeps them in the array
+        GTEST_SKIP() << "IonUpdater0 keeps them in the level ghost array";
+
+    typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+    auto const boxing  = this->makeBoxing({});
+    auto const outside = [&](auto const& p) { return !isIn(Point{p.iCell}, boxing.ghostBox); };
+
+    // one cell to the left per half push: some level ghosts leave the ghost box before fields
+    // would be interpolated on them, which must not happen
+    for (auto& pop : this->ions)
+    {
+        this->setVelocityX(pop.domainParticles(), 0);
+        this->setVelocityX(pop.levelGhostParticles(), -4);
+        ASSERT_GT(TestFixture::count(
+                      pop.levelGhostParticles(),
+                      [&](auto const& p) { return p.iCell[0] == boxing.ghostBox.lower[0]; }),
+                  0u);
+    }
+
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, boxing, this->dt);
+    ionUpdater.updatePopulations(UpdaterMode::ref, this->ions, this->EM, boxing, this->dt);
+
+    for (auto& pop : this->ions)
+        EXPECT_EQ(TestFixture::count(pop.levelGhostParticles(), outside), 0u);
+}
+
+
+
 TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndIsDepositedOnce)
 {
     typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
