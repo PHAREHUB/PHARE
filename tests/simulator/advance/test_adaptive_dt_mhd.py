@@ -1,4 +1,3 @@
-import itertools
 import unittest
 
 import numpy as np
@@ -107,26 +106,25 @@ def uniform_stable_dt(cfl_wave, gamma, rho, v, b, p, dl):
     return cfl_wave / inv_dt
 
 
-def run_to_end(sim, final_time):
+def run_steps(sim, final_time):
     simulator = Simulator(sim)
     simulator.initialize()
-    dts = []
+    steps = []
     while simulator.currentTime() < final_time - 1e-12:
         t_before = simulator.currentTime()
         simulator.advance()
-        dts.append(simulator.currentTime() - t_before)
+        steps.append((t_before, simulator.currentTime()))
     simulator.reset()
-    return dts
+    return steps
 
 
-def finest_substeps(diag_dir):
+def finest_substeps(diag_dir, steps):
     hier = hierarchy_from(h5_filename=diag_dir + "/mhd_rho.h5")
-    times = sorted(hier.time_hier.keys(), key=float)
-    coarse = [float(t) for t in times if 0 in hier.levelNbrs(t)]
-    fine = [float(t) for t in times if 0 not in hier.levelNbrs(t)]
+    fine = [float(t) for t in hier.time_hier if 0 not in hier.levelNbrs(t)]
+    margin = 1e-9
     return [
-        sum(1 for t in fine if t_start < t < t_end) + 1
-        for t_start, t_end in itertools.pairwise(coarse)
+        sum(1 for t in fine if t_start + margin < t < t_end - margin) + 1
+        for t_start, t_end in steps
     ]
 
 
@@ -325,12 +323,12 @@ class AdaptiveDtMHDTest(SimulatorTest):
             time_step={"mode": "adaptive", "cfl_wave": 0.5},
             final_time=final_time,
             extra_diag_options={"fine_dump_lvl_max": 10},
-            write_timestamps=np.linspace(0, final_time, 201),
         )
-        dts = run_to_end(sim, final_time)
-        adaptive_substeps = finest_substeps(diag_dir)
+        steps = run_steps(sim, final_time)
+        full_steps = steps[:-1]
+        adaptive_substeps = finest_substeps(diag_dir, full_steps)
 
-        dt = dts[0]
+        dt = steps[0][1] - steps[0][0]
         time_step_nbr = 4
         diag_dir = "phare_outputs/adaptive_dt_mhd/substeps_constant"
         self.register_diag_dir_for_cleanup(diag_dir)
@@ -346,10 +344,10 @@ class AdaptiveDtMHDTest(SimulatorTest):
             extra_diag_options={"fine_dump_lvl_max": 10},
             write_timestamps=dt * np.arange(time_step_nbr + 1),
         )
-        run_to_end(sim, dt * time_step_nbr)
-        constant_substeps = finest_substeps(diag_dir)
+        constant_steps = run_steps(sim, dt * time_step_nbr)
+        constant_substeps = finest_substeps(diag_dir, constant_steps)
 
-        print("adaptive substeps", adaptive_substeps, "dts", dts)
+        print("adaptive substeps", adaptive_substeps, "steps", steps)
         print("constant substeps", constant_substeps)
 
         with self.subTest(mode="adaptive"):
@@ -357,6 +355,36 @@ class AdaptiveDtMHDTest(SimulatorTest):
             self.assertEqual(adaptive_substeps, [2] * len(adaptive_substeps))
         with self.subTest(mode="constant"):
             self.assertEqual(constant_substeps, [4] * time_step_nbr)
+
+    def test_finest_level_substeps_follow_varying_stable_dt(self):
+        def density(x, y):
+            return 1.0 + 0.0 * x
+
+        final_time = 0.8
+        diag_dir = "phare_outputs/adaptive_dt_mhd/substeps_blast"
+        self.register_diag_dir_for_cleanup(diag_dir)
+        ph.global_vars.sim = None
+        sim = box_sim(
+            2,
+            diag_dir,
+            density,
+            blast_pressure,
+            time_step={"mode": "adaptive", "cfl_wave": 0.5},
+            final_time=final_time,
+            extra_diag_options={"fine_dump_lvl_max": 10},
+        )
+        full_steps = run_steps(sim, final_time)[:-1]
+        dts = [t_end - t_start for t_start, t_end in full_steps]
+        substeps = finest_substeps(diag_dir, full_steps)
+
+        print("blast dts", dts)
+        print("blast substeps", substeps)
+
+        i_min = int(np.argmin(dts))
+        self.assertGreater(max(dts[i_min:]) / dts[i_min], 1.5)
+        for i, count in enumerate(substeps):
+            self.assertGreaterEqual(count, 2, f"step {i}, dt {dts[i]}")
+            self.assertLessEqual(count, 3, f"step {i}, dt {dts[i]}")
 
 
 if __name__ == "__main__":
