@@ -347,9 +347,6 @@ class AdaptiveDtMHDTest(SimulatorTest):
         constant_steps = run_steps(sim, dt * time_step_nbr)
         constant_substeps = finest_substeps(diag_dir, constant_steps)
 
-        print("adaptive substeps", adaptive_substeps, "steps", steps)
-        print("constant substeps", constant_substeps)
-
         with self.subTest(mode="adaptive"):
             self.assertGreater(len(adaptive_substeps), 2)
             self.assertEqual(adaptive_substeps, [2] * len(adaptive_substeps))
@@ -376,9 +373,6 @@ class AdaptiveDtMHDTest(SimulatorTest):
         full_steps = run_steps(sim, final_time)[:-1]
         dts = [t_end - t_start for t_start, t_end in full_steps]
         substeps = finest_substeps(diag_dir, full_steps)
-
-        print("blast dts", dts)
-        print("blast substeps", substeps)
 
         i_min = int(np.argmin(dts))
         self.assertGreater(max(dts[i_min:]) / dts[i_min], 1.5)

@@ -361,9 +361,8 @@ double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& mode
 
             double invDtWhistler = 0;
             for (std::size_t d = 0; d < dimension; ++d)
-                invDtWhistler += std::numbers::pi
-                                 * core::compute_whistler_(1.0 / meshSize[d], rho, BdotB)
-                                 / meshSize[d];
+                invDtWhistler
+                    += core::compute_whistler_(1.0 / meshSize[d], rho, BdotB) / meshSize[d];
 
             dt = std::min(dt, wave / invDtWhistler);
         });

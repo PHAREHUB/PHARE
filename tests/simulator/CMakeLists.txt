@@ -22,6 +22,10 @@ add_no_mpi_python3_test(multi_species_momentum test_multi_species_momentum.py ${
 
 if (useExceptionsInsteadOfMPIAbort)
   add_no_mpi_python3_test(exceptions test_exceptions.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(9 adaptive_dt_guard test_adaptive_dt_guard.py ${CMAKE_CURRENT_BINARY_DIR})
+  if(testMPI)
+    phare_mpi_python3_exec(9 3 adaptive_dt_guard test_adaptive_dt_guard.py ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 endif()
 
 if(HighFive)

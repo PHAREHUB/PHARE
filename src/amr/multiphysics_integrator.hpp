@@ -25,9 +25,10 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <map>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -498,10 +499,13 @@ namespace solver
 
             auto iLevel = level->getLevelNumber();
 
-            if (!(newTime > currentTime))
-                throw std::runtime_error("zero-length substep on level " + std::to_string(iLevel)
-                                         + " at t = " + std::to_string(currentTime)
-                                         + " (dt = " + std::to_string(newTime - currentTime) + ")");
+            if (iLevel == 0 && !(newTime > currentTime))
+            {
+                std::ostringstream ss;
+                ss << std::setprecision(17) << "zero-length step on level 0: t = " << currentTime
+                   << ", newTime = " << newTime << ", dt = " << newTime - currentTime;
+                throw std::runtime_error(ss.str());
+            }
 
             PHARE_LOG_LINE_SS("advanceLevel " << iLevel << " with dt = " << newTime - currentTime
                                               << " from t = " << currentTime
@@ -662,9 +666,15 @@ namespace solver
             bool const bad   = mpi::any(!std::isfinite(local));
             if (bad)
             {
-                auto const report = solver.nonFiniteCellReport();
+                auto const reports = mpi::collect(solver.nonFiniteCellReport());
+                std::size_t r      = 0;
+                while (r < reports.size() && reports[r].empty())
+                    ++r;
+                if (r == reports.size())
+                    throw std::runtime_error("non-finite wave speed on level "
+                                             + std::to_string(iLevel) + ": no cell reported");
                 throw std::runtime_error("non-finite wave speed on level " + std::to_string(iLevel)
-                                         + ": " + (report.empty() ? "on another rank" : report));
+                                         + ": rank " + std::to_string(r) + ": " + reports[r]);
             }
             return mpi::min(local);
         }

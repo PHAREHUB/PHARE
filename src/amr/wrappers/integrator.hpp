@@ -195,9 +195,10 @@ Integrator<_dimension>::Integrator(
         "tag_buffer", std::vector<int>(hierarchy->getMaxNumberOfLevels(),
                                        dict["simulation"]["AMR"]["tag_buffer"].template to<int>()));
 
-    if (cppdict::get_value(dict, "simulation/time_step/mode", core::TimeStepType::constant)
-        == core::TimeStepType::adaptive)
-        db->putDouble("grow_dt", 1e3);
+    bool const adaptive
+        = cppdict::get_value(dict, "simulation/time_step/mode", core::TimeStepType::constant)
+          == core::TimeStepType::adaptive;
+    db->putDouble("grow_dt", adaptive ? 1e3 : 1.0);
 
 
     timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(

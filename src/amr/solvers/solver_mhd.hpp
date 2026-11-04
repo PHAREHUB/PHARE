@@ -461,7 +461,7 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             std::array<double, 3> const v{vx, vy, vz};
             std::array<double, 3> const b{bx, by, bz};
 
-            // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
+            // sum_d (|v_d| + c_fast_d + v_w_d - v_A) / dx_d over simulated directions
             double invDtWave = 0;
             for (std::size_t d = 0; d < dimension; ++d)
             {
