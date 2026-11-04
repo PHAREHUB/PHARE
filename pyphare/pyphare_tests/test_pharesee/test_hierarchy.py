@@ -151,7 +151,7 @@ class PatchHierarchyTest(unittest.TestCase):
             for quantity in ["E", "B"]:
                 ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-            for quantity in ["charge_density", "bulkVelocity"]:
+            for quantity in ["charge_density", "bulkVelocity", "charge_flux"]:
                 ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
             for quantity in ["density", "flux"]:
@@ -364,23 +364,22 @@ class PatchHierarchyTest(unittest.TestCase):
         N = r.GetN(time, "protons")
         Vi = r.GetVi(time)
         Flux = r.GetFlux(time, "protons")
+        ChargeFlux = r.GetChargeFlux(time)
         B = r.GetB(time)
 
         diff = Ni - N
         V = Flux / N
-        self.assertTrue(isinstance(np.add(Ni, N), ScalarField))
-        self.assertTrue(isinstance(dot(Flux, B), ScalarField))
 
-        # Ez is primal in 2d, E keeps its ghosts with all_primal=False
-        Ez = ScalarField.FROM(r.GetE(time, all_primal=False).Ez)
-        for NiEz in (Ni * Ez, np.multiply(Ni, Ez)):
-            self.assertTrue(isinstance(NiEz, ScalarField))
-            for ilvl, lvl in NiEz.levels(time).items():
-                for ip, patch in enumerate(lvl.patches):
-                    ni = patch_box_data(Ni.level(ilvl, time).patches[ip], "value")
-                    ez = patch_box_data(Ez.level(ilvl, time).patches[ip], "value")
+        # charge 1: the charge flux is the protons flux, both without ghosts
+        # inner nodes only, ion moments on patch borders are refilled (see Vi below)
+        inner = (slice(1, -1),) * 2
+        for ilvl, lvl in ChargeFlux.levels(time).items():
+            for ip, patch in enumerate(lvl.patches):
+                flux_patch = Flux.level(ilvl, time).patches[ip]
+                for c in ["x", "y", "z"]:
+                    self.assertFalse(any(patch[c].ghosts_nbr))
                     assert_fp_any_all_close(
-                        patch_box_data(patch, "value"), ni * ez, atol=1e-12
+                        patch[c][:][inner], flux_patch[c][:][inner], atol=1e-12
                     )
 
         for ilvl, lvl in diff.levels(time).items():
