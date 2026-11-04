@@ -39,6 +39,16 @@ public:
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override;
 
+    // V and P are computed into temporaries, see compute
+    void requestTemporaries(DiagnosticProperties& diagnostic) override
+    {
+        auto& modelView = this->h5Writer_.modelView();
+        if (isActiveDiag(diagnostic, "/mhd/", "V"))
+            modelView.requestV();
+        if (isActiveDiag(diagnostic, "/mhd/", "P"))
+            modelView.requestP();
+    }
+
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
@@ -77,15 +87,15 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     auto maxLvl     = h5Writer.maxLevel;
 
     auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
     auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();
 
+    // V and P are temporaries, which only exist if requested, see requestTemporaries
     std::string tree{"/mhd/"};
     if (isActiveDiag(diagnostic, tree, "V"))
     {
+        auto& V              = modelView.getV();
         auto computeVelocity = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
             core::ToPrimitiveConverter<GridLayout> toPrim{layout};
             toPrim.rhoVToVOnGhostBox(rho, rhoV, V);
@@ -94,6 +104,7 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     }
     if (isActiveDiag(diagnostic, tree, "P"))
     {
+        auto& P              = modelView.getP();
         auto computePressure = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
             auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
                                    .template to<double>(); // or FloatType if we want to expose that
@@ -112,8 +123,6 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
 {
     auto& h5Writer         = this->h5Writer_;
     auto& rho              = h5Writer.modelView().getRho();
-    auto& V                = h5Writer.modelView().getV();
-    auto& P                = h5Writer.modelView().getP();
     auto& rhoV             = h5Writer.modelView().getRhoV();
     auto& Etot             = h5Writer.modelView().getEtot();
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
@@ -143,9 +152,9 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
     if (isActiveDiag(diagnostic, tree, "rho"))
         infoDS(rho, "rho", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "V"))
-        infoVF(V, "V", patchAttributes[lvlPatchID]["mhd"]);
+        infoVF(h5Writer.modelView().getV(), "V", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "P"))
-        infoDS(P, "P", patchAttributes[lvlPatchID]["mhd"]);
+        infoDS(h5Writer.modelView().getP(), "P", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "rhoV"))
         infoVF(rhoV, "rhoV", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "Etot"))
@@ -211,8 +220,6 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
     auto& rho      = h5Writer.modelView().getRho();
-    auto& V        = h5Writer.modelView().getV();
-    auto& P        = h5Writer.modelView().getP();
     auto& rhoV     = h5Writer.modelView().getRhoV();
     auto& Etot     = h5Writer.modelView().getEtot();
     auto& h5file   = *fileData_.at(diagnostic.quantity);
@@ -246,9 +253,9 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     if (isActiveDiag(diagnostic, tree, "rho"))
         writeDS(path + "rho", rho);
     if (isActiveDiag(diagnostic, tree, "V"))
-        writeTF(path + "V", V);
+        writeTF(path + "V", h5Writer.modelView().getV());
     if (isActiveDiag(diagnostic, tree, "P"))
-        writeDS(path + "P", P);
+        writeDS(path + "P", h5Writer.modelView().getP());
     if (isActiveDiag(diagnostic, tree, "rhoV"))
         writeTF(path + "rhoV", rhoV);
     if (isActiveDiag(diagnostic, tree, "Etot"))
