@@ -53,10 +53,11 @@ def _compute_copy_do(patch_data, λ):
 
 
 def drop_ghosts(patch, **kwargs):
+    """data without ghosts keeps its dataset unread (eg lazy file data)"""
     pd_attrs = []
     ghosts_nbr = [0] * patch.box.ndim
     for pd in patch.patch_datas.values():
-        data = pd[patch.box] if any(pd.ghosts_nbr) else pd[:]
+        data = pd[patch.box] if any(pd.ghosts_nbr) else pd.dataset
         pd_attrs.append(pd.copy_as(data, ghosts_nbr=ghosts_nbr))
     return tuple(pd_attrs)
 

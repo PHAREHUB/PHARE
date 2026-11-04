@@ -50,6 +50,15 @@ class HierarchyComputeTest(unittest.TestCase):
             self.assertEqual(pd.centerings, ref_pd.centerings)
             np.testing.assert_array_equal(pd[:], 2 * ref_pd[:])
 
+    def test_drop_ghosts_keeps_dataset_without_ghosts(self):
+        """no ghosts, nothing to drop: the dataset is passed on unread, as is"""
+        no_ghosts = compute_hier_from(hc.drop_ghosts, hierarchy())
+        again = compute_hier_from(hc.drop_ghosts, no_ghosts)
+        for patch, patch_again in zip(all_patches(no_ghosts), all_patches(again)):
+            for name, pd in patch.patch_datas.items():
+                self.assertEqual(pd.ghosts_nbr.tolist(), [0, 0])
+                self.assertIs(patch_again[name].dataset, pd.dataset)
+
     def test_rename(self):
         renamed = hc.rename(hierarchy(), ["a", "b"])
         for patch in all_patches(renamed):
