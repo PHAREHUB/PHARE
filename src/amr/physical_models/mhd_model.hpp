@@ -130,12 +130,6 @@ public:
         externalFieldManager.update(*resourcesManager, level, time);
     }
 
-    NO_DISCARD vecfield_type const* B0OrNull() const
-    {
-        auto const& field = externalFieldManager.state();
-        return field.isEnabled() ? &field.B0() : nullptr;
-    }
-
     ~MHDModel() override = default;
 
 
