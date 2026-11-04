@@ -83,8 +83,8 @@ namespace solver
     class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                    public SAMRAI::algs::TimeRefinementLevelStrategy
     {
-        using SimFunctorParams = typename core::PHARE_Sim_Types::SimFunctorParams;
-        using SimFunctors      = typename core::PHARE_Sim_Types::SimulationFunctors;
+        using SimFunctorParams = core::PHARE_Sim_Types::SimFunctorParams;
+        using SimFunctors      = core::PHARE_Sim_Types::SimulationFunctors;
 
     public:
         static constexpr auto dimension = MessengerFactory::dimension;

@@ -35,8 +35,8 @@ private:
 public:
     using value_type     = Particle_t;
     using box_t          = Box<int, dim>;
-    using iterator       = typename Vector::iterator;
-    using const_iterator = typename Vector::const_iterator;
+    using iterator       = Vector::iterator;
+    using const_iterator = Vector::const_iterator;
 
 
 

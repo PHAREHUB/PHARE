@@ -56,7 +56,7 @@ namespace amr
     private:
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
-        using IPhysicalModel = typename HybridModel::Interface;
+        using IPhysicalModel = HybridModel::Interface;
         using amr_types      = HybridModel::amr_types;
         using patch_t        = amr_types::patch_t;
         using level_t        = amr_types::level_t;

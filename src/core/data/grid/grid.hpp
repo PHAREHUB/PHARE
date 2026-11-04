@@ -28,7 +28,7 @@ class Grid : public NdArrayImpl
     using Super = NdArrayImpl;
 
 public:
-    using value_type             = typename NdArrayImpl::type;
+    using value_type             = NdArrayImpl::type;
     using physical_quantity_type = PhysicalQuantity;
     using NdArrayImpl::dimension;
     using field_type = Field<dimension, PhysicalQuantity, value_type>;

@@ -16,9 +16,9 @@ template<typename Ions>
 class StandardHybridElectronFluxComputer
 {
 public:
-    using VecField   = typename Ions::vecfield_type;
-    using Field      = typename Ions::field_type;
-    using GridLayout = typename Ions::gridlayout_type;
+    using VecField   = Ions::vecfield_type;
+    using Field      = Ions::field_type;
+    using GridLayout = Ions::gridlayout_type;
     using Scalar     = GridLayout::Scalar;
 
     StandardHybridElectronFluxComputer(Ions& ions, VecField& J)
@@ -111,9 +111,9 @@ private:
 template<typename Ions>
 class IsothermalElectronPressureClosure
 {
-    using GridLayout = typename Ions::gridlayout_type;
-    using VecField   = typename Ions::vecfield_type;
-    using Field      = typename Ions::field_type;
+    using GridLayout = Ions::gridlayout_type;
+    using VecField   = Ions::vecfield_type;
+    using Field      = Ions::field_type;
 
 public:
     using field_type = Field;
@@ -138,7 +138,7 @@ public:
     struct PressureProperty
     {
         std::string name;
-        typename HybridQuantity::Scalar qty;
+        HybridQuantity::Scalar qty;
     };
 
     using PressureProperties = std::vector<PressureProperty>;
@@ -183,9 +183,9 @@ private:
 template<typename Ions>
 class ElectronMomentModel
 {
-    using VecField     = typename Ions::vecfield_type;
-    using Field        = typename Ions::field_type;
-    using GridLayout   = typename Ions::gridlayout_type;
+    using VecField     = Ions::vecfield_type;
+    using Field        = Ions::field_type;
+    using GridLayout   = Ions::gridlayout_type;
     using FluxComputer = StandardHybridElectronFluxComputer<Ions>;
 
 public:
@@ -250,9 +250,9 @@ private:
 template<typename Ions>
 class Electrons
 {
-    using VecField   = typename Ions::vecfield_type;
-    using Field      = typename Ions::field_type;
-    using GridLayout = typename Ions::gridlayout_type;
+    using VecField   = Ions::vecfield_type;
+    using Field      = Ions::field_type;
+    using GridLayout = Ions::gridlayout_type;
 
 public:
     Electrons(PHARE::initializer::PHAREDict const& dict, Ions& ions, VecField& J)

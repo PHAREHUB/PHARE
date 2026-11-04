@@ -21,9 +21,9 @@ template<typename Model>
 class ConcreteLoadBalancerStrategyHomogeneous : public LoadBalancerStrategy<Model>
 {
 public:
-    using gridlayout_type = typename Model::gridlayout_type;
-    using amr_types       = typename Model::amr_types;
-    using level_t         = typename amr_types::level_t;
+    using gridlayout_type = Model::gridlayout_type;
+    using amr_types       = Model::amr_types;
+    using level_t         = amr_types::level_t;
     using cell_data_t     = SAMRAI::pdat::CellData<double>;
 
     ConcreteLoadBalancerStrategyHomogeneous(int const id)

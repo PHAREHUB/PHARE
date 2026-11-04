@@ -117,9 +117,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
-                                         and is_phare_particle_type<dim, ParticleB<dim>>,
-                                     bool>
+NO_DISCARD std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                and is_phare_particle_type<dim, ParticleB<dim>>,
+                            bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //
@@ -135,8 +135,8 @@ namespace std
 {
 
 template<size_t dim, template<std::size_t> typename Particle_t>
-NO_DISCARD typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
-                                     PHARE::core::Particle<dim>>
+NO_DISCARD std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
+                            PHARE::core::Particle<dim>>
 copy(Particle_t<dim> const& from)
 {
     return {from.weight, from.iCell, from.delta, from.v};

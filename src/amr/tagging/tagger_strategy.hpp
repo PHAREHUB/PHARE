@@ -7,7 +7,7 @@ namespace PHARE::amr
 template<typename Model>
 class TaggerStrategy
 {
-    using gridlayout_type = typename Model::gridlayout_type;
+    using gridlayout_type = Model::gridlayout_type;
 
 public:
     virtual void tag(Model& model, gridlayout_type const& layout, int* tags) const = 0;

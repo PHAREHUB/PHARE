@@ -795,7 +795,7 @@ namespace amr
         VecFieldT Bold_{stratName + "Bold", core::MHDQuantity::Vector::B};
 
 
-        using rm_t = typename MHDModel::resources_manager_type;
+        using rm_t = MHDModel::resources_manager_type;
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
         std::shared_ptr<BoundaryManagerT> boundaryManager_;
         int const firstLevel_;

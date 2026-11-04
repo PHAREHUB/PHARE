@@ -161,7 +161,7 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
 template<typename Vector>
 NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
 {
-    using Data = typename Vector::value_type;
+    using Data = Vector::value_type;
 
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -202,7 +202,7 @@ template<typename T, std::size_t size>
 NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
 {
     using Array = std::array<T, size>;
-    using Data  = typename Array::value_type;
+    using Data  = Array::value_type;
 
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);

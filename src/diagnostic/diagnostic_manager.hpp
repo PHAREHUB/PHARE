@@ -77,7 +77,7 @@ template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
-    using Model_t = typename Writer::Model_t;
+    using Model_t = Writer::Model_t;
 
     bool dump(double timeStamp, double timeStep) override;
 
