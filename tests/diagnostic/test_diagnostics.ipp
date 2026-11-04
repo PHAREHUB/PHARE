@@ -6,8 +6,8 @@
 template<typename Simulator>
 void fluid_test(Simulator&& sim, std::string out_dir)
 {
-    using HybridModel = typename Simulator::HybridModel;
-    using Hierarchy   = typename Simulator::Hierarchy;
+    using HybridModel = Simulator::HybridModel;
+    using Hierarchy   = Simulator::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;
@@ -34,8 +34,8 @@ void fluid_test(Simulator&& sim, std::string out_dir)
 template<typename Simulator>
 void electromag_test(Simulator&& sim, std::string out_dir)
 {
-    using HybridModel = typename Simulator::HybridModel;
-    using Hierarchy   = typename Simulator::Hierarchy;
+    using HybridModel = Simulator::HybridModel;
+    using Hierarchy   = Simulator::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;
@@ -54,8 +54,8 @@ void electromag_test(Simulator&& sim, std::string out_dir)
 template<typename Simulator>
 void particles_test(Simulator&& sim, std::string out_dir)
 {
-    using HybridModel = typename Simulator::HybridModel;
-    using Hierarchy   = typename Simulator::Hierarchy;
+    using HybridModel = Simulator::HybridModel;
+    using Hierarchy   = Simulator::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;
@@ -78,8 +78,8 @@ void particles_test(Simulator&& sim, std::string out_dir)
 template<typename Simulator>
 void allFromPython_test(Simulator&& sim, std::string out_dir)
 {
-    using HybridModel = typename Simulator::HybridModel;
-    using Hierarchy   = typename Simulator::Hierarchy;
+    using HybridModel = Simulator::HybridModel;
+    using Hierarchy   = Simulator::Hierarchy;
 
     sim.dump_diagnostics(/*timestamp= */ 0, /*timestep= */ 1);
     // flush h5files, killing the DiagnosticsManager killes the H5TypeWriter shared_ptrs internally,
