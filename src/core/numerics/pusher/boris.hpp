@@ -441,10 +441,14 @@ private:
     {
         // We now apply the 3 steps of the BORIS PUSHER
 
+        // the coef1 * E products feed both half pushes; with implicit contraction, the compiler
+        // fuses them or the rotation products depending on the inlining context (vectorised or
+        // not), which changes the result by round-off. Explicit fma pins one choice.
+
         // 1st half push of the electric field
-        double velx1 = vx + coef1 * pEx;
-        double vely1 = vy + coef1 * pEy;
-        double velz1 = vz + coef1 * pEz;
+        double velx1 = std::fma(coef1, pEx, vx);
+        double vely1 = std::fma(coef1, pEy, vy);
+        double velz1 = std::fma(coef1, pEz, vz);
 
 
         // preparing variables for magnetic rotation
@@ -482,9 +486,9 @@ private:
 
 
         // 2nd half push of the electric field
-        velx1 = velx2 + coef1 * pEx;
-        vely1 = vely2 + coef1 * pEy;
-        velz1 = velz2 + coef1 * pEz;
+        velx1 = std::fma(coef1, pEx, velx2);
+        vely1 = std::fma(coef1, pEy, vely2);
+        velz1 = std::fma(coef1, pEz, velz2);
 
         // Update particle velocity
         vx = velx1;
