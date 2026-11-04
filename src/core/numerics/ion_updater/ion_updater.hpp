@@ -91,6 +91,22 @@ private:
     void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
 
+    // corrector deposit of the domain particles: by blocks or per particle
+    // (hyb::blockedDeposit)
+    template<typename Field>
+    void depositDomain_(ParticleArray const& particles, Field& density, VecField& flux,
+                        GridLayout const& layout)
+    {
+        if constexpr (hyb::blockedDeposit<interp_order>)
+        {
+            hyb::AoSLanes<dimension, ParticleArray> lanes{particles, particles.size()};
+            Interpolator::template depositRangeBlocked<hyb::Backend>(
+                lanes, interpolator_.depositTargets(density, flux), layout);
+        }
+        else
+            interpolator_(particles, density, flux, layout);
+    }
+
     // dealloced on regridding/load balancing coarsest
     ParticleArray tmp_particles_{Box{}}; //{std::make_unique<ParticleArray>(Box{})};
 };
@@ -208,15 +224,19 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
     {
         // push each domain particle on a local copy, leaving the domain array untouched,
         // and deposit it if it ends in the non level ghost box
-        auto& density         = pop.particleDensity();
-        auto& flux            = pop.flux();
+        auto const targets    = interpolator_.depositTargets(pop.particleDensity(), pop.flux());
         auto const& keepBoxes = boxing.nonLevelGhostBox;
         double const coef1    = boris_->accelerationCoef(pop.charge(), pop.mass());
-        boris_->pushEach(pop.domainParticles(), em, interpolator_, layout, coef1,
-                         [&](Particle_t const& pushed) {
-                             if (isIn(Point{pushed.iCell}, keepBoxes))
-                                 interpolator_.deposit(pushed, density, flux, layout);
-                         });
+        if constexpr (hyb::blockedDeposit<interp_order>)
+            boris_->pushEachDeposit(pop.domainParticles(), em, interpolator_, layout, coef1,
+                                    targets,
+                                    [&](auto const& cell) { return isIn(Point{cell}, keepBoxes); });
+        else
+            boris_->pushEach(pop.domainParticles(), em, interpolator_, layout, coef1,
+                             [&](Particle_t const& pushed) {
+                                 if (isIn(Point{pushed.iCell}, keepBoxes))
+                                     interpolator_.depositOn(pushed, targets, layout);
+                             });
 
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
@@ -316,8 +336,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                 makeRange(particleArray, inGhostLayerRange.iend(), particleArray.size()));
         }
 
-        interpolator_( //
-            domainParticles, pop.particleDensity(), pop.flux(), layout);
+        depositDomain_(domainParticles, pop.particleDensity(), pop.flux(), layout);
         interpolator_( //
             patchGhost, pop.particleDensity(), pop.flux(), layout);
     }

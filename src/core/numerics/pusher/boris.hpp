@@ -328,6 +328,63 @@ public:
     }
 
 
+    /** pushEach with the deposit of the pushed copies done by blocks (interp order >= 2):
+     * a pushed block is deposited straight from its lanes, lane l only if keep(new AMR cell),
+     * by Interpolator::depositLanesOOL, in particle order. targets come from
+     * Interpolator::depositTargets.
+     */
+    template<typename Particles, typename Targets, typename Keep>
+    void pushEachDeposit(Particles const& particles, Electromag const& emFields,
+                         Interpolator& interpolator, GridLayout const& layout, double const coef1,
+                         Targets const& targets, Keep const& keep)
+    {
+        pushEachDeposit_<hyb::Backend>(particles, emFields, interpolator, layout, coef1, targets,
+                                       keep);
+    }
+
+    template<typename Backend, typename Particles, typename Targets, typename Keep>
+    [[gnu::noinline]] void pushEachDeposit_(Particles const& particles, Electromag const& emFields,
+                                            Interpolator& interpolator, GridLayout const& layout,
+                                            double const coef1, Targets const& targets,
+                                            Keep const& keep)
+    {
+        using Particle_t = std::decay_t<decltype(particles[0])>;
+
+        auto const fields = blockFields_<Interpolator>(emFields, layout);
+        auto const end    = particles.size();
+        PushBlock block;
+        double weight[blockSize];
+        hyb::LanePtrs<dim> lanes;
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            lanes.delta[iDim] = block.delta[iDim];
+            lanes.cell[iDim]  = block.cell[iDim];
+        }
+        for (std::size_t c = 0; c < 3; ++c)
+            lanes.v[c] = block.v[c];
+        lanes.weight = weight;
+
+        pushBlocks_<Interpolator, Backend>(
+            particles, 0, end, fields, coef1, block,
+            [&](std::size_t const idx, std::size_t const n, bool const ok) {
+                if (!ok) [[unlikely]]
+                {
+                    for (auto i = idx; i < idx + n; ++i)
+                    {
+                        Particle_t pushed = particles[i];
+                        push(pushed, emFields, interpolator, layout, coef1);
+                        if (keep(pushed.iCell))
+                            interpolator.depositOn(pushed, targets, layout);
+                    }
+                    return;
+                }
+                for (std::size_t l = 0; l < blockSize; ++l)
+                    weight[l] = particles[idx + std::min(l, n - 1)].weight;
+                Interpolator::template depositLanesOOL<Backend>(lanes, n, fields.amrToLocal,
+                                                                targets, 1., keep);
+            });
+    }
+
     /** see Pusher::move() documentation*/
     void setMeshAndTimeStep(std::array<double, dim> ms, double const ts) override
     {

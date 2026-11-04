@@ -7,10 +7,15 @@
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/pusher/particle_lanes.hpp"
+#include "core/numerics/pusher/hyb_xsimd.hpp"
 
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <algorithm>
+#include <type_traits>
 
 
 namespace PHARE::core
@@ -330,6 +335,17 @@ public:
                  zFlux.data() + offset, weights, particle.weight * coef, particle.v);
     }
 
+    //! the fused deposit on the raw storage of the four moments (Interpolator::depositTargets)
+    template<typename Targets, typename Indexes, typename Weights, typename V>
+    PHARE_ALWAYS_INLINE static void deposit(Targets const& t, Indexes const& startIndex,
+                                            Weights const& weights, double const deposit,
+                                            V const& v)
+    {
+        auto const offset = static_cast<std::size_t>(startIndex[0]);
+        deposit_(t.density + offset, t.xFlux + offset, t.yFlux + offset, t.zFlux + offset, weights,
+                 deposit, v);
+    }
+
 private:
     template<typename T, typename Weights, typename V>
     PHARE_ALWAYS_INLINE static void deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy,
@@ -396,6 +412,19 @@ public:
         auto const offset = rho - density.data();
         deposit_(rho, xFlux.data() + offset, yFlux.data() + offset, zFlux.data() + offset,
                  density.shape()[1], weights, particle.weight * coef, particle.v);
+    }
+
+    //! the fused deposit on the raw storage of the four moments (Interpolator::depositTargets)
+    template<typename Targets, typename Indexes, typename Weights, typename V>
+    PHARE_ALWAYS_INLINE static void deposit(Targets const& t, Indexes const& startIndex,
+                                            Weights const& weights, double const deposit,
+                                            V const& v)
+    {
+        std::size_t const xStride = t.shape[1];
+        auto const offset         = static_cast<std::size_t>(startIndex[0]) * xStride
+                            + static_cast<std::size_t>(startIndex[1]);
+        deposit_(t.density + offset, t.xFlux + offset, t.yFlux + offset, t.zFlux + offset, xStride,
+                 weights, deposit, v);
     }
 
 private:
@@ -475,6 +504,21 @@ public:
         auto const offset = rho - density.data();
         deposit_(rho, xFlux.data() + offset, yFlux.data() + offset, zFlux.data() + offset,
                  shape[1] * yStride, yStride, weights, particle.weight * coef, particle.v);
+    }
+
+    //! the fused deposit on the raw storage of the four moments (Interpolator::depositTargets)
+    template<typename Targets, typename Indexes, typename Weights, typename V>
+    PHARE_ALWAYS_INLINE static void deposit(Targets const& t, Indexes const& startIndex,
+                                            Weights const& weights, double const deposit,
+                                            V const& v)
+    {
+        std::size_t const yStride = t.shape[2];
+        std::size_t const xStride = t.shape[1] * yStride;
+        auto const offset         = static_cast<std::size_t>(startIndex[0]) * xStride
+                            + static_cast<std::size_t>(startIndex[1]) * yStride
+                            + static_cast<std::size_t>(startIndex[2]);
+        deposit_(t.density + offset, t.xFlux + offset, t.yFlux + offset, t.zFlux + offset, xStride,
+                 yStride, weights, deposit, v);
     }
 
 private:
@@ -619,14 +663,6 @@ public:
 
 
 
-    /**\brief interpolate electromagnetic fields on all particles in the range
-     *
-     * For each particle :
-     *  - The function first calculates the startIndex and weights for interpolation at
-     * order InterpOrder and in dimension dim for dual and primal nodes
-     *  - then it uses Interpol<> to calculate the interpolation of E and B components
-     * onto the particle.
-     */
     /**\brief deposit the density and flux of a single particle on the mesh
      */
     template<typename Particle_t, typename VecField, typename GridLayout, typename Field>
@@ -641,6 +677,71 @@ public:
             layout.AMRToLocal(Point{part.iCell}), part.delta, startIndex, weights);
 
         particleToMesh_(particleDensity, xFlux, yFlux, zFlux, part, startIndex, weights, coef);
+    }
+
+
+    /**\brief raw storage of the density and flux, for repeated deposits (depositOn and the
+     * blocked deposit). The four moments are primal: they share the shape.
+     */
+    template<typename Field, typename VecField>
+    static auto depositTargets(Field& particleDensity, VecField& flux)
+    {
+        auto const& [xFlux, yFlux, zFlux] = flux();
+        assert(particleDensity.shape() == xFlux.shape() and particleDensity.shape() == yFlux.shape()
+               and particleDensity.shape() == zFlux.shape());
+        DepositTargets<std::remove_reference_t<decltype(*particleDensity.data())>> targets{
+            particleDensity.data(), xFlux.data(), yFlux.data(), zFlux.data(), {}};
+        for (auto iDim = 0u; iDim < dimension; ++iDim)
+            targets.shape[iDim] = particleDensity.shape()[iDim];
+        return targets;
+    }
+
+    /**\brief deposit the density and flux of a single particle on targets from depositTargets
+     */
+    template<typename Particle_t, typename Targets, typename GridLayout>
+    PHARE_ALWAYS_INLINE void depositOn(Particle_t const& part, Targets const& targets,
+                                       GridLayout const& layout, double coef = 1.)
+    {
+        Starts startIndex;
+        Weights weights;
+        localIndexAndWeights_<QtyCentering, QtyCentering::primal>(
+            layout.AMRToLocal(Point{part.iCell}), part.delta, startIndex, weights);
+        ParticleToMesh<dimension>::deposit(targets, startIndex, weights, part.weight * coef,
+                                           part.v);
+    }
+
+    /**\brief deposit of all particles of L by blocks of hyb::laneCount: start indices and
+     * weights of a block computed in lane loops (vectorised by Backend), then each lane
+     * deposited in particle order with the per-particle kernel (same result as depositOn).
+     * L: L.size particles, L.depositLanes(i0, scratch) gives the lanes of block i0 (members
+     * weight, cell, delta, v as [component][lane] arrays; lanes past the end repeat the last
+     * particle).
+     */
+    template<typename Backend, typename Store, typename Targets, typename GridLayout>
+    [[gnu::noinline]] static void depositRangeBlocked(Store const& L, Targets const& targets,
+                                                      GridLayout const& layout, double coef = 1.)
+    {
+        auto const a2l = amrToLocal_(layout);
+        hyb::LaneBlock<dimension> scratch;
+        auto const keepAll = [](auto const&) { return true; };
+        for (std::size_t i0 = 0; i0 < L.size; i0 += hyb::laneCount)
+        {
+            auto const n = std::min(hyb::laneCount, L.size - i0);
+            auto&& lanes = L.depositLanes(i0, scratch);
+            depositLanes_<Backend>(lanes, n, a2l, targets, coef, keepAll);
+        }
+    }
+
+    /**\brief deposit of lanes [0, n) of a block (see depositLanes_), out of line: called by
+     * the predictor push on each pushed block
+     */
+    template<typename Backend, typename Lanes, typename Targets, typename Keep>
+    [[gnu::noinline]] static void depositLanesOOL(Lanes const& in, std::size_t const n,
+                                                  std::array<int, dimension> const& amrToLocal,
+                                                  Targets const& t, double const coef,
+                                                  Keep const& keep)
+    {
+        depositLanes_<Backend>(in, n, amrToLocal, t, coef, keep);
     }
 
 
@@ -725,6 +826,111 @@ private:
     NO_DISCARD auto meshToParticle(auto const& field, GridLayout const&, auto const& indexWeights)
     {
         return meshToParticle_.template operator()<GridLayout, quantity>(field, indexWeights);
+    }
+
+    // raw storage of the density and the three flux components, all of the same shape
+    template<typename T>
+    struct DepositTargets
+    {
+        T *density, *xFlux, *yFlux, *zFlux;
+        std::array<std::size_t, dimension> shape;
+    };
+
+    // AMR to local index offset of the layout, per direction
+    template<typename GridLayout>
+    static std::array<int, dimension> amrToLocal_(GridLayout const& layout)
+    {
+        Point<int, dimension> zero;
+        for (auto iDim = 0u; iDim < dimension; ++iDim)
+            zero[iDim] = 0;
+        auto const local = layout.AMRToLocal(zero);
+        std::array<int, dimension> a2l;
+        for (auto iDim = 0u; iDim < dimension; ++iDim)
+            a2l[iDim] = static_cast<int>(local[iDim]);
+        return a2l;
+    }
+
+    /** density and flux deposit of lanes [0, n) of a block (in: members weight, cell (AMR),
+     * delta, v, each indexable [component][lane] over hyb::laneCount lanes, lanes >= n hold
+     * valid copies), lane l only if keep(cell of l). Start indices and weights in lane loops
+     * (as localIndexAndWeights_, vectorised by Backend), then the lanes deposited one by one,
+     * in order, by the per-particle kernel.
+     */
+    template<typename Backend, typename Lanes, typename Targets, typename Keep>
+    PHARE_ALWAYS_INLINE static void depositLanes_(Lanes const& in, std::size_t const n,
+                                                  std::array<int, dimension> const& amrToLocal,
+                                                  Targets const& t, double const coef,
+                                                  Keep const& keep)
+    {
+        constexpr auto B      = hyb::laneCount;
+        constexpr auto nbrPts = nbrPointsSupport(interpOrder);
+
+        int starts[dimension][B];
+        double w[dimension][nbrPts][B];
+        laneStartsAndWeights_<Backend>(in, amrToLocal, starts, w);
+
+        for (std::size_t l = 0; l < n; ++l)
+        {
+            std::array<int, dimension> cell;
+            for (auto iDim = 0u; iDim < dimension; ++iDim)
+                cell[iDim] = in.cell[iDim][l];
+            if (!keep(cell))
+                continue;
+
+            Starts startIndex;
+            Weights weights;
+            for (auto iDim = 0u; iDim < dimension; ++iDim)
+            {
+                startIndex[iDim] = static_cast<std::uint32_t>(starts[iDim][l]);
+                for (std::size_t k = 0; k < nbrPts; ++k)
+                    weights[iDim][k] = w[iDim][k][l];
+            }
+            std::array<double, 3> const v{in.v[0][l], in.v[1][l], in.v[2][l]};
+            ParticleToMesh<dimension>::deposit(t, startIndex, weights, in.weight[l] * coef, v);
+        }
+    }
+
+    // primal start indices and weights of the hyb::laneCount lanes of a block
+    template<typename Backend, typename Lanes, std::size_t nbrPts>
+    PHARE_ALWAYS_INLINE static void
+    laneStartsAndWeights_(Lanes const& in, std::array<int, dimension> const& amrToLocal,
+                          int (&starts)[dimension][hyb::laneCount],
+                          double (&w)[dimension][nbrPts][hyb::laneCount])
+    {
+#if PHARE_HYB_XSIMD
+        if constexpr (std::is_same_v<Backend, hyb::Xsimd>)
+        {
+            using namespace hyb::xs;
+            for (auto iDim = 0u; iDim < dimension; ++iDim)
+            {
+                bd const d  = ld(&in.delta[iDim][0]);
+                bi const lc = ldi(&in.cell[iDim][0]) + bi(amrToLocal[iDim]);
+                bi s;
+                bd wl[nbrPts];
+                startAndWeights<static_cast<int>(interpOrder), false>(lc, d, s, wl);
+                sti(&starts[iDim][0], s);
+                for (std::size_t k = 0; k < nbrPts; ++k)
+                    st(&w[iDim][k][0], wl[k]);
+            }
+            return;
+        }
+#endif
+        static_assert(std::is_same_v<Backend, hyb::AutoVec> or std::is_same_v<Backend, hyb::Xsimd>);
+        for (auto iDim = 0u; iDim < dimension; ++iDim)
+        {
+            int const a2l = amrToLocal[iDim];
+            for (std::size_t l = 0; l < hyb::laneCount; ++l)
+            {
+                double const d = in.delta[iDim][l];
+                int const lc   = in.cell[iDim][l] + a2l;
+                int const s    = lc - computeStartLeftShift<QtyCentering, QtyCentering::primal>(d);
+                std::array<double, nbrPts> wl;
+                Weighter<interpOrder>{}.computeWeight(lc + d, s, wl);
+                starts[iDim][l] = s;
+                for (std::size_t k = 0; k < nbrPts; ++k)
+                    w[iDim][k][l] = wl[k];
+            }
+        }
     }
 };
 
