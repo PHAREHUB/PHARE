@@ -369,6 +369,20 @@ class PatchHierarchyTest(unittest.TestCase):
 
         diff = Ni - N
         V = Flux / N
+        self.assertTrue(isinstance(np.add(Ni, N), ScalarField))
+        self.assertTrue(isinstance(dot(Flux, B), ScalarField))
+
+        # Ez is primal in 2d, E keeps its ghosts with all_primal=False
+        Ez = ScalarField.FROM(r.GetE(time, all_primal=False).Ez)
+        for NiEz in (Ni * Ez, np.multiply(Ni, Ez)):
+            self.assertTrue(isinstance(NiEz, ScalarField))
+            for ilvl, lvl in NiEz.levels(time).items():
+                for ip, patch in enumerate(lvl.patches):
+                    ni = patch_box_data(Ni.level(ilvl, time).patches[ip], "value")
+                    ez = patch_box_data(Ez.level(ilvl, time).patches[ip], "value")
+                    assert_fp_any_all_close(
+                        patch_box_data(patch, "value"), ni * ez, atol=1e-12
+                    )
 
         # charge 1: the charge flux is the protons flux, both without ghosts
         # inner nodes only, ion moments on patch borders are refilled (see Vi below)
