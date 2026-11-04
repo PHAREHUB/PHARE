@@ -81,8 +81,8 @@ void push()
     bench::read_raw_from_file(ions[0].domainParticles(), Setup::raw_file());
 
     Pusher const pusher{Setup::dt, Setup::charge, Setup::mass, s.layout};
-    pusher.template move_interpolate_and_sort</*copy_particle=*/false>(ions[0], s.em, boxing,
-                                                                       s.interpolator);
+    pusher.template move_and_deposit</*copy_particle=*/false>(ions[0], s.em, boxing,
+                                                              s.interpolator);
 }
 
 #endif

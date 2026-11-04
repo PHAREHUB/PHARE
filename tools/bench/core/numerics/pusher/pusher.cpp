@@ -83,7 +83,7 @@ void push(benchmark::State& state)
     Interpolator interpolator;
     Pusher pusher{.001, 1.0, 1.0, layout};
     while (state.KeepRunningBatch(1))
-        pusher.template move_interpolate_and_sort<true>(ions[0], em, boxing, interpolator);
+        pusher.template move_and_deposit<true>(ions[0], em, boxing, interpolator);
 }
 
 #endif

@@ -56,11 +56,14 @@ template<typename Ions>
 class IonUpdater1<Ions>::Pusher
 {
 public:
+    // pushes the population's particles and deposits its moments. With copy_particle the
+    // particles are pushed as copies and the arrays are unchanged, else they are pushed in
+    // place and moved between the domain, patch ghost and level ghost arrays
     template<bool copy_particle = false>
-    void move_interpolate_and_sort(auto& pop, auto&&... args) const
+    void move_and_deposit(auto& pop, auto&&... args) const
     {
         move_domain<copy_particle>(pop, args...);
-        move_level_ghost<copy_particle>(pop, args...); // might modify domain
+        move_level_ghost<copy_particle>(pop, args...); // might add to domain
     }
 
     double const dt;
@@ -73,10 +76,10 @@ public:
         = for_N_make_array<dimension>([&](auto i) { return 0.5 * dt / layout.meshSize()[i]; });
 
 private:
-    // shared phase 1: first half-advance in-place, update cellmap if cell changed
+    // first half push of every particle of the array, in place, the cell map follows
     void pre_push(auto& array) const;
 
-    // shared phase 2: field interpolation + acceleration + second half-advance, update cellmap
+    // fields to particles, acceleration and second half push, in place, the cell map follows
     void accel_advance(auto& array, auto const& em, auto& interpolator) const;
 
     template<bool copy_particle>
@@ -88,10 +91,13 @@ private:
             move_domain_ref(pop, em, boxing, interpolator);
     }
 
-    // batched 3-phase push for copy mode (no particle array modification)
+    // pushes copies of the domain particles, by batches, and deposits those still in the
+    // domain or patch ghost box, the arrays are unchanged
     void move_domain_copy(auto& pop, auto const& em, auto const& boxing, auto& interpolator) const;
 
-    // 2-phase in-place push, then partition domain / patch_ghost, then deposit
+    // pushes the domain particles in place, then: owned ones stay, those in a neighbour's ghost
+    // box are copied to the patch ghost array, the rest are dropped. Deposits domain and patch
+    // ghost particles
     void move_domain_ref(auto& pop, auto const& em, auto const& boxing, auto& interpolator) const;
 
     template<bool copy_particle>
@@ -103,11 +109,13 @@ private:
             move_level_ghost_ref(pop, em, boxing, interpolator);
     }
 
-    // copy-mode: push a local copy of each level ghost, deposit those entering domain
+    // pushes copies of the level ghosts, by batches, and deposits those entering an owned
+    // cell, the arrays are unchanged
     void move_level_ghost_copy(auto& pop, auto const& em, auto const& boxing,
                                auto& interpolator) const;
 
-    // 2-phase in-place push, then partition stays / enters-domain / leaves, then deposit
+    // pushes the level ghosts in place, those entering an owned cell are deposited and moved to
+    // the domain array, those leaving the level ghost area are dropped
     void move_level_ghost_ref(auto& pop, auto const& em, auto const& boxing,
                               auto& interpolator) const;
 
@@ -140,7 +148,7 @@ void IonUpdater1<Ions>::update_copy(auto& ions, auto const& em, auto const& boxi
 
     for (auto& pop : ions)
         Pusher{dt, pop.charge(), pop.mass(), boxing.layout}.template //
-            move_interpolate_and_sort<true>(pop, em, boxing, interpolator);
+            move_and_deposit<true>(pop, em, boxing, interpolator);
 }
 
 template<typename Ions>
@@ -150,7 +158,7 @@ void IonUpdater1<Ions>::update_ref(auto& ions, auto const& em, auto const& boxin
 
     for (auto& pop : ions)
         Pusher{dt, pop.charge(), pop.mass(), boxing.layout}.template //
-            move_interpolate_and_sort<false>(pop, em, boxing, interpolator);
+            move_and_deposit<false>(pop, em, boxing, interpolator);
 }
 
 
