@@ -182,6 +182,15 @@ public:
 
 
     template<typename Cell>
+    void change_icell(Particle_t& /*particle*/, Cell const& oldCell,
+                      std::size_t const particleIndex)
+    {
+        if (auto const box_is_valid = box_.size() > 1)
+            cellMap_.update(particles_, particleIndex, oldCell);
+    }
+
+
+    template<typename Cell>
     void change_icell(Cell const& newCell, std::size_t const particleIndex)
     {
         auto const oldCell              = particles_[particleIndex].iCell;

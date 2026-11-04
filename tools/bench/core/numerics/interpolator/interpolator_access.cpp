@@ -5,6 +5,8 @@
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tools/bench/core/numerics/interpolator/bench_intepolator_access.hpp"
 
+#include "benchmark/benchmark.h"
+
 #include <cmath>
 #include <random>
 #include <algorithm>

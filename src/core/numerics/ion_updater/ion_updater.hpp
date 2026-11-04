@@ -3,13 +3,21 @@
 
 
 #include "core/numerics/ion_updater/ion_updater/ion_updater_impl0.hpp"
+#include "core/numerics/ion_updater/ion_updater/ion_updater_impl1.hpp"
+
+#ifndef PHARE_UPDATER_IMPL
+#define PHARE_UPDATER_IMPL 1
+#endif
+
+static_assert(PHARE_UPDATER_IMPL == 0 or PHARE_UPDATER_IMPL == 1);
 
 
 namespace PHARE::core
 {
 
 template<typename... Args>
-using IonUpdater = IonUpdater0<Args...>;
+using IonUpdater
+    = std::conditional_t<PHARE_UPDATER_IMPL == 0, IonUpdater0<Args...>, IonUpdater1<Args...>>;
 
 
 } // namespace PHARE::core
