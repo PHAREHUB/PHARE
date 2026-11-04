@@ -115,8 +115,7 @@ namespace amr
 
         virtual void postSynchronize(IPhysicalModel& model, level_t& level, double const time) = 0;
 
-        virtual void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)    = 0;
-        virtual void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) = 0;
+        virtual void fillIonPopBorders(IonsT& ions, level_t& level, double const fillTime) = 0;
 
 
         std::string name() const { return stratname_; }

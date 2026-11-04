@@ -108,9 +108,8 @@ namespace solver
             // at this point flux and density is computed for all pops
             // but nodes on ghost box overlaps are not complete because they lack
             // contribution of neighbor particles.
-            // The following two calls will += flux and density on these overlaps.
-            hybMessenger.fillFluxBorders(ions, level, initDataTime);
-            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+            // The following call will += flux and density on these overlaps.
+            hybMessenger.fillIonPopBorders(ions, level, initDataTime);
 
             for (auto& patch : rm.enumerate(level, ions))
             {

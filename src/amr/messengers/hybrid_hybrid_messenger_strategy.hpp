@@ -386,20 +386,13 @@ namespace amr
 
 
         // the border sums add, in place, the deposits of the patches sharing a node, in the same
-        // order on all of them (see field_border_sum.hpp)
-        void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
+        // order on all of them (see field_border_sum.hpp). Per population, flux and particle
+        // density (the charge density is computed from it) are summed by one schedule.
+        void fillIonPopBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            assert(popFluxBorderSumRefiners_.size() == ions.size());
-            for (auto& refiner : popFluxBorderSumRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-        }
-
-        void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) override
-        {
-            // one particle density per population, the charge density is computed from it
-            assert(popDensityBorderSumRefiners_.size() == ions.size());
-            for (auto& refiner : popDensityBorderSumRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
+            for (auto const& pop : ions)
+                popBorderSumRefiners_.fillByKey(pop.flux().name(), level.getLevelNumber(),
+                                                fillTime);
         }
 
 
@@ -686,11 +679,7 @@ namespace amr
 
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
-            for (auto& refiner : popFluxBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
-            for (auto& refiner : popDensityBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
+            popBorderSumRefiners_.registerLevel(hierarchy, level);
         }
 
 
@@ -877,18 +866,25 @@ namespace amr
                 std::make_shared<ParticleDomainFromGhostFillPattern<GridLayoutT>>());
 
 
-            for (auto const& vecfield : info->ghostFlux)
-                popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
-
-            for (auto const& field : info->sumBorderFields)
-                popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        field, nullptr, field,
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+            // per population, flux and particle density in one schedule, keyed by the flux name
+            assert(info->ghostFlux.size() == info->sumBorderFields.size());
+            for (std::size_t i = 0; i < info->ghostFlux.size(); ++i)
+            {
+                auto const& flux    = info->ghostFlux[i];
+                auto const& density = info->sumBorderFields[i];
+                popBorderSumRefiners_.addRefiner(
+                    flux,
+                    {{.dst         = flux,
+                      .src         = flux,
+                      .refineOp    = nullptr,
+                      .fillPattern = std::make_shared<
+                          TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>()},
+                     {.dst      = density,
+                      .src      = density,
+                      .refineOp = nullptr,
+                      .fillPattern
+                      = std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>()}});
+            }
         }
 
 
@@ -1020,16 +1016,14 @@ namespace amr
         using LevelBorderFieldRefinerPool = RefinerPool<rm_t, RefinerType::LevelBorderField>;
         using DomainGhostPartRefinerPool  = RefinerPool<rm_t, RefinerType::ExteriorGhostParticles>;
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
-        using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
-        using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
+        using IonPopBorderSumRefinerPool  = RefinerPool<rm_t, RefinerType::PatchIonPopBorderSum>;
         using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
-        //! += flux on ghost box overlap incomplete population moment nodes
-        std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
-        //! += density on ghost box overlap incomplete population moment nodes
-        std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
+        //! += flux and density on ghost box overlap incomplete population moment nodes,
+        //! one schedule per population, keyed by the population flux name
+        IonPopBorderSumRefinerPool popBorderSumRefiners_{resourcesManager_};
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 

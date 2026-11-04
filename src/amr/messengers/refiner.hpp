@@ -27,6 +27,7 @@ enum class RefinerType {
     PatchFieldBorderSum,
     PatchVecFieldBorderSum,
     PatchTensorFieldBorderSum,
+    PatchIonPopBorderSum, // particle density (Field) and flux (VecField) of a population
     PatchVecFieldBorderMax,
     ExteriorGhostParticles
 };
@@ -37,7 +38,8 @@ enum class RefinerType {
 constexpr bool isBorderSum(RefinerType const type)
 {
     return type == RefinerType::PatchFieldBorderSum or type == RefinerType::PatchVecFieldBorderSum
-           or type == RefinerType::PatchTensorFieldBorderSum;
+           or type == RefinerType::PatchTensorFieldBorderSum
+           or type == RefinerType::PatchIonPopBorderSum;
 }
 
 
@@ -385,31 +387,34 @@ class BorderSumRefiner
     using FieldData_t       = ResourcesManager::UserField_t::patch_data_type;
     using VecFieldData_t    = ResourcesManager::template UserTensorField_t<1>::patch_data_type;
     using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
-    using Data_t
-        = std::conditional_t<Type == RefinerType::PatchTensorFieldBorderSum, TensorFieldData_t,
-                             std::conditional_t<Type == RefinerType::PatchVecFieldBorderSum,
-                                                VecFieldData_t, FieldData_t>>;
+    // the PatchData types the schedule sums, see FieldBorderSumTransactionFactory
+    using Factory_t = std::conditional_t<
+        Type == RefinerType::PatchIonPopBorderSum,
+        FieldBorderSumTransactionFactory<FieldData_t, VecFieldData_t>,
+        std::conditional_t<Type == RefinerType::PatchTensorFieldBorderSum,
+                           FieldBorderSumTransactionFactory<TensorFieldData_t>,
+                           std::conditional_t<Type == RefinerType::PatchVecFieldBorderSum,
+                                              FieldBorderSumTransactionFactory<VecFieldData_t>,
+                                              FieldBorderSumTransactionFactory<FieldData_t>>>>;
 
     struct LevelSum
     {
         std::shared_ptr<SAMRAI::hier::PatchLevel> level;
         std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule;
-        std::shared_ptr<BorderSums<Data_t>> sums;
+        std::shared_ptr<Factory_t> sums;
 
-        void fill(double const fillTime)
+        void fill(double const fillTime) const
         {
             schedule->fillData(fillTime);
-            foldBorderSums(*sums, *level);
+            sums->fold(*level);
         }
     };
 
     LevelSum makeLevelSum_(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level) const
     {
-        auto sums     = std::make_shared<BorderSums<Data_t>>();
-        auto schedule = algo_->createSchedule(
-            level, patchStrat_.get(),
-            std::make_shared<FieldBorderSumTransactionFactory<Data_t>>(sums));
-        finalizeBorderSums(*sums, *level);
+        auto sums     = std::make_shared<Factory_t>();
+        auto schedule = algo_->createSchedule(level, patchStrat_.get(), sums);
+        sums->finalize(*level);
         return {level, schedule, sums};
     }
 
@@ -424,10 +429,24 @@ public:
                      std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
                      std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
                      std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr)
+        : BorderSumRefiner{
+              {{.dst = dst, .src = src, .refineOp = refineOp, .fillPattern = fillPattern}},
+              rm,
+              patchStrat}
+    {
+    }
+
+    // all the items summed by one schedule
+    BorderSumRefiner(std::vector<RefineItem> const& items,
+                     std::shared_ptr<ResourcesManager> const& rm,
+                     std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat = nullptr)
         : patchStrat_{patchStrat}
     {
-        auto&& [idDst, idSrc] = rm->getIDsList(dst, src);
-        algo_->registerRefine(idDst, idSrc, idDst, refineOp, fillPattern);
+        for (auto const& item : items)
+        {
+            auto&& [idDst, idSrc] = rm->getIDsList(item.dst, item.src);
+            algo_->registerRefine(idDst, idSrc, idDst, item.refineOp, item.fillPattern);
+        }
     }
 
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
@@ -447,7 +466,7 @@ public:
         throw std::runtime_error("BorderSumRefiner: border sums are not regridded");
     }
 
-    void fill(int const levelNumber, double const fillTime)
+    void fill(int const levelNumber, double const fillTime) const
     {
         levels_.at(levelNumber).fill(fillTime);
     }
