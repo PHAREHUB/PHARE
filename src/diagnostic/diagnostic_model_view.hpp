@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -172,6 +173,9 @@ public:
     struct FluidAccessors;
     struct FluidComputers;
 
+    // whether qty has to be computed before it is written, see FluidComputers
+    NO_DISCARD bool computes(std::string const& qty);
+
     ModelView(Hierarchy& hierarchy, Model& model)
         : Super{hierarchy, model}
     {
@@ -314,6 +318,9 @@ public:
     struct MHDAccessors;
     struct MHDComputers;
 
+    // whether qty has to be computed before it is written, see MHDComputers
+    NO_DISCARD bool computes(std::string const& qty);
+
     NO_DISCARD const Field& getRho() const { return this->model_.state.rho; }
 
     NO_DISCARD const VecField& getRhoV() const { return this->model_.state.rhoV; }
@@ -392,6 +399,10 @@ protected:
  * once per ModelView from the real population names/indices, so callers do a single map lookup
  * instead of looping populations to find which one's tree prefix matches - shared across writer
  * types (h5, vtk) since it only depends on the ModelView, not on any writer.
+ *
+ * To add a fluid diagnostic, add one entry to `fields` in the constructor below: every writer
+ * picks it up. If it has to be computed before it can be written, also add an entry to
+ * FluidComputers.
  */
 template<typename Hierarchy, typename Model>
     requires solver::is_hybrid_model_v<Model>
@@ -419,22 +430,19 @@ struct ModelView<Hierarchy, Model>::FluidAccessors
 
     FluidAccessors(ModelView& modelView);
 
-    // action(field, name, ownerKey) - false if qty has no registered accessor
+    // action(field, name, ownerKey), throws if qty has no registered accessor: writers must
+    // not skip a declared diagnostic silently
     template<typename Action>
-    bool dispatch(std::string const& qty, ModelView& modelView, Action&& action) const
+    void dispatch(std::string const& qty, ModelView& modelView, Action&& action) const
     {
-        if (auto it = fields.find(qty); it != fields.end())
-        {
-            auto const& entry = it->second;
-            std::visit([&](auto* field) { action(*field, entry.name, entry.ownerKey); },
-                       entry.get(modelView));
-            return true;
-        }
-        return false;
-    }
+        auto const it = fields.find(qty);
+        if (it == fields.end())
+            throw std::runtime_error("unsupported fluid diagnostic quantity " + qty);
 
-    // whether this model supports qty at all
-    NO_DISCARD bool provides(std::string const& qty) const { return fields.count(qty) > 0; }
+        auto const& entry = it->second;
+        std::visit([&](auto* field) { action(*field, entry.name, entry.ownerKey); },
+                   entry.get(modelView));
+    }
 
     std::unordered_map<std::string, Entry> fields;
 };
@@ -538,6 +546,14 @@ ModelView<Hierarchy, Model>::FluidComputers::FluidComputers(ModelView& modelView
 }
 
 
+template<typename Hierarchy, typename Model>
+    requires solver::is_hybrid_model_v<Model>
+bool ModelView<Hierarchy, Model>::computes(std::string const& qty)
+{
+    return FluidComputers::getOrCreateFor(*this).computers.count(qty) > 0;
+}
+
+
 /** \brief {name, accessor} registry for MHD quantities ("/mhd/rho", "/mhd/V", ...), keyed by the
  * full diagnostic.quantity path - mirrors FluidAccessors, but the MHD state has no
  * per-population tree, so there is a single "mhd" bucket and one entry per field.
@@ -581,22 +597,19 @@ struct ModelView<Hierarchy, Model>::MHDAccessors
             = {"mhd", "Etot", [](ModelView& mv) -> FieldVariant { return &mv.getEtot(); }};
     }
 
-    // action(field, name, ownerKey) - false if qty has no registered accessor
+    // action(field, name, ownerKey), throws if qty has no registered accessor: writers must
+    // not skip a declared diagnostic silently
     template<typename Action>
-    bool dispatch(std::string const& qty, ModelView& modelView, Action&& action) const
+    void dispatch(std::string const& qty, ModelView& modelView, Action&& action) const
     {
-        if (auto it = fields.find(qty); it != fields.end())
-        {
-            auto const& entry = it->second;
-            std::visit([&](auto* field) { action(*field, entry.name, entry.ownerKey); },
-                       entry.get(modelView));
-            return true;
-        }
-        return false;
-    }
+        auto const it = fields.find(qty);
+        if (it == fields.end())
+            throw std::runtime_error("unsupported mhd diagnostic quantity " + qty);
 
-    // whether this model supports qty at all
-    NO_DISCARD bool provides(std::string const& qty) const { return fields.count(qty) > 0; }
+        auto const& entry = it->second;
+        std::visit([&](auto* field) { action(*field, entry.name, entry.ownerKey); },
+                   entry.get(modelView));
+    }
 
     std::unordered_map<std::string, Entry> fields;
 };
@@ -645,6 +658,14 @@ struct ModelView<Hierarchy, Model>::MHDComputers
 
     std::unordered_map<std::string, Computer> computers;
 };
+
+
+template<typename Hierarchy, typename Model>
+    requires solver::is_mhd_model_v<Model>
+bool ModelView<Hierarchy, Model>::computes(std::string const& qty)
+{
+    return MHDComputers::getOrCreateFor(*this).computers.count(qty) > 0;
+}
 
 
 } // namespace PHARE::diagnostic

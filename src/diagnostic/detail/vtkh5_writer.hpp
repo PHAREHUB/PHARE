@@ -207,7 +207,7 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     for (auto* diagnostic : diagnostics)
     {
         auto& typeWriter = *typeWriters_.at(diagnostic->type);
-        typeWriter.compute_as_needed(*diagnostic); // compute to temporaries then write immediately!
+        typeWriter.compute_as_needed(*diagnostic); // compute into the model fields, then write
         typeWriter.write(*diagnostic);
     }
 
