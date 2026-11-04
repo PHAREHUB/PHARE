@@ -122,6 +122,9 @@ namespace amr
             resourcesManager_->registerResources(sumVec_);
             resourcesManager_->registerResources(sumField_);
             resourcesManager_->registerResources(sumTensor_);
+
+            // refreshed in prepareStep, or temporaries
+            resourcesManager_->excludeFromRestarts(Bold_, Eold_, sumVec_, sumField_, sumTensor_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;

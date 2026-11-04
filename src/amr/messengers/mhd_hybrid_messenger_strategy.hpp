@@ -36,6 +36,7 @@ namespace amr
             , firstLevel_{firstLevel}
         {
             resourcesManager_->registerResources(EM_old_);
+            resourcesManager_->excludeFromRestarts(EM_old_);
         }
 
         /**
