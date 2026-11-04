@@ -205,7 +205,7 @@ using Grid2D      = Grid<NdArrayVector<2>, HybridQuantity::Scalar>;
 
 TEST(RecenteringStencil, ProjectAppliesStencil)
 {
-    auto const layout = TestGridLayout<YeeLayout2D>::make(10);
+    auto const layout = TestGridLayout<YeeLayout2D>{10};
     Grid2D bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     auto& f = *bx;
 
@@ -239,7 +239,7 @@ using MHDGrid2D   = Grid<NdArrayVector<2>, MHDQuantity::Scalar>;
 TEST(GridLayoutProject, QuantityPairMatchesFreeProject)
 {
     using Scalar      = HybridQuantity::Scalar;
-    auto const layout = TestGridLayout<YeeLayout2D>::make(10);
+    auto const layout = TestGridLayout<YeeLayout2D>{10};
     Grid2D by{"By", layout, Scalar::By, 0.};
     for (std::uint32_t i = 0; i < by.shape()[0]; ++i)
         for (std::uint32_t j = 0; j < by.shape()[1]; ++j)
@@ -249,7 +249,7 @@ TEST(GridLayoutProject, QuantityPairMatchesFreeProject)
               (project<YeeLayout2D::centering(Scalar::By), YeeLayout2D::centering(Scalar::Ex)>(
                   by, Point<std::size_t, 2>{5, 5})));
 
-    auto const mhdLayout = TestGridLayout<MHDLayout2D>::make(10);
+    auto const mhdLayout = TestGridLayout<MHDLayout2D>{10};
     MHDGrid2D rho{"rho", mhdLayout, MHDQuantity::Scalar::rho, 0.};
     for (std::uint32_t i = 0; i < rho.shape()[0]; ++i)
         for (std::uint32_t j = 0; j < rho.shape()[1]; ++j)
@@ -266,7 +266,7 @@ TEST(GridLayoutProject, QuantityPairMatchesFreeProject)
 TEST(GridLayoutProject, ThrowsOnWrongCentering)
 {
     using Scalar      = HybridQuantity::Scalar;
-    auto const layout = TestGridLayout<YeeLayout2D>::make(10);
+    auto const layout = TestGridLayout<YeeLayout2D>{10};
     Grid2D bx{"Bx", layout, Scalar::Bx, 0.};
     Grid2D by{"By", layout, Scalar::By, 0.};
     Grid2D vx{"Vx", layout, Scalar::Vx, 0.};

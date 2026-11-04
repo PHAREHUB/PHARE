@@ -65,7 +65,7 @@ TEST(test_tagger, everyCellIsWrittenIn1D)
     using GridLayoutT         = UniformBModel::gridlayout_type;
 
     std::uint32_t constexpr nCells = 20;
-    auto layout                    = TestGridLayout<GridLayoutT>::make(nCells);
+    auto layout                    = TestGridLayout<GridLayoutT>{1.0 / nCells, nCells};
     UsableVecField<dim> B{"EM_B", layout, HybridQuantity::Vector::B}; // uniform (zero) field
 
     UniformBModel model{{{B}}};
