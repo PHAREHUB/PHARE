@@ -59,7 +59,6 @@ def config(**kwargs):
     sim = ph.Simulation(
         time_step=time_step,
         final_time=final_time,
-        boundary_types="periodic",
         hyper_resistivity=0.001,
         cells=512,
         dl=0.25,
