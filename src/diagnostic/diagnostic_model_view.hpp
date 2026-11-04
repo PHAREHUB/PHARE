@@ -4,7 +4,7 @@
 #include "core/def.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/differential_operators.hpp"
-#include "core/numerics/external_field_projection.hpp"
+#include "core/data/field/zero_field.hpp"
 #include "core/numerics/primite_conservative_converter/mhd_conversion.hpp"
 #include "core/utilities/types.hpp"
 #include "mpi/mpi_utils.hpp"
@@ -362,21 +362,17 @@ public:
     void computeTotalB(auto const& layout)
     {
         auto const& B1 = this->model_.state.B1;
-        auto const* B0 = this->model_.B0OrNull();
 
-        for (auto const c : {core::Component::X, core::Component::Y, core::Component::Z})
-        {
-            auto& Bc        = BTotal_(c);
-            auto const& B1c = B1(c);
-            if (B0 == nullptr)
+        this->model_.externalFieldManager.state().visitB0([&](auto const& B0) {
+            for (auto const c : {core::Component::X, core::Component::Y, core::Component::Z})
             {
-                layout.evalOnGhostBox(Bc, [&](auto&... args) { Bc(args...) = B1c(args...); });
-                continue;
+                auto& Bc        = BTotal_(c);
+                auto const& B1c = B1(c);
+                auto const& B0c = B0(c);
+                layout.evalOnGhostBox(
+                    Bc, [&](auto&... args) { Bc(args...) = B1c(args...) + B0c(args...); });
             }
-            auto const& B0c = (*B0)(c);
-            layout.evalOnGhostBox(
-                Bc, [&](auto&... args) { Bc(args...) = B1c(args...) + B0c(args...); });
-        }
+        });
     }
 
     void computeTotalEtot(auto const& layout)
@@ -386,7 +382,6 @@ public:
 
         auto const& Etot1 = this->model_.state.Etot1;
         auto const& B1    = this->model_.state.B1;
-        auto const* B0    = this->model_.B0OrNull();
 
         auto onCellCenter = [&](auto const& B, core::MeshIndex<GridLayout::dimension> idx) {
             return std::make_tuple(
@@ -395,18 +390,13 @@ public:
                 GridLayout::template project<Scalar::Bz, Scalar::rho>(B(core::Component::Z), idx));
         };
 
-        auto B0OnCellCenter = [&](core::MeshIndex<GridLayout::dimension> idx) {
-            return std::make_tuple(
-                core::projectB0<GridLayout, Scalar::Bx, Scalar::rho>(B0, core::Component::X, idx),
-                core::projectB0<GridLayout, Scalar::By, Scalar::rho>(B0, core::Component::Y, idx),
-                core::projectB0<GridLayout, Scalar::Bz, Scalar::rho>(B0, core::Component::Z, idx));
-        };
-
-        layout.evalOnGhostBox(EtotTotal_, [&](auto&... args) {
-            core::MeshIndex<GridLayout::dimension> const idx{args...};
-            auto const [b1x, b1y, b1z] = onCellCenter(B1, idx);
-            auto const [b0x, b0y, b0z] = B0OnCellCenter(idx);
-            EtotTotal_(idx) = core::etot1ToEtot(Etot1(idx), b1x, b1y, b1z, b0x, b0y, b0z);
+        this->model_.externalFieldManager.state().visitB0([&](auto const& B0) {
+            layout.evalOnGhostBox(EtotTotal_, [&](auto&... args) {
+                core::MeshIndex<GridLayout::dimension> const idx{args...};
+                auto const [b1x, b1y, b1z] = onCellCenter(B1, idx);
+                auto const [b0x, b0y, b0z] = onCellCenter(B0, idx);
+                EtotTotal_(idx) = core::etot1ToEtot(Etot1(idx), b1x, b1y, b1z, b0x, b0y, b0z);
+            });
         });
     }
 
@@ -415,21 +405,13 @@ public:
         using GridLayout = std::decay_t<decltype(layout)>;
 
         auto const divB1 = core::div(layout, this->model_.state.B1);
-        auto const* B0   = this->model_.B0OrNull();
 
-        if (B0 == nullptr)
-        {
+        this->model_.externalFieldManager.state().visitB0([&](auto const& B0) {
+            auto const divB0 = core::div(layout, B0);
             layout.evalOnGhostBox(divB_diag_, [&](auto&... args) {
                 core::MeshIndex<GridLayout::dimension> const idx{args...};
-                divB_diag_(idx) = divB1(idx);
+                divB_diag_(idx) = divB1(idx) + divB0(idx);
             });
-            return;
-        }
-
-        auto const divB0 = core::div(layout, *B0);
-        layout.evalOnGhostBox(divB_diag_, [&](auto&... args) {
-            core::MeshIndex<GridLayout::dimension> const idx{args...};
-            divB_diag_(idx) = divB1(idx) + divB0(idx);
         });
     }
 
