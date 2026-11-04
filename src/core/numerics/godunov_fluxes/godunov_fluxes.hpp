@@ -97,7 +97,7 @@ public:
 
     template<typename State, typename VecFieldT, typename Fluxes>
     void operator()(auto& ct_state, auto const& dissipative_electric_state, State& state,
-                    VecFieldT const* b0, Fluxes& fluxes)
+                    VecFieldT const& b0, Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
 

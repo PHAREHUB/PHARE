@@ -5,7 +5,6 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
-#include "core/numerics/external_field_projection.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/index/index.hpp"
 
@@ -34,7 +33,7 @@ public:
     }
 
     void operator()(auto& ct_state, auto const& dissipative_electric_state, auto& mhd_state,
-                    auto const* B0) const
+                    auto const& B0) const
     {
         auto& E        = mhd_state.E;
         auto const& B1 = mhd_state.B1;
@@ -57,23 +56,23 @@ public:
 
 private:
     template<auto direction, auto src, auto dst>
-    static auto reconstructTotal_(auto const& B1, auto const* B0, Component component,
+    static auto reconstructTotal_(auto const& B1, auto const& B0, Component component,
                                   MeshIndex<dimension> const& idx)
     {
         auto const [B1L, B1R]
             = Reconstruction_t::template reconstruct<direction>(B1(component), idx);
-        auto const b0 = projectB0<GridLayout, src, dst>(B0, component, idx);
+        auto const b0 = GridLayout::template project<src, dst>(B0(component), idx);
         return std::make_pair(B1L + b0, B1R + b0);
     }
 
     template<auto src, auto dst>
-    static auto totalOnEdge_(auto const& B1, auto const* B0, Component component,
+    static auto totalOnEdge_(auto const& B1, auto const& B0, Component component,
                              MeshIndex<dimension> const& idx)
     {
-        return B1(component)(idx) + projectB0<GridLayout, src, dst>(B0, component, idx);
+        return B1(component)(idx) + GridLayout::template project<src, dst>(B0(component), idx);
     }
 
-    void ExEq_(auto& ct_state, auto& Ex, auto const& B1, auto const* B0,
+    void ExEq_(auto& ct_state, auto& Ex, auto const& B1, auto const& B0,
                MeshIndex<dimension> idx) const
     {
         if constexpr (dimension == 2)
@@ -168,7 +167,7 @@ private:
         }
     }
 
-    void EyEq_(auto& ct_state, auto& Ey, auto const& B1, auto const* B0,
+    void EyEq_(auto& ct_state, auto& Ey, auto const& B1, auto const& B0,
                MeshIndex<dimension> idx) const
     {
         if constexpr (dimension <= 2)
@@ -260,7 +259,7 @@ private:
         }
     }
 
-    void EzEq_(auto& ct_state, auto& Ez, auto const& B1, auto const* B0,
+    void EzEq_(auto& ct_state, auto& Ez, auto const& B1, auto const& B0,
                MeshIndex<dimension> idx) const
     {
         if constexpr (dimension == 1)

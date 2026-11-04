@@ -17,7 +17,7 @@ public:
     using Scalar     = GridLayout::Scalar;
 
     template<auto direction, typename State, typename VecFieldT>
-    static auto reconstruct(State const& S, VecFieldT const* b0,
+    static auto reconstruct(State const& S, VecFieldT const& b0,
                             MeshIndex<GridLayout::dimension> index)
     {
         auto [rhoL, rhoR] = Reconstruction::template reconstruct<direction>(S.rho, index);
@@ -102,35 +102,26 @@ public:
     }
 
     template<auto direction, typename VecField>
-    static auto B0_at_face(VecField const* b0, MeshIndex<GridLayout::dimension> index)
+    static auto B0_at_face(VecField const& b0, MeshIndex<GridLayout::dimension> index)
     {
         using Scalar = MHDQuantity::Scalar;
 
         PerIndexVector<typename VecField::value_type> B0f;
-        if (b0 == nullptr)
-            return B0f;
-
-        B0f(direction) = (*b0)(static_cast<Component>(direction))(index);
+        B0f(direction) = b0(static_cast<Component>(direction))(index);
         if constexpr (direction == Direction::X)
         {
-            B0f.y
-                = GridLayout::template project<Scalar::By, Scalar::Bx>((*b0)(Component::Y), index);
-            B0f.z
-                = GridLayout::template project<Scalar::Bz, Scalar::Bx>((*b0)(Component::Z), index);
+            B0f.y = GridLayout::template project<Scalar::By, Scalar::Bx>(b0(Component::Y), index);
+            B0f.z = GridLayout::template project<Scalar::Bz, Scalar::Bx>(b0(Component::Z), index);
         }
         else if constexpr (direction == Direction::Y)
         {
-            B0f.x
-                = GridLayout::template project<Scalar::Bx, Scalar::By>((*b0)(Component::X), index);
-            B0f.z
-                = GridLayout::template project<Scalar::Bz, Scalar::By>((*b0)(Component::Z), index);
+            B0f.x = GridLayout::template project<Scalar::Bx, Scalar::By>(b0(Component::X), index);
+            B0f.z = GridLayout::template project<Scalar::Bz, Scalar::By>(b0(Component::Z), index);
         }
         else
         {
-            B0f.x
-                = GridLayout::template project<Scalar::Bx, Scalar::Bz>((*b0)(Component::X), index);
-            B0f.y
-                = GridLayout::template project<Scalar::By, Scalar::Bz>((*b0)(Component::Y), index);
+            B0f.x = GridLayout::template project<Scalar::Bx, Scalar::Bz>(b0(Component::X), index);
+            B0f.y = GridLayout::template project<Scalar::By, Scalar::Bz>(b0(Component::Y), index);
         }
         return B0f;
     }

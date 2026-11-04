@@ -174,7 +174,7 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     for (auto& patch : rm.enumerate(level, *this))
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        state.initialize(layout, B0OrNull());
+        externalFieldManager.state().visitB0([&](auto const& B0) { state.initialize(layout, B0); });
     }
 }
 
