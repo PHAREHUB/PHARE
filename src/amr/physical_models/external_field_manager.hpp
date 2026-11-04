@@ -25,12 +25,15 @@ public:
     using factory_type = core::ExternalFieldUpdaterFactory<VecFieldT, GridLayoutT>;
 
     ExternalFieldManager(std::string const& name, initializer::PHAREDict const& dict)
-        : state_{name, dict.contains("external_field")}
-        , updater_{state_.isEnabled() ? factory_type::create(dict["external_field"]) : nullptr}
+        : updater_{dict.contains("external_field") ? factory_type::create(dict["external_field"])
+                                                   : nullptr}
+        , state_{name, updater_ != nullptr, updater_ and updater_->isTimeDependent()}
     {
     }
 
     NO_DISCARD bool isEnabled() const { return state_.isEnabled(); }
+
+    NO_DISCARD bool isTimeDependent() const { return state_.isTimeDependent(); }
 
     NO_DISCARD state_type& state() { return state_; }
     NO_DISCARD state_type const& state() const { return state_; }
@@ -50,13 +53,13 @@ public:
 
     void update(auto& resourcesManager, auto& level, VecFieldT& scratch, double const time)
     {
-        if (isEnabled() and updater_->isTimeDependent())
+        if (isTimeDependent())
             initialize(resourcesManager, level, scratch, time);
     }
 
 private:
-    state_type state_;
     std::unique_ptr<updater_type> updater_;
+    state_type state_;
 };
 
 } // namespace PHARE::solver

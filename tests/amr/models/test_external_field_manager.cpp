@@ -6,6 +6,8 @@
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 
+#include "tests/core/models/test_external_field_fixtures.hpp"
+
 #include "gtest/gtest.h"
 
 using namespace PHARE;
@@ -36,6 +38,21 @@ initializer::PHAREDict dictWithADipole()
     return dict;
 }
 
+initializer::PHAREDict dictWithATimeDependentField()
+{
+    initializer::PHAREDict dict;
+    auto& externalField                = dict["external_field"];
+    externalField["type"]              = static_cast<int>(ExternalFieldUpdaterType::UserDefined);
+    externalField["is_time_dependent"] = true;
+    auto const zero = spaceTimeFunction<2>([](Point<double, 2> const&, double) { return 0.; });
+    for (auto const axis : {"x", "y", "z"})
+    {
+        externalField["potential"][axis]                 = zero;
+        externalField["potential_time_derivative"][axis] = zero;
+    }
+    return dict;
+}
+
 } // namespace
 
 
@@ -44,15 +61,27 @@ TEST(ExternalFieldManager, isDisabledWithoutExternalFieldKey)
     Manager_t manager{"model", initializer::PHAREDict{}};
 
     EXPECT_FALSE(manager.isEnabled());
+    EXPECT_FALSE(manager.isTimeDependent());
     EXPECT_TRUE(manager.state().getRunTimeResourcesViewList().empty());
 }
 
 
-TEST(ExternalFieldManager, isEnabledByAnExternalFieldDict)
+TEST(ExternalFieldManager, aDipoleIsStaticAndAllocatesB0Only)
 {
     Manager_t manager{"model", dictWithADipole()};
 
     EXPECT_TRUE(manager.isEnabled());
+    EXPECT_FALSE(manager.isTimeDependent());
+    EXPECT_EQ(manager.state().getRunTimeResourcesViewList().size(), 1u);
+}
+
+
+TEST(ExternalFieldManager, aTimeDependentFieldAllocatesB0AndItsTimeDerivative)
+{
+    Manager_t manager{"model", dictWithATimeDependentField()};
+
+    EXPECT_TRUE(manager.isEnabled());
+    EXPECT_TRUE(manager.isTimeDependent());
     EXPECT_EQ(manager.state().getRunTimeResourcesViewList().size(), 2u);
 }
 

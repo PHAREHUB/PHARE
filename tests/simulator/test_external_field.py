@@ -371,6 +371,14 @@ class ExternalFieldTest(SimulatorTest):
         for time in timestamps:
             self.assert_b0_is_exact(run, time, min_levels=2)
 
+    def test_restart_static_then_time_dependent_runs(self):
+        run, timestamps = self.restart_pair(
+            partial(ph.UserDefinedExternalField, a0z=az),
+            partial(ph.UserDefinedExternalField, a0z=az_t, da0z_dt=dazdt),
+        )
+        for time in timestamps:
+            self.assert_b0_is_exact(run, time, t_expected=time, min_levels=2)
+
     def test_restart_dropping_the_field_runs(self):
         run, timestamps = self.restart_pair(
             partial(ph.UserDefinedExternalField, a0z=az), None
@@ -420,9 +428,15 @@ class ExternalFieldTest(SimulatorTest):
         return entries
 
     def test_restart_files_hold_b0_only_when_declared(self):
-        declared = self.restart_entries(partial(ph.UserDefinedExternalField, a0z=az))
-        self.assertIn("HybridModel_B0##default", declared)
-        self.assertIn("HybridModel_dB0dt##default", declared)
+        static = self.restart_entries(partial(ph.UserDefinedExternalField, a0z=az))
+        self.assertIn("HybridModel_B0##default", static)
+        self.assertNotIn("HybridModel_dB0dt##default", static)
+
+        time_dependent = self.restart_entries(
+            partial(ph.UserDefinedExternalField, a0z=az_t, da0z_dt=dazdt)
+        )
+        self.assertIn("HybridModel_B0##default", time_dependent)
+        self.assertIn("HybridModel_dB0dt##default", time_dependent)
 
         undeclared = self.restart_entries(None)
         self.assertTrue(undeclared)

@@ -82,10 +82,11 @@ struct UpdaterRun
 {
     TestGridLayout<GridLayout_t> layout{cells};
 
-    UsableExternalFieldState<2> externalField{"external", layout};
+    UsableExternalFieldState<2> externalField;
 
     template<typename Updater>
     explicit UpdaterRun(Updater& updater, double time = 0.)
+        : externalField{"external", layout, updater.isTimeDependent()}
     {
         updater(externalField, externalField.scratch(), layout, time);
     }
@@ -341,8 +342,7 @@ TEST(ExternalFieldUpdaterFactory, forwardsThePotentialTimeDerivative)
 }
 
 
-//! without a derivative the updater must zero dB0/dt rather than compute one
-TEST(ExternalFieldUpdaterFactory, zeroesTheTimeDerivativeOfAStaticUserDefinedField)
+TEST(ExternalFieldUpdaterFactory, aStaticUserDefinedFieldHasNoTimeDerivative)
 {
     auto const dict = userDefinedDict(/*time_dependent=*/false);
     auto updater    = Factory_t::create(dict);
@@ -350,7 +350,8 @@ TEST(ExternalFieldUpdaterFactory, zeroesTheTimeDerivativeOfAStaticUserDefinedFie
     UpdaterRun run{*updater, 1.};
 
     EXPECT_NEAR(maxDeviation(run.externalField.B0(), expectedCurl * 2.), 0., 1e-12);
-    EXPECT_DOUBLE_EQ(maxDeviation(run.externalField.dB0dt(), Point<double, 3>{0., 0., 0.}), 0.);
+    EXPECT_FALSE(run.externalField.isTimeDependent());
+    EXPECT_EQ(run.externalField.getRunTimeResourcesViewList().size(), 1u);
 }
 
 
