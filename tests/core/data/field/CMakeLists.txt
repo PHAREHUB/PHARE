@@ -34,3 +34,16 @@ function(_field_test test_name)
 endfunction(_field_test)
 
 _field_test(test_field_box)
+
+
+add_executable(test-zero-field test_zero_field.cpp)
+
+target_include_directories(test-zero-field PRIVATE
+  ${GTEST_INCLUDE_DIRS}
+  )
+
+target_link_libraries(test-zero-field PRIVATE
+  phare_core
+  ${GTEST_LIBS})
+
+add_no_mpi_phare_test(test-zero-field ${CMAKE_CURRENT_BINARY_DIR})
