@@ -43,6 +43,9 @@ class VtkFile:
         self.filepath = path
         self.file = h5py.File(path, "r")
         self._times = None
+        self._step_times = None  # one per written step, duplicates included
+        self._checked_levels = set()
+        self._patches = {}  # {(ilvl, time_idx): (boxes, first data row of each patch)}
         self._domain_box = None
         self._level_spacing = {}
 
@@ -53,28 +56,6 @@ class VtkFile:
         self._level_spacing[ilvl] = level_group.attrs["Spacing"][:]
         return self._level_spacing[ilvl]
 
-    def level_boxes(self, ilvl=0, time=0):
-        dim = self.dimension
-        time_idx = self.time_idx(time)
-        num_boxes = self._get_path_from(
-            step_level_path + str(ilvl) + "/NumberOfAMRBox"
-        )[time_idx]
-        box_offset = self._get_path_from(step_level_path + str(ilvl) + "/AMRBoxOffset")[
-            time_idx
-        ]
-        amr_box_ds = self._get_path_from(level_base_path + str(ilvl) + "/AMRBox")
-        boxes = [0] * num_boxes
-
-        for bi, boff in enumerate(range(box_offset, box_offset + num_boxes)):
-            box_vals = amr_box_ds[boff]
-            lo = np.zeros(dim)
-            up = np.zeros(dim)
-            for i, di in enumerate(range(0, dim * 2, 2)):
-                lo[i] = box_vals[di + 0]
-                up[i] = box_vals[di + 1]
-            boxes[bi] = Box(lo, up)
-        return boxes
-
     def max_num_levels(self):
         n = 0
         for i in range(11):
@@ -84,19 +65,13 @@ class VtkFile:
         return n
 
     def time_idx(self, time):
-        ret = np.where(np.isclose(self.times(), float(time), 1e-10))
-        return ret[0][0]  # can throw if time is not found
-
-    def _amr_box_offset(self, ilvl, time_idx):
-        return self.file["VTKHDF"]["Steps"][f"Level{ilvl}"]["AMRBoxOffset"][time_idx]
-
-    def _num_boxes(self, ilvl, time_idx):
-        return self.file["VTKHDF"]["Steps"][f"Level{ilvl}"]["NumberOfAMRBox"][time_idx]
-
-    def _data_offset(self, ilvl, time_idx):
-        return self.file["VTKHDF"]["Steps"][f"Level{ilvl}"]["PointDataOffset"]["data"][
-            time_idx
-        ]
+        """index of the step holding time: a restart dumps its restart time again, the last
+        copy is the one to read. Raises IndexError if time is not in the file"""
+        self.times()
+        steps = np.flatnonzero(np.isclose(self._step_times, float(time), 1e-10))
+        if len(steps) == 0:
+            raise IndexError(f"time {time} not in {self.filepath}")
+        return steps[-1]
 
     def _data_set(self, ilvl):
         return self.file["VTKHDF"][f"Level{ilvl}"]["PointData"]["data"]
@@ -107,7 +82,12 @@ class VtkFile:
 
     @property
     def interp_order(self):
-        return self.file.attrs["interpOrder"]
+        # only written for hybrid runs, as for phareh5 files 0 when absent (MHD)
+        return (
+            int(self.file.attrs["interpOrder"])
+            if "interpOrder" in self.file.attrs
+            else 0
+        )
 
     @property
     def domain_box(self):
@@ -124,54 +104,75 @@ class VtkFile:
         return False
 
     def times(self, reset=False):
+        """the times in the file, once each. Only the first NSteps values of Steps/Values were
+        written in full, a run that stopped during a dump can list one more"""
         if reset:
             self._times = None
         if self._times is None:
-            self._times = self._get_path_from(h5_time_ds_path)[:]
+            values = self._get_path_from(h5_time_ds_path)[:]
+            steps = self._get_path_from(base_path + "/Steps")
+            if "NSteps" in steps.attrs:
+                values = values[: int(steps.attrs["NSteps"])]
+            self._step_times = values
+            self._times = np.unique(values)
         return self._times
+
+    def check_level_offsets(self, ilvl):
+        """the per step offsets of a level must move forward and stay inside its datasets,
+        else the file is corrupt, eg 32 bit offsets saturated on large files"""
+        if ilvl in self._checked_levels:
+            return
+        self.times()
+        nsteps = len(self._step_times)
+        steps = self.file["VTKHDF"]["Steps"][f"Level{ilvl}"]
+        num_boxes = np.asarray(steps["NumberOfAMRBox"][:nsteps], dtype=np.int64)
+        box_offsets = np.asarray(steps["AMRBoxOffset"][:nsteps], dtype=np.int64)
+        data_offsets = np.asarray(
+            steps["PointDataOffset"]["data"][:nsteps], dtype=np.int64
+        )
+        num_box_rows = len(self.file["VTKHDF"][f"Level{ilvl}"]["AMRBox"])
+        num_data_rows = len(self._data_set(ilvl))
+
+        boxes_ok = np.all(box_offsets[1:] >= box_offsets[:-1] + num_boxes[:-1])
+        boxes_ok = boxes_ok and np.all(box_offsets + num_boxes <= num_box_rows)
+        data_ok = np.all(data_offsets[1:] >= data_offsets[:-1])
+        data_ok = data_ok and np.all(
+            data_offsets[1:][num_boxes[:-1] > 0] > data_offsets[:-1][num_boxes[:-1] > 0]
+        )
+        data_ok = data_ok and np.all(data_offsets <= num_data_rows)
+        if not (boxes_ok and data_ok):
+            raise ValueError(
+                f"{self.filepath}: corrupt Steps/Level{ilvl} offsets, eg 32 bit offsets "
+                "saturated in a file written before 64 bit offsets"
+            )
+        self._checked_levels.add(ilvl)
+
+    def patches(self, ilvl, time_idx):
+        """the boxes of a level at a step and the first data row of each patch, read once.
+        Patch data is contiguous per level: all primal nodes, written 4 (1d) or 2 (2d) times
+        to fill 3d cells"""
+        key = (ilvl, time_idx)
+        if key not in self._patches:
+            self.check_level_offsets(ilvl)
+            steps = self.file["VTKHDF"]["Steps"][f"Level{ilvl}"]
+            num_boxes = int(steps["NumberOfAMRBox"][time_idx])
+            box_offset = int(steps["AMRBoxOffset"][time_idx])
+            data_offset = int(steps["PointDataOffset"]["data"][time_idx])
+            rows = np.asarray(
+                self.file["VTKHDF"][f"Level{ilvl}"]["AMRBox"][
+                    box_offset : box_offset + num_boxes
+                ]
+            )
+            dim = self.dimension
+            lower, upper = rows[:, 0 : 2 * dim : 2], rows[:, 1 : 2 * dim : 2]
+            sizes = np.prod(upper - lower + 2, axis=1) * [4, 2, 1][dim - 1]
+            offsets = data_offset + np.concatenate(([0], np.cumsum(sizes)[:-1]))
+            boxes = [Box(lo, up) for lo, up in zip(lower, upper)]
+            self._patches[key] = (boxes, offsets.astype(np.int64))
+        return self._patches[key]
 
     def _get_path_from(self, string):
         return get_path_from(self.file, string)
-
-
-class VtkPatchLevelInfo:
-    def __init__(self, vtk_file, ilvl, time_idx):
-        self.vtk_file = vtk_file
-        self.ilvl = ilvl
-        self.time_idx = time_idx
-        self.num_boxes = vtk_file._num_boxes(ilvl, self.time_idx)
-        self.data_offset = vtk_file._data_offset(ilvl, self.time_idx)
-        self.box_offset = vtk_file._amr_box_offset(ilvl, self.time_idx)
-        self.rolling_data_offset = self.data_offset
-
-    def boxes(self):
-        dim = self.vtk_file.dimension
-        amr_box_ds = self.vtk_file.file["VTKHDF"][f"Level{self.ilvl}"]["AMRBox"]
-        box_vals_list = amr_box_ds[self.box_offset : self.box_offset + self.num_boxes]
-        boxes = [0] * self.num_boxes
-        for bi in range(self.num_boxes):
-            lo = np.zeros(dim)
-            up = np.zeros(dim)
-            box_vals = box_vals_list[bi]
-            for i, di in enumerate(range(0, dim * 2, 2)):
-                lo[i] = box_vals[di + 0]
-                up[i] = box_vals[di + 1]
-            boxes[bi] = Box(lo, up)
-        return boxes
-
-    def next_patch(self, patch_box):
-        """patch data is contiguous per level, so every patch must be stepped over, loaded or not"""
-        # data in file is sometimes duplicated
-        X_TIMES = [4, 2, 1][self.vtk_file.dimension - 1]
-        # vtk data is always primal in all directions for all components, so +1 everywhere
-        field_box = Box(patch_box.lower, patch_box.upper + 1)
-        self.rolling_data_offset += field_box.size() * X_TIMES
-
-    def __deepcopy__(self, memo):
-        no_copy_keys = ["vtk_file"]  # do not copy these things
-        cpy = phut.deep_copy(self, memo, no_copy_keys)
-        cpy.vtk_file = self.vtk_file
-        return cpy
 
 
 def get_all_available_quantities_from_h5(filepath, time=0, exclude=None, hier=None):
@@ -212,7 +213,7 @@ def qty_from_basename(basename):
     return basename
 
 
-def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layout):
+def add_to_patchdata(vtk_file, ilvl, data_offset, patch_datas, basename, layout):
     """
     adds data in the h5_patch_grp in the given PatchData dict
     returns True if valid h5 patch found
@@ -221,7 +222,7 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
     if is_particle_file(basename):
         raise RuntimeError("Particle diagnostics are not supported under vtkhdf")
 
-    dataset = vtk_file._data_set(lvl_info.ilvl)
+    dataset = vtk_file._data_set(ilvl)
     ncols = dataset.shape[1]  # decides if scalar/tensor
 
     if ncols not in _suffixes_per_ncols:
@@ -241,7 +242,7 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
             pdata_name,
             dataset,
             cmp_id,
-            lvl_info.rolling_data_offset,
+            data_offset,
         )
         if is_pop_fluid_file(basename):
             pdata_name = pop_name(basename) + "_" + pdata_name
@@ -262,14 +263,8 @@ def h5_filename_from(diagInfo):
 
 
 def get_times_from_h5(filepath, as_float=True):
-    import h5py  # see doc/conventions.md section 2.1.1
-
-    with h5py.File(filepath, "r") as f:
-        ds = get_path_from(f, h5_time_ds_path)
-        times = list(ds[:])
-        if as_float:
-            times = np.array(sorted([float(s) for s in times]))
-        return times
+    times = VtkFile(filepath).times()  # written steps only, once each
+    return times.astype(float) if as_float else list(times)
 
 
 def create_from_all_times(time, hier):
@@ -302,11 +297,11 @@ def patch_levels_from_h5(vtk_file, time, selection_box=None):
     time_idx = vtk_file.time_idx(time)
     for ilvl in range(vtk_file.max_num_levels()):
         lvl_cell_width = vtk_file.level_spacing(ilvl)
-        vtk_patch_level_info = VtkPatchLevelInfo(vtk_file, ilvl, time_idx)
+        boxes, data_offsets = vtk_file.patches(ilvl, time_idx)
 
         patches = []
 
-        for ipatch, patch_box in enumerate(vtk_patch_level_info.boxes()):
+        for patch_box, data_offset in zip(boxes, data_offsets):
             origin = patch_box.lower * vtk_file.level_spacing(ilvl)
 
             intersect = None
@@ -324,16 +319,9 @@ def patch_levels_from_h5(vtk_file, time, selection_box=None):
 
                 # currently, there is always data for patch
                 add_to_patchdata(
-                    vtk_file,
-                    vtk_patch_level_info,
-                    ipatch,
-                    patch_datas,
-                    basename,
-                    layout,
+                    vtk_file, ilvl, data_offset, patch_datas, basename, layout
                 )
                 patches.append(Patch(patch_datas, h5_patch, box=patch_box))
-            # iterate to next data even if we skip the current
-            vtk_patch_level_info.next_patch(patch_box)
 
         if len(patches):
             patch_levels[ilvl] = PatchLevel(ilvl, patches)

@@ -3,25 +3,36 @@
 #
 
 
+import numpy as np
+
 import pyphare.core.box as boxm
 from pyphare.pharesee.hierarchy import patchdata
 from pyphare.core import phare_utilities as phut
 
 
 class VtkFieldDatasetAccessor:
+    """one component of a patch in a vtkhdf dataset, read from the file on first use only"""
+
     def __init__(self, dataset, cmp_idx, offset, box):
         self.box = box
         self.cmp_idx = cmp_idx
         self.offset = offset
         self.dataset = dataset
+        self._data = None  # read only, callers get copies
+
+    def _read(self):
+        if self._data is None:
+            self._data = self.dataset[
+                self.offset : self.offset + self.box.size(), self.cmp_idx
+            ].reshape(self.box.shape, order="F")
+            self._data.flags.writeable = False
+        return self._data
 
     def __getitem__(self, item):
-        full = self.dataset[
-            self.offset : self.offset + self.box.size(), self.cmp_idx
-        ].reshape(self.box.shape, order="F")
-        if isinstance(item, slice) and item == slice(None):
-            return full
-        return full[item]
+        return np.array(self._read()[item])
+
+    def __array__(self, dtype=None, copy=None):
+        return np.asarray(self[:], dtype=dtype)
 
     @property
     def shape(self):
