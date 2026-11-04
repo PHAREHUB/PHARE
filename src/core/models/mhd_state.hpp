@@ -113,18 +113,18 @@ namespace core
         }
 
         template<typename GridLayout>
-        void initialize(GridLayout const& layout, VecFieldT const* B0)
+        void initialize(GridLayout const& layout, auto const& B0)
         {
             FieldUserFunctionInitializer::initialize(rho, layout, rhoinit_);
             Vinit_.initialize(V, layout);
             Binit_.initialize(B1, layout);
             FieldUserFunctionInitializer::initialize(P, layout, Pinit_);
 
-            if (BinitIsTotal_ and B0 != nullptr)
+            if (BinitIsTotal_)
                 for (auto const c : {Component::X, Component::Y, Component::Z})
                 {
                     auto& B1c       = B1(c);
-                    auto const& B0c = (*B0)(c);
+                    auto const& B0c = B0(c);
                     layout.evalOnGhostBox(B1c,
                                           [&](auto&... args) { B1c(args...) -= B0c(args...); });
                 }
