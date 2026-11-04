@@ -21,8 +21,8 @@ void updater_routine(benchmark::State& state)
     using ParticleArray = PHARE_Types::Hybrid::ParticleArray_t;
     using Particle_t    = ParticleArray::value_type;
     using Ions          = PHARE::core::UsableIons_t<ParticleArray, interp>;
-    using IonUpdater    = core::IonUpdater<Ions, Electromag_t, GridLayout_t>;
-    using Boxing_t      = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout_t>;
+    using IonUpdater    = core::IonUpdater<Ions>;
+    using Boxing_t      = PHARE::core::UpdaterSelectionBoxing<GridLayout_t, ParticleArray>;
 
     GridLayout_t layout{cells};
     Electromag_t em{layout};
@@ -46,16 +46,16 @@ void updater_routine(benchmark::State& state)
     auto dt             = new_time - current_time;
     while (state.KeepRunningBatch(1)) // while (state.KeepRunning())
     {
-        ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::domain_only);
-        ionUpdater_.updateIons(ions);
+        ionUpdater_.updatePopulations(core::UpdaterMode::copy, ions, em, boxing, dt);
+        ions.update();
 
         patch_particles.domain_particles = particles_copy;
         auto& pack
             = std::get<4>(ions.getRunTimeResourcesViewList()[0].getCompileTimeResourcesViewList());
         pack.setBuffer(&patch_particles.pack());
 
-        ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::all);
-        ionUpdater_.updateIons(ions);
+        ionUpdater_.updatePopulations(core::UpdaterMode::ref, ions, em, boxing, dt);
+        ions.update();
     }
 }
 
