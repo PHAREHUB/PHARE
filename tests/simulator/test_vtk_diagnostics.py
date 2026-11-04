@@ -301,6 +301,16 @@ class VTKDiagnosticsTest(SimulatorTest):
             first_l0 = Box([0] * ndim, [9] * ndim)
             self.assertNotIn(first_l0, [p.box for p in levels[0].patches])
 
+        # only the last L0 patch: L1 has no patch selected, kept empty as for phareh5
+        levels = compare("GetVi", selection_box=Box([10] * ndim, [11] * ndim)).levels(
+            time
+        )
+        self.assertEqual(levels.keys(), all_patches.keys())
+        self.assertEqual(
+            [p.box for p in levels[0].patches], [Box([30] * ndim, [39] * ndim)]
+        )
+        self.assertEqual(levels[1].patches, [])
+
     @data(*permute({}))
     @unpack
     def test_missing_level_case(self, ndim, interp, simInput):

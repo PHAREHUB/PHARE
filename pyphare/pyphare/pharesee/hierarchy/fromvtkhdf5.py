@@ -303,7 +303,9 @@ def patch_levels_from_h5(vtk_file, time, selection_box=None):
                 )
                 patches.append(Patch(patch_datas, box=patch_box))
 
-        if len(patches):
+        if len(
+            boxes
+        ):  # the level exists at this step, kept even if none selected, as h5
             patch_levels[ilvl] = PatchLevel(ilvl, patches)
     return patch_levels
 

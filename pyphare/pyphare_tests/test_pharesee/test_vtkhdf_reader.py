@@ -156,6 +156,14 @@ class VtkhdfReaderTest(unittest.TestCase):
         for j, patch in enumerate(patches):
             np.testing.assert_array_equal(np.unique(patch["rho"][:]), [j + 1])
 
+    def test_level_kept_when_no_patch_selected(self):
+        """as phareh5: a level of the step is kept, with no patches, if none is selected"""
+        write_two_patches(self.path)
+        outside = Box([5.0], [6.0])  # the domain is [0, 1]
+        hier = hierarchy_fromvtkhdf(self.path, 0.0, selection_box=outside)
+        self.assertEqual(list(hier.levels(0.0).keys()), [0])
+        self.assertEqual(hier.level(0, time=0.0).patches, [])
+
     def test_patch_read_once(self):
         dataset = CountingDataset(np.arange(10.0)[:, None])
         accessor = VtkFieldDatasetAccessor(dataset, 0, 2, Box([0], [3]))
