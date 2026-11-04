@@ -74,7 +74,7 @@ double linear(std::array<std::uint32_t, dim> const& idx,
 
 TEST(RecenteredField, SameCenteringReadsDirectly)
 {
-    auto const layout = TestGridLayout<YeeLayout<1>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<1>>{nCells};
     Grid_t<1> by{"By", layout, HybridQuantity::Scalar::By, 0.};
     fill(by, [](auto const& i) { return 1.0 * i[0] * i[0]; });
 
@@ -85,7 +85,7 @@ TEST(RecenteredField, SameCenteringReadsDirectly)
 
 TEST(RecenteredField, PrimalToDualAveragesTwoNodes)
 {
-    auto const layout = TestGridLayout<YeeLayout<1>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<1>>{nCells};
     Grid_t<1> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     fill(bx, [](auto const& i) { return 1.0 * i[0] * i[0]; });
 
@@ -96,7 +96,7 @@ TEST(RecenteredField, PrimalToDualAveragesTwoNodes)
 
 TEST(RecenteredField, DualToPrimalAveragesTwoCellsExceptOnOutermostPrimalGhosts)
 {
-    auto const layout = TestGridLayout<YeeLayout<1>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<1>>{nCells};
     Grid_t<1> by{"By", layout, HybridQuantity::Scalar::By, 0.};
     fill(by, [](auto const& i) { return 1.0 * i[0] * i[0]; });
 
@@ -107,7 +107,7 @@ TEST(RecenteredField, DualToPrimalAveragesTwoCellsExceptOnOutermostPrimalGhosts)
 
 TEST(RecenteredField, CornerAverage2D)
 {
-    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<2>>{nCells};
     Grid_t<2> rho{"rho", layout, HybridQuantity::Scalar::rho, 0.};
     auto const profile
         = [](std::uint32_t i, std::uint32_t j) { return 1.0 * i * i + 7.0 * j * j * j; };
@@ -139,7 +139,7 @@ TYPED_TEST_SUITE(RecenteredFieldLinear, Dims);
 TYPED_TEST(RecenteredFieldLinear, LinearFieldsToCellCentres)
 {
     auto constexpr dim = TypeParam::value;
-    auto const layout  = TestGridLayout<YeeLayout<dim>>::make(nCells);
+    auto const layout  = TestGridLayout<YeeLayout<dim>>{nCells};
     auto const allDual = ConstArray<QtyCentering, dim>(dual);
 
     using Scalar = HybridQuantity::Scalar;
@@ -159,7 +159,7 @@ TYPED_TEST(RecenteredFieldLinear, LinearFieldsToCellCentres)
 TYPED_TEST(RecenteredFieldLinear, MHDElectricFieldToFortranPrimal)
 {
     auto constexpr dim   = TypeParam::value;
-    auto const layout    = TestGridLayout<MHDLayout<dim>>::make(nCells);
+    auto const layout    = TestGridLayout<MHDLayout<dim>>{nCells};
     auto const allPrimal = ConstArray<QtyCentering, dim>(primal);
 
     using Scalar = MHDQuantity::Scalar;
@@ -184,7 +184,7 @@ TYPED_TEST(RecenteredFieldLinear, MHDElectricFieldToFortranPrimal)
 #ifndef NDEBUG
 TEST(RecenteredFieldDeathTest, DualToPrimalAssertsOnOutermostPrimalGhosts)
 {
-    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<2>>{nCells};
     Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     RecenteredField const rf{*bx, {primal, primal}, layout};
     EXPECT_DEATH(static_cast<void>(rf(3, 0)), "");
@@ -193,7 +193,7 @@ TEST(RecenteredFieldDeathTest, DualToPrimalAssertsOnOutermostPrimalGhosts)
 
 TEST(CompileTimeRecenteredFieldDeathTest, DualToPrimalAssertsOnOutermostPrimalGhosts)
 {
-    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<2>>{nCells};
     Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     CompileTimeRecenteredField<std::array{primal, dual}, std::array{primal, primal},
                                Grid_t<2>::field_type> const rf{*bx, layout};
@@ -254,7 +254,7 @@ TYPED_TEST(RecenteredFieldProject, MatchesProjectOnHybridPairs)
     auto constexpr dim = TypeParam::value;
     if constexpr (dim > 1)
     {
-        auto const layout = TestGridLayout<YeeLayout<dim>>::make(nCells);
+        auto const layout = TestGridLayout<YeeLayout<dim>>{nCells};
         using Scalar      = HybridQuantity::Scalar;
         constexpr auto Bx = Scalar::Bx;
         constexpr auto By = Scalar::By;
@@ -295,7 +295,7 @@ void expectFortranPrimalMatchesProject(YeeLayout<dim> const& layout)
 TYPED_TEST(RecenteredFieldProject, FortranPrimalConversionMatchesProject)
 {
     auto constexpr dim = TypeParam::value;
-    auto const layout  = TestGridLayout<YeeLayout<dim>>::make(nCells);
+    auto const layout  = TestGridLayout<YeeLayout<dim>>{nCells};
     using Scalar       = HybridQuantity::Scalar;
     expectFortranPrimalMatchesProject<dim, Scalar::Bx>(layout);
     expectFortranPrimalMatchesProject<dim, Scalar::By>(layout);
@@ -309,7 +309,7 @@ TYPED_TEST(RecenteredFieldProject, FortranPrimalConversionMatchesProject)
 
 TEST(CompileTimeRecenteredField, ThrowsIfFieldCenteringIsNotSource)
 {
-    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<2>>{nCells};
     Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     auto constexpr bxCentering = std::array{primal, dual};
     auto constexpr notBx       = std::array{dual, dual};
@@ -323,7 +323,7 @@ TEST(CompileTimeRecenteredField, ThrowsIfFieldCenteringIsNotSource)
 
 TEST(RecenteredField, ExposesDestinationCentering)
 {
-    auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
+    auto const layout = TestGridLayout<YeeLayout<2>>{nCells};
     Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     auto const destination = std::array{primal, dual};
     RecenteredField const rf{*bx, destination, layout};
