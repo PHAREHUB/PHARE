@@ -14,6 +14,9 @@
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/pdat/CellData.h>
 
+#include <type_traits>
+#include <vector>
+
 
 
 namespace PHARE::amr
@@ -74,9 +77,19 @@ void ConcreteLoadBalancerStrategyNPPC<Model>::compute(
             core::Point{core::generate_from([](auto const& nCell) { return nCell - 1; },
                                             layout.nbrCells())}};
 
-        core::for_each_point_zip(layout.AMRBox(), local_box, [&](auto const& amr, auto const& lcl) {
-            lb_view(lcl) = core::sum_from(ions, [&](auto const& pop) {
-                return pop.domainParticles().nbr_particles_in(amr.toArray());
+        // per-population cell counters: one O(cells + unsorted tail) setup per patch instead
+        // of a tail scan per cell query on cell-sorted arrays (same counts)
+        auto const amrBox = layout.AMRBox();
+        using counter_t
+            = std::decay_t<decltype(ions.begin()->domainParticles().cellCounter(amrBox))>;
+        std::vector<counter_t> counters;
+        counters.reserve(ions.size());
+        for (auto const& pop : ions)
+            counters.emplace_back(pop.domainParticles().cellCounter(amrBox));
+
+        core::for_each_point_zip(amrBox, local_box, [&](auto const& amr, auto const& lcl) {
+            lb_view(lcl) = core::sum_from(counters, [&](auto const& counter) {
+                return counter(amr.toArray());
             });
         });
     }
