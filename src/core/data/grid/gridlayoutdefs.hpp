@@ -130,7 +130,7 @@ namespace core
 
 
     /**
-     * @brief Primitive B — dual-direction prolongation (coarse→fine, ratio 2).
+     * @brief Dual-direction prolongation (coarse→fine, ratio 2).
      *
      * A quantity dual in `dir` is an average over its dual extent there. Refining splits coarse
      * cell I into two fine children sitting at ±¼ of the coarse spacing; parity p∈{0,1},
