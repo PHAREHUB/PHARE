@@ -385,64 +385,33 @@ namespace amr
 
 
 
-        void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
+        void fillIonPopBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
-            using value_type = FieldT::value_type;
-
-
-            // we cannot have the schedule doign the += in place in the flux array
+            // we cannot have the schedule doing the += in place in the flux/density arrays
             // because some overlaps could be counted several times.
-            // we therefore first copy flux into a sumVec buffer and then
-            // execute the schedule onto that before copying it back onto the flux array
-            for (std::size_t i = 0; i < ions.size(); ++i)
+            // we therefore first copy flux and particle density into scratch buffers and
+            // then execute the (fused) schedule onto them before copying the result back onto
+            // the real arrays. Flux and density are communicated together in a single schedule
+            // (see MultiFieldBorderOpTransactionFactory), so there is only one fill() per
+            // population instead of two.
+            for (auto& pop : ions)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
+                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_, sumField_))
+                    copyIonPopBorderScratch_(pop, /*toScratch=*/true);
 
+                popBorderSumRefiners_.fillByKey(pop.flux().name(), level.getLevelNumber(),
+                                                fillTime);
 
-                popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
-            }
-        }
-
-        void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) override
-        {
-            using value_type = FieldT::value_type;
-
-            // one particle density per population, the charge density is computed from it
-            assert(popDensityBorderSumRefiners_.size() == ions.size());
-
-            for (std::size_t i = 0; i < ions.size(); ++i)
-            {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-
-                popDensityBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
+                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_, sumField_))
+                    copyIonPopBorderScratch_(pop, /*toScratch=*/false);
             }
         }
 
 
-        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
+        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
-            assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
+            ionBorderMaxRefiners_.fillByKey(ions.chargeDensity().name(), level.getLevelNumber(),
+                                            fillTime);
         }
 
 
@@ -686,16 +655,8 @@ namespace amr
 
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
-            for (auto& refiner : popFluxBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
-            for (auto& refiner : popDensityBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
+            popBorderSumRefiners_.registerLevel(hierarchy, level);
+            ionBorderMaxRefiners_.registerLevel(hierarchy, level);
         }
 
 
@@ -877,34 +838,41 @@ namespace amr
                 std::make_shared<ParticleDomainFromGhostFillPattern<GridLayoutT>>());
 
 
-            for (auto const& vecfield : info->ghostFlux)
-                popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
+            auto const fieldBorderFP = [] {
+                return std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>();
+            };
+            auto const vecBorderFP = [] {
+                return std::make_shared<
+                    TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>();
+            };
 
-            for (auto const& field : info->sumBorderFields)
-                popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        sumField_.name(), field, nullptr, sumField_.name(),
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+            // per population, flux (TensorFieldData) and particle density (FieldData) are
+            // summed by one schedule, see MultiFieldBorderOpTransactionFactory
+            assert(info->sumBorderFields.size() == info->ghostFlux.size());
+            for (std::size_t i = 0; i < info->ghostFlux.size(); ++i)
+                popBorderSumRefiners_.addRefiner(info->ghostFlux[i],
+                                                 {{.dst         = sumVec_.name(),
+                                                   .src         = info->ghostFlux[i],
+                                                   .refineOp    = nullptr,
+                                                   .fillPattern = vecBorderFP()},
+                                                  {.dst         = sumField_.name(),
+                                                   .src         = info->sumBorderFields[i],
+                                                   .refineOp    = nullptr,
+                                                   .fillPattern = fieldBorderFP()}});
 
-
-            assert(info->maxBorderFields.size() == 1); // charge density
-            for (auto const& field : info->maxBorderFields)
-                ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        field, field, nullptr, field,
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
+            // charge density (FieldData) and charge flux (TensorFieldData) maxed by one schedule.
+            // max is idempotent, so no scratch copy is needed as for the sums above
+            assert(info->maxBorderFields.size() == 1);    // charge density
             assert(info->maxBorderVecFields.size() == 1); // charge flux
-            for (auto const& vecfield : info->maxBorderVecFields)
-                ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
+            ionBorderMaxRefiners_.addRefiner(info->maxBorderFields[0],
+                                             {{.dst         = info->maxBorderFields[0],
+                                               .src         = info->maxBorderFields[0],
+                                               .refineOp    = nullptr,
+                                               .fillPattern = fieldBorderFP()},
+                                              {.dst         = info->maxBorderVecFields[0],
+                                               .src         = info->maxBorderVecFields[0],
+                                               .refineOp    = nullptr,
+                                               .fillPattern = vecBorderFP()}});
         }
 
 
@@ -924,6 +892,25 @@ namespace amr
         }
 
 
+
+
+        //! copies a population's flux and particle density to (or back from) the scratch fields
+        //! the fused border sum schedule operates on, see fillIonPopBorders()
+        void copyIonPopBorderScratch_(auto& pop, bool const toScratch)
+        {
+            auto const copy = [&](auto& field, auto& scratch) {
+                auto const bytes = field.size() * sizeof(*field.data());
+                if (toScratch)
+                    std::memcpy(scratch.data(), field.data(), bytes);
+                else
+                    std::memcpy(field.data(), scratch.data(), bytes);
+            };
+
+            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
+            for (std::uint8_t c = 0; c < N; ++c)
+                copy(pop.flux()[c], sumVec_[c]);
+            copy(pop.particleDensity(), sumField_);
+        }
 
 
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
@@ -1033,20 +1020,18 @@ namespace amr
         using LevelBorderFieldRefinerPool = RefinerPool<rm_t, RefinerType::LevelBorderField>;
         using DomainGhostPartRefinerPool  = RefinerPool<rm_t, RefinerType::ExteriorGhostParticles>;
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
-        using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
-        using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
-        using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
-        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
-        //! += flux on ghost box overlap incomplete population moment nodes
-        std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
-        //! += density on ghost box overlap incomplete population moment nodes
-        std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
+        //! += flux and particle density on ghost box overlap incomplete population moment nodes,
+        //! one schedule per population, keyed by the population flux name
+        RefinerPool<rm_t, RefinerType::PatchIonPopBorderSum> popBorderSumRefiners_{
+            resourcesManager_};
 
-        std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
-        std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
+        //! == max of charge density and charge flux on complete overlapped ghost box nodes,
+        //! one schedule, keyed by the charge density name
+        RefinerPool<rm_t, RefinerType::PatchIonPopBorderMax> ionBorderMaxRefiners_{
+            resourcesManager_};
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
