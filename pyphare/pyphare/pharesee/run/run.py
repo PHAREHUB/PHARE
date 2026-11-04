@@ -139,7 +139,7 @@ class Run:
 
     def GetChargeFlux(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_charge_flux.h5", **kwargs)
-        return VectorField.FROM(self._get(hier, time, merged, interp))
+        return VectorField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
