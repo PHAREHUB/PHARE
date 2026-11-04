@@ -16,15 +16,9 @@ def gaussian(hier, qty=None, sigma=2, time=None):
 def gaussian_filter_uniform_grid(grid, sigma=2):
     from scipy.ndimage import gaussian_filter
 
-    ndim = grid.box.ndim
-    nb_ghosts = grid.ghosts_nbr[0]
     ds = _fill_nan_ghosts(np.asarray(grid[:]))
-    ds_ = np.full(list(ds.shape), np.nan)
-    gf_ = gaussian_filter(ds, sigma=sigma)
-    select = tuple([slice(nb_ghosts or None, -nb_ghosts or None) for _ in range(ndim)])
-    ds_[select] = np.asarray(gf_[select])
     copy = deepcopy(grid)
-    copy.dataset = ds_
+    copy.dataset = gaussian_filter(ds, sigma=sigma)  # ghosts too, no NaN layers
     return copy
 
 

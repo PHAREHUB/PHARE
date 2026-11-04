@@ -271,10 +271,13 @@ class RunTest(SimulatorTest):
             plot(actual_diag_dir)
 
             for time in timestamps:
-                for q in ["divb", "Ranks", "N", "jz"]:
+                for q in ["divb", "Ranks", "N", "jz", "Ngaussian"]:
                     assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
 
                 for c in ["x", "y", "z"]:
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(f"BgaussianB{c}", time)
+                    )
                     assert_file_exists_with_size_at_least(
                         plot_file_for_qty(f"b{c}", time)
                     )
@@ -325,11 +328,31 @@ class RunTest(SimulatorTest):
         run = Run(actual_diag_dir)
         time = timestamps[-1]
 
-        B = run.GetB(time)
-        grids = interpolate_hierarchy(B["x"])
-        Bx_smooth = gaussian_filter_uniform_grid(grids["x"])
+        from scipy.ndimage import gaussian_filter
 
+        B = run.GetB(time, all_primal=False)  # Yee, with ghosts
+        for interp in ["nearest", "bilinear"]:
+            Bx = interpolate_hierarchy(B, quantity="Bx", interp=interp)["Bx"]
+            self.assertTrue(any(Bx.ghosts_nbr))
+            Bx_smooth = gaussian_filter_uniform_grid(Bx)
+
+            self.assertFalse(np.isnan(Bx_smooth.dataset).any(), interp)
+            expected = gaussian_filter(np.asarray(Bx[:]), sigma=2)
+            np.testing.assert_array_equal(Bx_smooth.dataset, expected)
+            self.assertFalse(np.array_equal(Bx_smooth.dataset, Bx.dataset))
+
+        # NaN outer layers, eg outside the hull of the points for bilinear, are
+        # replaced by the first valid layer before filtering
+        data = np.array(Bx.dataset)
+        data[0, :], data[:, -1] = np.nan, np.nan
+        Bx_smooth = gaussian_filter_uniform_grid(Bx.copy_as(data))
         self.assertFalse(np.isnan(Bx_smooth.dataset).any())
+        padded = np.array(Bx.dataset)
+        padded[0, :-1], padded[:, -1] = padded[1, :-1], padded[:, -2]
+        padded[0, -1] = padded[1, -2]
+        np.testing.assert_array_equal(
+            Bx_smooth.dataset, gaussian_filter(padded, sigma=2)
+        )
 
 
 if __name__ == "__main__":
