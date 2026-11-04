@@ -18,6 +18,8 @@
 #include "initializer/data_provider.hpp"
 
 #include <cmath>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -60,6 +62,8 @@ private:
     double const gamma_; // adiabatic index
     double const eta_;   // resistivity
     bool const isHall_;
+
+    std::string nonFiniteCellReport_;
 
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
@@ -126,6 +130,8 @@ public:
 
     double computeStableDt(IPhysicalModel_t& model, level_t& level,
                            CFLNumbers const& cflNumbers) override;
+
+    NO_DISCARD std::string nonFiniteCellReport() const override { return nonFiniteCellReport_; }
 
     void onRegrid() override {}
 
@@ -410,6 +416,9 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
 
     double dt = std::numeric_limits<double>::max();
 
+    nonFiniteCellReport_.clear();
+    bool nonFinite = false;
+
     for (auto& patch : level)
     {
         auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
@@ -463,9 +472,29 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
                                         : 0.0;
                 invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
             }
+            if (!std::isfinite(invDtWave))
+            {
+                if (!nonFinite)
+                {
+                    auto const amrIndex
+                        = layout.localToAMR(core::Point<std::uint32_t, dimension>{args...});
+                    auto const position = layout.fieldNodeCoordinates(rho, amrIndex);
+                    std::stringstream ss;
+                    ss << "cell at (";
+                    for (std::size_t d = 0; d < dimension; ++d)
+                        ss << (d ? ", " : "") << position[d];
+                    ss << "): rho = " << r << ", P = " << P << ", |B| = " << std::sqrt(BdotB);
+                    nonFiniteCellReport_ = ss.str();
+                }
+                nonFinite = true;
+                return;
+            }
             dt = std::min(dt, wave / invDtWave);
         });
     }
+
+    if (nonFinite)
+        return std::numeric_limits<double>::quiet_NaN();
 
     return dt;
 }

@@ -24,9 +24,11 @@
 #include "SAMRAI/tbox/RestartManager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -496,6 +498,11 @@ namespace solver
 
             auto iLevel = level->getLevelNumber();
 
+            if (!(newTime > currentTime))
+                throw std::runtime_error("zero-length substep on level " + std::to_string(iLevel)
+                                         + " at t = " + std::to_string(currentTime)
+                                         + " (dt = " + std::to_string(newTime - currentTime) + ")");
+
             PHARE_LOG_LINE_SS("advanceLevel " << iLevel << " with dt = " << newTime - currentTime
                                               << " from t = " << currentTime
                                               << " to t = " << newTime);
@@ -650,7 +657,16 @@ namespace solver
         double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level,
                               CFLNumbers const& cfl)
         {
-            return mpi::min(getSolver_(iLevel).computeStableDt(getModel_(iLevel), level, cfl));
+            auto& solver     = getSolver_(iLevel);
+            auto const local = solver.computeStableDt(getModel_(iLevel), level, cfl);
+            bool const bad   = mpi::any(!std::isfinite(local));
+            if (bad)
+            {
+                auto const report = solver.nonFiniteCellReport();
+                throw std::runtime_error("non-finite wave speed on level " + std::to_string(iLevel)
+                                         + ": " + (report.empty() ? "on another rank" : report));
+            }
+            return mpi::min(local);
         }
 
 

@@ -45,8 +45,7 @@ def expected_dt(hall, dl, rho0):
     return CFL_WAVE / inv_dt
 
 
-@ddt
-class AdaptiveStableDtTest(SimulatorTest):
+class AdaptiveDtCase(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.simulator = None
@@ -58,16 +57,9 @@ class AdaptiveStableDtTest(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    @data(
-        (False, (0.3, 0.2), 1.0),
-        (True, (10.0, 5.0), 1.0),
-        (True, (0.05, 0.1), 1.0),
-        (True, (0.05, 0.1), 0.25),
-    )
-    @unpack
-    def test_uniform_state_dt(self, hall, dl, rho0):
+    def uniform_simulation(self, hall, dl, **kwargs):
         ph.global_vars.sim = None
-        sim = ph.Simulation(
+        return ph.Simulation(
             interp_order=None,
             model_options=["MHDModel"],
             reconstruction="WENOZ",
@@ -83,8 +75,10 @@ class AdaptiveStableDtTest(SimulatorTest):
             final_time=100.0,
             cells=(20, 10),
             dl=dl,
+            **kwargs,
         )
 
+    def uniform_model(self, rho0, pressure=None):
         def const(value):
             return lambda x, y: value + 0.0 * x
 
@@ -96,13 +90,43 @@ class AdaptiveStableDtTest(SimulatorTest):
             bx=const(B[0]),
             by=const(B[1]),
             bz=const(B[2]),
-            p=const(P),
+            p=pressure if pressure is not None else const(P),
         )
 
+
+@ddt
+class AdaptiveStableDtTest(AdaptiveDtCase):
+    @data(
+        (False, (0.3, 0.2), 1.0),
+        (True, (10.0, 5.0), 1.0),
+        (True, (0.05, 0.1), 1.0),
+        (True, (0.05, 0.1), 0.25),
+    )
+    @unpack
+    def test_uniform_state_dt(self, hall, dl, rho0):
+        sim = self.uniform_simulation(hall, dl)
+        self.uniform_model(rho0)
         self.simulator = Simulator(sim).initialize()
         dt = self.simulator.timeStep()
         expected = expected_dt(hall, dl, rho0)
         self.assertAlmostEqual(dt / expected, 1.0, delta=1e-12)
+
+
+class StopOnCorruptStateTest(AdaptiveDtCase):
+    def test_corrupt_state_stops_the_run(self):
+        sim = self.uniform_simulation(False, (0.3, 0.2), smallest_patch_size=5)
+
+        def pressure(x, y):
+            return np.where((x < 0.6) & (y < 0.4), -1.0, P) + 0.0 * x
+
+        self.uniform_model(1.0, pressure)
+        self.simulator = Simulator(sim)
+        with self.assertRaises(ValueError) as ctx:
+            self.simulator.initialize()
+        cause = ctx.exception.__cause__
+        self.assertIsInstance(cause, RuntimeError)
+        self.assertIn("non-finite wave speed", str(cause))
+        self.assertIn("level 0", str(cause))
 
 
 if __name__ == "__main__":
