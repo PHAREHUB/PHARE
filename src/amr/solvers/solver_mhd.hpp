@@ -458,8 +458,8 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             {
                 auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
                 // Hall whistler
-                auto const cw = isHall_ ? std::numbers::pi
-                                              * core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
+                auto const cw = isHall_ ? core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
+                                              - std::sqrt(BdotB / r)
                                         : 0.0;
                 invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
             }

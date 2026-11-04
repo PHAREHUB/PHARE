@@ -2,6 +2,7 @@
 #define PHARE_CORE_NUMERICS_MHD_SPEEDS_HPP
 
 #include <cmath>
+#include <numbers>
 
 namespace PHARE::core
 {
@@ -22,8 +23,10 @@ auto compute_fast_magnetosonic_(auto gamma, auto const& rho, auto const& B, auto
 
 auto compute_whistler_(auto const& invMeshSize, auto const& rho, auto const& BdotB)
 {
-    auto const vw = std::sqrt(1 + 0.25 * invMeshSize * invMeshSize) + 0.5 * invMeshSize;
-    return std::sqrt(BdotB) * vw / rho;
+    auto const sqrtRho = std::sqrt(rho);
+    auto const vA      = std::sqrt(BdotB) / sqrtRho;
+    auto const x       = std::numbers::pi * invMeshSize / (2.0 * sqrtRho);
+    return vA * (std::sqrt(1.0 + x * x) + x);
 }
 } // namespace PHARE::core
 
