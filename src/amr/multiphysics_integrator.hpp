@@ -550,9 +550,7 @@ namespace solver
             // standardLevelSynchronization, so we need to do it per substep here
             if (iLevel != 0 && !hierarchy->finerLevelExists(iLevel))
             {
-                auto ratio = (level->getRatioToCoarserLevel()).max();
-                auto coef  = 1. / (ratio * ratio);
-                solver.accumulateFluxSum(model, *level, coef);
+                solver.accumulateFluxSum(model, *level, substepWeight_(iLevel));
             }
 
             load_balancer_manager_->estimate(*level, model);
@@ -594,9 +592,8 @@ namespace solver
                 // It is not needed to do this accumulation on the coarsest level.
                 if (iCoarseLevel != 0)
                 {
-                    auto ratio = (coarseLevel.getRatioToCoarserLevel()).max();
-                    auto coef  = 1. / (ratio * ratio);
-                    coarseSolver.accumulateFluxSum(coarseModel, coarseLevel, coef);
+                    coarseSolver.accumulateFluxSum(coarseModel, coarseLevel,
+                                                   substepWeight_(iCoarseLevel));
                 }
 
                 // recopy (patch) ghosts
@@ -655,6 +652,16 @@ namespace solver
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
+
+
+        double substepWeight_(int const iLevel) const
+        {
+            auto const coarseDuration
+                = subcycleEndTimes_.at(iLevel - 1) - subcycleStartTimes_.at(iLevel - 1);
+            if (!(coarseDuration > 0.))
+                return 0.;
+            return (subcycleEndTimes_.at(iLevel) - subcycleStartTimes_.at(iLevel)) / coarseDuration;
+        }
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
