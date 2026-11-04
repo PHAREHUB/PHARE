@@ -101,7 +101,7 @@ void InfoDiagnosticWriter<H5Writer>::writeAttributes(
               assert(patches[p_idx].first == patchID);
               patches[p_idx].second["particle_count"]
                   = sum_from(h5Writer.modelView().getIons(),
-                             [](auto const& pop) { return pop.domainParticles().size(); });
+                             [](auto const& pop) { return pop.domainParticles().liveSize(); });
               ++p_idx;
           };
 

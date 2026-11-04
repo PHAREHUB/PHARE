@@ -22,6 +22,7 @@ public:
     ParticlePacker(ParticleArray<dim> const& particles)
         : particles_{particles}
     {
+        particles.compact(); // sorted (bags): the packer walks [0, size)
     }
 
     NO_DISCARD static auto get(Particle<dim> const& particle)

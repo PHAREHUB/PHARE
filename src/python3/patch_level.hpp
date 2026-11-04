@@ -261,6 +261,7 @@ public:
 
         auto getParticleData = [&](Inner& inner, GridLayout& grid, std::string patchID,
                                    std::string key, auto& particles) {
+            particles.compact(); // sorted (bags): dense [0, size)
             if (particles.size() == 0)
                 return;
 
