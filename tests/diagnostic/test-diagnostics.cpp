@@ -54,7 +54,6 @@ int main(int argc, char** argv)
     mpi::barrier();
     if (result == 0 and mpi::rank() == 0)
         std::filesystem::remove_all(out_dir);
-    mpi::barrier();
 
     return result;
 }
