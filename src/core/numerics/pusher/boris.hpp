@@ -282,6 +282,11 @@ public:
 
 
 
+    /** use the cell kernels (same-cell gather, pushBlockCell_) on the sorted arrays pushed
+     * next; set by the ion updater per domain array
+     */
+    void cellKernels(bool const on) { cellKernels_ = on; }
+
     /** charge * dt / (2 * mass), the coefficient of E and B in the Boris acceleration */
     double accelerationCoef(double const charge, double const mass) const
     {
@@ -381,6 +386,80 @@ public:
         pushEachDeposit_<hyb::Backend>(particles, emFields, interpolator, layout, coef1, targets,
                                        keep);
     }
+
+#if PHARE_HYB_XSIMD
+    /** pushEach with the deposit of the pushed copies through a CellDeposit window (sorted
+     * arrays, cell kernels): blocks per cell row, lanes masked by keep(new AMR cell), the
+     * window keyed on the row's cell (pre-push)
+     */
+    template<typename Particles, typename Targets, typename CellDep, typename Keep>
+    void pushEachDepositCell(Particles const& particles, Electromag const& emFields,
+                             Interpolator& interpolator, GridLayout const& layout,
+                             double const coef1, Targets const& targets, CellDep& cellDep,
+                             Keep const& keep)
+    {
+        pushEachDepositCell_<hyb::Backend>(particles, emFields, interpolator, layout, coef1,
+                                           targets, cellDep, keep);
+    }
+
+    template<typename Backend, typename Particles, typename Targets, typename CellDep,
+             typename Keep>
+    [[gnu::noinline]] void
+    pushEachDepositCell_(Particles const& particles, Electromag const& emFields,
+                         Interpolator& interpolator, GridLayout const& layout, double const coef1,
+                         Targets const& targets, CellDep& cellDep, Keep const& keep)
+    {
+        using Particle_t = std::decay_t<decltype(particles[0])>;
+
+        auto const fields = blockFields_<Interpolator>(emFields, layout);
+        auto const end    = particles.size();
+        PushBlock block;
+        double weight[blockSize];
+        int mask[blockSize];
+        hyb::LanePtrs<dim> lanes;
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            lanes.delta[iDim] = block.delta[iDim];
+            lanes.cell[iDim]  = block.cell[iDim];
+        }
+        for (std::size_t c = 0; c < 3; ++c)
+            lanes.v[c] = block.v[c];
+        lanes.weight = weight;
+
+        cellDep.begin(targets, fields.amrToLocal, /*withMargin=*/true);
+        // blocks per cell row (runs = true): the window is flushed once per cell, and the
+        // block's first particle (pre-push) gives the row's cell
+        pushBlocks_<Interpolator, Backend>(
+            particles, 0, end, fields, coef1, block,
+            [&](std::size_t const idx, std::size_t const n, bool const ok) {
+                if (!ok) [[unlikely]]
+                {
+                    for (auto i = idx; i < idx + n; ++i)
+                    {
+                        Particle_t pushed = particles[i];
+                        push(pushed, emFields, interpolator, layout, coef1);
+                        if (keep(pushed.iCell))
+                            interpolator.depositOn(pushed, targets, layout);
+                    }
+                    return;
+                }
+                std::array<int, dim> key;
+                for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                    key[iDim] = particles[idx].iCell[iDim];
+                for (std::size_t l = 0; l < blockSize; ++l)
+                {
+                    weight[l] = particles[idx + std::min(l, n - 1)].weight;
+                    std::array<int, dim> cell;
+                    for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                        cell[iDim] = block.cell[iDim][l];
+                    mask[l] = l < n and keep(cell);
+                }
+                cellDep.block(lanes, mask, key);
+            },
+            /*runs=*/true);
+        cellDep.end();
+    }
+#endif // PHARE_HYB_XSIMD
 
     template<typename Backend, typename Particles, typename Targets, typename Keep>
     [[gnu::noinline]] void pushEachDeposit_(Particles const& particles, Electromag const& emFields,
@@ -1068,11 +1147,15 @@ private:
 
     /** the xsimd lane core on registers: delta, cell, v pushed in place from t=n to t=n+1, cells
      * after the first half step to midCell. Returns false if a lane moves too far.
+     * unionGather (cell kernels, pushBlockCell_): called at mid step with the lanes' cells,
+     * deltas and weights; returns true if it interpolated EB itself, else the row gather runs.
+     * Without it (nullptr) the code is that of the other kernels.
      */
-    template<typename Interpolator_t, typename MidCell>
+    template<typename Interpolator_t, typename MidCell, typename UnionGather = std::nullptr_t>
     [[gnu::always_inline]] inline bool coreXs_(hyb::xs::bd (&delta)[dim], hyb::xs::bi (&cell)[dim],
                                                hyb::xs::bd (&v)[3], MidCell& midCell,
-                                               BlockFields const& f, double const coef1) const
+                                               BlockFields const& f, double const coef1,
+                                               UnionGather&& unionGather = nullptr) const
     {
         using namespace hyb::xs;
         constexpr std::size_t nbrPts = nbrPointsSupport(Interpolator_t::interp_order);
@@ -1107,12 +1190,18 @@ private:
             }
             EB[c] = gatherXs_<nbrPts>(f.EB[c], starts, weights);
         };
-        gather.template operator()<Scalar::Ex>(0);
-        gather.template operator()<Scalar::Ey>(1);
-        gather.template operator()<Scalar::Ez>(2);
-        gather.template operator()<Scalar::Bx>(3);
-        gather.template operator()<Scalar::By>(4);
-        gather.template operator()<Scalar::Bz>(5);
+        bool unionDone = false;
+        if constexpr (!std::is_same_v<std::decay_t<UnionGather>, std::nullptr_t>)
+            unionDone = unionGather(cell, delta, dW, pW, EB);
+        if (!unionDone)
+        {
+            gather.template operator()<Scalar::Ex>(0);
+            gather.template operator()<Scalar::Ey>(1);
+            gather.template operator()<Scalar::Ez>(2);
+            gather.template operator()<Scalar::Bx>(3);
+            gather.template operator()<Scalar::By>(4);
+            gather.template operator()<Scalar::Bz>(5);
+        }
 
         accelerateXs_(v, EB, coef1);
 
@@ -1139,6 +1228,294 @@ private:
             v[c] = ld(&b.v[c][0]);
 
         if (!coreXs_<Interpolator_t>(delta, cell, v, midCell, f, coef1)) [[unlikely]]
+            return false;
+
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            st(&b.delta[iDim][0], delta[iDim]);
+            sti(&b.cell[iDim][0], cell[iDim]);
+        }
+        for (std::size_t c = 0; c < 3; ++c)
+            st(&b.v[c][0], v[c]);
+        return true;
+    }
+
+    // ---- cell kernels: same-cell gather on sorted domain arrays ----
+    //
+    // Blocks are formed per cell row (pushBlocks_). At mid step, a block whose lanes all sit in
+    // the row's cell is "uniform": per direction, the stencil start of a component is either
+    // fixed or one of two values (lc - o - 1 + (delta >= .5)):
+    //   order 1: primal fixed, dual shifts; order 2: primal shifts, dual fixed;
+    //   order 3: primal fixed, dual shifts.
+    // The per-direction union of the two stencils (nbrPts + 1 nodes where it shifts) is loaded
+    // from the field once per cell and component (CellCache), and every lane picks its stencil
+    // out of it by a select on delta < .5 along the shifting directions. The weights, the
+    // products and the order of the fma chain are those of gatherXs_, only where the values come
+    // from changes, so the result is bitwise that of gatherXs_.
+    // The sort keys stay cells (not half cells): the rows, the box queries of the messengers and
+    // the deposit windows are per cell, and half-cell keys would cut the lane fill of a row by
+    // 2^dim. The select costs one blend per shifting direction, applied to the partial sums of
+    // the outer directions (one chain per union row) and to the values of the last direction.
+
+    // lc - (stencil start when delta < .5): the union starts there
+    static constexpr int unionOffset_(int const order, bool const dual)
+    {
+        if (order == 1)
+            return dual ? 1 : 0;
+        if (order == 2)
+            return 1;
+        return dual ? 2 : 1;
+    }
+
+    template<int order, typename Centerings>
+    static constexpr std::array<bool, dim> unionShift_(Centerings const& centerings)
+    {
+        std::array<bool, dim> shift{};
+        for (std::size_t i = 0; i < dim; ++i)
+            shift[i] = (centerings[i] == QtyCentering::dual) != (order == 2);
+        return shift;
+    }
+
+    // the six field unions of one cell (union of the stencils of the particles of the cell)
+    template<std::size_t nbrPts>
+    struct CellCache
+    {
+        static constexpr std::size_t maxU = [] {
+            std::size_t n = 1;
+            for (std::size_t i = 0; i < dim; ++i)
+                n *= nbrPts + 1;
+            return n;
+        }();
+        alignas(64) double U[6][maxU];
+        bool loaded = false;
+    };
+
+    // the union of the component on cell (local index lc): U[i0][i1][i2] row-major, sizes
+    // nbrPts + Shift[d]
+    template<std::size_t nbrPts, std::array<bool, dim> Shift, int order, typename Centerings>
+    [[gnu::always_inline]] static void loadUnion_(BlockField const& f, Centerings const& centerings,
+                                                  std::array<int, dim> const& lc, double* U)
+    {
+        std::array<int, dim> b;
+        for (std::size_t i = 0; i < dim; ++i)
+            b[i] = lc[i] - unionOffset_(order, centerings[i] == QtyCentering::dual);
+        constexpr int U0   = nbrPts + Shift[0];
+        double const* data = f.data;
+        if constexpr (dim == 1)
+        {
+            for (int i = 0; i < U0; ++i)
+                U[i] = data[b[0] + i];
+        }
+        else if constexpr (dim == 2)
+        {
+            constexpr int U1 = nbrPts + Shift[1];
+            int const ny     = f.shape[1];
+            for (int i = 0; i < U0; ++i)
+                for (int j = 0; j < U1; ++j)
+                    U[i * U1 + j] = data[(b[0] + i) * ny + b[1] + j];
+        }
+        else
+        {
+            constexpr int U1 = nbrPts + Shift[1];
+            constexpr int U2 = nbrPts + Shift[2];
+            int const ny     = f.shape[1];
+            int const nz     = f.shape[2];
+            for (int i = 0; i < U0; ++i)
+                for (int j = 0; j < U1; ++j)
+                    for (int k = 0; k < U2; ++k)
+                        U[(i * U1 + j) * U2 + k]
+                            = data[((b[0] + i) * ny + b[1] + j) * nz + b[2] + k];
+        }
+    }
+
+    /** gatherXs_ from a union: chain of direction D over the union block U (directions >= D).
+     * Same fma chain as gatherXs_: innermost acc = fma(value, w, acc) from 0, outer
+     * acc = fma(partial sum, w, acc) from 0. On a shifting direction lane l uses union row
+     * i + 1 - (delta_l < .5): for the last direction a select of the two values, for the outer
+     * ones a select of the two partial sums (each computed with the same chain as gatherXs_).
+     */
+    template<std::size_t nbrPts, std::array<bool, dim> Shift, std::size_t D = 0>
+    [[gnu::always_inline]] static hyb::xs::bd
+    unionChainXs_(double const* U, hyb::xs::bm const (&m)[dim],
+                  hyb::xs::bd const (*(&weights)[dim])[nbrPts])
+    {
+        using namespace hyb::xs;
+        constexpr std::size_t stride = [] {
+            std::size_t s = 1;
+            for (std::size_t e = D + 1; e < dim; ++e)
+                s *= nbrPts + Shift[e];
+            return s;
+        }();
+        bd acc(0.);
+        if constexpr (D == dim - 1)
+        {
+            for (std::size_t i = 0; i < nbrPts; ++i)
+            {
+                bd const val = Shift[D] ? xsimd::select(m[D], bd(U[i]), bd(U[i + 1])) : bd(U[i]);
+                acc          = xsimd::fma(val, (*weights[D])[i], acc);
+            }
+        }
+        else
+        {
+            constexpr std::size_t R = nbrPts + Shift[D];
+            bd S[R];
+            for (std::size_t r = 0; r < R; ++r)
+                S[r] = unionChainXs_<nbrPts, Shift, D + 1>(U + r * stride, m, weights);
+            for (std::size_t i = 0; i < nbrPts; ++i)
+            {
+                bd const val = Shift[D] ? xsimd::select(m[D], S[i], S[i + 1]) : S[i];
+                acc          = xsimd::fma(val, (*weights[D])[i], acc);
+            }
+        }
+        return acc;
+    }
+
+    /** the union gather of pushBlockCell_: if every lane's mid-step cell is rowCell, EB
+     * interpolated from the cell's stencil unions (loaded into cache at the first uniform block
+     * of the row) and true; else false (the caller's row gather runs)
+     */
+    template<typename Interpolator_t, std::size_t nbrPts, typename Cache>
+    [[gnu::always_inline]] static bool
+    unionGatherXs_(std::array<int, dim> const& rowCell, Cache& cache, BlockFields const& f,
+                   hyb::xs::bi const (&midCell)[dim], hyb::xs::bd const (&midDelta)[dim],
+                   hyb::xs::bd const (&dW)[dim][nbrPts], hyb::xs::bd const (&pW)[dim][nbrPts],
+                   hyb::xs::bd (&EB)[6])
+    {
+        using namespace hyb::xs;
+        constexpr int order = Interpolator_t::interp_order;
+        using Scalar        = HybridQuantity::Scalar;
+        auto same           = midCell[0] == bi(rowCell[0]);
+        for (std::size_t i = 1; i < dim; ++i)
+            same = same & (midCell[i] == bi(rowCell[i]));
+        if (!xsimd::all(same))
+            return false;
+
+        auto forEachComponent = [&](auto&& fn) __attribute__((always_inline)) {
+            fn.template operator()<Scalar::Ex>(0);
+            fn.template operator()<Scalar::Ey>(1);
+            fn.template operator()<Scalar::Ez>(2);
+            fn.template operator()<Scalar::Bx>(3);
+            fn.template operator()<Scalar::By>(4);
+            fn.template operator()<Scalar::Bz>(5);
+        };
+        if (!cache.loaded) [[unlikely]]
+        {
+            std::array<int, dim> lc;
+            for (std::size_t i = 0; i < dim; ++i)
+                lc[i] = rowCell[i] + f.amrToLocal[i];
+            forEachComponent([&]<auto quantity>(std::size_t const c) {
+                constexpr auto centerings = GridLayout::centering(quantity);
+                constexpr auto shift      = unionShift_<order>(centerings);
+                loadUnion_<nbrPts, shift, order>(f.EB[c], centerings, lc, cache.U[c]);
+            });
+            cache.loaded = true;
+        }
+
+        bm m[dim];
+        for (std::size_t i = 0; i < dim; ++i)
+            m[i] = midDelta[i] < bd(.5);
+        forEachComponent([&]<auto quantity>(std::size_t const c) __attribute__((always_inline)) {
+            constexpr auto centerings = GridLayout::centering(quantity);
+            constexpr auto shift      = unionShift_<order>(centerings);
+            bd const(*weights[dim])[nbrPts];
+            for (std::size_t i = 0; i < dim; ++i)
+                weights[i] = centerings[i] == QtyCentering::primal ? &pW[i] : &dW[i];
+            EB[c] = unionChainXs_<nbrPts, shift>(cache.U[c], m, weights);
+        });
+        return true;
+    }
+
+    /** the lanes of particles [first, first + n) (lane l >= n: particle n - 1) straight from the
+     * AoS into registers: per lane one zmm load of the particle past its weight (iCell, delta,
+     * v), an 8 x 8 transpose in registers, cells split out of their int pairs. Same values as
+     * staging through a PushBlock, without the narrow stores and wide reloads (which cannot be
+     * store-forwarded).
+     */
+    template<typename Particles>
+    [[gnu::always_inline]] static void loadLanesAoS_(Particles const& particles,
+                                                     std::size_t const first, std::size_t const n,
+                                                     hyb::xs::bd (&delta)[dim],
+                                                     hyb::xs::bi (&cell)[dim], hyb::xs::bd (&v)[3])
+    {
+        using namespace hyb::xs;
+        using P                  = std::decay_t<decltype(particles[0])>;
+        constexpr std::size_t qC = (dim + 1) / 2; // qwords of iCell (+ padding)
+        constexpr std::size_t nq = qC + dim + 3;
+        static_assert(offsetof(P, weight) == 0 and offsetof(P, iCell) == 8
+                      and offsetof(P, delta) == 8 * (1 + qC)
+                      and offsetof(P, v) == 8 * (1 + qC + dim) and sizeof(P) == 8 * (1 + nq));
+        constexpr __mmask8 mask = static_cast<__mmask8>((1u << nq) - 1u);
+        __m512d z[blockSize];
+        // a full zmm read of a particle ends inside the next one: masked only for the last
+        // particle of the array
+        if (mask == 0xFF or first + n < particles.size()) [[likely]]
+            for (std::size_t l = 0; l < blockSize; ++l)
+                z[l] = _mm512_loadu_pd(
+                    reinterpret_cast<double const*>(&particles[first + std::min(l, n - 1)]) + 1);
+        else
+            for (std::size_t l = 0; l < blockSize; ++l)
+                z[l] = _mm512_maskz_loadu_pd(
+                    mask,
+                    reinterpret_cast<double const*>(&particles[first + std::min(l, n - 1)]) + 1);
+        __m512d t[blockSize], u[blockSize];
+        for (std::size_t p = 0; p < blockSize / 2; ++p)
+        {
+            t[2 * p]     = _mm512_unpacklo_pd(z[2 * p], z[2 * p + 1]);
+            t[2 * p + 1] = _mm512_unpackhi_pd(z[2 * p], z[2 * p + 1]);
+        }
+        // u[4h + 0..3]: rows 4h..4h+3, columns (0|4), (2|6), (1|5), (3|7)
+        for (std::size_t h = 0; h < 2; ++h)
+        {
+            u[4 * h + 0] = _mm512_shuffle_f64x2(t[4 * h], t[4 * h + 2], 0x88);
+            u[4 * h + 1] = _mm512_shuffle_f64x2(t[4 * h], t[4 * h + 2], 0xDD);
+            u[4 * h + 2] = _mm512_shuffle_f64x2(t[4 * h + 1], t[4 * h + 3], 0x88);
+            u[4 * h + 3] = _mm512_shuffle_f64x2(t[4 * h + 1], t[4 * h + 3], 0xDD);
+        }
+        auto col = [&](std::size_t const q) __attribute__((always_inline)) {
+            constexpr int src[8] = {0, 2, 1, 3, 0, 2, 1, 3}; // u index of column q (mod 4)
+            return q < 4 ? _mm512_shuffle_f64x2(u[src[q]], u[4 + src[q]], 0x88)
+                         : _mm512_shuffle_f64x2(u[src[q]], u[4 + src[q]], 0xDD);
+        };
+        for (std::size_t k = 0; k < qC; ++k)
+        {
+            __m512i const pair = _mm512_castpd_si512(col(k));
+            cell[2 * k]        = bi(_mm512_cvtepi64_epi32(pair));
+            if (2 * k + 1 < dim)
+                cell[2 * k + 1] = bi(_mm512_cvtepi64_epi32(_mm512_srli_epi64(pair, 32)));
+        }
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            delta[iDim] = bd(col(qC + iDim));
+        for (std::size_t c = 0; c < 3; ++c)
+            v[c] = bd(col(qC + dim + c));
+    }
+
+    /** pushBlock_ (xsimd) for a block of the row of rowCell: lanes loaded from the particles
+     * (loadLanesAoS_); at mid step a uniform block interpolates from the cell's unions (loaded at
+     * the first uniform block of the row), any other block takes the row gather of gatherXs_.
+     */
+    template<typename Interpolator_t, typename Particles, typename Cache>
+    [[gnu::noinline]] bool pushBlockCell_(Particles const& particles, std::size_t const first,
+                                          std::size_t const n,
+                                          std::array<int, dim> const& rowCell, Cache& cache,
+                                          BlockFields const& f, double const coef1,
+                                          PushBlock& b) const
+    {
+        using namespace hyb::xs;
+        constexpr std::size_t nbrPts = nbrPointsSupport(Interpolator_t::interp_order);
+
+        bd delta[dim], v[3];
+        bi cell[dim];
+        loadLanesAoS_(particles, first, n, delta, cell, v);
+
+        auto unionGather = [&](bi const (&midCell)[dim], bd const (&midDelta)[dim],
+                               bd const (&dW)[dim][nbrPts], bd const (&pW)[dim][nbrPts],
+                               bd (&EB)[6]) __attribute__((always_inline)) -> bool {
+            return unionGatherXs_<Interpolator_t, nbrPts>(rowCell, cache, f, midCell, midDelta,
+                                                          dW, pW, EB);
+        };
+
+        if (!coreXs_<Interpolator_t>(delta, cell, v, b.midCell, f, coef1, unionGather))
+            [[unlikely]]
             return false;
 
         for (std::size_t iDim = 0; iDim < dim; ++iDim)
@@ -1270,32 +1647,67 @@ private:
 
     /** the particles [begin, end) pushed by blocks of blockSize into block, after(idx, n, ok)
      * called for each block in ascending idx (ok: pushBlock_'s return).
-     * A bag layout (sorted ParticleArray, whole array) has holes between its rows: blocks per
-     * row, the last block of a row partial, then blocks over the unsorted appends.
+     * By rows on a sorted ParticleArray (CSR valid, whole array) with the cell kernels on, with
+     * runs = true (cell deposit of the predictor), or on a bag layout (holes between the rows):
+     * blocks per row, the last block of a row partial, then blocks over the unsorted appends.
+     * Row blocks take pushBlockCell_ with the cell kernels, else pushBlock_.
      */
     template<typename Interpolator_t, typename Backend, typename Particles, typename After>
     [[gnu::always_inline]] void pushBlocks_(Particles const& particles, std::size_t const begin,
                                             std::size_t const end, BlockFields const& f,
-                                            double const coef1, PushBlock& block, After&& after)
+                                            double const coef1, PushBlock& block, After&& after,
+                                            bool const runs = false)
     {
         std::size_t idx = begin;
         if constexpr (requires { particles.bagged(); })
         {
-            if (particles.bagged())
+#if PHARE_HYB_XSIMD
+            bool const cellGather = cellKernels_;
+#else
+            bool const cellGather = false;
+#endif
+            assert(!particles.bagged()
+                   or (begin == 0 and end == particles.size() and particles.csrValid()));
+            if ((cellGather or runs or particles.bagged()) and begin == 0
+                and end == particles.size() and particles.csrValid())
             {
-                assert(begin == 0 and end == particles.size() and particles.csrValid());
+#if PHARE_HYB_XSIMD
+                CellCache<nbrPointsSupport(Interpolator_t::interp_order)> cache;
+#endif
                 auto const& csr       = particles.csr();
                 int const* const ends = particles.rowEnds();
+                auto const& box       = particles.box();
                 int const K           = particles.nbrCells();
+                std::array<int, dim> cell; // AMR cell of row k
+                for (std::size_t i = 0; i < dim; ++i)
+                    cell[i] = box.lower[i];
                 for (int k = 0; k < K; ++k)
                 {
                     auto const e = static_cast<std::size_t>(ends[k]);
+#if PHARE_HYB_XSIMD
+                    cache.loaded = false;
+#endif
                     for (auto i = static_cast<std::size_t>(csr[k]); i < e; i += blockSize)
                     {
                         auto const n = std::min(blockSize, e - i);
+#if PHARE_HYB_XSIMD
+                        if (cellGather)
+                        {
+                            after(i, n,
+                                  pushBlockCell_<Interpolator_t>(particles, i, n, cell, cache, f,
+                                                                 coef1, block));
+                            continue;
+                        }
+#endif
                         after(i, n,
                               pushBlock_<Interpolator_t, Backend>(particles, i, n, f, coef1,
                                                                   block));
+                    }
+                    for (int d = static_cast<int>(dim) - 1; d >= 0; --d)
+                    {
+                        if (++cell[d] <= box.upper[d])
+                            break;
+                        cell[d] = box.lower[d];
                     }
                 }
                 idx = static_cast<std::size_t>(csr[K]);
@@ -1320,6 +1732,8 @@ private:
         std::array<int, dim> oldCell, newCell;
     };
     std::vector<CellCrossing> preCrossings_, postCrossings_;
+
+    bool cellKernels_ = false; // see cellKernels()
 };
 
 } // namespace PHARE::core
