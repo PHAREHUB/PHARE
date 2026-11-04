@@ -4,48 +4,14 @@
 #include "communicator.hpp"
 
 #include "amr/messengers/field_operate_transaction.hpp"
-#include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "core/utilities/types.hpp"
 
-#include <SAMRAI/xfer/RefineClasses.h>
-
-#include <optional>
 #include <stdexcept>
 #include <string>
 
 
 namespace PHARE::amr
 {
-
-/**
- * @brief throws if two items of an equivalence class have fill patterns that differ by their
- * overwrite_interior flag: SAMRAI compares fill pattern types only, and computes the overlaps
- * of a class with the pattern of its first item.
- * Called in debug builds only: the classes and the flags are set by the code and the compiled
- * configuration, not by the run.
- */
-inline void checkOverwriteInteriorAgrees(SAMRAI::xfer::RefineClasses& classes)
-{
-    for (int c = 0; c < classes.getNumberOfEquivalenceClasses(); ++c)
-    {
-        std::optional<bool> overwrite;
-        for (auto it = classes.getIterator(c); it != classes.getIteratorEnd(c); ++it)
-        {
-            auto const* pattern = dynamic_cast<OverwriteInteriorFillPattern const*>(
-                classes.getRefineItem(*it).d_var_fill_pattern.get());
-            if (!pattern)
-                continue;
-            if (overwrite and *overwrite != pattern->overwriteInterior())
-                throw std::runtime_error("patch data "
-                                         + std::to_string(classes.getRefineItem(*it).d_dst)
-                                         + " shares its equivalence class with an item of "
-                                           "another overwrite_interior");
-            overwrite = pattern->overwriteInterior();
-        }
-    }
-}
-
-
 
 enum class RefinerType {
     GhostField,
@@ -246,11 +212,7 @@ public:
         auto levelNumber = level->getLevelNumber();
 
         for (auto& algo : this->algos)
-        {
             this->add(algo, makeSchedule_(hierarchy, level, algo), levelNumber);
-            PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(
-                               *this->findSchedule(algo, levelNumber)->getEquivalenceClasses());)
-        }
     }
 
 
@@ -263,11 +225,7 @@ public:
             throw std::runtime_error("Algorithms are not configured");
 
         for (auto const& algo : this->algos)
-        {
-            auto schedule = makeSchedule_(hierarchy, level, algo);
-            PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(*schedule->getEquivalenceClasses());)
-            schedule->fillData(fillTime);
-        }
+            makeSchedule_(hierarchy, level, algo)->fillData(fillTime);
     }
 
 
@@ -291,7 +249,6 @@ public:
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
                     oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
                     patchStrat_.get());
-                PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(*schedule->getEquivalenceClasses());)
                 schedule->fillData(initDataTime);
             }
             else
@@ -299,7 +256,6 @@ public:
                 auto schedule = algo->createSchedule(level, oldLevel,
                                                      level->getNextCoarserHierarchyLevelNumber(),
                                                      hierarchy, patchStrat_.get());
-                PHARE_DEBUG_DO(checkOverwriteInteriorAgrees(*schedule->getEquivalenceClasses());)
                 schedule->fillData(initDataTime);
             }
         }

@@ -8,7 +8,6 @@
 #include "amr/data/field/field_variable.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/tensorfield/tensor_field_variable.hpp"
-#include "amr/messengers/refiner.hpp"
 
 #include <SAMRAI/hier/VariableDatabase.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -18,7 +17,6 @@
 #include "gtest/gtest.h"
 
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <typeinfo>
 #include <vector>
@@ -119,24 +117,24 @@ TEST(CenteredFactory, sameCenteringSharesFactoryTypeAndClass)
 }
 
 
-TEST(CenteredFactory, guardThrowsOnDifferentOverwriteInteriorInOneClass)
+TEST(CenteredFactory, overwriteInteriorSettingsAreSeparateClasses)
 {
     auto const rho = registerVariable<ScalarVariable>("rho", HybridQuantity::Scalar::rho);
     auto const Vx  = registerVariable<ScalarVariable>("Vx", HybridQuantity::Scalar::Vx);
 
-    auto const overwrite    = std::make_shared<FieldFillPattern<dim>>(true);
-    auto const notOverwrite = std::make_shared<FieldFillPattern<dim>>(false);
+    auto const overwrite = std::make_shared<FieldFillPattern<dim, /*overwrite_interior=*/true>>();
+    auto const notOverwrite = std::make_shared<FieldFillPattern<dim>>();
 
     SAMRAI::xfer::RefineAlgorithm agreeing;
-    auto& agreeingClasses = classesOf(agreeing, {{rho, notOverwrite}, {Vx, notOverwrite}});
-    EXPECT_EQ(1, agreeingClasses.getNumberOfEquivalenceClasses());
-    EXPECT_NO_THROW(checkOverwriteInteriorAgrees(agreeingClasses));
+    EXPECT_EQ(1, classesOf(agreeing, {{rho, notOverwrite}, {Vx, notOverwrite}})
+                     .getNumberOfEquivalenceClasses());
 
-    // fill patterns of one type are not told apart by SAMRAI: Vx would get rho's overlaps
-    SAMRAI::xfer::RefineAlgorithm mismatched;
-    auto& mismatchedClasses = classesOf(mismatched, {{rho, notOverwrite}, {Vx, overwrite}});
-    EXPECT_EQ(1, mismatchedClasses.getNumberOfEquivalenceClasses());
-    EXPECT_THROW(checkOverwriteInteriorAgrees(mismatchedClasses), std::runtime_error);
+    // SAMRAI computes the overlaps of a class with its first item's fill pattern: the two
+    // settings must never share a class
+    SAMRAI::xfer::RefineAlgorithm mixed;
+    EXPECT_EQ(
+        2,
+        classesOf(mixed, {{rho, notOverwrite}, {Vx, overwrite}}).getNumberOfEquivalenceClasses());
 }
 
 

@@ -392,8 +392,6 @@ namespace amr
 
             auto& patchGhostRefluxed = patchGhostRefluxedSchedules_[levelNumber];
             patchGhostRefluxed       = patchGhostRefluxedAlgo_.createSchedule(level);
-            PHARE_DEBUG_DO(
-                checkOverwriteInteriorAgrees(*patchGhostRefluxed->getEquivalenceClasses());)
 
             // on the root level there is no coarser source, so these are same-level schedules
             if (levelNumber == rootLevelNumber)
@@ -760,9 +758,9 @@ namespace amr
         std::shared_ptr<NoOverlapFillPattern<dimension>> noOverlapFillPattern
             = std::make_shared<NoOverlapFillPattern<dimension>>();
 
-        std::shared_ptr<TensorFieldFillPattern_t> overwriteInteriorTFfillPattern
-            = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
-                /*overwrite_interior=*/true);
+        std::shared_ptr<TensorFieldFillPattern<dimension, 1, /*overwrite_interior=*/true>>
+            overwriteInteriorTFfillPattern
+            = std::make_shared<TensorFieldFillPattern<dimension, 1, /*overwrite_interior=*/true>>();
 
         CoarsenOp_ptr mhdFluxCoarseningOp_{std::make_shared<MHDFluxCoarsenOp>()};
         CoarsenOp_ptr mhdVecFluxCoarseningOp_{std::make_shared<MHDVecFluxCoarsenOp>()};
