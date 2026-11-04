@@ -2,7 +2,6 @@
 #define PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_DISSIPATIVE_ELECTRIC_FIELD_HPP
 
 #include "core/def.hpp"
-#include "core/numerics/external_field_projection.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/numerics/differential_operators.hpp"
 #include "core/utilities/index/index.hpp"
@@ -54,7 +53,7 @@ public:
     {
     }
 
-    void operator()(auto& dissipative_electric_state, auto const& mhd_state, auto const* B0) const
+    void operator()(auto& dissipative_electric_state, auto const& mhd_state, auto const& B0) const
     {
         auto& E         = dissipative_electric_state.E();
         auto const& J   = mhd_state.J;
@@ -83,7 +82,7 @@ public:
 
 private:
     template<auto component, HyperMode hyper>
-    double hyper_coef_(auto const& B1, auto const* B0, auto const& rho,
+    double hyper_coef_(auto const& B1, auto const& B0, auto const& rho,
                        MeshIndex<dimension> idx) const
     {
         if constexpr (hyper == HyperMode::constant)
@@ -96,12 +95,15 @@ private:
             using Scalar = MHDQuantity::Scalar;
 
             auto coef = [&]<auto dst>() {
-                auto const bx = GridLayout::template project<Scalar::Bx, dst>(B1(Component::X), idx)
-                                + projectB0<GridLayout, Scalar::Bx, dst>(B0, Component::X, idx);
-                auto const by = GridLayout::template project<Scalar::By, dst>(B1(Component::Y), idx)
-                                + projectB0<GridLayout, Scalar::By, dst>(B0, Component::Y, idx);
-                auto const bz = GridLayout::template project<Scalar::Bz, dst>(B1(Component::Z), idx)
-                                + projectB0<GridLayout, Scalar::Bz, dst>(B0, Component::Z, idx);
+                auto const bx
+                    = GridLayout::template project<Scalar::Bx, dst>(B1(Component::X), idx)
+                      + GridLayout::template project<Scalar::Bx, dst>(B0(Component::X), idx);
+                auto const by
+                    = GridLayout::template project<Scalar::By, dst>(B1(Component::Y), idx)
+                      + GridLayout::template project<Scalar::By, dst>(B0(Component::Y), idx);
+                auto const bz
+                    = GridLayout::template project<Scalar::Bz, dst>(B1(Component::Z), idx)
+                      + GridLayout::template project<Scalar::Bz, dst>(B0(Component::Z), idx);
                 auto const n  = GridLayout::template project<Scalar::rho, dst>(rho, idx);
                 auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);

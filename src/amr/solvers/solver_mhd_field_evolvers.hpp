@@ -118,8 +118,9 @@ public:
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type finite_volume_method{info, layout};
-            finite_volume_method(ct_state, dissipative_electric_state, state, model.B0OrNull(),
-                                 fluxes);
+            model.externalFieldManager.state().visitB0([&](auto const& B0) {
+                finite_volume_method(ct_state, dissipative_electric_state, state, B0, fluxes);
+            });
         }
     }
 
@@ -191,7 +192,9 @@ public:
                                         model.externalFieldManager.state()))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{info, layout}(dissipative_electric_state, mhd_state, model.B0OrNull());
+            model.externalFieldManager.state().visitB0([&](auto const& B0) {
+                core_type{info, layout}(dissipative_electric_state, mhd_state, B0);
+            });
         }
     }
 
@@ -227,8 +230,9 @@ public:
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type constrained_transport_{info, layout};
-            constrained_transport_(ct_state, dissipative_electric_state, mhd_state,
-                                   model.B0OrNull());
+            model.externalFieldManager.state().visitB0([&](auto const& B0) {
+                constrained_transport_(ct_state, dissipative_electric_state, mhd_state, B0);
+            });
         }
     }
 
@@ -256,29 +260,23 @@ public:
 
     void operator()(Model::state_type& state, auto& sources)
     {
-        auto& rm = *model.resourcesManager;
+        auto& rm       = *model.resourcesManager;
+        auto& external = model.externalFieldManager.state();
 
-        if (not model.externalFieldManager.isTimeDependent())
-        {
-            for (auto& _ : rm.enumerate(level, sources))
-                sources.zero();
-            return;
-        }
-
-        for (auto& patch : rm.enumerate(level, state, sources, model.externalFieldManager.state()))
+        for (auto& patch : rm.enumerate(level, state, sources, external))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            auto const& dB0dt = model.externalFieldManager.state().dB0dt();
+            external.visitDB0dt([&](auto const& dB0dt) {
+                for (auto const c : {core::Component::X, core::Component::Y, core::Component::Z})
+                {
+                    auto& s        = sources.B1_source(c);
+                    auto const& dc = dB0dt(c);
+                    layout.evalOnBox(s, [&](auto&... args) { s(args...) = -dc(args...); });
+                }
 
-            for (auto const c : {core::Component::X, core::Component::Y, core::Component::Z})
-            {
-                auto& s        = sources.B1_source(c);
-                auto const& dc = dB0dt(c);
-                layout.evalOnBox(s, [&](auto&... args) { s(args...) = -dc(args...); });
-            }
-
-            layout.evalOnBox(sources.Etot_source, [&](auto&... args) {
-                sources.Etot_source(args...) = -dotOnCellCenter_(dB0dt, state.B1, {args...});
+                layout.evalOnBox(sources.Etot_source, [&](auto&... args) {
+                    sources.Etot_source(args...) = -dotOnCellCenter_(dB0dt, state.B1, {args...});
+                });
             });
         }
     }
