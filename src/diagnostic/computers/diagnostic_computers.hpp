@@ -29,12 +29,13 @@ void compute_mhd_pressure(auto& modelView, double gamma, std::size_t minLvl, std
 template<typename ModelView_t>
 struct MomentumTensorComputer
 {
-    // compute the momentum tensor for each population that requires it
-    // compute for all ions but that requires the computation of all pop
-
-    // dumps occur after the last substep but before the next first substep
-    // at this time, levelGhostPartsNew is emptied and not yet filled
-    // and the former levelGhostPartsNew has been moved to levelGhostPartsOld
+    // assumes the dump happens between two full steps: after the last substep and before the
+    // next first substep, when levelGhostParticlesNew is emptied and not yet refilled and the
+    // former levelGhostParticlesNew has been moved to levelGhostParticlesOld.
+    // Not true for:
+    //  - fine-level dumps (fine_dump_lvl_max): they happen mid-step, so near level boundaries
+    //    the level ghost contribution, and so the tensor and pressure, are approximate
+    //  - emergency dumps: after a crash, particles may be outside the ghost box
 
     using GridLayout_t                 = ModelView_t::GridLayout;
     auto constexpr static dimension    = GridLayout_t::dimension;
@@ -69,6 +70,7 @@ template<typename ModelView_t>
 MomentumTensorComputer(ModelView_t&) -> MomentumTensorComputer<ModelView_t>;
 
 
+// total momentum tensor: computed for every population, then summed
 void compute_momentum_tensor(auto& modelView, std::size_t minLvl, std::size_t maxLvl,
                              double timestamp)
 {
@@ -95,6 +97,7 @@ void compute_momentum_tensor(auto& modelView, std::size_t minLvl, std::size_t ma
 }
 
 
+// momentum tensor of population popidx only
 void compute_pop_momentum_tensor(auto& modelView, std::size_t popidx, std::size_t minLvl,
                                  std::size_t maxLvl, double timestamp)
 {
@@ -109,8 +112,10 @@ void compute_pop_momentum_tensor(auto& modelView, std::size_t popidx, std::size_
 }
 
 
-// V is only kept up to date at t=0 (the MHD solver evolves rho/rhoV/B/Etot, not V/P
-// directly) - recompute it from the conservative variables on demand before a diag dump
+// the MHD solver evolves rho/rhoV/B/Etot. Its V/P are converted from them when fluxes are
+// computed (compute_fluxes.hpp), so after a step they lag the conservative variables, and the
+// diagnostic V/P are separate fields the solver never updates: recompute from the current
+// conservative variables before a diag dump
 void compute_mhd_velocity(auto& modelView, std::size_t minLvl, std::size_t maxLvl,
                           double /*timestamp*/)
 {

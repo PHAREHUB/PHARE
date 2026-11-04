@@ -12,13 +12,9 @@ namespace PHARE::diagnostic::h5
 /*
  * It is assumed that each patch has equal number of populations
  *
- * Possible outputs
- *
- * /t#/pl#/p#/ions/density
- * /t#/pl#/p#/ions/bulkVelocity/(x,y,z)
- * /t#/pl#/p#/ions/charge_flux/(x,y,z)
- * /t#/pl#/p#/ions/pop_(1,2,...)/density
- * /t#/pl#/p#/ions/pop_(1,2,...)/bulkVelocity/(x,y,z)
+ * Writes one dataset per patch, /t#/pl#/p#/<name>, with vector and tensor fields as one
+ * dataset per component (<name>_x, <name>_xy, ...). The supported quantities are the entries
+ * of ModelView::FluidAccessors (diagnostic_model_view.hpp).
  */
 template<typename H5Writer>
 class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
