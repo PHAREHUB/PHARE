@@ -14,17 +14,18 @@ namespace PHARE::diagnostic::h5
  *
  * Writes one dataset per patch, /t#/pl#/p#/<name>, with vector and tensor fields as one
  * dataset per component (<name>_x, <name>_xy, ...). The supported quantities are the entries
- * of ModelView::FluidAccessors (diagnostic_model_view.hpp).
+ * of the model's accessors (ModelView::makeAccessors_, diagnostic_model_view.hpp).
  */
 template<typename H5Writer>
 class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
 {
 public:
     using Super = H5TypeWriter<H5Writer>;
-    using Super::checkCreateFileFor_;
+    using Super::createFileFor_;
     using Super::fileData_;
     using Super::h5Writer_;
     using Super::initDataSets_;
+    using Super::patchAttributesKey_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
@@ -32,8 +33,7 @@ public:
     using GridLayout = H5Writer::GridLayout;
     using FloatType  = H5Writer::FloatType;
     using ModelView  = std::decay_t<decltype(std::declval<H5Writer&>().modelView())>;
-    using Accessors  = ModelView::FluidAccessors;
-    using Computers  = ModelView::FluidComputers;
+    using Accessors  = ModelView::Accessors;
 
     static constexpr auto dimension = GridLayout::dimension;
 
@@ -70,8 +70,8 @@ void FluidDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& di
     auto& h5Writer  = this->h5Writer_;
     auto& modelView = h5Writer.modelView();
 
-    Computers::getOrCreateFor(modelView).compute(diagnostic.quantity, modelView, h5Writer.minLevel,
-                                                 h5Writer.maxLevel, h5Writer.timestamp());
+    modelView.computers().compute(diagnostic.quantity, modelView, h5Writer.minLevel,
+                                  h5Writer.maxLevel, h5Writer.timestamp());
 }
 
 
@@ -79,16 +79,7 @@ void FluidDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& di
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
-    for (auto const& pop : this->h5Writer_.modelView().getIons())
-    {
-        std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, fileData_, tree, "density", "charge_density", "flux",
-                            "momentum_tensor");
-    }
-
-    std::string tree{"/ions/"};
-    checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "mass_density",
-                        "bulkVelocity", "charge_flux", "momentum_tensor");
+    createFileFor_(diagnostic);
 }
 
 
@@ -123,11 +114,10 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
                 infoDS(quantity.getComponent(type), name + "_" + id, attr);
     };
 
-    Accessors::getOrCreateFor(modelView).dispatch(
+    auto& attr = patchAttributes[lvlPatchID][patchAttributesKey_(diagnostic.quantity)];
+    modelView.accessors().dispatch(
         diagnostic.quantity, modelView,
-        [&](auto& field, std::string const& name, std::string const& ownerKey) {
-            action(field, name, patchAttributes[lvlPatchID][ownerKey]);
-        });
+        [&](auto& field, std::string const& name) { action(field, name, attr); });
 }
 
 
@@ -141,8 +131,9 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 {
     auto& h5Writer  = this->h5Writer_;
     auto& modelView = h5Writer.modelView();
-    auto& accessors = Accessors::getOrCreateFor(modelView);
+    auto& accessors = modelView.accessors();
     auto& h5file    = Super::h5FileForQuantity(diagnostic);
+    auto const key  = patchAttributesKey_(diagnostic.quantity);
 
     auto const initDS = [&](auto& path, auto& attr, std::string const& key, bool const null) {
         auto dsPath = path + key;
@@ -158,16 +149,15 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
         bool const null  = patchID.empty();
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        accessors.dispatch(diagnostic.quantity, modelView,
-                           [&](auto& field, std::string const& name, std::string const& ownerKey) {
-                               using Field = std::decay_t<decltype(field)>;
-                               if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
-                                   initDS(path, attr[ownerKey], name, null);
-                               else
-                                   for (auto& [id, type] :
-                                        core::Components::componentMap<Field::rank>())
-                                       initDS(path, attr[ownerKey], name + "_" + id, null);
-                           });
+        accessors.dispatch(
+            diagnostic.quantity, modelView, [&](auto& field, std::string const& name) {
+                using Field = std::decay_t<decltype(field)>;
+                if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
+                    initDS(path, attr[key], name, null);
+                else
+                    for (auto& [id, type] : core::Components::componentMap<Field::rank>())
+                        initDS(path, attr[key], name + "_" + id, null);
+            });
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -182,8 +172,8 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& h5file     = Super::h5FileForQuantity(diagnostic);
     std::string path = h5Writer.patchPath() + "/";
 
-    Accessors::getOrCreateFor(modelView).dispatch(
-        diagnostic.quantity, modelView, [&](auto& field, std::string const& name, auto const&) {
+    modelView.accessors().dispatch(
+        diagnostic.quantity, modelView, [&](auto& field, std::string const& name) {
             using Field = std::decay_t<decltype(field)>;
             if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
                 h5file.template write_data_set_flat<GridLayout::dimension>(path + name,
@@ -204,19 +194,10 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
     auto& h5Writer = this->h5Writer_;
     auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
-    auto checkWrite = [&](auto& tree, std::string qty, auto const& pop) {
-        if (diagnostic.quantity == tree + qty)
-            this->writeIonPopAttributes_(h5file, pop);
-    };
-
+    // any quantity of a population, as the vtkhdf writer does
     for (auto& pop : h5Writer.modelView().getIons())
-    {
-        std::string tree = "/ions/pop/" + pop.name() + "/";
-        checkWrite(tree, "density", pop);
-        checkWrite(tree, "charge_density", pop);
-        checkWrite(tree, "flux", pop);
-        checkWrite(tree, "momentum_tensor", pop);
-    }
+        if (diagnostic.quantity.starts_with("/ions/pop/" + pop.name() + "/"))
+            this->writeIonPopAttributes_(h5file, pop);
 
     writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);
 }

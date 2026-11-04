@@ -19,18 +19,18 @@ class MHDDiagnosticWriter : public H5TypeWriter<H5Writer>
 {
 public:
     using Super = H5TypeWriter<H5Writer>;
-    using Super::checkCreateFileFor_;
+    using Super::createFileFor_;
     using Super::fileData_;
     using Super::h5Writer_;
     using Super::initDataSets_;
+    using Super::patchAttributesKey_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename H5Writer::GridLayout;
     using FloatType  = typename H5Writer::FloatType;
     using ModelView  = std::decay_t<decltype(std::declval<H5Writer&>().modelView())>;
-    using Accessors  = ModelView::MHDAccessors;
-    using Computers  = ModelView::MHDComputers;
+    using Accessors  = ModelView::Accessors;
 
     static constexpr auto dimension = GridLayout::dimension;
 
@@ -59,8 +59,7 @@ public:
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
-    std::string tree{"/mhd/"};
-    checkCreateFileFor_(diagnostic, fileData_, tree, "rho", "V", "P", "rhoV", "Etot");
+    createFileFor_(diagnostic);
 }
 
 template<typename H5Writer>
@@ -68,12 +67,9 @@ void MHDDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& diag
 {
     auto& h5Writer  = this->h5Writer_;
     auto& modelView = h5Writer.modelView();
-    // or FloatType if we want to expose that to DiagnosticProperties
-    double const gamma = diagnostic.fileAttributes["heat_capacity_ratio"].template to<double>();
 
-    Computers::getOrCreateFor(modelView).compute(diagnostic.quantity, modelView, gamma,
-                                                 h5Writer.minLevel, h5Writer.maxLevel,
-                                                 h5Writer.timestamp());
+    modelView.computers().compute(diagnostic.quantity, modelView, h5Writer.minLevel,
+                                  h5Writer.maxLevel, h5Writer.timestamp());
 }
 
 template<typename H5Writer>
@@ -100,10 +96,9 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
         setGhostNbr(field, attr, name);
     };
 
-    Accessors::getOrCreateFor(modelView).dispatch(
-        diagnostic.quantity, modelView,
-        [&](auto& field, std::string const& name, std::string const& ownerKey) {
-            auto& attr     = patchAttributes[lvlPatchID][ownerKey];
+    auto& attr = patchAttributes[lvlPatchID][patchAttributesKey_(diagnostic.quantity)];
+    modelView.accessors().dispatch(
+        diagnostic.quantity, modelView, [&](auto& field, std::string const& name) {
             using Quantity = std::decay_t<decltype(field)>;
             if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
                 infoDS(field, name, attr);
@@ -121,8 +116,9 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
 {
     auto& h5Writer  = this->h5Writer_;
     auto& modelView = h5Writer.modelView();
-    auto& accessors = Accessors::getOrCreateFor(modelView);
+    auto& accessors = modelView.accessors();
     auto& h5file    = *fileData_.at(diagnostic.quantity);
+    auto const key  = patchAttributesKey_(diagnostic.quantity);
 
     auto writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
         this->writeGhostsAttr_(h5file, path,
@@ -149,13 +145,13 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
         accessors.dispatch(diagnostic.quantity, modelView,
-                           [&](auto& field, std::string const& name, std::string const& ownerKey) {
+                           [&](auto& field, std::string const& name) {
                                using Quantity = std::decay_t<decltype(field)>;
                                if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
-                                   initDS(path, attr[ownerKey], name, null);
+                                   initDS(path, attr[key], name, null);
                                else
                                    for (auto& [id, type] : core::VectorComponents::map())
-                                       initDS(path, attr[ownerKey], name + "_" + id, null);
+                                       initDS(path, attr[key], name + "_" + id, null);
                            });
     };
 
@@ -170,8 +166,8 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& h5file     = *fileData_.at(diagnostic.quantity);
     std::string path = h5Writer.patchPath() + "/";
 
-    Accessors::getOrCreateFor(modelView).dispatch(
-        diagnostic.quantity, modelView, [&](auto& field, std::string const& name, auto const&) {
+    modelView.accessors().dispatch(
+        diagnostic.quantity, modelView, [&](auto& field, std::string const& name) {
             using Quantity = std::decay_t<decltype(field)>;
             if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
                 h5file.template write_data_set_flat<GridLayout::dimension>(path + name,
