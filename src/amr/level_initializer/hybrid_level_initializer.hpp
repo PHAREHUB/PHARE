@@ -128,6 +128,12 @@ namespace solver
             }
             hybMessenger.fillIonBorders(ions, level, initDataTime);
 
+            // the electron pressure of a new or regridded level is not communicated: it follows
+            // from the ion density just computed, so that it is defined as of the initial time
+            for (auto& patch : rm.enumerate(level, hybridModel.state.electrons))
+                hybridModel.state.electrons.computePressure(
+                    amr::layoutFromPatch<GridLayoutT>(*patch));
+
             // moments are not time interpolated: their level ghost nodes come from the
             // deposit of level ghost particles above. Only E and B ghosts are, from the
             // Bold_ and Eold_ copies saved by prepareStep() (see end of this function).

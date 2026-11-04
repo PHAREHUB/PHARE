@@ -271,6 +271,10 @@ public:
         momentModel_.computePressure(layout);
     }
 
+    // the pressure alone, from the ion density: the level initializer sets it on the
+    // levels where update() is not called
+    void computePressure(GridLayout const& layout) { momentModel_.computePressure(layout); }
+
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
