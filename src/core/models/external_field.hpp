@@ -14,8 +14,8 @@ namespace PHARE::core
 /**
  * @brief The external magnetic field and its time derivative.
  *
- * Holds no vecfield, and so registers and allocates nothing, when no external field is
- * declared: B0() and dB0dt() then throw.
+ * B0 is held only when an external field is declared, and dB0dt only when it also depends on
+ * time: only those are registered and allocated, B0() and dB0dt() throw otherwise.
  *
  * @tparam VecFieldT vecfield implementation
  *
@@ -29,22 +29,28 @@ public:
 
     static constexpr std::size_t dimension = VecFieldT::dimension;
 
-    ExternalFieldState(std::string const& name, bool const enabled)
+    ExternalFieldState(std::string const& name, bool const enabled,
+                       bool const timeDependent = false)
     {
+        if (timeDependent and not enabled)
+            throw std::runtime_error("a time dependent external field must be declared");
         if (enabled)
-        {
             fields_.emplace_back(name + "_B0", tensor_type::B);
+        if (timeDependent)
             fields_.emplace_back(name + "_dB0dt", tensor_type::B);
-        }
     }
 
-    NO_DISCARD bool isEnabled() const { return !fields_.empty(); }
+    NO_DISCARD bool isEnabled() const { return fields_.size() > 0; }
+    NO_DISCARD bool isTimeDependent() const { return fields_.size() > 1; }
 
-    NO_DISCARD VecFieldT& B0() { return field_(0); }
-    NO_DISCARD VecFieldT const& B0() const { return field_(0); }
+    NO_DISCARD VecFieldT& B0() { return field_(0, "no external field was declared"); }
+    NO_DISCARD VecFieldT const& B0() const { return field_(0, "no external field was declared"); }
 
-    NO_DISCARD VecFieldT& dB0dt() { return field_(1); }
-    NO_DISCARD VecFieldT const& dB0dt() const { return field_(1); }
+    NO_DISCARD VecFieldT& dB0dt() { return field_(1, "the external field is not time dependent"); }
+    NO_DISCARD VecFieldT const& dB0dt() const
+    {
+        return field_(1, "the external field is not time dependent");
+    }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -68,22 +74,22 @@ public:
     //-------------------------------------------------------------------------
 
 private:
-    VecFieldT& field_(std::size_t const i)
+    VecFieldT& field_(std::size_t const i, std::string const& absent)
     {
-        throwIfDisabled_();
+        throwIfAbsent_(i, absent);
         return fields_[i];
     }
 
-    VecFieldT const& field_(std::size_t const i) const
+    VecFieldT const& field_(std::size_t const i, std::string const& absent) const
     {
-        throwIfDisabled_();
+        throwIfAbsent_(i, absent);
         return fields_[i];
     }
 
-    void throwIfDisabled_() const
+    void throwIfAbsent_(std::size_t const i, std::string const& absent) const
     {
-        if (!isEnabled())
-            throw std::runtime_error("no external field was declared");
+        if (i >= fields_.size())
+            throw std::runtime_error(absent);
     }
 
     std::vector<VecFieldT> fields_;
