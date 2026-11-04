@@ -179,6 +179,14 @@ def check_pusher(**kwargs):
     return pusher
 
 
+def check_particle_sort(**kwargs):
+    # None: not passed to the C++, which then uses its default (IonUpdater)
+    particle_sort = kwargs.get("particle_sort", None)
+    if particle_sort is not None and not isinstance(particle_sort, bool):
+        raise ValueError(f"Error: particle_sort must be a bool or None ({particle_sort})")
+    return particle_sort
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -683,6 +691,7 @@ def checker(func):
             "cells",
             "dl",
             "particle_pusher",
+            "particle_sort",
             "final_time",
             "time_step",
             "time_step_nbr",
@@ -752,6 +761,7 @@ def checker(func):
         kwargs["refinement_ratio"] = 2
 
         kwargs["particle_pusher"] = check_pusher(**kwargs)
+        kwargs["particle_sort"] = check_particle_sort(**kwargs)
         kwargs["layout"] = check_layout(**kwargs)
         kwargs["path"] = check_path(**kwargs)
 
@@ -1098,6 +1108,8 @@ class Simulation:
           ``model_options``) particle b-spline order; omit it for a run with no hybrid
           model, where it has no meaning
         * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
+        * **particle_sort** (``bool``), keep the domain particles sorted by cell in the ion
+          updater (default = None: off)
         * **resistivity** (``float``), default=0.0, Hybrid Ohm's law resistivity value
         * **hyper_resistivity** (``float``), default=0.0001, Hybrid Ohm's law hyper-resistivity value
         * **hyper_mode** (``str``), {"constant" (default), "spatial"}, "constant" uses `hyper_resistivity`
