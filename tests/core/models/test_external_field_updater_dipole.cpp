@@ -105,7 +105,7 @@ struct DipoleSetup
 
     TestGridLayout<GridLayout_t> layout{cells};
 
-    UsableExternalFieldState<dim> externalField{"external", layout};
+    UsableExternalFieldState<dim> externalField{"external", layout, /*timeDependent=*/false};
 
     Updater_t updater{position(), moment(), /*radius=*/0.};
 
@@ -125,18 +125,6 @@ struct DipoleSetup
             });
         });
         return maxError;
-    }
-
-    //! largest |dB0/dt| over the whole ghost box, all components
-    double maxAbsTimeDerivative()
-    {
-        double maxAbs = 0.;
-        for_N<3>([&](auto i) {
-            auto& field = externalField.dB0dt()(static_cast<Component>(decltype(i)::value));
-            for (auto const& v : field)
-                maxAbs = std::max(maxAbs, std::abs(v));
-        });
-        return maxAbs;
     }
 };
 
@@ -168,9 +156,10 @@ TYPED_TEST(DipoleTest, retrievesTheAnalyticalDipoleField)
     EXPECT_LT(this->setup.maxErrorOnDomain(), TypeParam::tolerance);
 }
 
-TYPED_TEST(DipoleTest, retrievesAZeroTimeDerivative)
+TYPED_TEST(DipoleTest, hasNoTimeDerivative)
 {
-    EXPECT_DOUBLE_EQ(this->setup.maxAbsTimeDerivative(), 0.);
+    EXPECT_FALSE(this->setup.externalField.isTimeDependent());
+    EXPECT_THROW(static_cast<void>(this->setup.externalField.dB0dt()), std::runtime_error);
 }
 
 
@@ -235,8 +224,8 @@ struct FiniteRadiusSetup
 
     TestGridLayout<typename Point_t::GridLayout_t> layout{cells};
 
-    UsableExternalFieldState<dim> finite{"finite", layout};
-    UsableExternalFieldState<dim> point{"point", layout};
+    UsableExternalFieldState<dim> finite{"finite", layout, /*timeDependent=*/false};
+    UsableExternalFieldState<dim> point{"point", layout, /*timeDependent=*/false};
 
     FiniteRadiusSetup()
     {
