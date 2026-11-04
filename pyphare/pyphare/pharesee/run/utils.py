@@ -734,16 +734,18 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
     return final_data, np.stack((tmp_x, tmp_y), axis=1)
 
 
-def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
+def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest", time=None):
     """
     Interpolate a hierarchy onto a uniform finest-level grid, returning UniformGrids.
 
     box: optional Box with physical coordinates to restrict the output domain.
          If None, uses hier.selection_box if one is set (and it differs from the
          full domain_box), otherwise the full domain is used.
+    time: one of the hierarchy's times, may be omitted if it only has one.
     """
 
     from pyphare.core.box import Box
+    from pyphare.core.phare_utilities import format_timestamp
     from pyphare.pharesee.hierarchy import uniformgrid as uniform
 
     if isinstance(box, (list, tuple)):
@@ -751,10 +753,18 @@ def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
             "interpolate_hierarchy takes a single box; call it once per box"
         )
 
-    times = hier.times()
-    if len(times) > 1:
-        raise ValueError("interpolate_hierarchy does not support multiple times")
-    time = times[0]
+    if time is None:
+        times = hier.times()
+        if len(times) > 1:
+            raise ValueError(
+                "interpolate_hierarchy: time needed, the hierarchy has several"
+            )
+        time = times[0]
+    elif not hier.has_time(time):
+        raise ValueError(
+            f"interpolate_hierarchy: no time {time} in {list(hier.times())}"
+        )
+    time = format_timestamp(time)
 
     if 0 not in hier.levels(time):
         raise ValueError("interpolate_hierarchy only supports coarse timesteps")
