@@ -11,6 +11,12 @@
 // 4 doubles per lane and stencil row, transposed in registers (hyb_xsimd.hpp loadRows).
 // Deposit: per particle at interpolation order 1, by blocks (start indices and weights in lane
 // loops, then the lanes deposited in particle order) from order 2 on.
+// Cell kernels (xsimd backend, domain arrays kept sorted by cell, IonUpdater particle_sort):
+// blocks are formed per cell row; a block whose lanes all stay in the row's cell at mid step
+// interpolates the fields from the cell's stencil union, loaded once per cell (boris.hpp
+// pushBlockCell_), and the deposit accumulates in a lane-private window per cell
+// (interpolator/cell_deposit.hpp). Below cellMinPpc particles per cell the blocks of a cell are
+// mostly partial, and the kernels above walk the rows instead (IonUpdater::cellKernels_).
 
 #include <algorithm>
 #include <array>
@@ -19,6 +25,11 @@
 
 namespace PHARE::core::hyb
 {
+
+// cell kernels for a sorted domain array only from this mean number of particles per cell
+// (IonUpdater::cellKernels_), the choice made again every cellChoiceEvery correctors
+inline constexpr int cellMinPpc           = 12;
+inline constexpr unsigned cellChoiceEvery = 20;
 
 // blocked deposit from this interpolation order on (order 1: per particle, faster for its
 // 2^dim-node stencil)
@@ -49,7 +60,8 @@ struct LanePtrs
 };
 
 
-/** one block of laneCount particles, component-major: the lanes of the blocked deposit */
+/** one block of laneCount particles, component-major: the lanes of the blocked and cell
+ * deposits */
 template<std::size_t dim>
 struct alignas(64) LaneBlock
 {

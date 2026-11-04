@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -447,6 +448,16 @@ public:
     // ---- sorted mode ----
 
     NO_DISCARD int nbrCells() const { return nCells_; }
+
+    // the ion updater's kernel choice for this sorted array (IonUpdater::cellKernels_):
+    // on = -1 not made yet, 0 the kernels walking the rows, 1 the cell kernels; correctors
+    // counts the correctors since the array was created
+    struct CellKernelChoice
+    {
+        std::int8_t on           = -1;
+        std::uint32_t correctors = 0;
+    };
+    CellKernelChoice cellKernels;
 
     // row-major local flat index of a cell of box_ (last index fastest)
     template<typename Cell>

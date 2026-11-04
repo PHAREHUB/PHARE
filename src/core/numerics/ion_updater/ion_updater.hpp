@@ -10,6 +10,7 @@
 #include "core/numerics/moments/moments.hpp"
 #include "core/numerics/pusher/pusher_factory.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/interpolator/cell_deposit.hpp"
 #include "core/numerics/boundary_condition/boundary_condition.hpp"
 
 #include "initializer/data_provider.hpp"
@@ -95,13 +96,21 @@ private:
     void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
 
-    // corrector deposit of the domain particles: by blocks or per particle
-    // (hyb::blockedDeposit). A bag layout has holes: it is deposited by its dense runs, which
-    // keeps the bags for the next sort (no compaction)
+    // corrector deposit of the domain particles: cell deposit with the cell kernels on, else by
+    // blocks or per particle (hyb::blockedDeposit). A bag layout has holes: it is deposited by
+    // its dense runs, which keeps the bags for the next sort (no compaction)
     template<typename Field>
     void depositDomain_(ParticleArray const& particles, Field& density, VecField& flux,
                         GridLayout const& layout)
     {
+#if PHARE_HYB_XSIMD
+        if (cellKernelsOn_)
+        {
+            cellDep_.depositArray(particles, interpolator_.depositTargets(density, flux),
+                                  Interpolator::amrToLocal(layout));
+            return;
+        }
+#endif
         auto deposit = [&](auto const& range) {
             if constexpr (hyb::blockedDeposit<interp_order>)
             {
@@ -121,10 +130,67 @@ private:
 
     // domain arrays kept sorted by cell (ParticleArray bag layout) by the corrector (dict
     // "particle_sort"). Sorted arrays have a fixed, cache-friendly particle order whatever their
-    // age, and their rows are what per-cell kernels need; the sort replaces the cell map
+    // age, and their rows are what the cell kernels need; the sort replaces the cell map
     // bookkeeping of the push.
     static constexpr bool sortByDefault = false;
     bool sortParticles_                 = sortByDefault;
+
+    static double domainCells_(GridLayout const& layout)
+    {
+        auto const box = layout.AMRBox();
+        double cells   = 1;
+        for (std::size_t d = 0; d < dimension; ++d)
+            cells *= static_cast<double>(box.upper[d] - box.lower[d] + 1);
+        return cells;
+    }
+
+    /** cell kernels for this sorted domain array? Below hyb::cellMinPpc particles per cell on
+     * average the blocks of a cell are mostly partial and the kernels walking the rows are
+     * faster (-21 % at 8 particles per cell). The choice is kept in the array, made again every
+     * hyb::cellChoiceEvery correctors and whenever the array is not sorted (new, restarted or
+     * regridded array).
+     */
+    bool cellKernels_(ParticleArray& domain, GridLayout const& layout, bool const corrector)
+    {
+        if constexpr (!PHARE_HYB_XSIMD)
+            return false;
+        auto& choice = domain.cellKernels;
+        bool choose  = choice.on < 0 or !domain.csrValid();
+        if (corrector)
+            choose = (choice.correctors++ % hyb::cellChoiceEvery == 0) or choose;
+        if (choose)
+        {
+            double const ppc = static_cast<double>(domain.liveSize()) / domainCells_(layout);
+            choice.on        = ppc >= hyb::cellMinPpc ? 1 : 0;
+        }
+        return choice.on != 0;
+    }
+
+    // kernels of one sorted domain array: the cell kernels on or off for the push (Boris) and
+    // the deposits (cellKernelsOn_), back to off on scope exit
+    struct KernelScope
+    {
+        KernelScope(IonUpdater& updater, bool const on)
+            : updater_{updater}
+        {
+            set_(on);
+        }
+        ~KernelScope() { set_(false); }
+
+    private:
+        void set_(bool const on)
+        {
+            updater_.cellKernelsOn_ = on;
+            updater_.boris_->cellKernels(on);
+        }
+        IonUpdater& updater_;
+    };
+    bool cellKernelsOn_ = false;
+
+#if PHARE_HYB_XSIMD
+    // window scratch of the cell deposit, predictor and corrector
+    CellDeposit<dimension, interp_order> cellDep_;
+#endif
 
     // sort scratch, reused across populations and patches
     typename ParticleArray::SortScratch sortScratch_;
@@ -271,10 +337,18 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         if (sortParticles_ and !pop.domainParticles().csrValid())
             pop.domainParticles().layoutRows(domainKey_(pop.domainParticles(), boxing),
                                              sortScratch_);
-        if constexpr (hyb::blockedDeposit<interp_order>)
+        KernelScope kernels{*this, sortParticles_
+                                       and cellKernels_(pop.domainParticles(), layout, false)};
+        auto const keep = [&](auto const& cell) { return isIn(Point{cell}, keepBoxes); };
+#if PHARE_HYB_XSIMD
+        if (cellKernelsOn_)
+            boris_->pushEachDepositCell(pop.domainParticles(), em, interpolator_, layout, coef1,
+                                        targets, cellDep_, keep);
+        else
+#endif
+            if constexpr (hyb::blockedDeposit<interp_order>)
             boris_->pushEachDeposit(pop.domainParticles(), em, interpolator_, layout, coef1,
-                                    targets,
-                                    [&](auto const& cell) { return isIn(Point{cell}, keepBoxes); });
+                                    targets, keep);
         else
             boris_->pushEach(pop.domainParticles(), em, interpolator_, layout, coef1,
                              [&](Particle_t const& pushed) {
@@ -434,6 +508,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::correctorSorted_(Ions& ions, Elec
     for (auto& pop : ions)
     {
         auto& domain                = pop.domainParticles();
+        KernelScope kernels{*this, cellKernels_(domain, layout, true)};
         std::size_t const oldPrefix = domain.csrPrefix();
         domain.dropMap();
 
