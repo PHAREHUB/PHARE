@@ -67,6 +67,10 @@ option(withCaliper "Use LLNL Caliper" OFF)
 option(withPhlop "Use phlop for scope timings and such" OFF)
 
 
+# -DwithXsimd=OFF - explicit SIMD of the hybrid push/deposit (used only with AVX-512)
+option(withXsimd "Use xsimd for the hybrid particle kernels" ON)
+
+
 # -DuseExceptionsInsteadOfMPIAbort=ON
 option(useExceptionsInsteadOfMPIAbort "Exceptions use AllReduce!" OFF)
 
@@ -122,6 +126,7 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
+  message("build with xsimd                            : " ${withXsimd})
   message("profile guided optimization generate        : " ${PGO_GEN})
   message("profile guided optimization use             : " ${PGO_USE})
 

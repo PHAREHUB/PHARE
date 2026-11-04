@@ -39,3 +39,6 @@ include("${PHARE_PROJECT_DIR}/res/cmake/dep/pybind.cmake")
 
 # Phlop - enabled with -DwithPhlop
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/phlop.cmake")
+
+# xsimd - disabled with -DwithXsimd=OFF
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/xsimd.cmake")
