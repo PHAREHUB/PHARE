@@ -339,10 +339,14 @@ def check(rows):
 
 
 def main():
+    # arguments: run names and/or interpolation orders, e.g. `dispersion.py 2` or
+    # `dispersion.py high_k 1`; default is every run at every order
+    args = sys.argv[1:]
+    interp_orders = [int(a) for a in args if a.isdigit()] or INTERP_ORDERS
+    names = [a for a in args if not a.isdigit()] or list(RUNS)
     startMPI()
-    names = sys.argv[1:] or list(RUNS)
     failures = []
-    for interp_order in INTERP_ORDERS:
+    for interp_order in interp_orders:
         rows = []
         for name in names:
             sim = config(name, interp_order, **RUNS[name])

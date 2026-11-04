@@ -12,7 +12,7 @@ their frequency $\omega$ and compares it to the theoretical dispersion relation,
 | **runs** | 2 resolutions $\times$ 3 interpolation orders = 6 one-dimensional runs |
 | **cost** | about 80 s in total (Release build, one core) |
 | **pass if** | every $\omega$ is within 1% of the expected value, and no wave is lost |
-| **ctest** | `py3_test-dispersion` (level 10: every PR build; label `physics`) |
+| **ctest** | `py3_test-dispersion-o{1,2,3}`, one per interpolation order (level 10: every PR build; label `physics`) |
 
 ```{eval-rst}
 .. plot:: ../../tests/functional/dispersion/doc/figures.py dispersion
@@ -178,12 +178,13 @@ which leaves a margin of a factor 2.5 below the tolerance.
 ## 5. Running it and reading a failure
 
 ```bash
-cd build && ctest -R py3_test-dispersion -V
+cd build && ctest -R py3_test-dispersion -V        # the three orders, in parallel with -j
 # or directly, from a scratch directory
-PYTHONPATH=<build>:<repo>/pyphare python3 <repo>/tests/functional/dispersion/dispersion.py
+PYTHONPATH=<build>:<repo>/pyphare python3 <repo>/tests/functional/dispersion/dispersion.py [1|2|3] [low_k|high_k]
 ```
 
-It prints one table per interpolation order and writes `dispersion_o{1,2,3}.png`.
+Without arguments it runs every order and both runs. It prints one table per
+interpolation order and writes `dispersion_o{1,2,3}.png`.
 
 | what fails | likely cause |
 |---|---|

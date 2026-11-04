@@ -9,11 +9,14 @@ endif()
 
 if(HighFive)
   ## These test use dump diagnostics so require HighFive!
-  if(testMPI)
-    phare_mpi_python3_exec(10 5 test-dispersion dispersion.py ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    phare_python3_exec(10 test-dispersion dispersion.py ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
-  # 6 runs (3 interpolation orders x 2 resolutions), ~80 s in Release: runs on every PR
-  phare_test_labels(test-dispersion physics)
+  # one test per interpolation order: the orders share nothing, so ctest runs them in
+  # parallel (all three: 52 s -> ~20 s on 5 ranks in Release; ASan build was 26 min serial)
+  foreach(order 1 2 3)
+    if(testMPI)
+      phare_mpi_python3_exec(10 5 test-dispersion-o${order} dispersion.py ${CMAKE_CURRENT_BINARY_DIR} ${order})
+    else()
+      phare_python3_exec(10 test-dispersion-o${order} dispersion.py ${CMAKE_CURRENT_BINARY_DIR} ${order})
+    endif()
+    phare_test_labels(test-dispersion-o${order} physics)
+  endforeach()
 endif()
