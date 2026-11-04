@@ -36,6 +36,95 @@ public:
 IModelView::~IModelView() {}
 
 
+/** \brief {diagnostic.quantity path -> field} registry of a model ("/ions/charge_density",
+ * "/ions/pop/<name>/momentum_tensor", "/mhd/rho", ...). Each ModelView builds one from the real
+ * population names, so callers do a single map lookup, and every writer (h5, vtk) dispatches on
+ * it.
+ *
+ * To add a diagnostic of a quantity the model stores, add one entry to `fields` in the
+ * ModelView's makeAccessors_(): every writer picks it up. If it has to be computed before it can
+ * be written, also add an entry to the ModelView's makeComputers_().
+ */
+template<typename ModelView_t, typename Field, typename... OtherFields>
+struct QuantityAccessors
+{
+    using Field_t      = Field;
+    using FieldVariant = std::variant<Field*, OtherFields*...>;
+    using FieldFn      = std::function<FieldVariant(ModelView_t&)>;
+
+    struct Entry
+    {
+        std::string name; // bare quantity name, e.g. "density", "momentum_tensor"
+        FieldFn get;
+    };
+
+    // writers must not skip a declared diagnostic silently
+    void check(std::string const& qty) const
+    {
+        if (!fields.count(qty))
+            throw std::runtime_error("unsupported " + kind + " diagnostic quantity " + qty);
+    }
+
+    // action(field, name), throws if qty has no registered accessor
+    template<typename Action>
+    void dispatch(std::string const& qty, ModelView_t& modelView, Action&& action) const
+    {
+        check(qty);
+        auto const& entry = fields.at(qty);
+        std::visit([&](auto* field) { action(*field, entry.name); }, entry.get(modelView));
+    }
+
+    std::string kind; // "fluid" or "mhd", for errors
+    std::unordered_map<std::string, Entry> fields{};
+};
+
+
+/** \brief {diagnostic.quantity path -> computer} registry for the quantities that need a
+ * computation pass before they can be read through the accessors (the momentum tensors, MHD V
+ * and P). Computers take the levels and time of the writer, any model parameter (e.g. gamma) is
+ * captured when the registry is built, so all models share one signature.
+ */
+template<typename ModelView_t>
+struct QuantityComputers
+{
+    using Computer = std::function<void(ModelView_t&, std::size_t, std::size_t, double)>;
+
+    NO_DISCARD bool contains(std::string const& qty) const { return computers.count(qty) > 0; }
+
+    // returns false if qty has no registered computer
+    bool compute(std::string const& qty, ModelView_t& modelView, std::size_t minLvl,
+                 std::size_t maxLvl, double timestamp) const
+    {
+        auto const it = computers.find(qty);
+        if (it == computers.end())
+            return false;
+        it->second(modelView, minLvl, maxLvl, timestamp);
+        return true;
+    }
+
+    std::unordered_map<std::string, Computer> computers;
+};
+
+
+// the field types of a model's diagnostics, hybrid also has the ions' tensor fields
+template<typename ModelView_t, typename Model>
+struct ModelAccessors
+{
+    using type
+        = QuantityAccessors<ModelView_t, typename Model::field_type, typename Model::vecfield_type>;
+};
+
+template<typename ModelView_t, typename Model>
+    requires solver::is_hybrid_model_v<Model>
+struct ModelAccessors<ModelView_t, Model>
+{
+    using type
+        = QuantityAccessors<ModelView_t, typename Model::field_type, typename Model::vecfield_type,
+                            typename Model::ions_type::tensorfield_type>;
+};
+
+
+
 template<typename Derived, typename Hierarchy, typename Model>
 class BaseModelView : public IModelView
 {
@@ -52,11 +141,33 @@ public:
                         std::vector<double>, std::vector<std::size_t>, std::string,
                         std::vector<std::string>>;
 
+    using Accessors = ModelAccessors<Derived, Model>::type;
+    using Computers = QuantityComputers<Derived>;
+
     BaseModelView(Hierarchy& hierarchy, Model& model)
         : model_{model}
         , hierarchy_{hierarchy}
     {
     }
+
+    // the diagnostic quantities of the model, built on first use by the ModelView's
+    //  makeAccessors_() / makeComputers_()
+    NO_DISCARD Accessors& accessors()
+    {
+        if (!accessors_)
+            accessors_ = std::make_unique<Accessors>(derived().makeAccessors_());
+        return *accessors_;
+    }
+
+    NO_DISCARD Computers& computers()
+    {
+        if (!computers_)
+            computers_ = std::make_unique<Computers>(derived().makeComputers_());
+        return *computers_;
+    }
+
+    // whether qty has to be computed before it is written
+    NO_DISCARD bool computes(std::string const& qty) { return computers().contains(qty); }
 
     template<typename Action>
     void onLevels(Action&& action, std::size_t const minlvl = 0,
@@ -149,78 +260,10 @@ protected:
 private:
     Derived& derived() { return static_cast<Derived&>(*this); }
     Derived const& derived() const { return static_cast<Derived const&>(*this); }
+
+    std::unique_ptr<Accessors> accessors_;
+    std::unique_ptr<Computers> computers_;
 };
-
-
-/** \brief {diagnostic.quantity path -> field} registry of a model ("/ions/charge_density",
- * "/ions/pop/<name>/momentum_tensor", "/mhd/rho", ...). Each ModelView builds one from the real
- * population names, so callers do a single map lookup, and every writer (h5, vtk) dispatches on
- * it.
- *
- * To add a diagnostic of a quantity the model stores, add one entry to `fields` in the
- * ModelView's makeAccessors_(): every writer picks it up. If it has to be computed before it can
- * be written, also add an entry to the ModelView's makeComputers_().
- */
-template<typename ModelView_t, typename Field, typename... OtherFields>
-struct QuantityAccessors
-{
-    using Field_t      = Field;
-    using FieldVariant = std::variant<Field*, OtherFields*...>;
-    using FieldFn      = std::function<FieldVariant(ModelView_t&)>;
-
-    struct Entry
-    {
-        std::string name; // bare quantity name, e.g. "density", "momentum_tensor"
-        FieldFn get;
-    };
-
-    // writers must not skip a declared diagnostic silently
-    void check(std::string const& qty) const
-    {
-        if (!fields.count(qty))
-            throw std::runtime_error("unsupported " + kind + " diagnostic quantity " + qty);
-    }
-
-    // action(field, name), throws if qty has no registered accessor
-    template<typename Action>
-    void dispatch(std::string const& qty, ModelView_t& modelView, Action&& action) const
-    {
-        check(qty);
-        auto const& entry = fields.at(qty);
-        std::visit([&](auto* field) { action(*field, entry.name); }, entry.get(modelView));
-    }
-
-    std::string kind; // "fluid" or "mhd", for errors
-    std::unordered_map<std::string, Entry> fields{};
-};
-
-
-/** \brief {diagnostic.quantity path -> computer} registry for the quantities that need a
- * computation pass before they can be read through the accessors (the momentum tensors, MHD V
- * and P). Computers take the levels and time of the writer, any model parameter (e.g. gamma) is
- * captured when the registry is built, so all models share one signature.
- */
-template<typename ModelView_t>
-struct QuantityComputers
-{
-    using Computer = std::function<void(ModelView_t&, std::size_t, std::size_t, double)>;
-
-    NO_DISCARD bool contains(std::string const& qty) const { return computers.count(qty) > 0; }
-
-    // returns false if qty has no registered computer
-    bool compute(std::string const& qty, ModelView_t& modelView, std::size_t minLvl,
-                 std::size_t maxLvl, double timestamp) const
-    {
-        auto const it = computers.find(qty);
-        if (it == computers.end())
-            return false;
-        it->second(modelView, minLvl, maxLvl, timestamp);
-        return true;
-    }
-
-    std::unordered_map<std::string, Computer> computers;
-};
-
 
 
 template<typename Hierarchy, typename Model>
@@ -241,25 +284,8 @@ public:
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
 
-    using Accessors = QuantityAccessors<ModelView, Field, VecField, TensorFieldT>;
-    using Computers = QuantityComputers<ModelView>;
-
-    NO_DISCARD Accessors& accessors()
-    {
-        if (!accessors_)
-            accessors_ = std::make_unique<Accessors>(makeAccessors_());
-        return *accessors_;
-    }
-
-    NO_DISCARD Computers& computers()
-    {
-        if (!computers_)
-            computers_ = std::make_unique<Computers>(makeComputers_());
-        return *computers_;
-    }
-
-    // whether qty has to be computed before it is written
-    NO_DISCARD bool computes(std::string const& qty) { return computers().contains(qty); }
+    using Accessors = Super::Accessors;
+    using Computers = Super::Computers;
 
     ModelView(Hierarchy& hierarchy, Model& model)
         : Super{hierarchy, model}
@@ -379,13 +405,13 @@ protected:
     };
 
     std::vector<MTAlgo> MTAlgos;
-    std::unique_ptr<Accessors> accessors_;
-    std::unique_ptr<Computers> computers_;
     Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
     VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
     TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
 
 private:
+    friend Super; // builds the registries with makeAccessors_() / makeComputers_()
+
     Accessors makeAccessors_()
     {
         Accessors acc{.kind = "fluid"};
@@ -458,33 +484,17 @@ template<typename Hierarchy, typename Model>
 class ModelView<Hierarchy, Model>
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
+    using Super    = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
     using Field    = Model::field_type;
     using VecField = Model::vecfield_type;
 
 public:
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
-    using BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>::BaseModelView;
+    using Super::Super;
 
-    using Accessors = QuantityAccessors<ModelView, Field, VecField>;
-    using Computers = QuantityComputers<ModelView>;
-
-    NO_DISCARD Accessors& accessors()
-    {
-        if (!accessors_)
-            accessors_ = std::make_unique<Accessors>(makeAccessors_());
-        return *accessors_;
-    }
-
-    NO_DISCARD Computers& computers()
-    {
-        if (!computers_)
-            computers_ = std::make_unique<Computers>(makeComputers_());
-        return *computers_;
-    }
-
-    // whether qty has to be computed before it is written
-    NO_DISCARD bool computes(std::string const& qty) { return computers().contains(qty); }
+    using Accessors = Super::Accessors;
+    using Computers = Super::Computers;
 
     NO_DISCARD const Field& getRho() const { return this->model_.state.rho; }
 
@@ -553,10 +563,9 @@ protected:
     Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
     VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
 
-    std::unique_ptr<Accessors> accessors_;
-    std::unique_ptr<Computers> computers_;
-
 private:
+    friend Super; // builds the registries with makeAccessors_() / makeComputers_()
+
     Accessors makeAccessors_()
     {
         Accessors acc{.kind = "mhd"};
