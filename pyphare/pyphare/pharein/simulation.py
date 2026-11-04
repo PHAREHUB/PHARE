@@ -1109,7 +1109,8 @@ class Simulation:
           model, where it has no meaning
         * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
         * **particle_sort** (``bool``), keep the domain particles sorted by cell in the ion
-          updater (default = None: off)
+          updater, which enables the per-cell push and deposit kernels (default = None: on when
+          PHARE is built with these kernels, i.e. with xsimd and AVX-512, else off)
         * **resistivity** (``float``), default=0.0, Hybrid Ohm's law resistivity value
         * **hyper_resistivity** (``float``), default=0.0001, Hybrid Ohm's law hyper-resistivity value
         * **hyper_mode** (``str``), {"constant" (default), "spatial"}, "constant" uses `hyper_resistivity`

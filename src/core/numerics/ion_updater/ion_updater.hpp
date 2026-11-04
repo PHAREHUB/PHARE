@@ -131,8 +131,9 @@ private:
     // domain arrays kept sorted by cell (ParticleArray bag layout) by the corrector (dict
     // "particle_sort"). Sorted arrays have a fixed, cache-friendly particle order whatever their
     // age, and their rows are what the cell kernels need; the sort replaces the cell map
-    // bookkeeping of the push.
-    static constexpr bool sortByDefault = false;
+    // bookkeeping of the push. Default: on with the cell kernels (xsimd backend), without them
+    // the sort has no kernel to pay for it
+    static constexpr bool sortByDefault = PHARE_HYB_XSIMD != 0;
     bool sortParticles_                 = sortByDefault;
 
     static double domainCells_(GridLayout const& layout)
