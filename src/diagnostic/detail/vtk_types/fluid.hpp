@@ -43,16 +43,8 @@ private:
             = std::vector<std::size_t>(amr::MAX_LEVEL_IDX + 1);
     };
 
-    // action(field, name, ownerKey) on the quantity of the diagnostic, if this model has it
-    void dispatch_(DiagnosticProperties const& diagnostic, auto&& action)
-        requires(solver::is_hybrid_model_v<Model_t>);
-    void dispatch_(DiagnosticProperties const& diagnostic, auto&& action)
-        requires(solver::is_mhd_model_v<Model_t>);
-
-    void compute_as_needed_(DiagnosticProperties& diagnostic)
-        requires(solver::is_hybrid_model_v<Model_t>);
-    void compute_as_needed_(DiagnosticProperties& diagnostic)
-        requires(solver::is_mhd_model_v<Model_t>);
+    // action(field, name) on the quantity of the diagnostic, throws if this model has none
+    void dispatch_(DiagnosticProperties const& diagnostic, auto&& action);
 
     std::unordered_map<std::string, Info> mem;
 };
@@ -74,7 +66,7 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
 
     auto const init = [&](auto const ilvl) -> std::optional<std::size_t> {
         std::optional<std::size_t> offset;
-        dispatch_(diagnostic, [&](auto& field, auto const&, auto const&) {
+        dispatch_(diagnostic, [&](auto& field, auto const&) {
             using Quantity = std::decay_t<decltype(field)>;
             if constexpr (std::is_same_v<Quantity, Field_t>)
                 offset = initializer.initFieldFileLevel(ilvl);
@@ -128,7 +120,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
             VTKFileWriter writer{diagnostic, this, ilvl, info.offset_per_level[ilvl]};
 
             auto const write_quantity = [&](auto& layout, auto const&, auto const) {
-                dispatch_(diagnostic, [&](auto& field, auto const&, auto const&) {
+                dispatch_(diagnostic, [&](auto& field, auto const&) {
                     using Quantity = std::decay_t<decltype(field)>;
                     if constexpr (std::is_same_v<Quantity, Field_t>)
                         writer.appendFieldPatchData(field, layout);
@@ -148,21 +140,9 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::dispatch_(DiagnosticProperties const& diagnostic,
                                                 auto&& action)
-    requires(solver::is_hybrid_model_v<Model_t>)
 {
     auto& modelView = this->h5Writer_.modelView();
-    ModelView::FluidAccessors::getOrCreateFor(modelView).dispatch(diagnostic.quantity, modelView,
-                                                                  action);
-}
-
-template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::dispatch_(DiagnosticProperties const& diagnostic,
-                                                auto&& action)
-    requires(solver::is_mhd_model_v<Model_t>)
-{
-    auto& modelView = this->h5Writer_.modelView();
-    ModelView::MHDAccessors::getOrCreateFor(modelView).dispatch(diagnostic.quantity, modelView,
-                                                                action);
+    modelView.accessors().dispatch(diagnostic.quantity, modelView, action);
 }
 
 
@@ -170,32 +150,11 @@ void FluidDiagnosticWriter<H5Writer>::dispatch_(DiagnosticProperties const& diag
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& diagnostic)
 {
-    compute_as_needed_(diagnostic);
-}
-
-template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::compute_as_needed_(DiagnosticProperties& diagnostic)
-    requires(solver::is_hybrid_model_v<Model_t>)
-{
     auto& h5Writer  = this->h5Writer_;
     auto& modelView = h5Writer.modelView();
 
-    ModelView::FluidComputers::getOrCreateFor(modelView).compute(
-        diagnostic.quantity, modelView, h5Writer.minLevel, h5Writer.maxLevel, h5Writer.timestamp());
-}
-
-template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::compute_as_needed_(DiagnosticProperties& diagnostic)
-    requires(solver::is_mhd_model_v<Model_t>)
-{
-    auto& h5Writer  = this->h5Writer_;
-    auto& modelView = h5Writer.modelView();
-    // or FloatType if we want to expose that to DiagnosticProperties
-    double const gamma = diagnostic.fileAttributes["heat_capacity_ratio"].template to<double>();
-
-    ModelView::MHDComputers::getOrCreateFor(modelView).compute(
-        diagnostic.quantity, modelView, gamma, h5Writer.minLevel, h5Writer.maxLevel,
-        h5Writer.timestamp());
+    modelView.computers().compute(diagnostic.quantity, modelView, h5Writer.minLevel,
+                                  h5Writer.maxLevel, h5Writer.timestamp());
 }
 
 } // namespace PHARE::diagnostic::vtkh5
