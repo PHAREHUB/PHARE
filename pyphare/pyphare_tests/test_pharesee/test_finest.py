@@ -43,6 +43,16 @@ def distance_to(coords, grid_coords, cell_width):
     return dist
 
 
+def nearest_indices(coords, grid_coords):
+    """per dimension, the index of the grid point nearest to each coordinate"""
+    return np.ix_(
+        *[
+            np.abs(g[None, :] - c[:, None]).argmin(axis=1)
+            for c, g in zip(coords, grid_coords)
+        ]
+    )
+
+
 def indices_of(coords, grid_coords):
     """indices of coords in grid_coords, which must contain them all"""
     idx = [np.searchsorted(g, c - 1e-9) for c, g in zip(coords, grid_coords)]
@@ -82,6 +92,34 @@ class FinestTest(unittest.TestCase):
 
             # further out, values come from the coarse level
             self.assertTrue((np.abs(values[~near_fine]) <= 1).all(), qty)
+
+            # exactly: the grid point nearest a coarse point has it as its unique nearest
+            # source, on it for primal, a quarter coarse cell away for dual
+            for patch in hier.level(0).patches:
+                pd = patch[qty]
+                select = nearest_indices(local_domain_coords(pd), grid_coords)
+                coarse = ~near_fine[select]
+                self.assertTrue(coarse.any(), qty)
+                np.testing.assert_array_equal(
+                    values[select][coarse], np.asarray(pd[pd.box])[coarse], err_msg=qty
+                )
+
+    def test_finest_of_computed_hierarchy(self):
+        """a hierarchy computed from another does not reuse its finest grids"""
+        hier = hierarchy(*cases[1])
+        grid = hier.finest(0.0, "Ez")
+        squared = np.square(hier).finest(0.0, "Ez")
+        np.testing.assert_array_equal(squared[:], np.square(grid[:]))
+
+    def test_uniform_grid_kept_when_ghosts_differ(self):
+        from pyphare.pharesee.hierarchy.uniformgrid import UniformGrid
+
+        grid = hierarchy(*cases[1]).finest(0.0, "Ez")
+        self.assertTrue(any(grid.ghosts_nbr))
+        no_ghosts = grid.copy_as(np.asarray(grid[grid.box]), ghosts_nbr=[0, 0])
+        result = np.add(grid, no_ghosts)  # both copied without ghosts first
+        self.assertIs(type(result), UniformGrid)
+        np.testing.assert_array_equal(result[:], 2 * np.asarray(grid[grid.box]))
 
     def test_finest_time(self):
         """finest(t) is the grid at t, a time the hierarchy does not have raises"""
