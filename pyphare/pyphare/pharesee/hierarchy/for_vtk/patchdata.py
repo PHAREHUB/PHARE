@@ -88,5 +88,8 @@ class VtkFieldData(patchdata.FieldData):
             return type(self)(
                 self.layout, name, data, data.cmp_idx, data.offset, **kwargs
             )
-        # make a normal FieldData
-        return super().copy_as(data, **kwargs)
+        # computed values are not in the file: a plain FieldData
+        kwargs.setdefault("centering", self.centerings)
+        kwargs.setdefault("ghosts_nbr", self.ghosts_nbr)
+        name = kwargs.pop("name", self.name)
+        return patchdata.FieldData(self.layout, name, data, **kwargs)

@@ -166,6 +166,23 @@ class VtkhdfReaderTest(unittest.TestCase):
         accessor[:][0] = -1  # callers get copies
         self.assertEqual(accessor[0], 2)
 
+    def test_computed_data_is_field_data(self):
+        """values computed from file data are not in the file, they are plain FieldData"""
+        from pyphare.pharesee.hierarchy.for_vtk.patchdata import VtkFieldData
+        from pyphare.pharesee.hierarchy.patchdata import FieldData
+
+        write_file(self.path, [0.0, 0.1])
+        pd = hierarchy_fromvtkhdf(self.path, 0.1).level(0, time=0.1).patches[0]["rho"]
+        self.assertIs(type(pd), VtkFieldData)
+        self.assertIs(type(pd.copy_as()), VtkFieldData)  # still the file data
+        for computed in (
+            pd.copy_as(np.asarray(pd[:]) * 2),
+            np.sqrt(pd),
+            np.add(pd, pd),
+        ):
+            self.assertIs(type(computed), FieldData)
+        np.testing.assert_array_equal(np.sqrt(pd)[:], np.sqrt(pd[:]))
+
     def test_unknown_time(self):
         write_file(self.path, [0.0])
         with self.assertRaises(IndexError):

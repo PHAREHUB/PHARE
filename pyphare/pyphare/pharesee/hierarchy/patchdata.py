@@ -248,13 +248,7 @@ def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
     out_ = getattr(ufunc, method)(*in_, **kwargs)
 
     if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
-        return type(patch_data)(
-            layout=patch_data.layout,
-            name=patch_data.name,
-            data=out_,
-            centering=patch_data.centerings,
-            ghosts_nbr=patch_data.ghosts_nbr,
-        )
+        return patch_data.copy_as(out_)  # same layout, name, centering and ghosts
 
     return out_
 
@@ -268,13 +262,7 @@ def field_data_array_function(patch_data, func, types, args, kwargs):
     out_ = func(*in_, **kwargs)
 
     if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
-        return type(patch_data)(
-            layout=patch_data.layout,
-            name=patch_data.name,
-            data=out_,
-            centering=patch_data.centerings,
-            ghosts_nbr=patch_data.ghosts_nbr,
-        )
+        return patch_data.copy_as(out_)  # same layout, name, centering and ghosts
 
     return out_
 
