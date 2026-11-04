@@ -16,7 +16,10 @@
 
 
 #include <memory>
+#include <span>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 
 namespace PHARE::core
@@ -65,6 +68,7 @@ private:
 public:
     IonUpdater(PHARE::initializer::PHAREDict const& dict)
         : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
+        , sortParticles_{cppdict::get_value(dict, "particle_sort", sortByDefault)}
     {
     }
 
@@ -92,19 +96,53 @@ private:
 
 
     // corrector deposit of the domain particles: by blocks or per particle
-    // (hyb::blockedDeposit)
+    // (hyb::blockedDeposit). A bag layout has holes: it is deposited by its dense runs, which
+    // keeps the bags for the next sort (no compaction)
     template<typename Field>
     void depositDomain_(ParticleArray const& particles, Field& density, VecField& flux,
                         GridLayout const& layout)
     {
-        if constexpr (hyb::blockedDeposit<interp_order>)
-        {
-            hyb::AoSLanes<dimension, ParticleArray> lanes{particles, particles.size()};
-            Interpolator::template depositRangeBlocked<hyb::Backend>(
-                lanes, interpolator_.depositTargets(density, flux), layout);
-        }
-        else
-            interpolator_(particles, density, flux, layout);
+        auto deposit = [&](auto const& range) {
+            if constexpr (hyb::blockedDeposit<interp_order>)
+            {
+                hyb::AoSLanes<dimension, std::decay_t<decltype(range)>> lanes{range, range.size()};
+                Interpolator::template depositRangeBlocked<hyb::Backend>(
+                    lanes, interpolator_.depositTargets(density, flux), layout);
+            }
+            else
+                interpolator_(range, density, flux, layout);
+        };
+        if (!particles.bagged())
+            return deposit(particles);
+        particles.forEachLiveRun([&](std::size_t const first, std::size_t const last) {
+            deposit(std::span<Particle_t const>{&particles[first], last - first});
+        });
+    }
+
+    // domain arrays kept sorted by cell (ParticleArray bag layout) by the corrector (dict
+    // "particle_sort"). Sorted arrays have a fixed, cache-friendly particle order whatever their
+    // age, and their rows are what per-cell kernels need; the sort replaces the cell map
+    // bookkeeping of the push.
+    static constexpr bool sortByDefault = false;
+    bool sortParticles_                 = sortByDefault;
+
+    // sort scratch, reused across populations and patches
+    typename ParticleArray::SortScratch sortScratch_;
+    std::vector<std::pair<std::size_t, int>> crossers_;
+
+    template<typename Boxing_t>
+    void correctorSorted_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
+
+    template<typename Boxing_t>
+    void sortDomain_(ParticleArray& domain, Boxing_t const& boxing, std::size_t oldPrefix);
+
+    // sort key of a domain particle: its owned cell, nbrCells() if not owned (leaver)
+    template<typename Boxing_t>
+    static auto domainKey_(ParticleArray const& domain, Boxing_t const& boxing)
+    {
+        return [&domain, &boxing, K = domain.nbrCells()](Particle_t const& p) {
+            return boxing.isOwned(p.iCell) ? domain.key(p.iCell) : K;
+        };
     }
 
     // dealloced on regridding/load balancing coarsest
@@ -227,6 +265,12 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto const targets    = interpolator_.depositTargets(pop.particleDensity(), pop.flux());
         auto const& keepBoxes = boxing.nonLevelGhostBox;
         double const coef1    = boris_->accelerationCoef(pop.charge(), pop.mass());
+        // sorted mode: an array not laid out by a corrector (initial, restarted, regridded,
+        // load balanced) gets its rows here, so that the predictor does not depend on where the
+        // array comes from (a restarted run is bitwise with the uninterrupted one)
+        if (sortParticles_ and !pop.domainParticles().csrValid())
+            pop.domainParticles().layoutRows(domainKey_(pop.domainParticles(), boxing),
+                                             sortScratch_);
         if constexpr (hyb::blockedDeposit<interp_order>)
             boris_->pushEachDeposit(pop.domainParticles(), em, interpolator_, layout, coef1,
                                     targets,
@@ -280,6 +324,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                                                                     Boxing_t const& boxing)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositAll_");
+
+    if (sortParticles_)
+        return correctorSorted_(ions, em, boxing);
 
     auto const& layout = boxing.layout;
 
@@ -337,6 +384,96 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         }
 
         depositDomain_(domainParticles, pop.particleDensity(), pop.flux(), layout);
+        interpolator_( //
+            patchGhost, pop.particleDensity(), pop.flux(), layout);
+    }
+}
+
+
+/** bag sort of the domain array by owned cell (key), the leavers to sortScratch_.leavers.
+ * Starts from the bag layout valid for [0, oldPrefix) before the push and the crossings the
+ * push recorded (no key scan of the sorted part); a full layout without one.
+ */
+template<typename Ions, typename Electromag, typename GridLayout>
+template<typename Boxing_t>
+void IonUpdater<Ions, Electromag, GridLayout>::sortDomain_(ParticleArray& domain,
+                                                           Boxing_t const& boxing,
+                                                           std::size_t const oldPrefix)
+{
+    auto const keyOf = domainKey_(domain, boxing);
+    crossers_.clear();
+    if (oldPrefix > 0 and domain.bagged())
+        boris_->forEachCellChange([&](std::size_t idx, auto const& oldCell, auto const&) {
+            if (idx < oldPrefix)
+                crossers_.emplace_back(idx, domain.key(oldCell));
+        });
+    domain.sortBags(keyOf, oldPrefix, crossers_, sortScratch_);
+    PHARE_DEBUG_DO({
+        if (!domain.checkBags(keyOf))
+            throw std::runtime_error("IonUpdater: domain particles not sorted after sortBags");
+    })
+}
+
+
+/** corrector with the domain arrays kept sorted:
+ * 1. push the domain particles in place (no partition, no cell map: the sort makes the rows)
+ * 2. push the level ghosts, append those entering the domain (unsorted appends)
+ * 3. bag sort the domain: rows of owned cells, leavers taken out of the array
+ * 4. copy the leavers in the non level ghost box to the patch ghosts
+ * 5. deposit domain and patch ghosts
+ */
+template<typename Ions, typename Electromag, typename GridLayout>
+template<typename Boxing_t>
+void IonUpdater<Ions, Electromag, GridLayout>::correctorSorted_(Ions& ions, Electromag const& em,
+                                                                Boxing_t const& boxing)
+{
+    PHARE_LOG_SCOPE(3, "IonUpdater::correctorSorted_");
+
+    auto const& layout = boxing.layout;
+
+    for (auto& pop : ions)
+    {
+        auto& domain                = pop.domainParticles();
+        std::size_t const oldPrefix = domain.csrPrefix();
+        domain.dropMap();
+
+        // the push walks the rows of the layout (Boris pushBlocks_), so the CSR is dropped only
+        // after it: the in-place push changes iCell
+        auto range = makeIndexRange(domain);
+        boris_->moveInPlace(range, em, pop.charge(), pop.mass(), interpolator_, layout,
+                            boxing.noop);
+        domain.invalidateCSR();
+
+        if (pop.levelGhostParticles().size())
+        {
+            auto particleRange = makeIndexRange(pop.levelGhostParticles());
+            auto inGhostLayerRange
+                = pusher_->move(particleRange, particleRange, em, pop.charge(), pop.mass(),
+                                interpolator_, layout, boxing.inGhostBox, boxing.inGhostLayer);
+
+            auto& particleArray = particleRange.array();
+            particleArray.export_particles(domain,
+                                           [&](auto const& cell) { return boxing.isOwned(cell); });
+
+            particleArray.erase(
+                makeRange(particleArray, inGhostLayerRange.iend(), particleArray.size()));
+        }
+
+        sortDomain_(domain, boxing, oldPrefix);
+
+        // the sort took the leavers out of the array
+        auto& patchGhost = pop.patchGhostParticles();
+        for (auto const& p : sortScratch_.leavers)
+            if (isIn(Point{p.iCell}, boxing.nonLevelGhostBox))
+                patchGhost.push_back(p);
+
+        PHARE_DEBUG_DO({
+            for (auto const& p : sortScratch_.leavers)
+                if (!isIn(p.iCell, boxing.ghostBox))
+                    throw core::DictionaryException{}("ID", "Updater::outsideGhostBox");
+        })
+
+        depositDomain_(domain, pop.particleDensity(), pop.flux(), layout);
         interpolator_( //
             patchGhost, pop.particleDensity(), pop.flux(), layout);
     }

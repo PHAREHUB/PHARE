@@ -13,6 +13,7 @@
 
 
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <sstream>
@@ -232,12 +233,51 @@ public:
                 }
             });
 
-        for (auto const& [idx, oldCell, newCell] : preCrossings_)
-            particles.map_icell_change(oldCell, newCell, idx);
-        for (auto const& [idx, oldCell, newCell] : postCrossings_)
-            particles.map_icell_change(oldCell, newCell, idx);
+        if (particles.mapValid()) // a sorted array does not keep its cell map
+        {
+            for (auto const& [idx, oldCell, newCell] : preCrossings_)
+                particles.map_icell_change(oldCell, newCell, idx);
+            for (auto const& [idx, oldCell, newCell] : postCrossings_)
+                particles.map_icell_change(oldCell, newCell, idx);
+        }
 
         return selector(range);
+    }
+
+
+    /** fn(idx, cellBefore, cellAfter) for every particle of the last moveInPlace whose iCell
+     * differs between before and after the push, in ascending idx (the input of the bag sort,
+     * ParticleArray::sortBags)
+     */
+    template<typename Fn>
+    void forEachCellChange(Fn&& fn) const
+    {
+        std::size_t ipre = 0, ipost = 0;
+        while (ipre < preCrossings_.size() or ipost < postCrossings_.size())
+        {
+            bool const havePre  = ipre < preCrossings_.size();
+            bool const havePost = ipost < postCrossings_.size();
+            if (havePre and havePost and preCrossings_[ipre].idx == postCrossings_[ipost].idx)
+            {
+                if (preCrossings_[ipre].oldCell != postCrossings_[ipost].newCell)
+                    fn(preCrossings_[ipre].idx, preCrossings_[ipre].oldCell,
+                       postCrossings_[ipost].newCell);
+                ++ipre, ++ipost;
+            }
+            else if (havePre
+                     and (!havePost or preCrossings_[ipre].idx < postCrossings_[ipost].idx))
+            {
+                fn(preCrossings_[ipre].idx, preCrossings_[ipre].oldCell,
+                   preCrossings_[ipre].newCell);
+                ++ipre;
+            }
+            else
+            {
+                fn(postCrossings_[ipost].idx, postCrossings_[ipost].oldCell,
+                   postCrossings_[ipost].newCell);
+                ++ipost;
+            }
+        }
     }
 
 
@@ -1229,14 +1269,39 @@ private:
 #endif // PHARE_HYB_XSIMD
 
     /** the particles [begin, end) pushed by blocks of blockSize into block, after(idx, n, ok)
-     * called for each block in ascending idx (ok: pushBlock_'s return)
+     * called for each block in ascending idx (ok: pushBlock_'s return).
+     * A bag layout (sorted ParticleArray, whole array) has holes between its rows: blocks per
+     * row, the last block of a row partial, then blocks over the unsorted appends.
      */
     template<typename Interpolator_t, typename Backend, typename Particles, typename After>
     [[gnu::always_inline]] void pushBlocks_(Particles const& particles, std::size_t const begin,
                                             std::size_t const end, BlockFields const& f,
                                             double const coef1, PushBlock& block, After&& after)
     {
-        for (auto idx = begin; idx < end; idx += blockSize)
+        std::size_t idx = begin;
+        if constexpr (requires { particles.bagged(); })
+        {
+            if (particles.bagged())
+            {
+                assert(begin == 0 and end == particles.size() and particles.csrValid());
+                auto const& csr       = particles.csr();
+                int const* const ends = particles.rowEnds();
+                int const K           = particles.nbrCells();
+                for (int k = 0; k < K; ++k)
+                {
+                    auto const e = static_cast<std::size_t>(ends[k]);
+                    for (auto i = static_cast<std::size_t>(csr[k]); i < e; i += blockSize)
+                    {
+                        auto const n = std::min(blockSize, e - i);
+                        after(i, n,
+                              pushBlock_<Interpolator_t, Backend>(particles, i, n, f, coef1,
+                                                                  block));
+                    }
+                }
+                idx = static_cast<std::size_t>(csr[K]);
+            }
+        }
+        for (; idx < end; idx += blockSize)
         {
             auto const n = std::min(blockSize, end - idx);
             after(idx, n, pushBlock_<Interpolator_t, Backend>(particles, idx, n, f, coef1, block));
