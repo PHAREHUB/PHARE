@@ -50,10 +50,12 @@ class VtkFile:
         self._level_spacing = {}
 
     def level_spacing(self, ilvl=0):
-        if ilvl in self._level_spacing:
-            return self._level_spacing[ilvl]
-        level_group = self._get_path_from(level_base_path + str(ilvl))
-        self._level_spacing[ilvl] = level_group.attrs["Spacing"][:]
+        """the cell width of a level: written as float32, level 0 rounded back to the value
+        the run was given, then halved per level as the writer does before its cast"""
+        if ilvl not in self._level_spacing:
+            level0 = self._get_path_from(level_base_path + "0")
+            dl = _as_written(level0.attrs["Spacing"][:])
+            self._level_spacing[ilvl] = dl / 2**ilvl
         return self._level_spacing[ilvl]
 
     def max_num_levels(self):
@@ -109,7 +111,7 @@ class VtkFile:
         if reset:
             self._times = None
         if self._times is None:
-            values = self._get_path_from(h5_time_ds_path)[:]
+            values = _as_written(self._get_path_from(h5_time_ds_path)[:])
             steps = self._get_path_from(base_path + "/Steps")
             if "NSteps" in steps.attrs:
                 values = values[: int(steps.attrs["NSteps"])]
@@ -194,11 +196,7 @@ def make_layout(box, origin, cell_width, interp_order):
 
 
 def is_pop_fluid_file(basename):
-    return (is_particle_file(basename) is False) and "pop" in basename
-
-
-def is_particle_file(filename):
-    return False
+    return "pop" in basename  # the writer has no particle files
 
 
 def pop_name(basename):
@@ -214,13 +212,7 @@ def qty_from_basename(basename):
 
 
 def add_to_patchdata(vtk_file, ilvl, data_offset, patch_datas, basename, layout):
-    """
-    adds data in the h5_patch_grp in the given PatchData dict
-    returns True if valid h5 patch found
-    """
-
-    if is_particle_file(basename):
-        raise RuntimeError("Particle diagnostics are not supported under vtkhdf")
+    """adds the FieldDatas of the patch starting at data_offset in the level dataset"""
 
     dataset = vtk_file._data_set(ilvl)
     ncols = dataset.shape[1]  # decides if scalar/tensor
@@ -249,17 +241,6 @@ def add_to_patchdata(vtk_file, ilvl, data_offset, patch_datas, basename, layout)
         if pdata_name in patch_datas:
             raise ValueError("error - {} already in patchdata".format(ds_name))
         patch_datas[pdata_name] = pdata
-
-    return True  # valid patch assumed
-
-
-def patch_has_datasets(h5_patch_grp):
-    return len(h5_patch_grp.keys()) > 0
-
-
-def h5_filename_from(diagInfo):
-    # diagInfo.quantity starts with a / , hence   [1:]
-    return (diagInfo.quantity + ".vtkhdf").replace("/", "_")[1:]
 
 
 def get_times_from_h5(filepath, as_float=True):
@@ -293,7 +274,6 @@ def patch_levels_from_h5(vtk_file, time, selection_box=None):
     basename = Path(vtk_file.file.filename).stem
 
     patch_levels = {}
-    h5_patch = ""  # todo
     time_idx = vtk_file.time_idx(time)
     for ilvl in range(vtk_file.max_num_levels()):
         lvl_cell_width = vtk_file.level_spacing(ilvl)
@@ -321,7 +301,7 @@ def patch_levels_from_h5(vtk_file, time, selection_box=None):
                 add_to_patchdata(
                     vtk_file, ilvl, data_offset, patch_datas, basename, layout
                 )
-                patches.append(Patch(patch_datas, h5_patch, box=patch_box))
+                patches.append(Patch(patch_datas, box=patch_box))
 
         if len(patches):
             patch_levels[ilvl] = PatchLevel(ilvl, patches)
@@ -423,3 +403,16 @@ def hierarchy_fromvtkhdf(h5_filename, time=None, hier=None, silent=True, **kwarg
         return hier
 
     raise ValueError("unreachable: all (time, hier) combinations handled above")
+
+
+def _as_written(values):
+    """float32 values as doubles, rounded to the shortest decimal that gives the same float32:
+    0.2 written as float32 reads back as 0.2, not 0.20000000298, so times and cell widths
+    match the run's input and phareh5 files. Values that have no short decimal stay ~1e-8 off
+    """
+    values = np.asarray(values)
+    if values.dtype != np.float32:
+        return values.astype(np.float64)
+    return np.asarray(
+        [float(np.format_float_positional(v, unique=True)) for v in values.ravel()]
+    ).reshape(values.shape)

@@ -36,7 +36,8 @@ def write_file(path, times, nsteps=None, interp_order=1, data_offsets=None):
         root = f.create_group("VTKHDF")
         steps = root.create_group("Steps")
         steps.attrs["NSteps"] = nsteps
-        steps.create_dataset("Values", data=np.asarray(times, dtype=np.float64))
+        # float32 as written unless PHARE_DIAG_DOUBLES
+        steps.create_dataset("Values", data=np.asarray(times, dtype=np.float32))
         level = root.create_group("Level0")
         level.attrs["Spacing"] = np.asarray(
             [0.1], dtype=np.float32
@@ -117,6 +118,21 @@ class VtkhdfReaderTest(unittest.TestCase):
         self.assertEqual(len(hier.times()), 4)
         patch = hier.level(0, time=0.2).patches[0]
         np.testing.assert_array_equal(np.unique(patch["rho"][:]), [3])
+
+    def test_float32_times_and_spacing(self):
+        """read back as the run's values, as phareh5 files have them"""
+        write_file(self.path, [0.0, 0.3, 1.7, 10.3])
+        vtk_file = VtkFile(self.path)
+        self.assertEqual(vtk_file.times().tolist(), [0.0, 0.3, 1.7, 10.3])
+        self.assertEqual(vtk_file.level_spacing(0).tolist(), [0.1])
+        self.assertEqual(vtk_file.level_spacing(1).tolist(), [0.05])
+
+        hier = hierarchy_fromvtkhdf(self.path)  # all times, keyed by text
+        self.assertIn("0.3000000000", hier.time_hier)
+        patch = hier.level(0, time=0.3).patches[0]
+        self.assertEqual(patch.layout.dl.tolist(), [0.1])
+        np.testing.assert_array_equal(np.unique(patch["rho"][:]), [1])
+        self.assertEqual(get_times_from_h5(self.path).tolist(), [0.0, 0.3, 1.7, 10.3])
 
     def test_no_interp_order(self):
         write_file(self.path, [0.0], interp_order=None)  # MHD files

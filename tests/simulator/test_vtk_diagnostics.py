@@ -9,6 +9,7 @@ from ddt import data, ddt, unpack
 import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.core import phare_utilities as phut
+from pyphare.core.box import Box
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 from pyphare.pharesee.run import Run
@@ -45,7 +46,9 @@ def config(sim):
 
     def T(*xyz):
         K = 1
-        return 1 / density(xyz[0]) * (K - b2(xyz[0]) * 0.5)
+        temp = 1 / density(xyz[0]) * (K - b2(xyz[0]) * 0.5)
+        assert np.all(temp > 0)
+        return temp
 
     def vx(*xyz):
         return 2.0
@@ -60,7 +63,7 @@ def config(sim):
         return 3.0
 
     def vthxyz(*xyz):
-        return T(xyz[0])
+        return np.sqrt(T(xyz[0]))
 
     vvv = {
         "vbulkx": vx,
@@ -260,6 +263,7 @@ class VTKDiagnosticsTest(SimulatorTest):
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+        simInput["largest_patch_size"] = 10  # 40 cells: 4 patches per direction
         vtk_diags = self._run(ndim, interp, simInput, "test_vtk")
 
         simInput["diag_options"]["format"] = "phareh5"
@@ -269,17 +273,33 @@ class VTKDiagnosticsTest(SimulatorTest):
         # not binary == with more than 2 cores
         atol = 0 if cpp.mpi_size() <= 2 else [1e-15, 1e-14, 1e-14][ndim - 1]
         time = 0
-        # choose all primal value generally
-        phareh5_hier = Run(phareh5_diags).GetVi(time)
-        vtk_hier = Run(vtk_diags).GetVi(time)
 
-        self.assertTrue(phareh5_hier.data_files)
-        self.assertTrue(vtk_hier.data_files)
-        self.assertTrue(vtk_hier.data_files != phareh5_hier.data_files)
-        eqr = hootils.hierarchy_compare(vtk_hier, phareh5_hier, atol)
-        if not eqr:
-            print(eqr)
-        self.assertTrue(eqr)
+        def compare(getter, **kwargs):
+            # the vtk writer interpolates B and E to nodes, pharesee does for phareh5
+            phareh5_hier = getattr(Run(phareh5_diags), getter)(time, **kwargs)
+            vtk_hier = getattr(Run(vtk_diags), getter)(time, **kwargs)
+            self.assertTrue(vtk_hier.data_files != phareh5_hier.data_files)
+            eqr = hootils.hierarchy_compare(vtk_hier, phareh5_hier, atol)
+            if not eqr:
+                print(getter, eqr)
+            self.assertTrue(eqr)
+            return vtk_hier
+
+        for getter in ["GetVi", "GetB", "GetE"]:
+            compare(getter)
+
+        # skips the first patch of each level, the reader must step over its data
+        # L0 patches: x in [0, 3], [3, 6], [6, 9], [9, 12]; L1 patches: x in [3, 4.5], [4.5, 6]
+        all_patches = compare("GetVi").levels(time)
+        selection_box = Box([5] * ndim, [11] * ndim)
+        for getter in ["GetVi", "GetB"]:
+            levels = compare(getter, selection_box=selection_box).levels(time)
+            self.assertEqual(levels.keys(), all_patches.keys())
+            for ilvl, level in levels.items():
+                self.assertLess(len(level.patches), len(all_patches[ilvl].patches))
+                self.assertGreater(len(level.patches), 0)
+            first_l0 = Box([0] * ndim, [9] * ndim)
+            self.assertNotIn(first_l0, [p.box for p in levels[0].patches])
 
     @data(*permute({}))
     @unpack
