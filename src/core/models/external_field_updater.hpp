@@ -57,10 +57,6 @@ public:
             computePotentialTimeDerivative(scratch, time, layout);
             curlOnGhostBox_(state.dB0dt(), scratch, layout);
         }
-        else
-        {
-            state.dB0dt().zero();
-        }
     }
 
     virtual void computePotential(vecfield_type& a0, double time, GridLayoutT const& layout) = 0;

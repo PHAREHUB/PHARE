@@ -119,7 +119,7 @@ struct UserDefinedSetup
 
     TestGridLayout<GridLayout_t> layout{cells};
 
-    UsableExternalFieldState<dim> externalField{"external", layout};
+    UsableExternalFieldState<dim> externalField{"external", layout, time_dependent};
 
     Updater_t updater{makeUpdater()};
 
@@ -159,18 +159,6 @@ struct UserDefinedSetup
     double toleranceOnTimeDerivative(double time = evalTime)
     {
         return baseTolerance * timeProfileDerivative(time);
-    }
-
-    //! largest |dB0/dt| over the whole ghost box, all components
-    double maxAbsTimeDerivative()
-    {
-        double maxAbs = 0.;
-        for_N<3>([&](auto i) {
-            auto& field = externalField.dB0dt()(static_cast<Component>(decltype(i)::value));
-            for (auto const& v : field)
-                maxAbs = std::max(maxAbs, std::abs(v));
-        });
-        return maxAbs;
     }
 };
 
@@ -264,10 +252,10 @@ TYPED_TEST(StaticUserDefinedTest, retrievesTheCurlOfTheUserPotential)
     EXPECT_LT(this->setup.maxErrorOnB0(), this->setup.toleranceOnB0());
 }
 
-//! no derivative was given, so dB0/dt is zeroed rather than computed
-TYPED_TEST(StaticUserDefinedTest, retrievesAZeroTimeDerivative)
+TYPED_TEST(StaticUserDefinedTest, hasNoTimeDerivative)
 {
-    EXPECT_DOUBLE_EQ(this->setup.maxAbsTimeDerivative(), 0.);
+    EXPECT_FALSE(this->setup.externalField.isTimeDependent());
+    EXPECT_THROW(static_cast<void>(this->setup.externalField.dB0dt()), std::runtime_error);
 }
 
 
@@ -286,7 +274,7 @@ TEST(UserDefinedExternalField, rejectsAUserFunctionReturningTheWrongNumberOfValu
           };
 
     TestGridLayout<Setup_t::GridLayout_t> layout{Setup_t::cells};
-    UsableExternalFieldState<2> externalField{"external", layout};
+    UsableExternalFieldState<2> externalField{"external", layout, /*timeDependent=*/false};
 
     for (auto const& f : {tooShort, noValues})
     {
