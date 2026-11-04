@@ -83,6 +83,26 @@ class FinestTest(unittest.TestCase):
             # further out, values come from the coarse level
             self.assertTrue((np.abs(values[~near_fine]) <= 1).all(), qty)
 
+    def test_finest_time(self):
+        """finest(t) is the grid at t, a time the hierarchy does not have raises"""
+        from pyphare.pharesee.hierarchy import PatchHierarchy
+
+        ndim, nbr_cells, refinement_boxes = cases[1]
+        hier = hierarchy(ndim, nbr_cells, refinement_boxes)
+        with self.assertRaises(ValueError):
+            hier.finest(99.0, "Ez")
+        self.assertNotIn("99.0000000000", hier.ephemerals or {})
+
+        later = hierarchy(ndim, nbr_cells, refinement_boxes)
+        for level in later.levels(0.0).values():
+            for patch in level.patches:
+                patch["Ez"].dataset[:] += 50
+        both = PatchHierarchy(
+            {0.0: hier.levels(0.0), 1.0: later.levels(0.0)}, hier.domain_box
+        )
+        at0, at1 = both.finest(0.0, "Ez"), both.finest(1.0, "Ez")
+        np.testing.assert_allclose(at1[at1.box], at0[at0.box] + 50)
+
 
 if __name__ == "__main__":
     unittest.main()

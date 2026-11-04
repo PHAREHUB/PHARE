@@ -15,6 +15,8 @@ def GetFinest(hier, time=None, qty=None, interp="nearest"):
     from pyphare.pharesee.run import utils as rutils
 
     time = format_timestamp(GetTime(hier) if time is None else time)
+    if not hier.has_time(time):  # not cached: a grid under a time it is not from
+        raise ValueError(f"finest: no time {time} in {list(hier.times())}")
     if hier.ephemerals is None:
         hier.ephemerals = {}
     cache = hier.ephemerals.setdefault(time, {})
@@ -23,7 +25,7 @@ def GetFinest(hier, time=None, qty=None, interp="nearest"):
     qties = [qty] if qty else hier.quantities()
     for q in [q for q in qties if q not in cache]:
         for k, v in rutils.interpolate_hierarchy(
-            hier, quantity=q, interp=interp
+            hier, quantity=q, interp=interp, time=time
         ).items():
             cache[k] = v
     return uniform.UniformGrids({q: cache[q] for q in qties})
