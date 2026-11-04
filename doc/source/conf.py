@@ -52,6 +52,7 @@ extensions = [
     "nbsphinx",
     "sphinx_rtd_theme",
     "myst_parser",
+    "matplotlib.sphinxext.plot_directive",
 ]
 
 autodoc_default_options = {
@@ -84,6 +85,11 @@ mathjax3_config = {
         "packages": {"[+]": tex_extensions}
     },
 }
+
+# figures drawn from data at build time (no images in the repository)
+plot_formats = [("png", 130)]
+plot_html_show_formats = False
+plot_html_show_source_link = False
 
 # 3. Ensure these extensions are enabled
 myst_enable_extensions = [

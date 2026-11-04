@@ -347,12 +347,12 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
 
   # adds ctest labels to a test registered by phare_mpi_python3_exec/phare_python3_exec,
-  #  whichever variant exists, nothing if its level filtered it out
+  #  whichever variant exists (serial or any MPI rank count), nothing if its level filtered it out
+  #  must be called from the directory that registered the test
   function(phare_test_labels target)
-    set(names py3_${target} py3_${target}_mpi_n_${PHARE_MPI_PROCS} py3_${target}_mpi_n_2)
-    list(REMOVE_DUPLICATES names)
+    get_directory_property(names TESTS)
     foreach(name ${names})
-      if(TEST ${name})
+      if(name MATCHES "^py3_${target}(_mpi_n_[0-9]+)?$")
         set_property(TEST ${name} APPEND PROPERTY LABELS ${ARGN})
       endif()
     endforeach()
