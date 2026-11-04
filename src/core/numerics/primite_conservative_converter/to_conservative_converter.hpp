@@ -5,7 +5,6 @@
 #include <array>
 
 #include "core/utilities/index/index.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -38,6 +37,7 @@ template<typename GridLayout>
 class ToConservativeConverter
 {
     constexpr static auto dimension = GridLayout::dimension;
+    using Scalar                    = GridLayout::Scalar;
 
 public:
     ToConservativeConverter(GridLayout const& layout, double const gamma)
@@ -92,15 +92,9 @@ private:
 
 
 
-        auto const bx
-            = GridLayout::template project<MHDQuantity::Scalar::Bx, MHDQuantity::Scalar::rho>(
-                Bx, index);
-        auto const by
-            = GridLayout::template project<MHDQuantity::Scalar::By, MHDQuantity::Scalar::rho>(
-                By, index);
-        auto const bz
-            = GridLayout::template project<MHDQuantity::Scalar::Bz, MHDQuantity::Scalar::rho>(
-                Bz, index);
+        auto const bx = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
+        auto const by = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
+        auto const bz = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
 
         Etot(index)
             = eosPToEtot(gamma, rho(index), Vx(index), Vy(index), Vz(index), bx, by, bz, P(index));

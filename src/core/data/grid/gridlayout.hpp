@@ -100,7 +100,6 @@ namespace core
     {
         using Options      = decltype(options_);
         using FieldOptions = Options::FieldOptions;
-        using Scalar       = FieldOptions::Scalar;
         using Vector       = FieldOptions::Vector;
         using Tensor       = FieldOptions::Tensor;
         using GridData     = Options::GridLayoutImpl::GridData;
@@ -115,6 +114,7 @@ namespace core
         using This     = GridLayout<options>;
         using implT    = Options::GridLayoutImpl;
         using AMRBox_t = Box<int, dimension>;
+        using Scalar   = FieldOptions::Scalar;
 
         /**
          * @brief Constructor of a GridLayout
