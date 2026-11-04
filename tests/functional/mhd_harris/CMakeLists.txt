@@ -14,5 +14,6 @@ if(HighFive AND testMPI)
 
   phare_mpi_python3_exec(11 10 mhd_harris_periodic harris_periodic.py ${CMAKE_CURRENT_BINARY_DIR})
   phare_mpi_python3_exec(11 10 mhd_harris_with_boundaries harris_with_boundaries.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(11 10 mhd_harris_adaptive_3levels harris_adaptive_3levels.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif(HighFive AND testMPI)
