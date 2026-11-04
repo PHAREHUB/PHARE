@@ -70,8 +70,10 @@ class PatchHierarchy:
         return next(iter(finest.values())) if len(finest) == 1 else finest
 
     def __deepcopy__(self, memo):
-        no_copy_keys = ["data_files"]  # do not copy these things
-        return deep_copy(self, memo, no_copy_keys)
+        no_copy_keys = ["data_files", "ephemerals"]  # do not copy these things
+        that = deep_copy(self, memo, no_copy_keys)
+        that.ephemerals = None  # cached from this data, copies are often modified
+        return that
 
     def __getitem__(self, qty):
         return self.__dict__[qty]
