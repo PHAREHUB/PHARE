@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <iterator>
+#include <utility>
 #include <algorithm>
 #include <exception>
 #include <functional>
@@ -32,10 +33,12 @@ struct MoveTwoCellException : std::exception
 };
 
 
+// the particle position after half a time step, as {delta, iCell}, the particle is unchanged
 template<typename Particle_t, typename Float, std::size_t dim>
-auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl)
+auto static next_position(Particle_t const& p, std::array<Float, dim> const& halfDtOverDl)
 {
-    std::array<int, dim> newCell;
+    std::pair<decltype(p.delta), std::array<int, dim>> next;
+    auto& [newDelta, newCell] = next;
     for (std::size_t iDim = 0; iDim < dim; ++iDim)
     {
         double const delta = p.delta[iDim] + static_cast<double>(halfDtOverDl[iDim] * p.v[iDim]);
@@ -45,10 +48,18 @@ auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl)
 
         auto const iCell = static_cast<int>(std::floor(delta));
 
-        p.delta[iDim] = delta - iCell;
-        newCell[iDim] = iCell + p.iCell[iDim];
+        newDelta[iDim] = delta - iCell;
+        newCell[iDim]  = iCell + p.iCell[iDim];
     }
-    return newCell;
+    return next;
+}
+
+template<typename Particle_t, typename Float, std::size_t dim>
+auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl)
+{
+    auto const [delta, cell] = next_position(p, halfDtOverDl);
+    p.delta                  = delta;
+    return cell;
 }
 
 

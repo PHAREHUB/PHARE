@@ -1062,6 +1062,37 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostsLeavingTheGhostBoxAreDropped)
 
 
 
+TYPED_TEST(IonUpdaterOwnershipTest, domainParticlesNeverLeaveTheGhostBox)
+{
+    if constexpr (TypeParam::impl == 0) // only checks each half push moves less than 2 cells
+        GTEST_SKIP() << "IonUpdater0 does not guard the ghost box";
+
+    typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+    auto const boxing         = this->makeBoxing({});
+    auto constexpr ghostWidth = TestFixture::Super::GridLayout::options.particle_ghost_width;
+
+    // each half push stays under 2 cells, the whole step goes past the ghost box
+    double const cellsPerStep = ghostWidth + 0.8;
+    for (auto& pop : this->ions)
+    {
+        this->setVelocityX(pop.domainParticles(), cellsPerStep / TestFixture::cellsPerStep);
+        this->setVelocityX(pop.levelGhostParticles(), 0);
+    }
+
+    for (auto const mode : {UpdaterMode::copy, UpdaterMode::ref})
+        EXPECT_THROW(ionUpdater.updatePopulations(mode, this->ions, this->EM, boxing, this->dt),
+                     DictionaryException);
+
+    // whatever the update had done when it threw, domain particles can still be deposited
+    for (auto& pop : this->ions)
+        EXPECT_EQ(TestFixture::count(pop.domainParticles(),
+                                     [&](auto const& p) { return !isIn(p, boxing.ghostBox); }),
+                  0u);
+}
+
+
+
 TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndIsDepositedOnce)
 {
     typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};

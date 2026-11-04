@@ -76,11 +76,19 @@ public:
         = for_N_make_array<dimension>([&](auto i) { return 0.5 * dt / layout.meshSize()[i]; });
 
 private:
+    // where a particle may move to: domain particles never leave the ghost box, so whatever
+    // throws, every domain particle can be deposited. Level ghosts can go anywhere
+    static constexpr auto anywhere = [](auto const& /*cell*/) { return true; };
+    static auto inGhostBox(auto const& boxing)
+    {
+        return [&](auto const& cell) { return isIn(Point{cell}, boxing.ghostBox); };
+    }
+
     // first half push of every particle of the array, in place, the cell map follows
-    void pre_push(auto& array) const;
+    void pre_push(auto& array, auto const& allowed) const;
 
     // fields to particles, acceleration and second half push, in place, the cell map follows
-    void accel_advance(auto& array, auto const& em, auto& interpolator) const;
+    void accel_advance(auto& array, auto const& em, auto& interpolator, auto const& allowed) const;
 
     template<bool copy_particle>
     void move_domain(auto& pop, auto const& em, auto const& boxing, auto& interpolator) const
@@ -121,8 +129,11 @@ private:
     void move_level_ghost_ref(auto& pop, auto const& em, auto const& boxing,
                               auto& interpolator) const;
 
-    void advance(auto& particle) const;
-    void accel_and_advance(auto& particle, auto const& local_em) const;
+    void advance(auto& particle, auto const& allowed) const;
+    void accel_and_advance(auto& particle, auto const& local_em, auto const& allowed) const;
+
+    // a particle is moved only if its new cell is allowed, else this throws first
+    static void move_to_(auto& particle, auto const& next, auto const& allowed, char const* step);
 };
 
 
@@ -169,11 +180,27 @@ void IonUpdater1<Ions>::update_ref(auto& ions, auto const& em, auto const& boxin
 // ---------------------------------------------------------------------------
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::advance(auto& particle) const
+void IonUpdater1<Ions>::Pusher::move_to_(auto& particle, auto const& next, auto const& allowed,
+                                         char const* step)
+{
+    auto const& [delta, cell] = next;
+    if (!allowed(cell))
+    {
+        std::stringstream ss;
+        ss << step << " domain particle would leave the ghost box, from cell "
+           << Point{particle.iCell} << " to " << Point{cell} << std::endl;
+        throw DictionaryException{ss.str()};
+    }
+    particle.delta = delta;
+    particle.iCell = cell;
+}
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::advance(auto& particle, auto const& allowed) const
 {
     try
     {
-        particle.iCell = boris::advance(particle, halfDtOverDl);
+        move_to_(particle, boris::next_position(particle, halfDtOverDl), allowed, "PrePush");
     }
     catch (boris::MoveTwoCellException const& e)
     {
@@ -185,12 +212,13 @@ void IonUpdater1<Ions>::Pusher::advance(auto& particle) const
 }
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::accel_and_advance(auto& particle, auto const& local_em) const
+void IonUpdater1<Ions>::Pusher::accel_and_advance(auto& particle, auto const& local_em,
+                                                  auto const& allowed) const
 {
     try
     {
         boris::accelerate(particle, local_em, coef1);
-        particle.iCell = boris::advance(particle, halfDtOverDl);
+        move_to_(particle, boris::next_position(particle, halfDtOverDl), allowed, "PostPush");
     }
     catch (boris::MoveTwoCellException const& e)
     {
@@ -214,20 +242,21 @@ void IonUpdater1<Ions>::Pusher::accel_and_advance(auto& particle, auto const& lo
 // ---------------------------------------------------------------------------
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::pre_push(auto& array) const
+void IonUpdater1<Ions>::Pusher::pre_push(auto& array, auto const& allowed) const
 {
     for (std::size_t i = 0; i < array.size(); ++i)
     {
         auto& particle     = array[i];
         auto const oldCell = particle.iCell;
-        advance(particle);
+        advance(particle, allowed);
         if (particle.iCell != oldCell)
             array.change_icell(particle, oldCell, i);
     }
 }
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::accel_advance(auto& array, auto const& em, auto& interpolator) const
+void IonUpdater1<Ions>::Pusher::accel_advance(auto& array, auto const& em, auto& interpolator,
+                                              auto const& allowed) const
 {
     for (std::size_t i = 0; i < array.size(); ++i)
     {
@@ -235,7 +264,7 @@ void IonUpdater1<Ions>::Pusher::accel_advance(auto& array, auto const& em, auto&
         auto const oldCell = particle.iCell;
 
         auto const& local_em = interpolator(particle, em, layout);
-        accel_and_advance(particle, local_em);
+        accel_and_advance(particle, local_em, allowed);
         if (particle.iCell != oldCell)
             array.change_icell(particle, oldCell, i);
     }
@@ -266,7 +295,7 @@ void IonUpdater1<Ions>::Pusher::move_domain_copy(auto& pop, auto const& em, auto
         for (std::size_t j = 0; j < n; ++j)
         {
             batch[j] = domain[base + j];
-            advance(batch[j]);
+            advance(batch[j], inGhostBox(boxing));
         }
 
         // phase 2: interpolate + accelerate + half advance, compact valid to front
@@ -274,7 +303,7 @@ void IonUpdater1<Ions>::Pusher::move_domain_copy(auto& pop, auto const& em, auto
         for (std::size_t j = 0; j < n; ++j)
         {
             auto const& local_em = interpolator(batch[j], em, layout);
-            accel_and_advance(batch[j], local_em);
+            accel_and_advance(batch[j], local_em, inGhostBox(boxing));
             if (boxing.isInNonLevelGhostBox(batch[j]))
                 batch[m++] = batch[j];
         }
@@ -293,8 +322,8 @@ void IonUpdater1<Ions>::Pusher::move_domain_ref(auto& pop, auto const& em, auto 
     auto& domain      = pop.domainParticles();
     auto& patch_ghost = pop.patchGhostParticles();
 
-    pre_push(domain);
-    accel_advance(domain, em, interpolator);
+    pre_push(domain, inGhostBox(boxing));
+    accel_advance(domain, em, interpolator, inGhostBox(boxing));
 
     {
         auto range = makeIndexRange(domain);
@@ -341,7 +370,7 @@ void IonUpdater1<Ions>::Pusher::move_level_ghost_copy(auto& pop, auto const& em,
         for (std::size_t j = 0; j < n; ++j)
         {
             batch[in] = level_ghost[base + j];
-            advance(batch[in]);
+            advance(batch[in], anywhere);
             if (isIn(Point{batch[in].iCell}, boxing.ghostBox))
                 ++in;
         }
@@ -351,7 +380,7 @@ void IonUpdater1<Ions>::Pusher::move_level_ghost_copy(auto& pop, auto const& em,
         for (std::size_t j = 0; j < in; ++j)
         {
             auto const& local_em = interpolator(batch[j], em, layout);
-            accel_and_advance(batch[j], local_em);
+            accel_and_advance(batch[j], local_em, anywhere);
             if (boxing.isOwned(batch[j].iCell))
                 batch[m++] = batch[j];
         }
@@ -370,7 +399,7 @@ void IonUpdater1<Ions>::Pusher::move_level_ghost_ref(auto& pop, auto const& em, 
     auto& domain      = pop.domainParticles();
     auto& level_ghost = pop.levelGhostParticles();
 
-    pre_push(level_ghost);
+    pre_push(level_ghost, anywhere);
 
     { // those out of the ghost box are dropped before fields are interpolated on them
         auto range        = makeIndexRange(level_ghost);
@@ -379,7 +408,7 @@ void IonUpdater1<Ions>::Pusher::move_level_ghost_ref(auto& pop, auto const& em, 
         level_ghost.erase(makeRange(level_ghost, inside.iend(), level_ghost.size()));
     }
 
-    accel_advance(level_ghost, em, interpolator);
+    accel_advance(level_ghost, em, interpolator, anywhere);
 
     {
         auto range = makeIndexRange(level_ghost);
