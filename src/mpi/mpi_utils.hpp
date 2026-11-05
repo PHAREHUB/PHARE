@@ -4,7 +4,8 @@
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/span.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/meta/container_meta.hpp"
 
 #include <vector>

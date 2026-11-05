@@ -6,7 +6,7 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/type_meta.hpp"
 
 #include "diagnostic/diagnostic_props.hpp"
 

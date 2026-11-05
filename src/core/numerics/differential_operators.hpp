@@ -7,7 +7,8 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/numeric.hpp"
 
 #include <array>
 #include <cstddef>

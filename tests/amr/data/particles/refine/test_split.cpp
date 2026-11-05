@@ -8,7 +8,8 @@
 
 #include "phare_mpi.hpp"
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/tuple.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/data/particles/particle.hpp"
 #include "amr/data/particles/refine/split.hpp"
 

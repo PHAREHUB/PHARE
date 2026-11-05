@@ -1,4 +1,5 @@
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
+#include "core/data/field/field_traits.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/data/field/field_box.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"

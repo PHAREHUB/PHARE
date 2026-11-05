@@ -5,7 +5,8 @@
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "mpi/mpi_utils.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
