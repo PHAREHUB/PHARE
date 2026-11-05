@@ -31,6 +31,20 @@ TEST(WhistlerSpeed, CoarseLimitIsAlfven)
     EXPECT_NEAR(compute_whistler_(1.0 / dx, rho, B2), 1.0, 1e-3);
 }
 
+TEST(FastMagnetosonicSpeed, FiniteWhenSoundSpeedEqualsAlfvenSpeedAlongTheField)
+{
+    double const gamma = 5.0 / 3.0;
+    for (int i = 0; i < 40; ++i)
+        for (int j = 0; j < 40; ++j)
+        {
+            double const rho = 0.05 + 0.1 * i, B = 0.1 + 0.05 * j, P = B * B / gamma;
+            double const vA = std::sqrt(B * B / rho);
+            auto const cf   = compute_fast_magnetosonic_(gamma, rho, B, B * B, P);
+            ASSERT_TRUE(std::isfinite(cf)) << "rho = " << rho << ", B = " << B;
+            EXPECT_NEAR(cf, vA, 1e-6 * vA);
+        }
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
