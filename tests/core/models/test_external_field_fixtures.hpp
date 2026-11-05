@@ -1,7 +1,7 @@
 #ifndef PHARE_TEST_CORE_MODELS_TEST_EXTERNAL_FIELD_FIXTURES_HPP
 #define PHARE_TEST_CORE_MODELS_TEST_EXTERNAL_FIELD_FIXTURES_HPP
 
-#include "core/models/external_field.hpp"
+#include "core/models/external_field_state.hpp"
 #include "core/utilities/point/point.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/utilities/span.hpp"

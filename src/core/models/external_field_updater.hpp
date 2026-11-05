@@ -4,7 +4,7 @@
 #include "core/def.hpp"
 #include "core/data/field/field_scratch.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
-#include "core/models/external_field.hpp"
+#include "core/models/external_field_state.hpp"
 #include "core/numerics/differential_operators.hpp"
 #include "core/utilities/point/point.hpp"
 

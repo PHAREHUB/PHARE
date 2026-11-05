@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(test-external-field-updater)
 
-set(TESTS test_external_field
+set(TESTS test_external_field_state
           test_external_field_updater_dipole
           test_external_field_updater_factory
           test_external_field_updater_user_defined)
@@ -15,7 +15,7 @@ foreach(test ${TESTS})
     target 
     ${test}
   )
-  string(REPLACE "test_external_field" "test-external-field" target ${target})
+  string(REPLACE "test_external_field_" "test-external-field-" target ${target})
 
   add_executable(${target} ${test}.cpp)
 
