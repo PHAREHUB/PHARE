@@ -7,6 +7,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -112,8 +113,7 @@ namespace detail
                     throw std::runtime_error(
                         "composite field refinement supports refinement ratio 2 only");
 
-            for (auto const fineIndex : phare_box_from<dimension>(region))
-            {
+            core::for_each_point(phare_box_from<dimension>(region), [&](auto const& fineIndex) {
                 std::array<FineSite, dimension> fineSites;
                 for (std::size_t d = 0; d < dimension; ++d)
                     fineSites[d] = fineSite(centering[d], fineIndex[d]);
@@ -122,7 +122,7 @@ namespace detail
                 auto const value  = gather_<>(sourceField, anchor, fineSites);
 
                 assignIfUnset_(destinationField, AMRToLocal(fineIndex, destFieldBox), value);
-            }
+            });
         }
 
     private:

@@ -4,6 +4,7 @@
 
 #include "core/utilities/types.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/physical_model.hpp"
@@ -73,13 +74,11 @@ void ConcreteLoadBalancerStrategyNPPC<Model>::compute(
             core::Point{core::generate_from([](auto const& nCell) { return nCell - 1; },
                                             layout.nbrCells())}};
 
-        auto amr_iter = layout.AMRBox().begin();
-        auto lcl_iter = local_box.begin();
-
-        for (; lcl_iter != local_box.end(); ++amr_iter, ++lcl_iter)
-            lb_view(*lcl_iter) = core::sum_from(ions, [&](auto const& pop) {
-                return pop.domainParticles().nbr_particles_in((*amr_iter).toArray());
+        core::for_each_point_zip(layout.AMRBox(), local_box, [&](auto const& amr, auto const& lcl) {
+            lb_view(lcl) = core::sum_from(ions, [&](auto const& pop) {
+                return pop.domainParticles().nbr_particles_in(amr.toArray());
             });
+        });
     }
 
     // TODO here, we have the lb_view value correctly set on all patches. we also know the id_

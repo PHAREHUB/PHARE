@@ -91,8 +91,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
         auto& srcFieldOld = srcOld->field;
         auto& srcFieldNew = srcNew->field;
 
-        for (auto const amr_idx : layout.AMRGhostBoxFor(qty))
-        {
+        for_each_point(layout.AMRGhostBoxFor(qty), [&](auto const& amr_idx) {
             auto const position = layout.fieldNodeCoordinates(srcFieldOld, amr_idx);
             auto const lcl_idx  = layout.AMRToLocal(amr_idx);
 
@@ -113,7 +112,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
                 srcFieldNew(lcl_idx)
                     = srcFunc(newTime, position[dirX], position[dirY], position[dirZ]);
             }
-        }
+        });
     }
 
     auto zeroTransformation() const
@@ -321,8 +320,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-    for (auto const [amr_idx, lcl_idx] : layout.domain_amr_lcl_idx(destField))
-    {
+    layout.domain_amr_lcl_idx(destField, [&](auto const& amr_idx, auto const& lcl_idx) {
         auto const position = layout.fieldNodeCoordinates(destField, amr_idx);
 
         if constexpr (dim == 1)
@@ -340,7 +338,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
                 srcFunc(interpolateTime, position[dirX], position[dirY], position[dirZ]),
                 destField(lcl_idx));
         }
-    }
+    });
 }
 
 
