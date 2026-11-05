@@ -2,6 +2,7 @@
 #define PHARE_CORE_MODELS_EXTERNAL_FIELD_STATE_HPP
 
 #include "core/def.hpp"
+#include "core/data/field/zero_field.hpp"
 #include "core/utilities/types.hpp"
 
 #include <cstddef>
@@ -16,6 +17,7 @@ namespace PHARE::core
  *
  * B0 is held only when an external field is declared, and dB0dt only when it also depends on
  * time: only those are registered and allocated, B0() and dB0dt() throw otherwise.
+ * visitB0() and visitDB0dt() pass either the held vecfield or a zero vecfield to their callable.
  *
  * @tparam VecFieldT vecfield implementation
  *
@@ -51,6 +53,9 @@ public:
     {
         return field_(1, "the external field is not time dependent");
     }
+
+    decltype(auto) visitB0(auto&& fn) const { return visit_(0, fn); }
+    decltype(auto) visitDB0dt(auto&& fn) const { return visit_(1, fn); }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -92,7 +97,15 @@ private:
             throw std::runtime_error(absent);
     }
 
+    decltype(auto) visit_(std::size_t const i, auto& fn) const
+    {
+        if (i < fields_.size())
+            return fn(fields_[i]);
+        return fn(zero_);
+    }
+
     std::vector<VecFieldT> fields_;
+    ZeroVecField<VecFieldT> zero_{tensor_type::B};
 };
 
 } // namespace PHARE::core
