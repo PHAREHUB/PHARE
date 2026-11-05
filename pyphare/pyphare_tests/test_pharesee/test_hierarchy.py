@@ -5,6 +5,7 @@ from ddt import ddt
 
 from pyphare.core.box import Box
 from pyphare.core.operators import cross, dot, grad, modulus, sqrt
+from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharesee.hierarchy import PatchHierarchy, ScalarField, VectorField
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
@@ -16,6 +17,11 @@ final_time = time_step * time_step_nbr
 dt = 10 * time_step
 nt = int(final_time / dt) + 1
 timestamps = dt * np.arange(nt)
+
+
+def patch_box_data(patch, qty):
+    pd = patch[qty]
+    return pd[patch.box]
 
 
 @ddt
@@ -145,8 +151,15 @@ class PatchHierarchyTest(unittest.TestCase):
             for quantity in ["E", "B"]:
                 ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-            for quantity in ["charge_density", "bulkVelocity"]:
+            for quantity in ["charge_density", "bulkVelocity", "charge_flux"]:
                 ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
+
+            for quantity in ["density", "flux"]:
+                ph.FluidDiagnostics(
+                    quantity=quantity,
+                    write_timestamps=timestamps,
+                    population_name="protons",
+                )
 
             return sim
 
@@ -340,6 +353,159 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertTrue(isinstance(s, VectorField))
             self.assertEqual(s.quantities(), ["x", "y", "z"])
 
+    def _test_mixed_ghost_getters(self):
+        """
+        single population of charge 1, so Ni == N and Vi == Flux / N
+        some getters drop ghosts and others do not, they must still be combinable
+        """
+        r = Run(self.diag_dir())
+        time = 0.0
+        Ni = r.GetNi(time)
+        N = r.GetN(time, "protons")
+        Vi = r.GetVi(time)
+        Flux = r.GetFlux(time, "protons")
+        ChargeFlux = r.GetChargeFlux(time)
+        B = r.GetB(time)
+
+        diff = Ni - N
+        V = Flux / N
+        self.assertTrue(isinstance(np.add(Ni, N), ScalarField))
+        self.assertTrue(isinstance(dot(Flux, B), ScalarField))
+
+        # Ez is primal in 2d, E keeps its ghosts with all_primal=False
+        Ez = ScalarField.FROM(r.GetE(time, all_primal=False).Ez)
+        for NiEz in (Ni * Ez, np.multiply(Ni, Ez)):
+            self.assertTrue(isinstance(NiEz, ScalarField))
+            for ilvl, lvl in NiEz.levels(time).items():
+                for ip, patch in enumerate(lvl.patches):
+                    ni = patch_box_data(Ni.level(ilvl, time).patches[ip], "value")
+                    ez = patch_box_data(Ez.level(ilvl, time).patches[ip], "value")
+                    assert_fp_any_all_close(
+                        patch_box_data(patch, "value"), ni * ez, atol=1e-12
+                    )
+
+        # charge 1: the charge flux is the protons flux, both without ghosts
+        # inner nodes only, ion moments on patch borders are refilled (see Vi below)
+        inner = (slice(1, -1),) * 2
+        for ilvl, lvl in ChargeFlux.levels(time).items():
+            for ip, patch in enumerate(lvl.patches):
+                flux_patch = Flux.level(ilvl, time).patches[ip]
+                for c in ["x", "y", "z"]:
+                    self.assertFalse(any(patch[c].ghosts_nbr))
+                    assert_fp_any_all_close(
+                        patch[c][:][inner], flux_patch[c][:][inner], atol=1e-12
+                    )
+
+        for ilvl, lvl in diff.levels(time).items():
+            for ip, patch in enumerate(lvl.patches):
+                pd = patch["value"]
+                np.testing.assert_allclose(pd[patch.box], 0, atol=1e-12)
+
+                # Vi on patch borders can be refilled after it is computed from
+                # the pop moments (fillIonBorders), so only compare inner nodes
+                inner = (slice(1, -1),) * 2
+                vi_patch = Vi.level(ilvl, time).patches[ip]
+                for c in ["x", "y", "z"]:
+                    assert_fp_any_all_close(
+                        patch_box_data(V.level(ilvl, time).patches[ip], c)[inner],
+                        patch_box_data(vi_patch, c)[inner],
+                        atol=1e-12,
+                    )
+
+    def _test_grad_values(self):
+        r = Run(self.diag_dir())
+        time = 0.0
+        for scalar in (r.GetNi(time), r.GetPe(time)):
+            g = grad(scalar)
+            for ilvl, lvl in scalar.levels(time).items():
+                for ip, patch in enumerate(lvl.patches):
+                    data = patch_box_data(patch, "value")
+                    expected = np.gradient(data)
+                    gpatch = g.level(ilvl, time).patches[ip]
+                    for i, c in enumerate(["x", "y"]):
+                        computed = patch_box_data(gpatch, c)
+                        self.assertFalse(np.isnan(computed).any())
+                        # np.gradient is one sided on the edges of the patch data
+                        inner = (slice(1, -1),) * 2
+                        assert_fp_any_all_close(
+                            computed[inner], expected[i][inner], atol=1e-12
+                        )
+
+    def _test_patch_cut(self):
+        r = Run(self.diag_dir())
+        time = 0.0
+        for hier, qty in ((r.GetNi(time), "value"), (r.GetB(time), "x")):
+            for patch in hier.level(0, time).patches:
+                pd = patch[qty]
+                data = pd[patch.box]
+                idx = data.shape[0] // 2
+                cut = pd.origin[0] + (idx + 0.1) * pd.layout.dl[0]
+                np.testing.assert_array_equal(patch(qty, x=cut), data[idx, :])
+                idy = data.shape[1] // 2
+                cut = pd.origin[1] + (idy + 0.1) * pd.layout.dl[1]
+                np.testing.assert_array_equal(patch(qty, y=cut), data[:, idy])
+
+    def _test_hierarchy_cut(self):
+        r = Run(self.diag_dir())
+        time = 0.0
+        Ni = r.GetNi(time)
+        dl = Ni.level(0, time).patches[0]["value"].layout.dl
+        L = 86 * dl[1]
+
+        coords, cut = Ni(x=12.95)  # not on a patch border
+        self.assertEqual(coords.shape, cut.shape)
+        self.assertFalse(np.isnan(cut).any())
+        self.assertTrue((np.diff(coords) > 0).all())  # no overlaps across patches
+        self.assertLessEqual(np.diff(coords).max(), dl[1] + 1e-12)  # no gaps
+        self.assertAlmostEqual(coords[0], 0)
+        self.assertAlmostEqual(coords[-1], L)
+
+        # the time argument selects the data, compare with a single time hierarchy
+        t1 = timestamps[1]
+        Ni = r.GetNi([time, t1])
+        _, cut0 = Ni(x=12.95, time=time)
+        coords1, cut1 = Ni(x=12.95, time=t1)
+        ref_coords, ref_cut = r.GetNi(t1)(x=12.95)
+        self.assertFalse(np.array_equal(cut0, cut1))
+        np.testing.assert_array_equal(coords1, ref_coords)
+        np.testing.assert_array_equal(cut1, ref_cut)
+
+    def _test_magnetic_flux_bilinear(self):
+        """
+        B is dual on some axes, bilinear interpolation needs samples
+        beyond the domain to evaluate it on the domain edges
+        """
+        r = Run(self.diag_dir())
+        time = 0.0
+        domain = r.GetDomainSize()
+        dl = r.GetDl(r.GetB(time).finest_level(time))
+        xn, yn = (np.linspace(0, L, round(L / d) + 1) for L, d in zip(domain, dl))
+        Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
+        Az, _ = r.GetMagneticFlux(time, interp="bilinear", xn=xn, yn=yn, Xn=Xn, Yn=Yn)
+        self.assertFalse(np.isnan(Az).any())
+
+    def _test_finest_ignores_ghosts(self):
+        """
+        ghost values are not guaranteed to be valid, so they are poisoned
+        with NaN which must not appear in the finest data
+        """
+        from pyphare.pharesee.run.utils import flat_finest_field
+
+        r = Run(self.diag_dir())
+        time = 0.0
+        # GetN drops ghosts, so read the file as is
+        N = ScalarField.FROM(r._get_hierarchy(time, "ions_pop_protons_density.h5"))
+        for lvl in N.levels(time).values():
+            for patch in lvl.patches:
+                pd = patch["value"]
+                self.assertTrue(all(g > 0 for g in pd.ghosts_nbr))
+                domain = np.array(pd[pd.box])
+                pd.dataset = np.full(pd.dataset.shape, np.nan)
+                pd[pd.box] = domain
+
+        data, _ = flat_finest_field(N, "value", time=time)
+        self.assertFalse(np.isnan(data).any())
+
     def test_all(self):
         """
         DO NOT RUN MULTIPLE SIMULATIONS!
@@ -349,7 +515,7 @@ class PatchHierarchyTest(unittest.TestCase):
         for test in [method for method in dir(self) if method.startswith("_test_")]:
             getattr(self, test)()
             checks += 1
-        self.assertEqual(checks, 18)  # update if you add new tests
+        self.assertEqual(checks, 24)  # update if you add new tests
 
 
 if __name__ == "__main__":
