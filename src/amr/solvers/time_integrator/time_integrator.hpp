@@ -56,10 +56,10 @@ public:
     {
     }
 
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, MHDModel::level_t& level,
-                    double const currentTime, double const newTime)
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& sources, auto& bc,
+                    MHDModel::level_t& level, double const currentTime, double const newTime)
     {
-        (*impl_)(model, state, fluxes, bc, level, currentTime, newTime);
+        (*impl_)(model, state, fluxes, sources, bc, level, currentTime, newTime);
     }
 
     void registerResources(MHDModel& model) { impl_->registerResources(model); }
@@ -74,6 +74,10 @@ public:
     auto exposeFluxes() { return impl_->exposeFluxes(); }
 
     auto exposeFluxes() const { return std::as_const(*impl_).exposeFluxes(); }
+
+    auto& exposeSources() { return impl_->exposeSources(); }
+
+    auto const& exposeSources() const { return std::as_const(*impl_).exposeSources(); }
 };
 
 } // namespace PHARE::solver

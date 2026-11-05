@@ -166,3 +166,14 @@ transverse Neumann condition. The normal component is then obtained by discretiz
 Eq. {eq}`eq:numerics_bc_divergence_free_normal_b` cell by cell from the boundary outwards: each
 ghost value of $B_n$ is computed from the one just set closer to the domain, so that the discrete
 divergence of $\vb{B}$ vanishes in every ghost cell. The value of $B_n$ on $\Gamma$ is left unchanged.
+
+#### With an external field
+
+In MHD the magnetic field is split into an external field $\vb{B}_\text{ext}$ and the evolved
+perturbation $\vb{B}_1 = \vb{B} - \vb{B}_\text{ext}$, and the boundary conditions apply to
+$\vb{B}_1$ and to the reduced energy. $\vb{B}_\text{ext}$ is known everywhere, ghost cells
+included, and is divergence free. When the prescribed tangential field $\vb{B}_{0,t}$ is a total
+field, as for a super-magnetofast inflow, the constant Dirichlet discretization puts
+$\vb{B}_{0,t} - \vb{B}_{\text{ext},t}$ in the ghost cells of $\vb{B}_1$, with $\vb{B}_\text{ext}$
+recomputed on the patch at the time of the fill, and the normal component makes the discrete
+divergence of $\vb{B}_1$ vanish.

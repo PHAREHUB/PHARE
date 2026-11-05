@@ -4,6 +4,8 @@
 #include "core/boundary/boundary.hpp"
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/field/field_traits.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/models/external_field_updater.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
@@ -42,6 +44,8 @@ public:
     using boundary_ptr_type         = std::unique_ptr<boundary_type>;
     using scalar_quantity_list_type = std::vector<typename physical_quantity_type::Scalar>;
     using vector_quantity_list_type = std::vector<typename physical_quantity_type::Vector>;
+    using external_field_updater_type
+        = IExternalFieldUpdater<VecField<FieldT, physical_quantity_type>, GridLayoutT>;
 
     static constexpr std::size_t dimension = GridLayoutT::dimension;
 
@@ -58,13 +62,17 @@ public:
      * @param vectors Vector quantities for which it is necessary to register a field boundary
      *                condition.
      * @param gamma Heat capacity ratio, used to compute the inflow total energy.
+     * @param externalFieldUpdater Updater of the external field B0, null when there is none. When
+     *                             set, the inflow conditions on B1 and Etot1 are built from
+     *                             @f$B_{in} - B_0@f$.
      *
      * @return A unique pointer to the created @c Boundary object.
      */
-    static boundary_ptr_type create(BoundaryLocation location, initializer::PHAREDict const& dict,
-                                    scalar_quantity_list_type const& scalars,
-                                    vector_quantity_list_type const& vectors,
-                                    double const gamma = 0.0)
+    static boundary_ptr_type
+    create(BoundaryLocation location, initializer::PHAREDict const& dict,
+           scalar_quantity_list_type const& scalars, vector_quantity_list_type const& vectors,
+           double const gamma                                                       = 0.0,
+           std::shared_ptr<external_field_updater_type> const& externalFieldUpdater = nullptr)
     {
         BoundaryType const type = cppdict::get_value(dict, "type", BoundaryType::None);
         _model_menu_type const quantities{scalars, vectors};
@@ -80,7 +88,8 @@ public:
                 register_reflective_conditions_(boundary, quantities);
                 break;
             case BoundaryType::SuperMagnetofastInflow:
-                register_inflow_conditions_(boundary, dict, quantities, gamma);
+                register_inflow_conditions_(boundary, dict, quantities, gamma,
+                                            externalFieldUpdater);
                 break;
             case BoundaryType::Open: register_open_conditions_(boundary, quantities); break;
             default: throw std::runtime_error("Boundary type not implemented.");
@@ -126,7 +135,7 @@ private:
             {
                 switch (quantity)
                 {
-                    case (physical_quantity_type::Vector::B):
+                    case (physical_quantity_type::Vector::B1):
                         // Fill outside-domain B ghosts with a divergence-free transverse Neumann
                         // extrapolation of the interior field.
                         boundary->template registerFieldCondition<
@@ -162,7 +171,7 @@ private:
                 switch (quantity)
                 {
                     case (physical_quantity_type::Scalar::rho):
-                    case (physical_quantity_type::Scalar::Etot):
+                    case (physical_quantity_type::Scalar::Etot1):
                         boundary
                             ->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
                                 quantity);
@@ -181,7 +190,7 @@ private:
                             ->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
                                 quantity);
                         break;
-                    case (physical_quantity_type::Vector::B):
+                    case (physical_quantity_type::Vector::B1):
                         boundary->template registerFieldCondition<
                             FieldBoundaryConditionType::DivergenceFreeTransverseNeumann>(quantity);
                         break;
@@ -199,11 +208,13 @@ private:
      *  Density, momentum and total energy are imposed, the latter being computed from the
      *  prescribed inflow state (density, velocity, B, pressure). The magnetic field is imposed
      *  through the motional electric field E = -v x B on the boundary, and its ghosts are filled
-     *  with the inflow B by a divergence-free transverse Dirichlet condition.
+     *  with the inflow B by a divergence-free transverse Dirichlet condition. B is the total field:
+     *  with an external field B0, the evolved B1 and Etot1 ghosts are built from B - B0.
      */
-    static void register_inflow_conditions_(boundary_ptr_type& boundary,
-                                            initializer::PHAREDict const& data,
-                                            _model_menu_type const& quantities, double const gamma)
+    static void register_inflow_conditions_(
+        boundary_ptr_type& boundary, initializer::PHAREDict const& data,
+        _model_menu_type const& quantities, double const gamma,
+        std::shared_ptr<external_field_updater_type> const& externalFieldUpdater)
     {
         if constexpr (!IsMHDQuantity<physical_quantity_type>)
             throw std::runtime_error(
@@ -235,10 +246,15 @@ private:
                             FieldBoundaryConditionType::Dirichlet>(
                             quantity, rho, DirichletExtrapolation::Constant);
                         break;
-                    case (physical_quantity_type::Scalar::Etot):
-                        boundary->template registerFieldCondition<
-                            FieldBoundaryConditionType::Dirichlet>(
-                            quantity, Etot, DirichletExtrapolation::Constant);
+                    case (physical_quantity_type::Scalar::Etot1):
+                        if (externalFieldUpdater)
+                            boundary->template registerFieldCondition<
+                                FieldBoundaryConditionType::Etot1FromInflowState>(
+                                quantity, gamma, rho, v, B, P, externalFieldUpdater);
+                        else
+                            boundary->template registerFieldCondition<
+                                FieldBoundaryConditionType::Dirichlet>(
+                                quantity, Etot, DirichletExtrapolation::Constant);
                         break;
                     default:
                         boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
@@ -256,10 +272,15 @@ private:
                             FieldBoundaryConditionType::Dirichlet>(
                             quantity, vToRhoV(rho, v), DirichletExtrapolation::Constant);
                         break;
-                    case (physical_quantity_type::Vector::B):
-                        boundary->template registerFieldCondition<
-                            FieldBoundaryConditionType::DivergenceFreeTransverseDirichlet>(
-                            quantity, B, DirichletExtrapolation::Constant);
+                    case (physical_quantity_type::Vector::B1):
+                        if (externalFieldUpdater)
+                            boundary->template registerFieldCondition<
+                                FieldBoundaryConditionType::B1FromTotalDirichlet>(
+                                quantity, B, externalFieldUpdater);
+                        else
+                            boundary->template registerFieldCondition<
+                                FieldBoundaryConditionType::DivergenceFreeTransverseDirichlet>(
+                                quantity, B, DirichletExtrapolation::Constant);
                         break;
                     case (physical_quantity_type::Vector::E):
                         boundary->template registerFieldCondition<
