@@ -109,7 +109,7 @@ struct DipoleSetup
 
     Updater_t updater{position(), moment(), /*radius=*/0.};
 
-    void update(double time = 0.) { updater(externalField, externalField.scratch(), layout, time); }
+    void update(double time = 0.) { updater(externalField, layout, time); }
 
     //! largest |B0 - B_analytical| over the physical domain, all components
     double maxErrorOnDomain()
@@ -229,8 +229,8 @@ struct FiniteRadiusSetup
 
     FiniteRadiusSetup()
     {
-        Updater_t{position(), Point_t::moment(), radius}(finite, finite.scratch(), layout, 0.);
-        Updater_t{position(), Point_t::moment(), 0.}(point, point.scratch(), layout, 0.);
+        Updater_t{position(), Point_t::moment(), radius}(finite, layout, 0.);
+        Updater_t{position(), Point_t::moment(), 0.}(point, layout, 0.);
     }
 
     double distance(Point<double, dim> const& x) const

@@ -2,10 +2,13 @@
 #define PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER_HPP
 
 #include "core/def.hpp"
+#include "core/data/field/field_scratch.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/models/external_field.hpp"
 #include "core/numerics/differential_operators.hpp"
 #include "core/utilities/point/point.hpp"
 
+#include <concepts>
 #include <cstddef>
 
 namespace PHARE::core
@@ -43,19 +46,25 @@ public:
      * @brief fill an external field at a given time
      *
      * @param state the external field state to fill
-     * @param scratch E-centered work vecfield, holding the vector potential on output
      * @param layout the current grid layout
      * @param time the current time
      */
-    virtual void operator()(state_type& state, vecfield_type& scratch, GridLayoutT const& layout,
-                            double time)
+    virtual void operator()(state_type& state, GridLayoutT const& layout, double time)
     {
-        computePotential(scratch, time, layout);
-        curlOnGhostBox_(state.B0(), scratch, layout);
+        static_assert(std::same_as<value_type, double>);
+
+        ScratchWrite scratch;
+        auto& buffer
+            = scratch.get().get_no_copy(alloc_size<vecfield_type>(tensor_type::E, layout))();
+        auto potential
+            = view_on<vecfield_type>("external_field_potential", buffer, tensor_type::E, layout);
+
+        computePotential(potential, time, layout);
+        curlOnGhostBox_(state.B0(), potential, layout);
         if (isTimeDependent())
         {
-            computePotentialTimeDerivative(scratch, time, layout);
-            curlOnGhostBox_(state.dB0dt(), scratch, layout);
+            computePotentialTimeDerivative(potential, time, layout);
+            curlOnGhostBox_(state.dB0dt(), potential, layout);
         }
     }
 

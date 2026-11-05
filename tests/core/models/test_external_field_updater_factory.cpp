@@ -88,7 +88,7 @@ struct UpdaterRun
     explicit UpdaterRun(Updater& updater, double time = 0.)
         : externalField{"external", layout, updater.isTimeDependent()}
     {
-        updater(externalField, externalField.scratch(), layout, time);
+        updater(externalField, layout, time);
     }
 };
 

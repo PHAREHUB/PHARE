@@ -67,8 +67,6 @@ public:
                              bool const timeDependent)
         : Super{name, true, timeDependent}
         , b0_{name + "_B0", layout, MHDQuantity::Vector::B}
-        , tmpVec_{name + "_tmpVec", layout, MHDQuantity::Vector::VecAllPrimal}
-        , scratch_{view_as(tmpVec_.super(), MHDQuantity::Vector::E, layout)}
     {
         b0_.set_on(this->B0());
         if (timeDependent)
@@ -76,13 +74,10 @@ public:
     }
 
     Super& super() { return *this; }
-    VecFieldMHD<dim>& scratch() { return scratch_; }
 
 private:
     UsableVecFieldMHD<dim> b0_;
     std::optional<UsableVecFieldMHD<dim>> dB0dt_;
-    UsableVecFieldMHD<dim> tmpVec_;
-    VecFieldMHD<dim> scratch_;
 };
 
 } // namespace PHARE::core
