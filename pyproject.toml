@@ -14,7 +14,7 @@ dependencies = [
 [dependency-groups]
 test = ["ddt"]
 vtk = ["vtk"]
-timing = ["phlop"]
+timing = ["phlop==0.0.45"]  # same release as PHARE_PHLOP_VERSION, res/cmake/dep/phlop.cmake
 docs = [
     "pandas",
     "appdirs",
