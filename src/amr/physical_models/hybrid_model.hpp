@@ -58,7 +58,6 @@ public:
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
 
-    vecfield_type tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
 
     void initialize(level_t& level) override;
 
@@ -71,7 +70,6 @@ public:
     {
         resourcesManager->allocate(state, patch, allocateTime);
         resourcesManager->allocate(externalFieldManager.state(), patch, allocateTime);
-        resourcesManager->allocate(tmpVec_, patch, allocateTime);
     }
 
 
@@ -106,17 +104,16 @@ public:
             has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
             std::vector<core::HybridQuantity::Scalar>{},
             std::vector<core::HybridQuantity::Vector>{});
-        resourcesManager->registerResources(tmpVec_);
     }
 
     void initializeExternalField(level_t& level, double time) override
     {
-        externalFieldManager.initialize(*resourcesManager, level, tmpVec_, time);
+        externalFieldManager.initialize(*resourcesManager, level, time);
     }
 
     void updateExternalField(level_t& level, double time) override
     {
-        externalFieldManager.update(*resourcesManager, level, tmpVec_, time);
+        externalFieldManager.update(*resourcesManager, level, time);
     }
 
     virtual ~HybridModel() override {}

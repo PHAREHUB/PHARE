@@ -113,12 +113,12 @@ public:
 
     void initializeExternalField(level_t& level, double time) override
     {
-        externalFieldManager.initialize(*resourcesManager, level, tmpVec_, time);
+        externalFieldManager.initialize(*resourcesManager, level, time);
     }
 
     void updateExternalField(level_t& level, double time) override
     {
-        externalFieldManager.update(*resourcesManager, level, tmpVec_, time);
+        externalFieldManager.update(*resourcesManager, level, time);
     }
 
     ~MHDModel() override = default;
