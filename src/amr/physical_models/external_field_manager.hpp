@@ -4,7 +4,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include "core/def.hpp"
-#include "core/models/external_field.hpp"
+#include "core/models/external_field_state.hpp"
 #include "core/models/external_field_updater.hpp"
 #include "core/models/external_field_updater_factory.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_MODELS_EXTERNAL_FIELD_HPP
-#define PHARE_CORE_MODELS_EXTERNAL_FIELD_HPP
+#ifndef PHARE_CORE_MODELS_EXTERNAL_FIELD_STATE_HPP
+#define PHARE_CORE_MODELS_EXTERNAL_FIELD_STATE_HPP
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
@@ -97,4 +97,4 @@ private:
 
 } // namespace PHARE::core
 
-#endif // PHARE_CORE_MODELS_EXTERNAL_FIELD_HPP
+#endif // PHARE_CORE_MODELS_EXTERNAL_FIELD_STATE_HPP
