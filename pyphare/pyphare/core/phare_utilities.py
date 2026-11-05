@@ -51,6 +51,12 @@ def listify(arg):
     return arg
 
 
+def format_timestamp(timestamp):
+    if isinstance(timestamp, str):
+        return timestamp
+    return f"{timestamp:.10f}"
+
+
 def is_scalar(arg):
     # strings are single values, anything else with a length is a container
     return isinstance(arg, str) or not hasattr(arg, "__len__")
