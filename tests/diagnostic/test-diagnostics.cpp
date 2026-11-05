@@ -47,5 +47,13 @@ int main(int argc, char** argv)
     out_dir = "phare_outputs/" + std::filesystem::path{argv[0]}.filename().string() + "/"
               + std::to_string(mpi::size()) + "/";      // concurrent tests
     setenv("PHARE_DIAGS_TEST_DIR", out_dir.c_str(), 1); // read by job_*d.py
-    return RUN_ALL_TESTS();
+
+    auto const result = RUN_ALL_TESTS();
+
+    // keep the diagnostics of a failed run to look at, as the python SimulatorTest does
+    mpi::barrier();
+    if (result == 0 and mpi::rank() == 0)
+        std::filesystem::remove_all(out_dir);
+
+    return result;
 }
