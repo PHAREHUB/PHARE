@@ -6,6 +6,9 @@
 #include <string>
 #include <cstdint>
 #include <utility>
+#include <memory>
+#include <fstream>
+#include <iostream>
 
 #if !defined(PHARE_LOG_LEVEL)
 #define PHARE_LOG_LEVEL 0 // 0 == off
@@ -44,6 +47,37 @@ constexpr static std::uint8_t LOG_LEVEL = PHARE_LOG_LEVEL;
 
 namespace PHARE
 {
+// owns log_out and redirects std::cout to it for this object's lifetime, restoring
+// the original streambuf on destruction. Ownership of the stream lives here (rather
+// than in a separate member this class merely references) so the redirected buffer
+// can never outlive the object that installed it. Declared as a class member (not
+// left to a destructor body) so restoration still happens if a later member throws
+// mid-construction - a throwing constructor never runs the class's own destructor,
+// only already-constructed members' destructors.
+class CoutRedirect
+{
+public:
+    explicit CoutRedirect(std::unique_ptr<std::ofstream> log_out)
+        : log_out_{std::move(log_out)}
+    {
+        if (log_out_)
+            saved_ = std::cout.rdbuf(log_out_->rdbuf());
+    }
+
+    ~CoutRedirect()
+    {
+        if (saved_)
+            std::cout.rdbuf(saved_);
+    }
+
+    CoutRedirect(CoutRedirect const&)            = delete;
+    CoutRedirect& operator=(CoutRedirect const&) = delete;
+
+private:
+    std::unique_ptr<std::ofstream> log_out_;
+    std::streambuf* saved_ = nullptr;
+};
+
 struct scope_log
 {
     scope_log(int&& i_, std::string&& str)

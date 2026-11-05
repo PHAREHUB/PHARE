@@ -4,7 +4,8 @@
 
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/types.hpp"
+#include "core/utilities/random.hpp"
 
 #include "amr/samrai.hpp"
 
@@ -19,6 +20,8 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <sstream>
+#include <cstdint>
 #include <optional>
 
 
@@ -64,6 +67,18 @@ namespace amr
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
             for (auto const& id : ALL_IDS()) // duplicates don't matter
                 pdrm->registerPatchDataForRestart(id);
+        }
+
+        // portable (not std::hash) as it is persisted in restart files
+        static std::string registeredResourcesHash()
+        {
+            std::uint64_t hsh = 0;
+            for (auto const res_map_ptr : INSTANCE().resources_)
+                for (auto const& [name, _] : *res_map_ptr)
+                    hsh = core::hash_combine(hsh, core::fnv1a64(name));
+            std::stringstream ss;
+            ss << std::hex << hsh;
+            return ss.str();
         }
     };
 
