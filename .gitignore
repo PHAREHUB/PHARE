@@ -28,3 +28,4 @@ PHARE_REPORT.zip
 .ipynb_checkpoints
 .venv
 uv.lock
+_skbuild/
