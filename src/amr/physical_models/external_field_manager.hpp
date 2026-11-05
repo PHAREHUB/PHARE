@@ -3,7 +3,6 @@
 
 #include "amr/resources_manager/amr_utils.hpp"
 
-#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/def.hpp"
 #include "core/models/external_field.hpp"
 #include "core/models/external_field_updater.hpp"
@@ -38,23 +37,22 @@ public:
     NO_DISCARD state_type& state() { return state_; }
     NO_DISCARD state_type const& state() const { return state_; }
 
-    void initialize(auto& resourcesManager, auto& level, VecFieldT& scratch, double const time)
+    void initialize(auto& resourcesManager, auto& level, double const time)
     {
         if (!isEnabled())
             return;
 
-        for (auto const& patch : resourcesManager.enumerate(level, state_, scratch))
+        for (auto const& patch : resourcesManager.enumerate(level, state_))
         {
             auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto potential    = core::view_as(scratch, VecFieldT::tensor_t::E, layout);
-            (*updater_)(state_, potential, layout, time);
+            (*updater_)(state_, layout, time);
         }
     }
 
-    void update(auto& resourcesManager, auto& level, VecFieldT& scratch, double const time)
+    void update(auto& resourcesManager, auto& level, double const time)
     {
         if (isTimeDependent())
-            initialize(resourcesManager, level, scratch, time);
+            initialize(resourcesManager, level, time);
     }
 
 private:
