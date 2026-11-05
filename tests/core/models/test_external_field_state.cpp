@@ -1,4 +1,4 @@
-#include "core/models/external_field.hpp"
+#include "core/models/external_field_state.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
 
