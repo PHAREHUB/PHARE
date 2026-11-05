@@ -4,7 +4,9 @@
 #include <cstddef>
 #include <string>
 #include <array>
+#include <span>
 #include <vector>
+#include <stdexcept>
 #include <unordered_map>
 
 #include "core/def.hpp"
@@ -56,9 +58,10 @@ public:
     static constexpr std::size_t dimension = Field_t::dimension;
     static constexpr std::size_t rank      = rank_;
 
-    using field_type = Field_t;
-    using value_type = typename Field_t::type;
-    using tensor_t   = typename PhysicalQuantity::template TensorType<rank>;
+    using field_type     = Field_t;
+    using value_type     = Field_t::type;
+    using tensor_t       = PhysicalQuantity::template TensorType<rank>;
+    using component_type = Component;
 
 
     TensorField()                                     = delete;
@@ -225,6 +228,38 @@ private:
 
 template<typename Field_t, typename PhysicalQuantity>
 using SymTensorField = TensorField<Field_t, PhysicalQuantity, /*rank=*/2>;
+
+
+template<typename TensorFieldT, typename GridLayout>
+NO_DISCARD std::size_t alloc_size(typename TensorFieldT::tensor_t qty, GridLayout const& layout)
+{
+    TensorFieldT const components{"", qty};
+    std::size_t size = 0;
+    for (std::size_t i = 0; i < components.size(); ++i)
+        size += product(layout.allocSize(components[i].physicalQuantity()));
+    return size;
+}
+
+
+template<typename TensorFieldT, typename GridLayout>
+NO_DISCARD TensorFieldT view_on(std::string const& name,
+                                std::span<typename TensorFieldT::value_type> buffer,
+                                typename TensorFieldT::tensor_t qty, GridLayout const& layout)
+{
+    if (buffer.size() < alloc_size<TensorFieldT>(qty, layout))
+        throw std::runtime_error("view_on: buffer too small for " + name);
+
+    TensorFieldT view{name, qty};
+    auto* data = buffer.data();
+    for (std::size_t i = 0; i < view.size(); ++i)
+    {
+        auto const shape = layout.allocSize(view[i].physicalQuantity());
+        view[i] = typename TensorFieldT::field_type{view[i].name(), view[i].physicalQuantity(),
+                                                    data, shape};
+        data += product(shape);
+    }
+    return view;
+}
 
 
 } // namespace PHARE::core

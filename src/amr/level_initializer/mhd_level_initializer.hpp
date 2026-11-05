@@ -3,9 +3,9 @@
 
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messengers/messenger.hpp"
-#include "amr/messengers/mhd_messenger.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "initializer/data_provider.hpp"
+
+#include "core/logger.hpp"
 
 namespace PHARE::solver
 {
@@ -56,6 +56,7 @@ public:
                 PHARE_LOG_STOP(3, "mhdLevelInitializer::initialize : initlevel");
             }
         }
+        mhdModel.initializeExternalField(level, initDataTime);
     }
 };
 
