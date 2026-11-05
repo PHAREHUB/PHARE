@@ -29,6 +29,29 @@ namespace py = pybind11;
 namespace PHARE::pydata
 {
 
+template<std::size_t dim>
+void declareParticles(py::module& m)
+{
+    using Particle   = core::Particle<dim>;
+    std::string name = "Particle_" + std::to_string(dim) + "D";
+    py::class_<Particle, std::shared_ptr<Particle>>(m, name.c_str())
+        .def_readonly("iCell", &Particle::iCell)
+        .def_readonly("delta", &Particle::delta)
+        .def_readonly("v", &Particle::v);
+
+    using ParticleArray = core::ParticleArray<dim>;
+    name                = "ParticleArray_" + std::to_string(dim) + "D";
+    py::class_<ParticleArray, std::shared_ptr<ParticleArray>>(m, name.c_str())
+        .def("size", &ParticleArray::size)
+        .def("__len__", &ParticleArray::size)
+        .def("__getitem__", [](ParticleArray& self, std::size_t const idx) -> auto& {
+            if (idx >= self.size()) // python iteration stops on IndexError
+                throw py::index_error();
+            return self[idx];
+        });
+}
+
+
 template<typename Type, std::size_t dimension>
 void declarePatchData(py::module& m, std::string key)
 {
@@ -172,9 +195,17 @@ PYBIND11_MODULE(cpp_etc, m)
     declareDim<2>(m);
     declareDim<3>(m);
 
-    declarePatchData<std::vector<double>, 1>(m, "PatchDataVectorDouble_1D");
-    declarePatchData<std::vector<double>, 2>(m, "PatchDataVectorDouble_2D");
-    declarePatchData<std::vector<double>, 3>(m, "PatchDataVectorDouble_3D");
+    declarePatchData<py_array_t<double>, 1>(m, "PatchPyArrayDouble_1D");
+    declarePatchData<py_array_t<double>, 2>(m, "PatchPyArrayDouble_2D");
+    declarePatchData<py_array_t<double>, 3>(m, "PatchPyArrayDouble_3D");
+
+    declareParticles<1>(m);
+    declareParticles<2>(m);
+    declareParticles<3>(m);
+
+    declarePatchData<core::ParticleArray<1>*, 1>(m, "PatchDataParticleArrayPtr_1D");
+    declarePatchData<core::ParticleArray<2>*, 2>(m, "PatchDataParticleArrayPtr_2D");
+    declarePatchData<core::ParticleArray<3>*, 3>(m, "PatchDataParticleArrayPtr_3D");
 }
 
 } // namespace PHARE::pydata

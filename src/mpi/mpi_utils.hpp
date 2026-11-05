@@ -213,7 +213,7 @@ NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
 
     std::vector<Array> values(mpi_size);
     for (int i = 0; i < mpi_size; i++)
-        std::memcpy(&values[i], &datas[maxMPISize * i], maxMPISize);
+        std::memcpy(&values[i], &datas[maxMPISize * i], maxMPISize * sizeof(T));
 
     return values;
 }
