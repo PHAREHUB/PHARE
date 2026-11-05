@@ -18,7 +18,7 @@ namespace amr
         static constexpr auto dimension    = ResourcesUser::dimension;
         static constexpr auto interp_order = GridLayout_t::options.interp_order;
 
-        using particle_array_type = typename ResourcesUser::particle_array_type;
+        using particle_array_type = ResourcesUser::particle_array_type;
         using variable_type       = ParticlesVariable<particle_array_type, interp_order>;
         using patch_data_type     = ParticlesData<particle_array_type>;
     };

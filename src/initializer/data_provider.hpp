@@ -65,7 +65,7 @@ namespace initializer
     };
 
     template<std::size_t dim>
-    using InitFunction = typename InitFunctionHelper<double, dim>::type;
+    using InitFunction = InitFunctionHelper<double, dim>::type;
 
 
     using PHAREDict

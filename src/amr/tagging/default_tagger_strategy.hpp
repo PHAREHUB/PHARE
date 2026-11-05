@@ -19,7 +19,7 @@ namespace PHARE::amr
 template<typename Model>
 class DefaultTaggerStrategy : public TaggerStrategy<Model>
 {
-    using gridlayout_type           = typename Model::gridlayout_type;
+    using gridlayout_type           = Model::gridlayout_type;
     static auto constexpr dimension = Model::dimension;
 
 

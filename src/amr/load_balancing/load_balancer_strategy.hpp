@@ -14,8 +14,8 @@ namespace PHARE::amr
 template<typename Model>
 class LoadBalancerStrategy
 {
-    using amr_types = typename Model::amr_types;
-    using level_t   = typename amr_types::level_t;
+    using amr_types = Model::amr_types;
+    using level_t   = amr_types::level_t;
 
 public:
     virtual ~LoadBalancerStrategy() {}

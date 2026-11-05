@@ -94,17 +94,17 @@ protected:
     static std::uint32_t const nx;
     static std::uint32_t const ny;
     static std::uint32_t const nz;
-    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
-    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
-    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> bx1d_;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> by1d_;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> bz1d_;
 
-    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> bx2d_;
-    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> by2d_;
-    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> bz2d_;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> bx2d_;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> by2d_;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> bz2d_;
 
-    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> bx3d_;
-    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> by3d_;
-    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> bz3d_;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> bx3d_;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> by3d_;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> bz3d_;
 
     VecField_t<1> B1D_;
     VecField_t<2> B2D_;
@@ -246,7 +246,7 @@ TEST_F(VecFieldTest, VecFieldsHaveBeginAndEnd)
 
 TEST(aVecField, dataCanBeCopiedIntoAnother)
 {
-    using Scalar = typename HybridQuantity::Scalar;
+    using Scalar = HybridQuantity::Scalar;
 
     Grid<NdArrayVector<3>, Scalar> bx1{"B1_x", Scalar::Bx, 2u, 3u, 4u};
     Grid<NdArrayVector<3>, Scalar> by1{"B1_y", Scalar::By, 2u, 3u, 4u};

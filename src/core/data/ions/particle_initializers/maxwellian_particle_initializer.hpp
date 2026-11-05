@@ -114,7 +114,7 @@ private:
         return all - interior;
     }
 
-    using Particle = typename ParticleArray::value_type;
+    using Particle = ParticleArray::value_type;
     InputFunction density_;
     std::array<InputFunction, 3> bulkVelocity_;
     std::array<InputFunction, 3> thermalVelocity_;

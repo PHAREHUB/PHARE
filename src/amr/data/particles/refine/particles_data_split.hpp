@@ -54,7 +54,7 @@ namespace amr
     template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
-        using Particle_t = typename ParticleArray::value_type;
+        using Particle_t = ParticleArray::value_type;
         static constexpr bool putParticlesInCoarseBoundary
             = splitType == ParticlesDataSplitType::coarseBoundary
               || splitType == ParticlesDataSplitType::coarseBoundaryOld

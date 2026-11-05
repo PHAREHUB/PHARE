@@ -157,16 +157,16 @@ struct get_value_type
 template<ViewVector T>
 struct get_value_type<T>
 {
-    using type = typename T::value_type;
+    using type = T::value_type;
 };
 
 template<typename T>
-using value_type_t = typename get_value_type<T>::type;
+using value_type_t = get_value_type<T>::type;
 
 template<typename Field, typename VecField>
 struct AllFluxes
 {
-    using Float                     = typename Field::value_type;
+    using Float                     = Field::value_type;
     static constexpr auto dimension = Field::dimension;
 
     AllFluxes<value_type_t<Field>, value_type_t<VecField>> operator[](std::size_t i)
@@ -181,7 +181,7 @@ struct AllFluxes
     auto get_dir(MeshIndex<Field::dimension> index)
         requires((!ViewVector<Field>) && (!ViewVector<VecField>))
     {
-        using Float = typename Field::value_type;
+        using Float = Field::value_type;
 
         if constexpr (direction == Direction::X)
             return PerIndex<Float&>{

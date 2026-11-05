@@ -23,7 +23,7 @@ class TensorFieldDataFactory : public SAMRAI::hier::PatchDataFactory
 {
     static constexpr std::size_t n_ghosts = GridLayoutT::options.field_ghost_width;
 
-    using tensor_t = typename PhysicalQuantity::template TensorType<rank_>;
+    using tensor_t = PhysicalQuantity::template TensorType<rank_>;
 
 public:
     using grid_type                 = Grid_t;

@@ -74,7 +74,7 @@ struct AParticlesData
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
 
-    typename ParticleArray<dim>::Particle_t particle;
+    ParticleArray<dim>::Particle_t particle;
 
 
     AParticlesData()

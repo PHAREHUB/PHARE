@@ -43,7 +43,7 @@ auto make_box(std::uint32_t const shift)
 
 struct Fixture
 {
-    using GridLayout_t = TestGridLayout<typename PHARE_Types<SimOpts{3, 1}>::Hybrid::GridLayout_t>;
+    using GridLayout_t = TestGridLayout<PHARE_Types<SimOpts{3, 1}>::Hybrid::GridLayout_t>;
 
     Fixture()
     {

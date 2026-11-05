@@ -21,9 +21,9 @@ public:
     using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
-    using Attributes = typename Super::Attributes;
-    using GridLayout = typename H5Writer::GridLayout;
-    using FloatType  = typename H5Writer::FloatType;
+    using Attributes = Super::Attributes;
+    using GridLayout = H5Writer::GridLayout;
+    using FloatType  = H5Writer::FloatType;
 
     MetaDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}

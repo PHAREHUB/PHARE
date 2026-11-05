@@ -134,9 +134,8 @@ namespace PHARE::initializer::test_per_cell_seed
 template<std::size_t dim>
 struct SeededLoader
 {
-    using GridLayoutT =
-        typename PHARE::core::PHARE_Types<PHARE::SimOpts{dim, 1}>::Hybrid::GridLayout_t;
-    using ParticleArrayT    = ParticleArray<dim>;
+    using GridLayoutT    = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, 1}>::Hybrid::GridLayout_t;
+    using ParticleArrayT = ParticleArray<dim>;
     using InitFunctionArray = std::array<InitFunction<dim>, 3>;
     using Cell              = std::array<int, dim>;
     using CellParticles     = std::map<Cell, std::vector<Particle<dim>>>;
