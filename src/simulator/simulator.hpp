@@ -609,7 +609,7 @@ void Simulator<opts>::handle_dictionary_exception(core::DictionaryException cons
         for (auto const& exception_id : dump_exceptions)
             if (ex.id() == exception_id)
                 for (int ilvl = 0; ilvl < hierarchy_->getMaxNumberOfLevels(); ++ilvl)
-                    this->dMan->dump_level(ilvl, currentTime_);
+                    this->dMan->emergency_dump_level(ilvl, currentTime_);
 }
 
 template<auto opts>

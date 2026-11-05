@@ -2,6 +2,7 @@
 #define HIGHFIVEDIAGNOSTICWRITER_HPP
 
 #include <string>
+#include <stdexcept>
 #include <algorithm>
 #include <unordered_map>
 
@@ -32,17 +33,20 @@ public:
     virtual void createFiles(DiagnosticProperties& diagnostic) = 0;
 
     virtual void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                                std::string const& patchID, Attributes& patchAttributes) = 0;
+                                std::string const& patchID, Attributes& patchAttributes)
+        = 0;
 
     virtual void
     initDataSets(DiagnosticProperties& diagnostic,
                  std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
-                 Attributes& patchAttributes, std::size_t maxLevel) = 0;
+                 Attributes& patchAttributes, std::size_t maxLevel)
+        = 0;
 
     virtual void writeAttributes(
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
-        std::size_t maxLevel) = 0;
+        std::size_t maxLevel)
+        = 0;
     //------------------------------------------------------------------------
 
 
@@ -137,6 +141,31 @@ protected:
             if (diagnostic.quantity == tree + var and !fileData.count(diagnostic.quantity))
                 fileData.emplace(diagnostic.quantity, this->h5Writer_.makeFile(diagnostic));
         });
+    }
+
+
+    // creates the file of any quantity the model's accessors have, throws for any other
+    void createFileFor_(DiagnosticProperties const& diagnostic)
+    {
+        h5Writer_.modelView().accessors().check(diagnostic.quantity);
+        if (!fileData_.count(diagnostic.quantity))
+            fileData_.emplace(diagnostic.quantity, h5Writer_.makeFile(diagnostic));
+    }
+
+    // patch attributes bucket of a quantity: "mhd", "ion" or "fluid_<pop name>"
+    static std::string patchAttributesKey_(std::string const& quantity)
+    {
+        std::string const pop_tree{"/ions/pop/"};
+        if (quantity.starts_with("/mhd/"))
+            return "mhd";
+        if (quantity.starts_with(pop_tree))
+        {
+            auto const pop_end = quantity.find('/', pop_tree.size());
+            return "fluid_" + quantity.substr(pop_tree.size(), pop_end - pop_tree.size());
+        }
+        if (quantity.starts_with("/ions/"))
+            return "ion";
+        throw std::runtime_error("no patch attributes key for " + quantity);
     }
 
 
