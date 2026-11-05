@@ -62,11 +62,8 @@ class VtkFieldData(patchdata.FieldData):
         """VTK Diagnostics do not have ghosts values!"""
 
         try:
-            that_data = (
-                that[:]
-                if all([that.dataset.shape == self.dataset.shape])
-                else that[that.box]
-            )
+            same_shape = tuple(that.dataset.shape) == tuple(self.dataset.shape)
+            that_data = that[:] if same_shape else that[that.box]
             phut.assert_fp_any_all_close(self.dataset[:], that_data, atol=atol)
             return True
         except AssertionError as e:

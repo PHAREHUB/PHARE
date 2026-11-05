@@ -10,12 +10,13 @@ import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.core import phare_utilities as phut
 from pyphare.core.box import Box
+from pyphare.core.gridlayout import yee_element_is_primal
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 from tests.diagnostic import dump_all_diags
-from tests.simulator import SimulatorTest
+from tests.simulator import SimulatorTest, sorted_hierarchy
 
 # only in 2d for now
 ppc_per_dim = [100, 25, 10]
@@ -274,25 +275,55 @@ class VTKDiagnosticsTest(SimulatorTest):
         atol = 0 if cpp.mpi_size() <= 2 else [1e-15, 1e-14, 1e-14][ndim - 1]
         time = 0
 
+        directions = ["x", "y", "z"][:ndim]
+        qty = {"GetVi": "V", "GetB": "B", "GetE": "E"}
+
+        def primal_components(getter):
+            return [
+                c
+                for c in ["x", "y", "z"]
+                if all(yee_element_is_primal(qty[getter] + c, d) for d in directions)
+            ]
+
+        def primal_only(hier, components):
+            for level in hier.levels(time).values():
+                for patch in level.patches:
+                    for key in [k for k in patch.patch_datas if k not in components]:
+                        del patch.patch_datas[key]
+                    self.assertEqual(sorted(patch.patch_datas), components)
+            return hier
+
+        compared = []  # quantities of each compare call, checked against the expected ones below
+
         def compare(getter, **kwargs):
-            # the vtk writer interpolates B and E to nodes, pharesee does for phareh5
+            # dual components are interpolated to nodes before rounding to the diag precision by
+            # the vtk writer, after by pharesee for phareh5: only primal ones are the same values
+            components = primal_components(getter)
             phareh5_hier = getattr(Run(phareh5_diags), getter)(time, **kwargs)
             vtk_hier = getattr(Run(vtk_diags), getter)(time, **kwargs)
+            phareh5_hier = primal_only(sorted_hierarchy(phareh5_hier), components)
+            vtk_hier = primal_only(sorted_hierarchy(vtk_hier), components)
             self.assertTrue(vtk_hier.data_files != phareh5_hier.data_files)
+            n_patches = sum(len(lvl.patches) for lvl in vtk_hier.levels(time).values())
+            self.assertGreater(n_patches, 0)  # else hierarchy_compare has nothing to compare
             eqr = hootils.hierarchy_compare(vtk_hier, phareh5_hier, atol)
             if not eqr:
                 print(getter, eqr)
             self.assertTrue(eqr)
+            compared.append({qty[getter] + c for c in components})
             return vtk_hier
 
-        for getter in ["GetVi", "GetB", "GetE"]:
+        # B and E components primal in every direction: 1D Bx Ey Ez, 2D Ez, 3D none
+        # (pharesee has no Yee to primal conversion in 3D, needed for phareh5 B and E)
+        em_getters = [g for g in ["GetB", "GetE"] if primal_components(g)]
+        for getter in ["GetVi"] + em_getters:
             compare(getter)
 
         # skips the first patch of each level, the reader must step over its data
         # L0 patches: x in [0, 3], [3, 6], [6, 9], [9, 12]; L1 patches: x in [3, 4.5], [4.5, 6]
         all_patches = compare("GetVi").levels(time)
         selection_box = Box([5] * ndim, [11] * ndim)
-        for getter in ["GetVi", "GetB"]:
+        for getter in ["GetVi"] + em_getters[:1]:
             levels = compare(getter, selection_box=selection_box).levels(time)
             self.assertEqual(levels.keys(), all_patches.keys())
             for ilvl, level in levels.items():
@@ -310,6 +341,14 @@ class VTKDiagnosticsTest(SimulatorTest):
             [p.box for p in levels[0].patches], [Box([30] * ndim, [39] * ndim)]
         )
         self.assertEqual(levels[1].patches, [])
+
+        expected = {
+            1: {"Vx", "Vy", "Vz", "Bx", "Ey", "Ez"},
+            2: {"Vx", "Vy", "Vz", "Ez"},
+            3: {"Vx", "Vy", "Vz"},
+        }[ndim]
+        self.assertEqual(set().union(*compared), expected)
+        self.assertEqual(len(compared), {1: 7, 2: 6, 3: 4}[ndim])
 
     @data(*permute({}))
     @unpack

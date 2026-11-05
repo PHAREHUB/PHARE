@@ -209,6 +209,16 @@ def diff_boxes(slice1, slice2, box, atol=None):
     return boxes
 
 
+def sorted_hierarchy(hier):
+    """patches of each level sorted by box: patch ids depend on the rank layout and the
+    readers order patches differently, so two hierarchies only pair patch by patch
+    (eg in hierarchy_compare) once both are sorted"""
+    for levels in hier.time_hier.values():
+        for level in levels.values():
+            level.patches.sort(key=lambda patch: str(patch.box))
+    return hier
+
+
 class SimulatorTest(unittest.TestCase):
     test_kwargs = ("rethrow",)
 
