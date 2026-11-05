@@ -115,7 +115,6 @@ namespace amr
 
         virtual void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)    = 0;
         virtual void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) = 0;
-        virtual void fillIonBorders(IonsT& ions, level_t& level, double const fillTime)     = 0;
 
 
         std::string name() const { return stratname_; }
