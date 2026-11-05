@@ -129,14 +129,12 @@ namespace solver
 
         /**
          * @brief computeStableDt returns the level stable time step local to the mpi rank, based on
-         * the stability constraints expressed by the CFL numbers, or NaN if any cell has a
-         * non-finite wave speed. The caller (MultiPhysicsIntegrator::levelStableDt_) is
-         * responsible for the mpi reduction.
+         * the stability constraints expressed by the CFL numbers. A cell with a non-finite wave
+         * speed stops the run. The caller (MultiPhysicsIntegrator::levelStableDt_) is responsible
+         * for the mpi reduction.
          */
         virtual double computeStableDt(IPhysicalModel_t& model, level_t& level,
                                        CFLNumbers const& cflNumbers) = 0;
-
-        virtual std::string nonFiniteCellReport() const { return {}; }
 
 
         virtual void onRegrid() {} // do what you need to do on regrid

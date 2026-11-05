@@ -63,8 +63,6 @@ private:
     double const eta_;   // resistivity
     bool const isHall_;
 
-    std::string nonFiniteCellReport_;
-
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"MHDSolver"}
@@ -130,8 +128,6 @@ public:
 
     double computeStableDt(IPhysicalModel_t& model, level_t& level,
                            CFLNumbers const& cflNumbers) override;
-
-    NO_DISCARD std::string nonFiniteCellReport() const override { return nonFiniteCellReport_; }
 
     void onRegrid() override {}
 
@@ -414,10 +410,8 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
     auto& B        = mhdModel.state.B;
     auto& Etot     = mhdModel.state.Etot;
 
-    double dt = std::numeric_limits<double>::max();
-
-    nonFiniteCellReport_.clear();
-    bool nonFinite = false;
+    double dt                = std::numeric_limits<double>::max();
+    bool nonFiniteCellLogged = false;
 
     for (auto& patch : level)
     {
@@ -474,27 +468,28 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             }
             if (!std::isfinite(invDtWave))
             {
-                if (!nonFinite)
+                if (!nonFiniteCellLogged)
                 {
                     auto const amrIndex
                         = layout.localToAMR(core::Point<std::uint32_t, dimension>{args...});
                     auto const position = layout.fieldNodeCoordinates(rho, amrIndex);
                     std::stringstream ss;
-                    ss << "cell at (";
+                    ss << "non-finite wave speed on level " << level.getLevelNumber()
+                       << ": cell at (";
                     for (std::size_t d = 0; d < dimension; ++d)
                         ss << (d ? ", " : "") << position[d];
                     ss << "): rho = " << r << ", P = " << P << ", |B| = " << std::sqrt(BdotB);
-                    nonFiniteCellReport_ = ss.str();
+                    PHARE_LOG_ERROR(ss.str());
+                    nonFiniteCellLogged = true; // print only the first one
                 }
-                nonFinite = true;
                 return;
             }
             dt = std::min(dt, wave / invDtWave);
         });
     }
 
-    if (nonFinite)
-        return std::numeric_limits<double>::quiet_NaN();
+    if (mpi::any_errors())
+        throw core::DictionaryException{}("ID", "SolverMHD::computeStableDt");
 
     return dt;
 }

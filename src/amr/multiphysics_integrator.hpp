@@ -24,7 +24,6 @@
 #include "SAMRAI/tbox/RestartManager.h"
 
 #include <algorithm>
-#include <cmath>
 #include <map>
 #include <iomanip>
 #include <memory>
@@ -107,6 +106,8 @@ namespace solver
                           == core::TimeStepType::adaptive}
             , cfl_{cppdict::get_value(dict, "time_step/cfl_wave", 0.),
                    cppdict::get_value(dict, "time_step/cfl_diffusive", 0.)}
+            , fineLevelSubstepsMax_{
+                  cppdict::get_value(dict, "time_step/fine_level_substeps_max", 1000)}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -351,7 +352,7 @@ namespace solver
                 load_balancer_manager_->estimate(*level, model);
 
             if (isAdaptive_)
-                newLevelDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_);
+                levelStableDt_(levelNumber, *level, cfl_, initDataTime);
         }
 
 
@@ -433,8 +434,8 @@ namespace solver
         double getMaxFinerLevelDt(int const finerLevelNumber, double const coarseDt,
                                   SAMRAI::hier::IntVector const& ratio) override
         {
-            if (auto const it = newLevelDt_.find(finerLevelNumber);
-                isAdaptive_ and it != newLevelDt_.end())
+            if (auto const it = stableDt_.find(finerLevelNumber);
+                isAdaptive_ and it != stableDt_.end())
                 return std::min(coarseDt, it->second);
 
             // whistler waves require the dt ~ dx^2
@@ -445,9 +446,10 @@ namespace solver
         }
 
 
-        double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability)
+        double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability,
+                               double const time)
         {
-            return levelStableDt_(0, *hierarchy.getPatchLevel(0), stability);
+            return levelStableDt_(0, *hierarchy.getPatchLevel(0), stability, time);
         }
 
 
@@ -503,7 +505,7 @@ namespace solver
             {
                 std::ostringstream ss;
                 ss << std::setprecision(17) << "zero-length step on level 0: t = " << currentTime
-                   << ", newTime = " << newTime << ", dt = " << newTime - currentTime;
+                   << ", newTime = " << newTime;
                 throw std::runtime_error(ss.str());
             }
 
@@ -554,7 +556,7 @@ namespace solver
             load_balancer_manager_->estimate(*level, model);
 
             if (isAdaptive_ and iLevel > 0)
-                return levelStableDt_(iLevel, *level, cfl_);
+                return levelStableDt_(iLevel, *level, cfl_, newTime);
 
             return newTime;
         }
@@ -655,28 +657,30 @@ namespace solver
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
         bool const isAdaptive_;
         CFLNumbers const cfl_;
-        std::unordered_map<std::size_t, double> newLevelDt_;
+        // a limitation on the number of substeps made by fine level
+        int const fineLevelSubstepsMax_;
+        std::unordered_map<std::size_t, double> stableDt_;
 
 
         double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level,
-                              CFLNumbers const& cfl)
+                              CFLNumbers const& cfl, double const time)
         {
-            auto& solver     = getSolver_(iLevel);
-            auto const local = solver.computeStableDt(getModel_(iLevel), level, cfl);
-            bool const bad   = mpi::any(!std::isfinite(local));
-            if (bad)
+            auto const dt
+                = mpi::min(getSolver_(iLevel).computeStableDt(getModel_(iLevel), level, cfl));
+            if (iLevel > 0)
             {
-                auto const reports = mpi::collect(solver.nonFiniteCellReport());
-                std::size_t r      = 0;
-                while (r < reports.size() && reports[r].empty())
-                    ++r;
-                if (r == reports.size())
-                    throw std::runtime_error("non-finite wave speed on level "
-                                             + std::to_string(iLevel) + ": no cell reported");
-                throw std::runtime_error("non-finite wave speed on level " + std::to_string(iLevel)
-                                         + ": rank " + std::to_string(r) + ": " + reports[r]);
+                auto const coarserDt = stableDt_.at(iLevel - 1);
+                if (coarserDt > fineLevelSubstepsMax_ * dt)
+                {
+                    std::ostringstream ss;
+                    ss << std::setprecision(17) << "stable dt on level " << iLevel
+                       << " at t = " << time << " is " << dt
+                       << ", more than fine_level_substeps_max = " << fineLevelSubstepsMax_
+                       << " times smaller than on level " << iLevel - 1 << " (" << coarserDt << ")";
+                    throw std::runtime_error(ss.str());
+                }
             }
-            return mpi::min(local);
+            return stableDt_[iLevel] = dt;
         }
 
 

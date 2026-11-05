@@ -57,7 +57,7 @@ class AdaptiveDtCase(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    def uniform_simulation(self, hall, dl, **kwargs):
+    def uniform_simulation(self, hall, dl, max_mhd_level=1, time_step=None, **kwargs):
         ph.global_vars.sim = None
         return ph.Simulation(
             interp_order=None,
@@ -70,8 +70,8 @@ class AdaptiveDtCase(SimulatorTest):
             eta=0.0,
             nu=0.0,
             gamma=GAMMA,
-            max_mhd_level=1,
-            time_step={"mode": "adaptive", "cfl_wave": CFL_WAVE},
+            max_mhd_level=max_mhd_level,
+            time_step=time_step or {"mode": "adaptive", "cfl_wave": CFL_WAVE},
             final_time=100.0,
             cells=(20, 10),
             dl=dl,

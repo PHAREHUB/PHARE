@@ -21,8 +21,7 @@ class StopOnCorruptStateTest(AdaptiveDtCase):
             self.simulator.initialize()
         cause = ctx.exception.__cause__
         self.assertIsInstance(cause, RuntimeError)
-        for text in ("non-finite wave speed", "level 0", "cell at (", "P = -1"):
-            self.assertIn(text, str(cause))
+        self.assertIn("SolverMHD::computeStableDt", str(cause))
 
 
 if __name__ == "__main__":
