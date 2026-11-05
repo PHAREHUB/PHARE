@@ -4,7 +4,9 @@
 #include <cstddef>
 #include <string>
 #include <array>
+#include <span>
 #include <vector>
+#include <stdexcept>
 #include <unordered_map>
 
 #include "core/def.hpp"
@@ -228,14 +230,34 @@ template<typename Field_t, typename PhysicalQuantity>
 using SymTensorField = TensorField<Field_t, PhysicalQuantity, /*rank=*/2>;
 
 
-template<typename Field_t, typename PhysicalQuantity, std::size_t rank, typename GridLayout>
-NO_DISCARD auto view_as(TensorField<Field_t, PhysicalQuantity, rank>& source,
-                        typename TensorField<Field_t, PhysicalQuantity, rank>::tensor_t qty,
-                        GridLayout const& layout)
+template<typename TensorFieldT, typename GridLayout>
+NO_DISCARD std::size_t alloc_size(typename TensorFieldT::tensor_t qty, GridLayout const& layout)
 {
-    TensorField<Field_t, PhysicalQuantity, rank> view{source.name(), qty};
+    TensorFieldT const components{"", qty};
+    std::size_t size = 0;
+    for (std::size_t i = 0; i < components.size(); ++i)
+        size += product(layout.allocSize(components[i].physicalQuantity()));
+    return size;
+}
+
+
+template<typename TensorFieldT, typename GridLayout>
+NO_DISCARD TensorFieldT view_on(std::string const& name,
+                                std::span<typename TensorFieldT::value_type> buffer,
+                                typename TensorFieldT::tensor_t qty, GridLayout const& layout)
+{
+    if (buffer.size() < alloc_size<TensorFieldT>(qty, layout))
+        throw std::runtime_error("view_on: buffer too small for " + name);
+
+    TensorFieldT view{name, qty};
+    auto* data = buffer.data();
     for (std::size_t i = 0; i < view.size(); ++i)
-        view[i] = view_as(source[i], view[i].physicalQuantity(), layout);
+    {
+        auto const shape = layout.allocSize(view[i].physicalQuantity());
+        view[i] = typename TensorFieldT::field_type{view[i].name(), view[i].physicalQuantity(),
+                                                    data, shape};
+        data += product(shape);
+    }
     return view;
 }
 

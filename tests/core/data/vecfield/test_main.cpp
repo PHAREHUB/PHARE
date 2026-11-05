@@ -17,6 +17,7 @@
 #include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
 
 #include <stdexcept>
+#include <vector>
 
 
 using namespace PHARE::core;
@@ -299,30 +300,35 @@ using MHDGridLayout_t = PHARE_Types<mhd_opts>::MHD::GridLayout_t;
 } // namespace
 
 
-TEST(VecFieldViewAs, viewsTheSourceBuffersWithTheRequestedCentering)
+TEST(VecFieldViewOn, viewsConsecutiveSlicesOfTheBufferWithTheRequestedCentering)
 {
+    using VecField_t = VecFieldMHD<2>;
     TestGridLayout<MHDGridLayout_t> layout{8};
-    UsableVecFieldMHD<2> allPrimal{"tmp", layout, MHDQuantity::Vector::VecAllPrimal};
+    std::vector<double> buffer(alloc_size<VecField_t>(MHDQuantity::Vector::E, layout));
 
-    auto E = view_as(allPrimal.super(), MHDQuantity::Vector::E, layout);
+    auto E = view_on<VecField_t>("A0", buffer, MHDQuantity::Vector::E, layout);
 
+    EXPECT_EQ(E.name(), "A0");
     EXPECT_EQ(E.physicalQuantity(), MHDQuantity::Vector::E);
+    EXPECT_EQ(E[0].data(), buffer.data());
+    std::size_t total = 0;
     for (std::size_t i = 0; i < E.size(); ++i)
     {
-        EXPECT_EQ(E[i].data(), allPrimal[i].data());
-        EXPECT_EQ(E[i].name(), allPrimal[i].name());
         EXPECT_EQ(E[i].shape(), layout.allocSize(E[i].physicalQuantity()));
-        EXPECT_LE(E[i].size(), allPrimal[i].size());
+        EXPECT_EQ(E[i].data(), buffer.data() + total);
+        total += E[i].size();
     }
+    EXPECT_EQ(total, buffer.size());
 }
 
 
-TEST(VecFieldViewAs, throwsIfTheSourceBuffersAreTooSmall)
+TEST(VecFieldViewOn, throwsIfTheBufferIsTooSmall)
 {
+    using VecField_t = VecFieldMHD<2>;
     TestGridLayout<MHDGridLayout_t> layout{8};
-    UsableVecFieldMHD<2> E{"E", layout, MHDQuantity::Vector::E};
+    std::vector<double> buffer(alloc_size<VecField_t>(MHDQuantity::Vector::E, layout) - 1);
 
-    EXPECT_THROW((void)view_as(E.super(), MHDQuantity::Vector::VecAllPrimal, layout),
+    EXPECT_THROW((void)view_on<VecField_t>("A0", buffer, MHDQuantity::Vector::E, layout),
                  std::runtime_error);
 }
 

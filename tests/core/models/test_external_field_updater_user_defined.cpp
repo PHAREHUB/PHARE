@@ -1,3 +1,5 @@
+#include "core/data/field/field_scratch.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/models/external_field_updater_user_defined.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/span.hpp"
@@ -10,8 +12,10 @@
 
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <numbers>
 #include <stdexcept>
@@ -123,10 +127,7 @@ struct UserDefinedSetup
 
     Updater_t updater{makeUpdater()};
 
-    void update(double time = evalTime)
-    {
-        updater(externalField, externalField.scratch(), layout, time);
-    }
+    void update(double time = evalTime) { updater(externalField, layout, time); }
 
     //! largest |field - factor * curl(a)| over the ghost box, all components
     double maxErrorAgainstCurl(VecField_t& vecfield, double factor)
@@ -161,6 +162,20 @@ struct UserDefinedSetup
         return baseTolerance * timeProfileDerivative(time);
     }
 };
+
+
+template<typename GridLayout, typename VecField>
+bool allFinite(GridLayout const& layout, VecField& vecfield)
+{
+    bool finite = true;
+    for (std::size_t c = 0; c < vecfield.size(); ++c)
+    {
+        auto& field = vecfield[c];
+        layout.evalOnGhostBox(
+            field, [&](auto... ijk) { finite = finite and std::isfinite(field(ijk...)); });
+    }
+    return finite;
+}
 
 } // namespace
 
@@ -210,6 +225,33 @@ TYPED_TEST(UserDefinedTest, followsTheTimeItIsStampedAt)
     // and the two really differ: timeProfile(0) = 1 against timeProfile(2) = 5, so the field
     // stamped at t = 2 is nowhere near what is expected at t = 0
     EXPECT_GT(setup.maxErrorOnB0(0.), setup.toleranceOnB0(0.));
+}
+
+TYPED_TEST(UserDefinedTest, ignoresWhatItsWorkingSpaceHeldBefore)
+{
+    using VecField_t = TypeParam::VecField_t;
+    auto& setup      = this->setup;
+
+    release_field_scratch();
+    {
+        ScratchWrite scratch;
+        auto& buffer = scratch.get().get_no_copy(
+            alloc_size<VecField_t>(VecField_t::tensor_t::E, setup.layout))();
+        std::ranges::fill(buffer, std::numeric_limits<double>::quiet_NaN());
+    }
+
+    setup.update(2.);
+
+    EXPECT_TRUE(allFinite(setup.layout, setup.externalField.B0()));
+    EXPECT_TRUE(allFinite(setup.layout, setup.externalField.dB0dt()));
+    EXPECT_LT(setup.maxErrorOnB0(2.), setup.toleranceOnB0(2.));
+    EXPECT_LT(setup.maxErrorOnTimeDerivative(2.), setup.toleranceOnTimeDerivative(2.));
+}
+
+TYPED_TEST(UserDefinedTest, refusesItsWorkingSpaceWhileSomeoneElseHoldsIt)
+{
+    ScratchWrite held;
+    EXPECT_THROW(this->setup.update(2.), std::runtime_error);
 }
 
 /**
@@ -279,8 +321,7 @@ TEST(UserDefinedExternalField, rejectsAUserFunctionReturningTheWrongNumberOfValu
     for (auto const& f : {tooShort, noValues})
     {
         Updater_t updater{{f, f, f}};
-        EXPECT_THROW(updater(externalField, externalField.scratch(), layout, 0.),
-                     std::runtime_error);
+        EXPECT_THROW(updater(externalField, layout, 0.), std::runtime_error);
     }
 }
 
