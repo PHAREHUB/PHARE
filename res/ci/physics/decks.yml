@@ -1,0 +1,54 @@
+# Nightly physics report: which decks the agent judges, and with what. A PR changing this file
+# changes what the report checks; review it like a test.
+model: opencode/deepseek-v4.1-flash-free
+opencode_version: 1.18.32
+judge_timeout_s: 900
+history_nights: 7
+page:  # the static nightly page: branch it is pushed to (on the clone's origin), dots kept per history chart
+  branch: gh-pages
+  dots: 90
+teamcity:
+  url: https://hephaistos.lpp.polytechnique.fr/teamcity
+  job_types:  # each job's build type: the page writer takes its last finished build when it downloaded none
+    hybrid: Phare_Next_NightlyV1gcc_virtual_hybrid_functional_V__1
+    mhd: Phare_Next_NightlyV1gcc_virtual_mhd_functional_V__1
+jobs:
+  hybrid:
+    - name: ion_ion_beam1d
+      source: tests/functional/ionIonBeam/ion_ion_beam1d.py
+      workdir: build/tests/functional/ionIonBeam
+      figures: [ion_ion_beam1d.png]
+      extractor: ion_ion_beam
+      key_number: gamma  # the key of this deck's numbers the page charts
+      theory: {quantity: "growth rate gamma of the right-hand mode m=1", value: 0.09, deck_tolerance: 0.02}
+    - name: td1d
+      source: tests/functional/td/td1d.py
+      workdir: build/tests/functional/td
+      judge: false  # extracted every night (history for a future tolerance), never judged
+      judge_reason: "vth = T(x) in the deck, but vth is a standard deviation: the ion pressure is T^2, so the TD starts out of pressure balance; no tolerance until the deck is fixed"
+      figures: []
+      extractor: tangential_discontinuity
+      theory: {quantity: "TD with no flow is an equilibrium: By profile unchanged", value: 0.0, deck_tolerance: null}
+  mhd:
+    - name: convergence
+      source: tests/functional/mhd_convergence/convergence.py
+      workdir: build/tests/functional/mhd_convergence
+      figures: ["phare_outputs/convergence/convergence_*.png"]
+      extractor: figures_only
+      theory: {quantity: "convergence order per reconstruction", value: "Constant 1, Linear 2, WENO3 3, WENOZ 5, MP5 5", deck_tolerance: 0.15}
+    - name: orszag_tang
+      source: tests/functional/mhd_orszagtang/orszag_tang.py
+      workdir: build/tests/functional/mhd_orszagtang
+      own_check: none  # the deck runs and plots, it asserts nothing
+      # the deck plots every time of linspace(0, 1, 6): keep the one for t = 0.6 and the last
+      # one, not t = 0 (the initial condition says nothing about the solver). With an adaptive
+      # dt, the dump for T is written at the first step past T - dt: its name can be just below T.
+      figures:
+        - "phare_outputs/orszag_tang_plots/*/orszag_tang_divb_t0.[56]*.png"
+        - "phare_outputs/orszag_tang_plots/*/orszag_tang_divb_t0.9*.png"
+        - "phare_outputs/orszag_tang_plots/*/orszag_tang_divb_t1.*.png"
+        - "phare_outputs/orszag_tang_plots/*/orszag_tang_rho_t0.[56]*.png"
+        - "phare_outputs/orszag_tang_plots/*/orszag_tang_rho_t0.9*.png"
+        - "phare_outputs/orszag_tang_plots/*/orszag_tang_rho_t1.*.png"
+      extractor: figures_only
+      theory: {quantity: "div B near zero (maps scaled to +-1e-11), symmetric density", value: 0.0, deck_tolerance: null}
