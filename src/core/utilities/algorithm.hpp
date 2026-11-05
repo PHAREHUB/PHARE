@@ -5,7 +5,8 @@
 #include "core/def.hpp"
 
 #include "core/utilities/span.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/array.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/field/recentered_field.hpp"
 #include "core/utilities/box/box_spans.hpp"

@@ -65,7 +65,14 @@ set( SOURCES_INC
      utilities/partitionner/partitionner.hpp
      utilities/point/point.hpp
      utilities/range/range.hpp
-     utilities/types.hpp
+     utilities/array.hpp
+     utilities/env.hpp
+     utilities/logic.hpp
+     utilities/numeric.hpp
+     utilities/strings.hpp
+     utilities/tuple.hpp
+     utilities/meta/for_N.hpp
+     utilities/meta/type_meta.hpp
    )
 
 set( SOURCES_CPP

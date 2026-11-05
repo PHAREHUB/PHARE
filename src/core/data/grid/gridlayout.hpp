@@ -3,7 +3,9 @@
 
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/type_meta.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/array.hpp"
 #include "core/data/field/field_traits.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"

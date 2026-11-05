@@ -2,7 +2,9 @@
 #define PHARE_CORE_UTILITIES_POINT_POINT_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/strings.hpp"
 #include "core/utilities/meta/type_equality_meta.hpp"
 #include "core/utilities/meta/container_meta.hpp"
 

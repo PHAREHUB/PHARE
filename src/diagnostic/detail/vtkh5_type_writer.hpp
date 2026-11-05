@@ -3,7 +3,10 @@
 
 
 #include "core/logger.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/env.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "mpi/mpi_utils.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"

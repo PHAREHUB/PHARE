@@ -19,7 +19,7 @@
 #include "gtest/gtest.h"
 
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
 
 using testing::Eq;
 

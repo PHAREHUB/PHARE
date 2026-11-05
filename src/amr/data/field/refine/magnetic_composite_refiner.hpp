@@ -5,7 +5,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/numeric.hpp"
 
 #include "coarse_cell_round_out.hpp"
 #include "composite_field_refiner.hpp"

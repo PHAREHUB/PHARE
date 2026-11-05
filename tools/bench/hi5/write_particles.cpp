@@ -11,6 +11,7 @@
 #include "tools/bench/core/bench.hpp"
 
 #include "benchmark/benchmark.h"
+#include "core/utilities/tuple.hpp"
 
 constexpr std::size_t dim = 1;
 

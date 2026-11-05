@@ -1,7 +1,8 @@
 #ifndef PHARE_SPLITTER_HPP
 #define PHARE_SPLITTER_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/tuple.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 
 #include "amr/amr_constants.hpp"

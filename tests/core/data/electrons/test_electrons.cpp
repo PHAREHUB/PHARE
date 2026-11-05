@@ -8,7 +8,6 @@
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/ions/ions.hpp"
-#include "src/core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"

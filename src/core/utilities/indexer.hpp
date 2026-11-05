@@ -1,7 +1,6 @@
 #ifndef PHARE_INDEXER_H
 #define PHARE_INDEXER_H
 
-#include "core/utilities/types.hpp"
 #include "core/def.hpp"
 
 #include <cassert>

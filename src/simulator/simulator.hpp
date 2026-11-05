@@ -6,7 +6,7 @@
 #include "core/def.hpp"
 #include "core/errors.hpp"
 #include "core/logger.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/env.hpp"
 #include "mpi/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 

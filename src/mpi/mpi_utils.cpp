@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <ctime>
 
 #ifndef PHARE_ERRORS_USE_MPI_ABORT
 #define PHARE_ERRORS_USE_MPI_ABORT 1

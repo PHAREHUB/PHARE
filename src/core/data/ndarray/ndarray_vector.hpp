@@ -2,7 +2,9 @@
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/numeric.hpp"
 
 #include <array>
 #include <vector>

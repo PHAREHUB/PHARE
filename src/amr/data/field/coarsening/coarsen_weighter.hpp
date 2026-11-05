@@ -2,7 +2,7 @@
 #define PHARE_COARSEN_WEIGHTER_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
 #include <array>
 #include <cassert>

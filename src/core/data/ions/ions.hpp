@@ -18,7 +18,8 @@
 #include "initializer/data_provider.hpp"
 #include "particle_initializers/particle_initializer_factory.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
 

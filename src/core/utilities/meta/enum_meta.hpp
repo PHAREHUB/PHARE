@@ -1,7 +1,7 @@
 #ifndef PHARE_CORE_UTILITIES_META_ENUM_META_HPP
 #define PHARE_CORE_UTILITIES_META_ENUM_META_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
 #include "core/utilities/meta/constexprifier.hpp"
 
 #include <cstdint>

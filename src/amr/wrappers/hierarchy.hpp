@@ -11,6 +11,7 @@
 
 #include "initializer/data_provider.hpp"
 #include "initializer/dict_utils.hpp"
+#include "core/utilities/strings.hpp"
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
