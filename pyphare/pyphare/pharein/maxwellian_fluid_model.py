@@ -240,6 +240,64 @@ class MaxwellianFluidModel:
         else:
             raise ValueError("Unknown dimension")
 
+    def validate_density(
+        self, sim, min_initial_density, max_points_per_chunk=1_000_000
+    ):
+        """
+        the electrons have the ions' charge density: the electron velocity
+        Ve = (sum_s q_s F_s - J)/n and Ohm's law divide by it, so it must not go below
+        min_initial_density (a net negative charge is below it) on the grid nodes of the
+        domain of level 0, at t = 0 and from the origin of the domain, 0. Neither the
+        density of a refined level nor its evolution in time is checked here: where
+        the deposited density drops to 0 later, the polytropic closure leaves its state as it is.
+        Evaluated by slabs along x, keeping a running minimum, so that the memory
+        does not grow with the full domain size.
+        """
+        min_density = min_initial_density
+        if not isinstance(min_density, numbers.Real) or isinstance(min_density, bool):
+            raise TypeError(
+                f"min_initial_density must be a number, got {type(min_density).__name__}"
+            )
+        if not np.isfinite(min_density) or min_density < 0:
+            raise ValueError(
+                f"min_initial_density must be finite and >= 0 (0 disables the check),"
+                f" got {min_density}"
+            )
+
+        nodes = [np.arange(sim.cells[d] + 1) * sim.dl[d] for d in range(sim.ndim)]
+        nodes_per_slab = int(np.prod([len(n) for n in nodes[1:]]))
+        slab = max(1, max_points_per_chunk // max(1, nodes_per_slab))
+
+        lowest, where = np.inf, None
+        for start in range(0, len(nodes[0]), slab):
+            coords = np.meshgrid(
+                nodes[0][start : start + slab], *nodes[1:], indexing="ij"
+            )
+            total = np.zeros(coords[0].shape)
+            for pop in self.populations:
+                density = self.model_dict[pop]["density"]
+                charge = self.model_dict[pop]["charge"]
+                total += charge * np.broadcast_to(density(*coords), total.shape)
+
+            if not np.isfinite(total).all():
+                i = np.unravel_index(np.argmax(~np.isfinite(total)), total.shape)
+                position = tuple(float(c[i]) for c in coords)
+                raise ValueError(
+                    f"Error - the initial ion charge density is {total[i]} at {position}"
+                )
+
+            i = np.unravel_index(np.argmin(total), total.shape)
+            if total[i] < lowest:
+                lowest, where = total[i], tuple(float(c[i]) for c in coords)
+
+        if min_density > 0 and lowest < min_density:
+            raise ValueError(
+                f"Error - the initial ion charge density is {lowest:.3g} at {where},"
+                f" below min_initial_density = {min_density}: the electron velocity and Ohm's"
+                f" law divide by it. Raise the density there, or lower min_initial_density in"
+                f" Simulation(...) if such a low density is intended."
+            )
+
     def validate1d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
         layout = HybridGridLayoutFor(
