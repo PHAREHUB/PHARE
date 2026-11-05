@@ -2,19 +2,12 @@ import json
 import os
 
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 
 import pyphare.pharein as ph
 from pyphare.pharein import global_vars
 from pyphare.pharein.diagnostics import FluidDiagnostics
-from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.pharesee.hierarchy.fromfunc import (
-    ions_charge_density_func1d,
-    ions_charge_density_func2d,
-    ions_mass_density_func1d,
-    ions_mass_density_func2d,
-)
+from pyphare.pharesee.hierarchy import fromfunc, hierarchy_from
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 from tests.diagnostic import all_timestamps
@@ -261,11 +254,17 @@ def computed_and_expected(ndim, quantity, time=0.0):
     }[ndim]
     if quantity == "mass":
         h = r.GetMassDensity(time)
-        func = {1: ions_mass_density_func1d, 2: ions_mass_density_func2d}[ndim]
-        return h, hierarchy_from(hier=h, func=func, masses=masses, densities=densities)
+        func = {
+            1: fromfunc.ions_mass_density_func1d,
+            2: fromfunc.ions_mass_density_func2d,
+        }[ndim]
+        return h, hierarchy_from(hier=h, from_func=func, masses=masses, densities=densities)
     h = r.GetNi(time)
-    func = {1: ions_charge_density_func1d, 2: ions_charge_density_func2d}[ndim]
-    return h, hierarchy_from(hier=h, func=func, charges=charges, densities=densities)
+    func = {
+        1: fromfunc.ions_charge_density_func1d,
+        2: fromfunc.ions_charge_density_func2d,
+    }[ndim]
+    return h, hierarchy_from(hier=h, from_func=func, charges=charges, densities=densities)
 
 
 def patch_sigmas(h, H, time=0.0):
@@ -280,6 +279,8 @@ def patch_sigmas(h, H, time=0.0):
 
 
 def main():
+    import matplotlib.pyplot as plt
+
     Simulator(config_1d()).run().reset()
     ph.global_vars.sim = None
     Simulator(config_2d()).run().reset()
