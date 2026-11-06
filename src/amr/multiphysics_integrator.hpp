@@ -104,6 +104,7 @@ namespace solver
             , load_balancer_manager_{nullptr}
             , isAdaptive_{cppdict::get_value(dict, "time_step/mode", core::TimeStepType::constant)
                           == core::TimeStepType::adaptive}
+            , constantDt_{cppdict::get_value(dict, "time_step/value", 0.)}
             , cfl_{cppdict::get_value(dict, "time_step/cfl_wave", 0.),
                    cppdict::get_value(dict, "time_step/cfl_diffusive", 0.)}
             , fineLevelSubstepsMax_{
@@ -352,7 +353,7 @@ namespace solver
                 load_balancer_manager_->estimate(*level, model);
 
             if (isAdaptive_)
-                levelStableDt_(levelNumber, *level, cfl_, initDataTime);
+                stableDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_, initDataTime);
         }
 
 
@@ -424,10 +425,12 @@ namespace solver
         {
         }
 
-        double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/,
-                          double const dtTime, bool const /*initialTime*/) override
+        double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level, double const time,
+                          bool const /*initialTime*/) override
         {
-            return dtTime;
+            if (isAdaptive_)
+                return levelStableDt_(level->getLevelNumber(), *level, cfl_, time);
+            return constantDt_;
         }
 
 
@@ -449,7 +452,8 @@ namespace solver
         double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability,
                                double const time)
         {
-            return levelStableDt_(0, *hierarchy.getPatchLevel(0), stability, time);
+            stableDt_[0] = levelStableDt_(0, *hierarchy.getPatchLevel(0), stability, time);
+            return stableDt_[0];
         }
 
 
@@ -555,10 +559,20 @@ namespace solver
 
             load_balancer_manager_->estimate(*level, model);
 
-            if (isAdaptive_ and iLevel > 0)
-                return levelStableDt_(iLevel, *level, cfl_, newTime);
+            if (iLevel == 0)
+                return newTime - currentTime;
 
-            return newTime;
+            auto const coarseDt
+                = subcycleEndTimes_.at(iLevel - 1) - subcycleStartTimes_.at(iLevel - 1);
+
+            if (isAdaptive_)
+            {
+                stableDt_[iLevel] = levelStableDt_(iLevel, *level, cfl_, newTime);
+                return std::min(coarseDt, stableDt_[iLevel]);
+            }
+
+            auto const ratio = level->getRatioToCoarserLevel().max();
+            return coarseDt / (ratio * ratio);
         }
 
 
@@ -656,6 +670,7 @@ namespace solver
         PHARE::initializer::PHAREDict const& dict_;
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
         bool const isAdaptive_;
+        double const constantDt_;
         CFLNumbers const cfl_;
         // a limitation on the number of substeps made by fine level
         int const fineLevelSubstepsMax_;
@@ -680,7 +695,7 @@ namespace solver
                     throw std::runtime_error(ss.str());
                 }
             }
-            return stableDt_[iLevel] = dt;
+            return dt;
         }
 
 
