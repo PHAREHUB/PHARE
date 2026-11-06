@@ -15,6 +15,7 @@
 #include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/tensorfield/scratch_tensor_field_data.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
@@ -1005,8 +1006,8 @@ namespace amr
         VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
 
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
-        VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-        FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+        ScratchFieldUser<VecFieldT> sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
+        ScratchFieldUser<FieldT> sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
 
 
 
