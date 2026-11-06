@@ -5,7 +5,7 @@
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/numerics/differential_operators.hpp"
 #include "core/utilities/index/index.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/meta/enum_meta.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
@@ -100,7 +100,7 @@ private:
                     B(Component::Z), idx);
                 auto const n
                     = GridLayout::template project<MHDQuantity::Scalar::rho, dst>(rho, idx);
-                auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
+                auto const b = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);
             };
 

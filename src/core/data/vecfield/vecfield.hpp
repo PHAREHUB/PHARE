@@ -8,7 +8,6 @@
 
 #include "vecfield_component.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
 
 namespace PHARE
 {
@@ -18,7 +17,8 @@ namespace core
     using VecField = TensorField<Field_t, PhysicalQuantity, /*rank=*/1>;
 
 
-    template<typename VecField, typename = tryToInstanciate<typename VecField::field_type>>
+    template<typename VecField>
+        requires requires { typename VecField::field_type; }
     void average(VecField const& vf1, VecField const& vf2, VecField& Vavg)
     {
         average(vf1.getComponent(Component::X), vf2.getComponent(Component::X),

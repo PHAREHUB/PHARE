@@ -5,11 +5,15 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/meta/container_meta.hpp"
 
+#include <array>
+#include <tuple>
 #include <vector>
 #include <string>
 #include <cassert>
 #include <cstring>
+#include <algorithm>
 
 
 #if !defined(PHARE_LOG_ERROR)
@@ -67,7 +71,7 @@ NO_DISCARD auto mpi_type_for()
     else if constexpr (std::is_same_v<std::int64_t, Data>)
         return MPI_INT64_T;
     else if constexpr (std::is_same_v<std::uint8_t, Data>)
-        return MPI_UNSIGNED_SHORT;
+        return MPI_UINT8_T;
     else if constexpr (std::is_same_v<std::size_t, Data>)
         return MPI_UINT64_T;
     else if constexpr (std::is_same_v<char, Data>)
@@ -90,12 +94,12 @@ auto all_get_from(int const& rank_, Fn&& fn, Args&&... args)
 
     int count = 1; // default
     MPI_Datatype sendtype;
-    if constexpr (std::is_same_v<std::string, Data> or core::is_std_vector_v<Data>)
+    if constexpr (std::is_same_v<std::string, Data> or core::IsStdVector<Data>)
     {
         sendtype = mpi_type_for<typename Data::value_type>();
         count    = all_get_from(rank_, [&]() { return var.size(); });
         if (local_rank != rank_)
-            var.reserve(count);
+            var.resize(count);
         data = var.data();
     }
     else
@@ -105,7 +109,7 @@ auto all_get_from(int const& rank_, Fn&& fn, Args&&... args)
         data,          //   void *buffer
         count,         //   int count
         sendtype,      //   MPI_Datatype sendtype
-        0,             //   int root == 0
+        rank_,         //   int root
         MPI_COMM_WORLD //   MPI_Comm comm
     );
     return var;
@@ -213,7 +217,7 @@ NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
 
     std::vector<Array> values(mpi_size);
     for (int i = 0; i < mpi_size; i++)
-        std::memcpy(&values[i], &datas[maxMPISize * i], maxMPISize);
+        std::copy_n(&datas[maxMPISize * i], size, values[i].begin());
 
     return values;
 }
@@ -236,9 +240,9 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    if constexpr (std::is_same_v<std::string, Data> or core::is_std_vector_v<Data>)
+    if constexpr (std::is_same_v<std::string, Data> or core::IsStdVector<Data>)
         return collectVector(data, mpi_size);
-    else if constexpr (core::is_std_array_v<Data, 1>)
+    else if constexpr (core::IsStdArray<Data>)
         return collectArrays(data, mpi_size);
     else
     {

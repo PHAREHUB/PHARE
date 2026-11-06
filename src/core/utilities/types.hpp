@@ -57,34 +57,6 @@ namespace core
     };
 
 
-    template<typename T>
-    struct is_std_vector : std::false_type
-    {
-    };
-
-    template<typename T>
-    struct is_std_vector<std::vector<T>> : std::true_type
-    {
-    };
-
-    template<typename T>
-    inline constexpr auto is_std_vector_v = is_std_vector<T>::value;
-
-    template<typename T, std::size_t size>
-    struct is_std_array : std::false_type
-    {
-    };
-
-    template<typename T, std::size_t size>
-    struct is_std_array<std::array<T, size>, size> : std::true_type
-    {
-    };
-
-    template<typename T, std::size_t size>
-    inline constexpr auto is_std_array_v = is_std_array<T, size>::value;
-
-
-
     template<typename Tuple, typename Func>
     void apply(Tuple tuple, Func func)
     {
@@ -310,6 +282,7 @@ NO_DISCARD auto generate_from(F&& f, Container const& container)
     using value_type = std::decay_t<std::invoke_result_t<F&, T&>>;
     std::vector<value_type> v1;
     if (container.size() > 0)
+
         v1.reserve(container.size());
     for (auto& v : container)
         v1.emplace_back(f(v));
