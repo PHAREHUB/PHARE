@@ -4,6 +4,7 @@
 #include "phare_core.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/amr_constants.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messenger_registration.hpp"
 #include "amr/messengers/messenger.hpp"
@@ -420,6 +421,7 @@ namespace solver
             std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy> const& /*griddingAlg*/)
             override
         {
+            constantLevelDt_ = constantLevelDts_();
         }
 
         double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level, double const time,
@@ -428,8 +430,7 @@ namespace solver
             auto const levelNumber = level->getLevelNumber();
             if (isAdaptive_)
                 return stableDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_, time);
-            auto const ratio = level->getRatioToLevelZero().max();
-            return constantDt_ / (ratio * ratio);
+            return constantLevelDt_.at(levelNumber);
         }
 
 
@@ -554,20 +555,16 @@ namespace solver
 
             load_balancer_manager_->estimate(*level, model);
 
+            if (!isAdaptive_)
+                return constantLevelDt_.at(iLevel);
+
             if (iLevel == 0)
                 return newTime - currentTime;
 
             auto const coarseDt
                 = subcycleEndTimes_.at(iLevel - 1) - subcycleStartTimes_.at(iLevel - 1);
-
-            if (isAdaptive_)
-            {
-                stableDt_[iLevel] = levelStableDt_(iLevel, *level, cfl_, newTime);
-                return std::min(coarseDt, stableDt_[iLevel]);
-            }
-
-            auto const ratio = level->getRatioToCoarserLevel().max();
-            return coarseDt / (ratio * ratio);
+            stableDt_[iLevel] = levelStableDt_(iLevel, *level, cfl_, newTime);
+            return std::min(coarseDt, stableDt_[iLevel]);
         }
 
 
@@ -666,10 +663,23 @@ namespace solver
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
         bool const isAdaptive_;
         double const constantDt_;
+        std::vector<double> constantLevelDt_;
         CFLNumbers const cfl_;
         // a limitation on the number of substeps made by fine level
         int const fineLevelSubstepsMax_;
         std::unordered_map<std::size_t, double> stableDt_;
+
+
+        std::vector<double> constantLevelDts_()
+        {
+            SAMRAI::hier::IntVector const ratio{SAMRAI::tbox::Dimension(dimension),
+                                                static_cast<int>(amr::refinementRatio)};
+            std::vector<double> dts{constantDt_};
+            for (int iLevel = 1; iLevel < nbrOfLevels_; ++iLevel)
+                dts.push_back(
+                    MultiPhysicsIntegrator::getMaxFinerLevelDt(iLevel, dts.back(), ratio));
+            return dts;
+        }
 
 
         double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level,
