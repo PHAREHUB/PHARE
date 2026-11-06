@@ -50,7 +50,8 @@ public:
 
     static constexpr auto all_primal_field = Scalar::rho;
 
-    template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>
+    template<std::size_t rank>
+        requires(rank == 1 or rank == 2)
     using TensorType = std::conditional_t<rank == 1, Vector, Tensor>;
 
     NO_DISCARD static constexpr auto B() { return componentsQuantities(Vector::B); }

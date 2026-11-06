@@ -5,6 +5,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/meta/container_meta.hpp"
 
 #include <vector>
 #include <string>
@@ -90,7 +91,7 @@ auto all_get_from(int const& rank_, Fn&& fn, Args&&... args)
 
     int count = 1; // default
     MPI_Datatype sendtype;
-    if constexpr (std::is_same_v<std::string, Data> or core::is_std_vector_v<Data>)
+    if constexpr (std::is_same_v<std::string, Data> or core::IsStdVector<Data>)
     {
         sendtype = mpi_type_for<typename Data::value_type>();
         count    = all_get_from(rank_, [&]() { return var.size(); });
@@ -236,9 +237,12 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    if constexpr (std::is_same_v<std::string, Data> or core::is_std_vector_v<Data>)
+    if constexpr (std::is_same_v<std::string, Data> or core::IsStdVector<Data>)
         return collectVector(data, mpi_size);
-    else if constexpr (core::is_std_array_v<Data, 1>)
+    // size 1 only, as before: requires keeps tuple_size_v from being instantiated for non arrays
+    else if constexpr (requires {
+                           requires core::IsStdArray<Data> and std::tuple_size_v<Data> == 1;
+                       })
         return collectArrays(data, mpi_size);
     else
     {

@@ -3,7 +3,7 @@
 
 
 #include "core/utilities/index/index.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/meta/enum_meta.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
@@ -102,8 +102,8 @@ private:
              typename... IDXs>
     void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ve, B, J]     = pack;
-        auto& Exyz                       = E(Tag);
+        auto const& [E, n, Ve, B, J] = pack;
+        auto& Exyz                   = E(Tag);
 
         static_assert(Components::check<Tag>());
 
@@ -269,8 +269,8 @@ private:
                 = GridLayout::template project<Scalar::By, dst>(B(Component::Y), index);
             auto const BzOnE
                 = GridLayout::template project<Scalar::Bz, dst>(B(Component::Z), index);
-            auto const nOnE  = GridLayout::template project<Scalar::rho, dst>(n, index);
-            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+            auto const nOnE = GridLayout::template project<Scalar::rho, dst>(n, index);
+            auto b          = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
                    * laplacian(layout_, J(component), index);
         };

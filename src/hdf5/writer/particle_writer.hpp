@@ -40,7 +40,7 @@ public:
     {
         if (n_particles == 0)
             return std::vector<std::size_t>{0};
-        if constexpr (is_array_dataset<T, dim>)
+        if constexpr (IsArrayDataset<T, dim>)
             return std::vector<std::size_t>{n_particles, type.size()};
         else /* not an array so value one of type T*/
             return std::vector<std::size_t>{n_particles, 1};

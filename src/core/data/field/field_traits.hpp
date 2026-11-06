@@ -8,6 +8,11 @@
 namespace PHARE::core
 {
 
+/** has a physicalQuantity(): a Field, a TensorField, or a resource view of one */
+template<typename T>
+concept HasPhysicalQuantity = requires(T t) { t.physicalQuantity(); };
+
+
 /**
  * @brief Define the requirements for a Field type.
  *

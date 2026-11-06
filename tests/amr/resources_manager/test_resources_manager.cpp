@@ -269,7 +269,7 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
     ResourcesManager<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t, Grid1D>
         resourcesManager;
     IonPopulation1D_P pop;
-    static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
+    static_assert(IsParticlesResource<ParticlesPack<ParticleArray<1>>>);
 
     auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
