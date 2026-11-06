@@ -349,7 +349,9 @@ class AdaptiveDtMHDTest(SimulatorTest):
 
         with self.subTest(mode="adaptive"):
             self.assertGreater(len(adaptive_substeps), 2)
-            self.assertEqual(adaptive_substeps, [2] * len(adaptive_substeps))
+            self.assertEqual(
+                adaptive_substeps, [3] + [2] * (len(adaptive_substeps) - 1)
+            )
         with self.subTest(mode="constant"):
             self.assertEqual(constant_substeps, [4] * time_step_nbr)
 

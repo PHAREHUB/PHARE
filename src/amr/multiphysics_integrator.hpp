@@ -351,9 +351,6 @@ namespace solver
                 solver.onRegrid();
             else
                 load_balancer_manager_->estimate(*level, model);
-
-            if (isAdaptive_)
-                stableDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_, initDataTime);
         }
 
 
@@ -428,19 +425,17 @@ namespace solver
         double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level, double const time,
                           bool const /*initialTime*/) override
         {
+            auto const levelNumber = level->getLevelNumber();
             if (isAdaptive_)
-                return levelStableDt_(level->getLevelNumber(), *level, cfl_, time);
-            return constantDt_;
+                return stableDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_, time);
+            auto const ratio = level->getRatioToLevelZero().max();
+            return constantDt_ / (ratio * ratio);
         }
 
 
-        double getMaxFinerLevelDt(int const finerLevelNumber, double const coarseDt,
+        double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
                                   SAMRAI::hier::IntVector const& ratio) override
         {
-            if (auto const it = stableDt_.find(finerLevelNumber);
-                isAdaptive_ and it != stableDt_.end())
-                return std::min(coarseDt, it->second);
-
             // whistler waves require the dt ~ dx^2
             // so dividing the mesh size by ratio means dt
             // needs to be divided by ratio^2.
