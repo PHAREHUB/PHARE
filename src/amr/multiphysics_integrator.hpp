@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <map>
 #include <iomanip>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -106,6 +107,7 @@ namespace solver
             , isAdaptive_{cppdict::get_value(dict, "time_step/mode", core::TimeStepType::constant)
                           == core::TimeStepType::adaptive}
             , constantDt_{cppdict::get_value(dict, "time_step/value", 0.)}
+            , levelDts_(nbrOfLevels_, std::numeric_limits<double>::quiet_NaN())
             , cfl_{cppdict::get_value(dict, "time_step/cfl_wave", 0.),
                    cppdict::get_value(dict, "time_step/cfl_diffusive", 0.)}
             , fineLevelSubstepsMax_{
@@ -416,40 +418,94 @@ namespace solver
         // -----------------------------------------------------------------------------------------------
 
 
-
+        /**
+         * @brief Called by SAMRAI first in TimeRefinementIntegrator::initializeHierarchy, at
+         * startup and on restart.
+         *
+         * Currently it only precomputes each level's dt in constant time-stepping mode.
+         */
         void initializeLevelIntegrator(
             std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy> const& /*griddingAlg*/)
             override
         {
-            constantLevelDt_ = constantLevelDts_();
+            if (!isAdaptive_)
+                levelDts_ = constantLevelDts_();
         }
 
+        /**
+         * @brief Return the dt of a level created while SAMRAI builds the hierarchy at startup.
+         *
+         * Only called by SAMRAI at startup, in
+         * TimeRefinementIntegrator::initializeRefinedTimesteppingLevelData, for the levels that
+         * exist at that time (never on restart). For a level > 0, SAMRAI keeps the min between
+         * this value and getMaxFinerLevelDt.
+         *
+         * - adaptive mode: computes the level's stable dt on the initial state with
+         *   levelStableDt_ and stores it in levelDts_.
+         * - constant mode: reads levelDts_, already filled by initializeLevelIntegrator.
+         *
+         * @param level the level SAMRAI has just created and initialized
+         * @param time the simulation start time
+         * @return the dt of the level
+         */
         double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level, double const time,
                           bool const /*initialTime*/) override
         {
             auto const levelNumber = level->getLevelNumber();
             if (isAdaptive_)
-                return stableDt_[levelNumber] = levelStableDt_(levelNumber, *level, cfl_, time);
-            return constantLevelDt_.at(levelNumber);
+                levelDts_.at(levelNumber) = levelStableDt_(levelNumber, *level, cfl_, time);
+            return levelDts_.at(levelNumber);
         }
 
-
+        /**
+         * @brief Return the dt bound of a finer level from the dt of its coarser level:
+         * coarseDt / r^2.
+         *
+         * Only place that implements the time ratio logic between levels. It mostly applies to
+         * constant time-stepping mode, but also has some effect in adaptive time-stepping (see
+         * below), so be careful when modifying it.
+         *
+         * It is called by:
+         * - constantLevelDts_, in initializeLevelIntegrator, to build the dt of each level in
+         *   constant time-stepping mode.
+         * - SAMRAI's TimeRefinementIntegrator::initializeRefinedTimesteppingLevelData, at
+         *   simulation startup, for the levels > 0 that exist at that time: their first dt is
+         *   the min between getMaxFinerLevelDt and getLevelDt.
+         * - SAMRAI's TimeRefinementIntegrator::advanceRecursivelyForRefinedTimestepping, at the
+         *   first advance of a level created by a regrid: getLevelDt is not called, and the
+         *   first dt of the new level is bounded by getMaxFinerLevelDt (and by the coarser dt).
+         *   So even in adaptive mode, the first substep of a freshly created level is set by
+         *   this fixed time ratio rather than by its state; afterwards the dt returned by
+         *   advanceLevel takes over. Basing it on the state would require calling levelStableDt_
+         *   here, but as only the level number is passed, the MultiPhysicsIntegrator would need
+         *   the hierarchy as a member.
+         *
+         * In the future, the current hardcoded rule dt_finer = dt_coarser / r^2 could be
+         * replaced by a call to the finer level's solver, responsible for deciding, from its own
+         * model and from the coarser level's model and solver, how the finer level's dt is
+         * bounded by the coarser one. Both are needed because the Hall term is a solver option,
+         * not a model property: e.g. ideal MHD over ideal MHD could use r, Hall MHD over Hall MHD
+         * needs r^2, and a hybrid level should only sit below Hall MHD.
+         *
+         * @param coarseDt the dt of the coarser level
+         * @param ratio the refinement ratio between the two levels
+         * @return the maximum dt allowed on the finer level
+         */
         double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
                                   SAMRAI::hier::IntVector const& ratio) override
         {
             // whistler waves require the dt ~ dx^2
             // so dividing the mesh size by ratio means dt
             // needs to be divided by ratio^2.
-            // we multiply that by a constant < 1 for safety.
-            return coarseDt / (ratio.max() * ratio.max()) /** 0.4*/;
+            return coarseDt / (ratio.max() * ratio.max());
         }
 
 
         double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability,
                                double const time)
         {
-            stableDt_[0] = levelStableDt_(0, *hierarchy.getPatchLevel(0), stability, time);
-            return stableDt_[0];
+            return levelDts_.at(0)
+                   = levelStableDt_(0, *hierarchy.getPatchLevel(0), stability, time);
         }
 
 
@@ -487,6 +543,27 @@ namespace solver
          *
          * At the last step of the subcycle, the Messenger may also need to perform some actions,
          * like working on its internal data for instance. messenger.lastStep()
+         *
+         * The returned value is the dt bound SAMRAI uses for the next substeps of the level:
+         * - constant mode: levelDts_[L], the constant dt of the level.
+         * - adaptive mode, level 0: the step just taken. The next level-0 step is set by the
+         *   simulator (computeStableDt), so this value only updates SAMRAI's bookkeeping.
+         * - adaptive mode, level > 0: the min between the coarser level's substep and the stable
+         *   dt of the level at newTime.
+         *
+         * For a level > 0, SAMRAI's TimeRefinementIntegrator::findNextDtAndStepsRemaining then
+         * chooses the next substep:
+         * - bound = min(returned value, previous bound * grow_dt). grow_dt is a SAMRAI param >=1
+         *   set in the Integrator constructor.
+         * - n = the number of substeps that fit in the time remaining until the end of the
+         *   coarser step: int(time remaining / bound), plus one if more than a round-off
+         *   remainder is left. For a level that can be refined, n is rounded up to a multiple of
+         *   the regrid interval.
+         * - next substep = time remaining / n, so the substeps left in a coarser step are equal
+         *   and at most the bound.
+         *
+         *
+         * @return the dt bound for the next substeps of the level
          */
 
         double advanceLevel(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
@@ -556,15 +633,15 @@ namespace solver
             load_balancer_manager_->estimate(*level, model);
 
             if (!isAdaptive_)
-                return constantLevelDt_.at(iLevel);
+                return levelDts_.at(iLevel);
 
             if (iLevel == 0)
                 return newTime - currentTime;
 
             auto const coarseDt
                 = subcycleEndTimes_.at(iLevel - 1) - subcycleStartTimes_.at(iLevel - 1);
-            stableDt_[iLevel] = levelStableDt_(iLevel, *level, cfl_, newTime);
-            return std::min(coarseDt, stableDt_[iLevel]);
+            levelDts_.at(iLevel) = levelStableDt_(iLevel, *level, cfl_, newTime);
+            return std::min(coarseDt, levelDts_[iLevel]);
         }
 
 
@@ -663,13 +740,23 @@ namespace solver
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
         bool const isAdaptive_;
         double const constantDt_;
-        std::vector<double> constantLevelDt_;
+        /**
+         * @brief The dt of each level.
+         *
+         * - constant mode: each level's dt, built by initializeLevelIntegrator.
+         * - adaptive mode: each level's last stable dt (NaN until computed), read by
+         *   levelStableDt_ to check that level L's stable dt is not more than
+         *   fine_level_substeps_max times smaller than level L-1's.
+         */
+        std::vector<double> levelDts_;
         CFLNumbers const cfl_;
-        // a limitation on the number of substeps made by fine level
-        int const fineLevelSubstepsMax_;
-        std::unordered_map<std::size_t, double> stableDt_;
+        int const fineLevelSubstepsMax_; //!< limit on the number of substeps of a fine level
 
 
+        /**
+         * @brief Compute the list of level dts in constant time-stepping mode, based on the
+         * inter-level time ratio logic implemented in getMaxFinerLevelDt.
+         */
         std::vector<double> constantLevelDts_()
         {
             SAMRAI::hier::IntVector const ratio{SAMRAI::tbox::Dimension(dimension),
@@ -681,7 +768,19 @@ namespace solver
             return dts;
         }
 
-
+        /**
+         * @brief Compute the level's stable dt, reduced across MPI ranks.
+         *
+         * For a level > 0, throw if it is more than fine_level_substeps_max times smaller than
+         * the coarser level's stable dt, or if that one was never computed (NaN). The caller
+         * stores the result in levelDts_.
+         *
+         * @param iLevel the level number
+         * @param level the level
+         * @param cfl the CFL numbers
+         * @param time the time of the level's data, used in the error message
+         * @return the stable dt of the level
+         */
         double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level,
                               CFLNumbers const& cfl, double const time)
         {
@@ -689,8 +788,8 @@ namespace solver
                 = mpi::min(getSolver_(iLevel).computeStableDt(getModel_(iLevel), level, cfl));
             if (iLevel > 0)
             {
-                auto const coarserDt = stableDt_.at(iLevel - 1);
-                if (coarserDt > fineLevelSubstepsMax_ * dt)
+                auto const coarserDt = levelDts_.at(iLevel - 1);
+                if (!(coarserDt <= fineLevelSubstepsMax_ * dt))
                 {
                     std::ostringstream ss;
                     ss << std::setprecision(17) << "stable dt on level " << iLevel
