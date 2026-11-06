@@ -1,25 +1,19 @@
 #ifndef PHARE_CELLMAP_H
 #define PHARE_CELLMAP_H
-#include <cstddef>
-#include <string>
-#include <iterator>
-#include <array>
-#include <type_traits>
-#include <unordered_map>
-#include <vector>
-#include <algorithm>
-#include <numeric>
 
-
+#include "core/def.hpp"
+#include "core/logger.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/indexer.hpp"
-#include "core/logger.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/meta/container_meta.hpp"
 #include "core/utilities/range/range.hpp"
-#include "core/def.hpp"
 
+#include <cstddef>
+#include <array>
+#include <unordered_map>
+#include <algorithm>
 
 namespace PHARE::core
 {
@@ -83,23 +77,20 @@ public:
 
 
     // same as above but cell is found with the CellExtractor
-    template<typename Array, typename CellExtractor = DefaultExtractor,
-             typename = std::enable_if_t<is_iterable_v<Array>>>
+    template<Iterable Array, typename CellExtractor = DefaultExtractor>
     void add(Array const& items, std::size_t itemIndex, CellExtractor extract = default_extractor);
 
 
 
     // add all given items indexes to the cellmap.
     // items will be added to the cell they are in, given the CellExtractor
-    template<typename Array, typename CellExtractor = DefaultExtractor,
-             typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    template<Iterable Array, typename CellExtractor = DefaultExtractor>
     void add(Array const& items, CellExtractor extract = default_extractor);
 
 
 
     // same as above but for indexes within the given range
-    template<typename Array, typename CellExtractor = DefaultExtractor,
-             typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    template<Iterable Array, typename CellExtractor = DefaultExtractor>
     void add(Array const& items, std::size_t first, std::size_t last,
              CellExtractor extract = default_extractor);
 
@@ -174,8 +165,7 @@ public:
 
 
     // erase items indexes from the cellmap
-    template<typename Array, typename CellExtractor = DefaultExtractor,
-             typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    template<Iterable Array, typename CellExtractor = DefaultExtractor>
     void erase(Array const& items, std::size_t itemIndex,
                CellExtractor extract = default_extractor);
 
@@ -231,7 +221,7 @@ inline void CellMap<dim, cell_index_t>::addToCell(CellIndex const& cell, std::si
 
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array, typename CellExtractor, typename>
+template<Iterable Array, typename CellExtractor>
 inline void CellMap<dim, cell_index_t>::add(Array const& items, CellExtractor extract)
 {
     for (std::size_t itemIndex = 0; itemIndex < items.size(); ++itemIndex)
@@ -241,7 +231,7 @@ inline void CellMap<dim, cell_index_t>::add(Array const& items, CellExtractor ex
 }
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array, typename CellExtractor, typename>
+template<Iterable Array, typename CellExtractor>
 inline void CellMap<dim, cell_index_t>::add(Array const& items, std::size_t first, std::size_t last,
                                             CellExtractor extract)
 
@@ -254,7 +244,7 @@ inline void CellMap<dim, cell_index_t>::add(Array const& items, std::size_t firs
 
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array, typename CellExtractor, typename>
+template<Iterable Array, typename CellExtractor>
 inline void CellMap<dim, cell_index_t>::add(Array const& items, std::size_t itemIndex,
                                             CellExtractor extract)
 {
@@ -264,7 +254,7 @@ inline void CellMap<dim, cell_index_t>::add(Array const& items, std::size_t item
 
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array, typename CellExtractor, typename>
+template<Iterable Array, typename CellExtractor>
 inline void CellMap<dim, cell_index_t>::erase(Array const& items, std::size_t itemIndex,
                                               CellExtractor extract)
 {

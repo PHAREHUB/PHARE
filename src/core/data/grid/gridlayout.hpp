@@ -4,8 +4,8 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/field/field_traits.hpp"
 #include "core/utilities/box/box.hpp"
-#include "core/utilities/constants.hpp"
 #include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
@@ -29,19 +29,6 @@ namespace core
     template<auto options>
     concept HasInterpOrder = requires { options.interp_order; };
 
-
-    template<typename T, typename Attempt = void>
-    struct has_physicalQuantity : std::false_type
-    {
-    };
-
-    template<typename T>
-    struct has_physicalQuantity<
-        T, core::tryToInstanciate<decltype(std::declval<T>().physicalQuantity())>> : std::true_type
-    {
-    };
-    template<typename T>
-    constexpr bool has_physicalQuantity_v = has_physicalQuantity<T>::value;
 
 
     NO_DISCARD constexpr int centering2int(QtyCentering c)
@@ -207,7 +194,7 @@ namespace core
                                    ghostEndIndex(centering, direction));
         }
 
-        template<typename Field, std::enable_if_t<has_physicalQuantity_v<Field>, bool> = 0>
+        template<HasPhysicalQuantity Field>
         NO_DISCARD auto ghostStartToEnd(Field const& field, Direction direction) const
         {
             return ghostStartToEnd(field.physicalQuantity(), direction);
@@ -222,7 +209,7 @@ namespace core
         }
 
 
-        template<typename Field, std::enable_if_t<has_physicalQuantity_v<Field>, bool> = 0>
+        template<HasPhysicalQuantity Field>
         NO_DISCARD auto physicalStartToEnd(Field const& field, Direction direction) const
         {
             return physicalStartToEnd(field.physicalQuantity(), direction);
@@ -661,7 +648,7 @@ namespace core
 
         template<auto src, auto dst, typename Field>
         NO_DISCARD static Field::type project(Field const& field, MeshIndex<dimension> index)
-            requires(has_physicalQuantity_v<Field>)
+            requires(HasPhysicalQuantity<Field>)
         {
             PHARE_DEBUG_DO(
                 constexpr auto expected = centering(src);
@@ -752,7 +739,7 @@ namespace core
 
         template<typename HasQuantity>
         NO_DISCARD constexpr static auto centering(HasQuantity const& hasQuantity)
-            requires(has_physicalQuantity_v<HasQuantity>)
+            requires(HasPhysicalQuantity<HasQuantity>)
         {
             return centering(hasQuantity.physicalQuantity());
         }
@@ -1095,6 +1082,7 @@ namespace core
             std::array<QtyCentering, dimension> const& qtyCenterings) const
         {
             std::array<std::uint32_t, dimension> nodeNbr;
+
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
