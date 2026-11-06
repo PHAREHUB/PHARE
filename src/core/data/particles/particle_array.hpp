@@ -256,8 +256,8 @@ namespace core
         template<typename T>
         using container_t = std::conditional_t<OwnedState, std::vector<T>, Span<T>>;
 
-        template<bool OS = OwnedState, typename = std::enable_if_t<OS>>
         ContiguousParticles(std::size_t s)
+            requires OwnedState
             : iCell(s * dim)
             , delta(s * dim)
             , weight(s)

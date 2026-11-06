@@ -4,7 +4,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/meta/enum_meta.hpp"
 
 #include <SAMRAI/hier/PatchDataFactory.h>
 
