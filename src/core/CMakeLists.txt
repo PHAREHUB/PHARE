@@ -58,11 +58,21 @@ set( SOURCES_INC
      utilities/algorithm.hpp
      utilities/constants.hpp
      utilities/index/index.hpp
-     utilities/meta/meta_utilities.hpp
+     utilities/meta/type_equality_meta.hpp
+     utilities/meta/constexprifier.hpp
+     utilities/meta/container_meta.hpp
+     utilities/meta/enum_meta.hpp
      utilities/partitionner/partitionner.hpp
      utilities/point/point.hpp
      utilities/range/range.hpp
-     utilities/types.hpp
+     utilities/array.hpp
+     utilities/env.hpp
+     utilities/logic.hpp
+     utilities/numeric.hpp
+     utilities/strings.hpp
+     utilities/tuple.hpp
+     utilities/meta/for_N.hpp
+     utilities/meta/type_meta.hpp
    )
 
 set( SOURCES_CPP

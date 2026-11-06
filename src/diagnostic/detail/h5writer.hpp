@@ -1,7 +1,8 @@
 #ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 #define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/type_meta.hpp"
+#include "core/utilities/strings.hpp"
 #include "mpi/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 

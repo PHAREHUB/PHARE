@@ -1,7 +1,7 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BOX_HPP
 #define PHARE_CORE_DATA_FIELD_FIELD_BOX_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/data/field/field_traits.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
 
@@ -62,7 +62,7 @@ public:
 
 
 // Operator{dst[i]}(src[i]) for i in [0, size) (Operator: SetEqual, PlusEquals, SetMax, see
-//  types.hpp). A plain loop on purpose, which the compiler vectorizes: memcpy is an
+//  field_traits.hpp). A plain loop on purpose, which the compiler vectorizes: memcpy is an
 //  out-of-line call that costs more than the copy on the 2-cell spans of thin ghost layers.
 template<typename Operator>
 void operate_on_span(auto* dst, auto const* src, std::size_t const size)

@@ -2,7 +2,8 @@
 #define PHARE_CONCRERTE_LOAD_BALANCER_HYBRID_STRATEGY_NPPC_HPP
 
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/numeric.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/box/box_spans.hpp"
 

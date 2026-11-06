@@ -3,7 +3,6 @@
 
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
 #include "initializer/data_provider.hpp"
 #include "maxwellian_particle_initializer.hpp"
 #include "particle_initializer.hpp"

@@ -21,6 +21,7 @@
 #include <SAMRAI/pdat/CellOverlap.h>
 #include <SAMRAI/tbox/RestartManager.h>
 #include "SAMRAI/hier/Transformation.h"
+#include "core/utilities/tuple.hpp"
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
 #include <tuple>

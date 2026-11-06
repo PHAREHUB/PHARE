@@ -4,7 +4,8 @@
 #include "communicator.hpp"
 
 #include "amr/messengers/field_operate_transaction.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
+#include "core/data/field/field_traits.hpp"
 
 #include <stdexcept>
 #include <string>

@@ -3,7 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/span.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/numeric.hpp"
 #include "core/utilities/point/point.hpp"
 
 #include <cstddef>

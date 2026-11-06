@@ -3,6 +3,7 @@
 
 #include "core/data/field/field.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/tensorfield/tensorfield_traits.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
@@ -125,28 +126,10 @@ struct PerIndex
 };
 
 template<typename T>
-struct is_field_or_tensorfield : std::false_type
-{
-};
-
-template<std::size_t dim, typename PhysicalQuantity>
-struct is_field_or_tensorfield<Field<dim, PhysicalQuantity>> : std::true_type
-{
-};
-
-template<typename Field_t, typename PhysicalQuantity>
-struct is_field_or_tensorfield<TensorField<Field_t, PhysicalQuantity>> : std::true_type
-{
-};
-
-template<typename T>
-concept NotFieldOrTensorField = !is_field_or_tensorfield<T>::value;
-
-template<typename T>
 concept ViewVector = requires(T t) {
     typename T::value_type;
     t[0];
-} && NotFieldOrTensorField<T>;
+} && not IsScalarOrTensorField<T>;
 
 template<typename T>
 struct get_value_type
