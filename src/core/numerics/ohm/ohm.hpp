@@ -6,11 +6,16 @@
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/field/field.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "initializer/data_provider.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
 
 namespace PHARE::core
@@ -80,40 +85,63 @@ private:
         if (not all(layout_.centering(n), isPrimal) or not all(layout_.centering(Pe), isPrimal))
             throw std::runtime_error("Error - Ohm - n and Pe must be primal");
 
+        // ln(n) on every node of n, computed once, so that its derivative is a plain grad
+        auto lnNData = std::vector<double>(n.size());
+        std::transform(n.data(), n.data() + n.size(), lnNData.begin(),
+                       [](auto const ni) { return std::log(ni); });
+        auto const lnN = Field_t<Field>{"lnN", n.physicalQuantity(), lnNData.data(), n.shape()};
+
+        auto const gradN   = grad(layout_, n);
+        auto const gradLnN = grad(layout_, lnN);
+        auto const gradPe  = grad(layout_, Pe);
+
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, Pe, B, J}, args...);
+                Pack{Enew, n, Ve, B, J},
+                PressurePartials<Direction::X>{gradN.x, gradLnN.x, gradPe.x}, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, Pe, B, J}, args...);
+                Pack{Enew, n, Ve, B, J},
+                PressurePartials<Direction::Y>{gradN.y, gradLnN.y, gradPe.y}, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, Pe, B, J}, args...);
+                Pack{Enew, n, Ve, B, J},
+                PressurePartials<Direction::Z>{gradN.z, gradLnN.z, gradPe.z}, args...);
         });
     }
+
+    // a Field view of the same type as the moments, over memory owned by Ohm
+    template<typename Field>
+    using Field_t = core::Field<dimension, typename Field::physical_quantity_type>;
 
     template<typename VecField, typename Field>
     struct OhmPack
     {
         VecField& Exyz;
         Field const& n;
-        VecField const& Ve;
-        Field const& Pe;
-        VecField const &B, &J;
+        VecField const &Ve, &B, &J;
+    };
+
+    // derivatives along one direction of the node quantities the pressure term reads
+    template<auto dir>
+    struct PressurePartials
+    {
+        Partial<dir, dimension> const &n, &lnN, &Pe;
     };
 
 
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename... IDXs>
-    void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack,
+             typename PressurePartials, typename... IDXs>
+    void E_Eq_(OhmPack&& pack, PressurePartials const& D, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ve, Pe, B, J] = pack;
-        auto& Exyz                       = E(Tag);
+        auto const& [E, n, Ve, B, J] = pack;
+        auto& Exyz                   = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, Pe, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, D, {ijk...});
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -176,37 +204,26 @@ private:
     }
 
 
-    // logarithmic mean (n1 - n0) / (ln n1 - ln n0) of two positive densities, written with
-    // e = (n1 - n0) / (n1 + n0) as m e / atanh(e), m the arithmetic mean: no n1/n0 ratio to
-    // overflow, accurate when n1 ~ n0, and equal to m in the limit n1 = n0.
-    static double logMean_(double const n0, double const n1)
-    {
-        auto const m = 0.5 * (n0 + n1);
-        auto const e = (n1 - n0) / (n1 + n0);
-        return e == 0. ? m : m * e / std::atanh(e);
-    }
-
-
-    // -grad(Pe)/n is evaluated as -D(Pe) / n_L, with n_L the logarithmic mean of n on the two
-    // nodes of the edge. This keeps two exact properties of the continuous term:
+    // -grad(Pe)/n is evaluated as -D(Pe) / n_L, with n_L = D(n) / D(ln n) the logarithmic mean of
+    // n on the two nodes of the edge. This keeps two exact properties of the continuous term:
     // - a uniform Pe gives no force, whatever n does;
     // - a uniform Te gives -Te D(ln n), the discrete gradient of Te ln(n), whose discrete curl
     //   vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
     // Dividing by the arithmetic mean of n, as before, breaks the second one.
     // n must be > 0 on both nodes, as it already must be for the electron velocity.
-    template<auto component, typename Field>
-    auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
+    template<auto component, typename Field, typename PressurePartials>
+    auto pressure_(Field const& n, PressurePartials const& D, MeshIndex<dimension> index) const
     {
         constexpr auto d = detail::vector_component_index<component>();
 
         if constexpr (d < dimension)
         {
-            // E_d is dual along d, its two neighbouring nodes are index and index+1 along d
-            auto const nL
-                = logMean_(detail::shifted<d>(n, index, 0), detail::shifted<d>(n, index, 1));
-            auto const dPe = detail::shifted<d>(Pe, index, 1) - detail::shifted<d>(Pe, index, 0);
+            // equal densities on both nodes: n_L is their common value
+            auto const dn = D.n(index);
+            if (dn == 0.)
+                return -D.Pe(index) / detail::shifted<d>(n, index, 0);
 
-            return -layout_.inverseMeshSize(static_cast<Direction>(d)) * dPe / nL;
+            return -D.Pe(index) * D.lnN(index) / dn;
         }
         else
         {
