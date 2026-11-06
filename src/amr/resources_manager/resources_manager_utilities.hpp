@@ -8,6 +8,7 @@
 
 #include "field_resource.hpp"
 #include "particle_resource.hpp"
+#include "amr/data/tensorfield/scratch_tensor_field_data.hpp"
 
 
 #include <string>
@@ -91,7 +92,9 @@ namespace amr
     {
         auto constexpr static resolve_t()
         {
-            if constexpr (is_tensor_field_v<ResourceView>)
+            if constexpr (is_scratch_field<ResourceView>)
+                return typename ResourceManager::template UserScratchField_t<ResourceView>{};
+            else if constexpr (is_tensor_field_v<ResourceView>)
                 return typename ResourceManager::template UserTensorField_t<ResourceView::rank>{};
             else if constexpr (is_particles_v<ResourceView>)
                 return typename ResourceManager::template UserParticle_t<ResourceView>{};
@@ -106,7 +109,10 @@ namespace amr
 
         auto static make_shared_variable(ResourceView const& view)
         {
-            if constexpr (is_tensor_field_v<ResourceView>)
+            if constexpr (is_scratch_field<ResourceView>)
+                return std::make_shared<typename type::variable_type>(view.name(),
+                                                                      view.physicalQuantity());
+            else if constexpr (is_tensor_field_v<ResourceView>)
                 return std::make_shared<typename type::variable_type>(view.name(),
                                                                       view.physicalQuantity());
             else if constexpr (is_particles_v<ResourceView>)
