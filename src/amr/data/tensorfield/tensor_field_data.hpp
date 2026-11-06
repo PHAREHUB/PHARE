@@ -233,8 +233,9 @@ public:
         PHARE_LOG_SCOPE(3, "TensorFieldData::packStream");
 
         std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(value_type);
-        auto& buffer                   = core::field_scratch().reserve_and_clear(expectedSize)();
-        auto& tFieldOverlap            = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
+        core::ScratchWrite scratch;
+        auto& buffer        = scratch.get().reserve_and_clear(expectedSize)();
+        auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
         SAMRAI::hier::Transformation const& transformation = tFieldOverlap.getTransformation();
 
@@ -287,8 +288,8 @@ public:
             throw std::runtime_error("Rotations are not supported in PHARE");
 
         // For unpacking we need to know how much element we will need to extract
-        auto& buffer
-            = core::field_scratch().get_no_copy(getDataStreamSize(overlap) / sizeof(value_type))();
+        core::ScratchWrite scratch;
+        auto& buffer = scratch.get().get_no_copy(getDataStreamSize(overlap) / sizeof(value_type))();
 
         // We flush a portion of the stream on the buffer.
         stream.unpack(buffer.data(), buffer.size());

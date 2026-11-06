@@ -241,6 +241,43 @@ TEST(FieldScratch, capacityGrowsAndIsZeroAfterRelease)
 }
 
 
+TEST(FieldScratch, nestedWriteThrows)
+{
+    ScratchWrite outer;
+    EXPECT_THROW(ScratchWrite{}, std::runtime_error);
+}
+
+
+TEST(FieldScratch, writeWhileReadThrows)
+{
+    ScratchRead reader;
+    EXPECT_THROW(ScratchWrite{}, std::runtime_error);
+}
+
+
+TEST(FieldScratch, nestedReadSeesWriterData)
+{
+    ScratchWrite writer;
+    writer.get().get_no_copy(3)() = {1, 2, 3};
+    {
+        ScratchRead reader;
+        EXPECT_EQ(reader.get().size(), 3u);
+        EXPECT_EQ(reader.get()[2], 3);
+    }
+    EXPECT_EQ(field_scratch_holders(), 1);
+}
+
+
+TEST(FieldScratch, sequentialWritesAreFine)
+{
+    {
+        ScratchWrite first;
+    }
+    ScratchWrite second;
+    EXPECT_EQ(field_scratch_holders(), 1);
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
