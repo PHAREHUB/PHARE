@@ -58,9 +58,9 @@ public:
     {
         bool rebalance_coarsest_now = _should_rebalance_now();
 
-        auto new_time = timeRefIntegrator_->advanceHierarchy(dt, rebalance_coarsest_now);
+        auto const next_dt = timeRefIntegrator_->advanceHierarchy(dt, rebalance_coarsest_now);
         ++time_step_idx;
-        return new_time;
+        return next_dt;
     }
 
     void initialize() { timeRefIntegrator_->initializeHierarchy(); }
@@ -193,6 +193,8 @@ Integrator<_dimension>::Integrator(
     db->putIntegerVector(
         "tag_buffer", std::vector<int>(hierarchy->getMaxNumberOfLevels(),
                                        dict["simulation"]["AMR"]["tag_buffer"].template to<int>()));
+
+    db->putDouble("grow_dt", 1e3);
 
 
     timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(
