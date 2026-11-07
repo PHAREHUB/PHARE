@@ -387,52 +387,21 @@ namespace amr
 
 
 
+        // the border sums add, in place, the deposits of the patches sharing a node, in the same
+        // order on all of them (see field_border_sum.hpp)
         void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
-            using value_type = FieldT::value_type;
-
-
-            // we cannot have the schedule doign the += in place in the flux array
-            // because some overlaps could be counted several times.
-            // we therefore first copy flux into a sumVec buffer and then
-            // execute the schedule onto that before copying it back onto the flux array
-            for (std::size_t i = 0; i < ions.size(); ++i)
-            {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
-
-
-                popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
-            }
+            assert(popFluxBorderSumRefiners_.size() == ions.size());
+            for (auto& refiner : popFluxBorderSumRefiners_)
+                refiner.fill(level.getLevelNumber(), fillTime);
         }
 
         void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            using value_type = FieldT::value_type;
-
             // one particle density per population, the charge density is computed from it
             assert(popDensityBorderSumRefiners_.size() == ions.size());
-
-            for (std::size_t i = 0; i < ions.size(); ++i)
-            {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-
-                popDensityBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-            }
+            for (auto& refiner : popDensityBorderSumRefiners_)
+                refiner.fill(level.getLevelNumber(), fillTime);
         }
 
 
@@ -912,14 +881,14 @@ namespace amr
             for (auto const& vecfield : info->ghostFlux)
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
+                        vecfield, nullptr, vecfield,
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumField_.name(), field, nullptr, sumField_.name(),
+                        field, nullptr, field,
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
@@ -1036,9 +1005,12 @@ namespace amr
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
         VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
 
+        // scratch fields of the diagnostics, which use them under these names
+        // (diagnostic_model_view.hpp)
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
         FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+
 
 
 

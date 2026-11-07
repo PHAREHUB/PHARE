@@ -25,7 +25,9 @@ namespace amr
     template<typename ResourcesManager, RefinerType Type>
     class RefinerPool
     {
-        using Refiner_t = Refiner<ResourcesManager, Type>;
+        using Refiner_t
+            = std::conditional_t<isBorderSum(Type), BorderSumRefiner<ResourcesManager, Type>,
+                                 Refiner<ResourcesManager, Type>>;
 
 
     public:
@@ -139,9 +141,9 @@ namespace amr
 
 
         /** @brief this overload will execute communications for all quantities in the pool. */
-        void fill(int const levelNumber, double const initDataTime) const
+        void fill(int const levelNumber, double const initDataTime)
         {
-            for (auto const& [key, refiner] : refiners_)
+            for (auto& [key, refiner] : refiners_)
             {
                 refiner.fill(levelNumber, initDataTime);
             }
