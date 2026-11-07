@@ -5,7 +5,7 @@ project(phare-exe)
 if(PHARE_EXE)
 
   add_executable(phare-exe ${SOURCES_INC} phare.cpp)
-  target_compile_options(phare-exe PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
+  target_compile_options(phare-exe PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
   target_link_libraries(phare-exe PUBLIC
       ${PHARE_BASE_LIBS}
       phare_simulator

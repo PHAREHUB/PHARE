@@ -17,6 +17,8 @@
 #include "amr/messengers/composite_refine_patch_strategy.hpp"
 #include "amr/messengers/refiner_pool.hpp"
 #include "amr/messengers/synchronizer_pool.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
@@ -58,20 +60,33 @@ namespace amr
         using FieldDataT        = FieldData<GridLayoutT, GridT, core::MHDQuantity::Scalar>;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
 
+        // schedules and temporaries are never tiled, border max works on an untiled temporary
+        using Grid_rt            = MHDModel::storage_t::grid_type;
+        using VectorFieldData_rt = TensorFieldData<1, GridLayoutT, Grid_rt, core::MHDQuantity>;
+
+        using BorderMaxOp = core::FieldBorderMaxOp<typename VecFieldT::value_type>;
+        using VecFieldBorderMaxTransactionFactory_t
+            = FieldBorderOpTransactionFactory<VectorFieldData_rt, BorderMaxOp>;
+
         static constexpr auto dimension = MHDModel::dimension;
 
     public:
         static constexpr std::size_t rootLevelNumber = 0;
         static inline std::string const stratName    = "MHDModel-MHDModel";
 
-        MHDMessenger(std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager,
-                     std::shared_ptr<BoundaryManagerT> boundaryManager, int const firstLevel,
+        MHDMessenger(MHDModel& model, int const firstLevel,
                      RefinementConfig const& refinementConfig = {})
-            : resourcesManager_{std::move(resourcesManager)}
-            , boundaryManager_{std::move(boundaryManager)}
+            : model_{model}
+            , resourcesManager_{model.resourcesManager}
+            , boundaryManager_{model.boundaryManager}
             , firstLevel_{firstLevel}
         {
             makeRefineOperators_(refinementConfig);
+
+            // scratch for tiled refines, see scratchID_
+            model_.requestTemporaries(
+                core::QtyCentering::primal, core::MHDQuantity::Vector::VecAllPrimal,
+                core::MHDQuantity::Vector::B); // B border max, see borderMaxB_
 
             // moment ghosts are primitive quantities
             resourcesManager_->registerResources(rhoOld_);
@@ -113,6 +128,12 @@ namespace amr
             }
 
             magneticRefinePatchStrategy_->registerIDs(*b_id);
+            magneticRefinePatchStrategy_->registerScratchID(
+                scratchID_(model_.getTmp(core::MHDQuantity::Vector::VecAllPrimal)));
+
+            registerRefineScratchID(scratchID_(model_.getTmp(core::QtyCentering::primal)),
+                                    mhdFluxRefineOp_, mhdVecFluxRefineOp_, mhdFieldRefineOp_,
+                                    mhdVecFieldRefineOp_, EfieldRefineOp_, BfieldRegridOp_);
 
             auto e_id = resourcesManager_->getID(mhdInfo->modelElectric);
 
@@ -276,7 +297,7 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             stateInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            magMaxRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
+            borderMaxB_(mhdModel.state.B, *level, initDataTime);
         }
 
 
@@ -372,7 +393,7 @@ namespace amr
             setNaNsOnVecfieldGhosts(state.rhoV, level);
             setNaNsOnFieldGhosts(state.Etot, level);
             stateGhostsRefiners_.fillByKey(state.B.name(), levelNumber, fillTime);
-            magMaxRefiners_.fill(state.B, levelNumber, fillTime);
+            borderMaxB_(state.B, level, fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime)
@@ -398,7 +419,10 @@ namespace amr
             {
                 forEachGhostFieldPool_([&](auto& pool) { pool.registerLevel(hierarchy, level); });
             }
-            magMaxRefiners_.registerLevel(hierarchy, level);
+            {
+                auto border_max_factory = std::make_shared<VecFieldBorderMaxTransactionFactory_t>();
+                magMaxRefiners_.registerLevel(hierarchy, level, border_max_factory);
+            }
         }
 
 
@@ -451,21 +475,30 @@ namespace amr
             refluxSchedules_.erase(levelNumber);
         }
 
+        // tiled field refines borrow the untiled scratch fields of the destination patch
+        int scratchID_(auto const& scratch) const
+        {
+            if (auto const id = resourcesManager_->getID(scratch.name()))
+                return *id;
+            throw std::runtime_error("MHDMessenger: unregistered scratch field " + scratch.name());
+        }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order.
         void makeRefineOperators_(RefinementConfig const& config)
         {
             auto fieldKernel = [&] {
                 return std::make_shared<KernelFieldRefineOperator<GridLayoutT, GridT>>(
-                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
             auto vecKernel = [&] {
                 return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
             auto magKernel = [&] {
                 return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                    makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeMagneticRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(
+                        config.order));
             };
 
             mhdFluxRefineOp_     = fieldKernel();
@@ -502,6 +535,9 @@ namespace amr
             // the strategy is per quantity, not per refiner: each one registers the ids of its
             // quantity, and the strategies of a state are combined into its refiner below
             registerGhostRefinePatchStrategies_(magPatchStrats, info->ghostMagnetic);
+            for (auto& patchStrat : magPatchStrats)
+                patchStrat->registerScratchID(
+                    scratchID_(model_.getTmp(core::MHDQuantity::Vector::VecAllPrimal)));
 
             // the i-th entry of each ghost list belongs to the same state
             auto const nStates = info->ghostMagnetic.size();
@@ -545,15 +581,15 @@ namespace amr
                         std::vector<CompositeRefinePatchStrategy::strategy_ptr>{
                             magPatchStrats[i], rhoPatchStrats[i], momentumPatchStrats[i],
                             totalEnergyPatchStrats[i]}));
-
-                magMaxRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], info->ghostMagnetic[i], nullptr, info->ghostMagnetic[i],
-                    std::make_shared<
-                        TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
             }
+
+            // any B is copied into this temporary for its border max, see borderMaxB_
+            auto const tmpB = model_.getTmp(core::MHDQuantity::Vector::B).name();
+            magMaxRefiners_.addStaticRefiner(
+                tmpB, tmpB, nullptr, tmpB,
+                std::make_shared<
+                    TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
-
-
 
 
         // registers the reflux of the fluxes of one direction, and the refill of their ghosts so
@@ -645,24 +681,23 @@ namespace amr
          * This is needed when the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
          */
-        void setNaNsOnFieldGhosts(FieldT& field)
+        void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch)
         {
-            auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
-            field[core::NdArrayMask{0, nGhosts - 1}]
-                = std::numeric_limits<typename FieldT::type>::quiet_NaN();
+            core::fill_ghost(field, layoutFromPatch<GridLayoutT>(patch),
+                             std::numeric_limits<typename FieldT::type>::quiet_NaN());
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field);
+            for (auto& patch : resourcesManager_->enumerate(level, field))
+                setNaNsOnFieldGhosts(field, *patch);
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
+            for (auto& patch : resourcesManager_->enumerate(level, vf))
                 for (auto& component : vf)
-                    setNaNsOnFieldGhosts(component);
+                    setNaNsOnFieldGhosts(component, *patch);
         }
 
 
@@ -675,6 +710,7 @@ namespace amr
 
 
         using rm_t = typename MHDModel::resources_manager_type;
+        MHDModel& model_; // owns the temporaries used here
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
         std::shared_ptr<BoundaryManagerT> boundaryManager_;
         int const firstLevel_;
@@ -702,8 +738,33 @@ namespace amr
         // B, rho, rhoV and Etot of each state, keyed by the state's B name
         GhostRefinerPool stateGhostsRefiners_{resourcesManager_};
 
-        // ghostMagnetic includes the model B, also equalized after regrid
+        // on the B temporary only, every B goes through it, see borderMaxB_
         VecFieldGhostMaxRefinerPool magMaxRefiners_{resourcesManager_};
+
+        // border max of B through the untiled temporary: B into it per patch, the schedule on it,
+        //  back into B per tile (per patch if not tiled)
+        void borderMaxB_(VecFieldT& B, auto& level, double const fillTime)
+        {
+            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
+            auto& tmp        = model_.getTmp(core::MHDQuantity::Vector::B);
+
+            auto accessor = make_level_accessor<GridLayoutT>(level, *resourcesManager_, B, tmp);
+            patch_level_exec(accessor, [](auto& view) {
+                auto& [B_p, tmp_p] = view.args;
+                for (std::uint8_t c = 0; c < N; ++c)
+                    core::copy_fields(tmp_p[c], B_p[c]);
+            });
+
+            magMaxRefiners_.fill(tmp, level.getLevelNumber(), fillTime);
+
+            level_exec(
+                accessor, [](auto& view) -> auto& { return std::get<0>(view.args); },
+                [](auto& view, auto const&... tile_idx) {
+                    auto& [B_p, tmp_p] = view.args;
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        core::copy_fields(B_p[c], tmp_p[c], tile_idx...);
+                });
+        }
 
         // B, rho, rhoV and Etot of the model state on new and regridded levels
         InitRefinerPool stateInitRefiners_{resourcesManager_};

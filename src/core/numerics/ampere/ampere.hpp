@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_NUMERICS_AMPERE_AMPERE_HPP
 #define PHARE_CORE_NUMERICS_AMPERE_AMPERE_HPP
 
+#include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
@@ -31,7 +32,6 @@ public:
     {
     }
 
-
     template<typename VecField>
     void operator()(VecField const& B, VecField& J)
     {
@@ -41,14 +41,10 @@ public:
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);
 
-        Point<std::uint32_t, dimension> amount;
+        Point<std::uint32_t, dimension> const amount{
+            ConstArray<std::uint32_t, dimension>(box.amount)};
 
-        for (size_t i = 0; i < dimension; ++i)
-        {
-            amount[i] = box.amount;
-        }
-
-        auto eval = [&](auto& Jc, auto&& fn) {
+        auto const eval = [&](auto& Jc, auto&& fn) {
             if constexpr (box.mode == AmpereMode::ShrinkedGhost)
                 layout_.evalOnShrinkedGhostBox(Jc, amount, fn);
             else
@@ -68,4 +64,5 @@ private:
 };
 
 } // namespace PHARE::core
+
 #endif

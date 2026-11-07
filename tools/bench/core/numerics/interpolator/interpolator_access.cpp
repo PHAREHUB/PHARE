@@ -3,7 +3,10 @@
 
 #include "tools/bench/core/bench.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tests/core/data/particles/test_particles.hpp" // particle<dim>()
 #include "tools/bench/core/numerics/interpolator/bench_intepolator_access.hpp"
+
+#include "benchmark/benchmark.h"
 
 #include <cmath>
 #include <random>
@@ -37,24 +40,28 @@ struct AccessSetup
     using ParticleArray = PHARE_Types::Hybrid::ParticleArray_t;
     using Grid_t        = PHARE_Types::Hybrid::Grid_t;
 
+    auto static constexpr field_opts = TensorFieldOptions<typename PHARE_Types::Hybrid>{};
+
     AccessSetup(bool const sorted)
     {
         particles.vector().resize(n_parts, particle<dim>());
-        disperse(particles, 0, cells - 1, /*seed*/ 1337);
 
-        // non zero weight and random deltas, so the check below compares something
+        // random cells, non zero weight and random deltas, so the check below compares something
         std::mt19937_64 gen{1337};
+        std::uniform_int_distribution<int> cell_distrib{0, cells - 1};
         std::uniform_real_distribution<double> distrib{0, 1};
         for (auto& p : particles)
         {
-            p.weight = 1;
-            for (auto& d : p.delta)
+            for (auto& c : p.iCell())
+                c = cell_distrib(gen);
+            p.weight() = 1;
+            for (auto& d : p.delta())
                 d = distrib(gen);
         }
 
         if (sorted)
             std::sort(particles.vector().begin(), particles.vector().end(),
-                      [](auto const& a, auto const& b) { return a.iCell < b.iCell; });
+                      [](auto const& a, auto const& b) { return a.iCell() < b.iCell(); });
 
         for (std::size_t i = 0; i < 3; ++i)
             for (auto* field : {&(*em).E[i], &(*em).B[i]})
@@ -68,11 +75,11 @@ struct AccessSetup
                       layout.allocSize(HybridQuantity::Scalar::rho)};
     }
 
-    auto make_flux() const { return UsableVecField<dim>{"F", layout, HybridQuantity::Vector::V}; }
+    auto make_flux() const { return UsableVecField<field_opts>{"F", layout, HybridQuantity::Vector::V}; }
 
     GridLayout_t layout{cells};
     ParticleArray particles{layout.AMRBox()};
-    UsableElectromag<dim> em{layout};
+    UsableElectromag<field_opts> em{layout};
 };
 
 
@@ -90,11 +97,11 @@ template<std::size_t dim, std::size_t interp>
     Interpolator_t<dim, interp, /*production*/ 1> production;
 
     for (auto& particle : setup.particles)
-        if (previous(particle, setup.em, setup.layout)
-            != production(particle, setup.em, setup.layout))
+        if (previous.m2p(particle, setup.em, setup.layout)
+            != production.m2p(particle, setup.em, setup.layout))
         {
-            auto const [pE, pB] = previous(particle, setup.em, setup.layout);
-            auto const [qE, qB] = production(particle, setup.em, setup.layout);
+            auto const [pE, pB] = previous.m2p(particle, setup.em, setup.layout);
+            auto const [qE, qB] = production.m2p(particle, setup.em, setup.layout);
             for (std::size_t i = 0; i < 3; ++i)
                 if (!near(pE[i], qE[i]) or !near(pB[i], qB[i]))
                     return "MeshToParticle mismatch";
@@ -129,7 +136,7 @@ template<typename Interpolator_, typename Setup>
 {
     for (auto& particle : setup.particles)
     {
-        auto EB = interpolator(particle, setup.em, setup.layout);
+        auto EB = interpolator.m2p(particle, setup.em, setup.layout);
         benchmark::DoNotOptimize(EB);
     }
 }

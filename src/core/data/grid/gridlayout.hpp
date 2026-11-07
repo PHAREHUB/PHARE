@@ -4,8 +4,10 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/field/field.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
@@ -25,24 +27,6 @@ namespace PHARE
 {
 namespace core
 {
-    template<auto options>
-    concept HasInterpOrder = requires { options.interp_order; };
-
-
-    template<typename T, typename Attempt = void>
-    struct has_physicalQuantity : std::false_type
-    {
-    };
-
-    template<typename T>
-    struct has_physicalQuantity<
-        T, core::tryToInstanciate<decltype(std::declval<T>().physicalQuantity())>> : std::true_type
-    {
-    };
-    template<typename T>
-    constexpr bool has_physicalQuantity_v = has_physicalQuantity<T>::value;
-
-
     NO_DISCARD constexpr int centering2int(QtyCentering c)
     {
         return static_cast<int>(c);
@@ -142,8 +126,10 @@ namespace core
         }
 
 
-        GridLayout(GridLayout const& that) = default;
-        GridLayout(GridLayout&& source)    = default;
+        GridLayout(GridLayout const& that)            = default;
+        GridLayout(GridLayout&& source)               = default;
+        GridLayout& operator=(GridLayout const& that) = default;
+        GridLayout& operator=(GridLayout&& source)    = default;
 
 
         /**
@@ -654,9 +640,13 @@ namespace core
         {
             PHARE_DEBUG_DO(
                 constexpr auto expected = centering(src);
-                if (centering(field) != expected) throw std::runtime_error(
-                    "GridLayout::project: field centering does not match the source quantity: "
-                    + field.name());)
+                if (centering(field) != expected) {
+                    std::string msg = "GridLayout::project: field centering does not match the "
+                                      "source quantity";
+                    if constexpr (requires { field.name(); }) // basic:: tile views have no name
+                        msg += ": " + field.name();
+                    throw std::runtime_error(msg);
+                })
 
             return core::project<centering(src), centering(dst)>(field, index);
         }
@@ -742,6 +732,7 @@ namespace core
         template<typename HasQuantity>
         NO_DISCARD constexpr static auto centering(HasQuantity const& hasQuantity)
             requires(has_physicalQuantity_v<HasQuantity>)
+
         {
             return centering(hasQuantity.physicalQuantity());
         }
@@ -866,20 +857,8 @@ namespace core
             return toCenteredBox(box, centering(qty));
         }
 
-        // essentially box form of allocSize(...)
-        template<typename Field>
-        Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
-        {
-            return boxFor(field, [&](auto&&... args) { return this->ghostStartToEnd(args...); });
-        }
 
         auto AMRBoxFor(auto const& field) const { return toCenteredBox(AMRBox_, centering(field)); }
-
-        template<typename Field>
-        Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
-        {
-            return boxFor(field, [&](auto&&... args) { return this->physicalStartToEnd(args...); });
-        }
 
         auto AMRGhostBoxFor(auto const& field) const
         {
@@ -958,34 +937,64 @@ namespace core
             }
         }
 
-
-        template<typename Field, typename Fn>
-        void evalOnBox(Field& field, Fn&& fn) const
+        // essentially box form of allocSize(...)
+        template<typename Field>
+        Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
         {
-            evalOnAnyBox(domainBoxFor(field), fn);
+            return BoxFor(field, [&](auto const& centering, auto const direction) {
+                return this->ghostStartToEnd(centering, direction);
+            });
         }
 
-        template<typename Field, typename Fn>
-        void evalOnBiggerBox(Field& field, Point<std::uint32_t, dimension> const& grow,
-                             Fn&& fn) const
+        template<typename Field>
+        auto domainBoxFor(Field const& field) const
         {
-            evalOnAnyBox(core::grow(domainBoxFor(field), grow), fn);
+            return BoxFor(field, [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            });
         }
 
-        template<typename Field, typename Fn>
-        void evalOnShrinkedGhostBox(Field& field, Point<std::uint32_t, dimension> const& shrink,
-                                    Fn&& fn) const
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnBox(Field const& field, Fn&& fn, Args&&... args) const
         {
-            evalOnAnyBox(core::shrink(ghostBoxFor(field), shrink), fn);
+            evalOnAnyBox(field, domainBoxFor(field), fn, args...);
         }
 
-        template<typename Field, typename Fn>
-        void evalOnGhostBox(Field& field, Fn&& fn) const
+        template<typename Field, typename Fn, typename... Args>
+        void evalGrownOnBox(Field const& field, auto const& growby, Fn&& fn, Args&&... args) const
         {
-            evalOnAnyBox(ghostBoxFor(field), fn);
+            evalOnAnyBox(field, grow(domainBoxFor(field), growby), fn, args...);
         }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnGhostBox(Field const& field, Fn&& fn, Args&&... args) const
+        {
+            evalOnAnyBox(field, ghostBoxFor(field), fn, args...);
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnBiggerBox(Field const& field, Point<uint32_t, dimension> const& growby, Fn&& fn,
+                             Args&&... args) const
+        {
+            evalOnAnyBox(field, grow(domainBoxFor(field), growby), fn, args...);
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnShrinkedGhostBox(Field const& field, Point<uint32_t, dimension> const& shrinkby,
+                                    Fn&& fn, Args&&... args) const
+        {
+            evalOnAnyBox(field, shrink(ghostBoxFor(field), shrinkby), fn, args...);
+        }
+
         auto levelNumber() const { return levelNumber_; }
 
+
+        // function to take a part of a gridlayout
+        This copy_as(Box<int, dimension> const box) const
+        {
+            auto const shifted_origin = Point<double, dimension>{meshSize_} * box.lower;
+            return {meshSize_, box.shape().as_unsigned(), shifted_origin, box, levelNumber_};
+        }
 
         // call fn(amr_idx, lcl_idx) for each point of the AMR box
         void amr_lcl_idx(auto const& box, auto&& fn) const
@@ -1003,23 +1012,18 @@ namespace core
         }
 
     private:
-        // calls fn(ix[, iy[, iz]]) once per point of box, walking it span by span
-        // (see for_each_point in core/utilities/box/box_spans.hpp)
-        void evalOnAnyBox(auto const& box, auto& fn) const
+        template<typename Field, typename Box_t, typename Fn, typename... Args>
+        void static evalOnAnyBox([[maybe_unused]] Field const& feeld, Box_t const& box, Fn& fn,
+                                 Args&... args)
         {
-            for_each_point(box, [&](auto& point) {
-                if constexpr (dimension == 1)
-                    fn(point[0]);
-                else if constexpr (dimension == 2)
-                    fn(point[0], point[1]);
-                else
-                    fn(point[0], point[1], point[2]);
-            });
+            static_assert(!is_field_tile_set_v<Field>);
+
+            // span by span walk, see core/utilities/box/box_spans.hpp
+            for_each_point(box, [&](auto const& bix) { fn(bix, args...); });
         }
 
-
         template<typename Field, typename Fn>
-        auto boxFor(Field const& field, Fn const startToEnd) const
+        auto BoxFor(Field const& field, Fn startToEnd) const
         {
             std::array<std::uint32_t, dimension> lower, upper;
 

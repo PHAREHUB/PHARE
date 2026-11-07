@@ -11,7 +11,7 @@ simInput = {
     "diag_options": {"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}}
 }
 
-ph.Simulation(**basicSimulatorArgs(dim=2, interp=1, **simInput))
+ph.Simulation(**basicSimulatorArgs(ndim=2, interp=1, **simInput))
 model = makeBasicModel()
 ph.ElectronModel(closure="isothermal", Te=0.12)
 dump_all_diags(model.populations)

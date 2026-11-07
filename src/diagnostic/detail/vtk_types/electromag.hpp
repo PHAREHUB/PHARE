@@ -31,8 +31,11 @@ public:
     // B and E are converted to primal through a temporary when written
     void requestTemporaries(DiagnosticProperties& diagnostic) override
     {
-        if (isActiveDiag(diagnostic, "/", "EM_B") or isActiveDiag(diagnostic, "/", "EM_E"))
-            this->h5Writer_.modelView().requestTmpVecField();
+        auto& modelView = this->h5Writer_.modelView();
+        if (isActiveDiag(diagnostic, "/", "EM_B"))
+            modelView.requestTmpVecFieldFor(modelView.getB());
+        if (isActiveDiag(diagnostic, "/", "EM_E"))
+            modelView.requestTmpVecFieldFor(modelView.getE());
     }
 
 private:
