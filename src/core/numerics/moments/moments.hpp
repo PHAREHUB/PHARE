@@ -4,7 +4,7 @@
 
 #include "core/numerics/interpolator/interpolator.hpp"
 
-#include <stdexcept>
+#include <ranges>
 
 
 namespace PHARE
@@ -22,17 +22,31 @@ namespace core
     }
 
 
+    // deposits those of `particles` that are in cells owned by `ownership`
+    // (a LevelGhostOwnership, see level_ghost_ownership.hpp)
+    void depositOwned(auto& interpolate, auto& particles, auto& density, auto& flux,
+                      auto const& layout, auto const& ownership, double const coef = 1.)
+    {
+        auto owned = particles | std::views::filter([&](auto const& particle) {
+                         return ownership.owns(particle.iCell);
+                     });
+        interpolate(owned, density, flux, layout, coef);
+    }
+
+
     struct DomainDeposit
     {
     };
 
+    template<typename Ownership>
     struct LevelGhostDeposit
     {
+        Ownership const& ownership;
     };
 
 
     template<typename DepositTag>
-    void depositParticles(auto& ions, auto& layout, auto interpolate, DepositTag)
+    void depositParticles(auto& ions, auto& layout, auto interpolate, DepositTag const& tag)
     {
         for (auto& pop : ions)
         {
@@ -44,13 +58,9 @@ namespace core
                 auto& partArray = pop.domainParticles();
                 interpolate(partArray, particleDensity, flux, layout);
             }
-            else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
-            {
-                auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, particleDensity, flux, layout);
-            }
-            else
-                throw std::runtime_error("unknown deposit tag");
+            else // LevelGhostDeposit
+                depositOwned(interpolate, pop.levelGhostParticlesOld(), particleDensity, flux,
+                             layout, tag.ownership);
         }
     }
 
