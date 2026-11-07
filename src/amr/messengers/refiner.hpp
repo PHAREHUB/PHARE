@@ -3,11 +3,15 @@
 
 #include "communicator.hpp"
 
+#include "amr/messengers/field_border_sum.hpp"
 #include "amr/messengers/field_operate_transaction.hpp"
 #include "core/utilities/types.hpp"
 
-#include <stdexcept>
+#include <map>
+#include <memory>
 #include <string>
+#include <stdexcept>
+#include <type_traits>
 
 
 namespace PHARE::amr
@@ -29,6 +33,15 @@ enum class RefinerType {
 };
 
 
+// border sums add up the deposits on the ghost box nodes shared by the patches of a level, see
+// BorderSumRefiner
+constexpr bool isBorderSum(RefinerType const type)
+{
+    return type == RefinerType::PatchFieldBorderSum or type == RefinerType::PatchVecFieldBorderSum
+           or type == RefinerType::PatchTensorFieldBorderSum;
+}
+
+
 
 /** One item of a multi-item Refiner. told/tnew are only used when timeOp is set. */
 struct RefineItem
@@ -47,8 +60,7 @@ class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
 {
     using FieldData_t = ResourcesManager::UserField_t::patch_data_type;
 
-    using SetMaxOp     = core::SetMax<typename FieldData_t::value_type>;
-    using PlusEqualsOp = core::PlusEquals<typename FieldData_t::value_type>;
+    using SetMaxOp = core::SetMax<typename FieldData_t::value_type>;
 
     // hard coded rank cause there's no real tensorfields that use this code yet
     using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
@@ -92,33 +104,6 @@ private:
         else if constexpr (Type == RefinerType::PatchGhostField)
         {
             return algo->createSchedule(level, patchStrat_.get());
-        }
-
-
-        // schedule used to += density and flux for populations
-        // on incomplete overlaped ghost box nodes
-        else if constexpr (Type == RefinerType::PatchFieldBorderSum)
-        {
-            return algo->createSchedule(
-                level, patchStrat_.get(),
-                std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>());
-        }
-
-
-        else if constexpr (Type == RefinerType::PatchTensorFieldBorderSum)
-        {
-            return algo->createSchedule(
-                level, patchStrat_.get(),
-                std::make_shared<
-                    FieldBorderOpTransactionFactory<TensorFieldData_t, PlusEqualsOp>>());
-        }
-
-
-        else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
-        {
-            return algo->createSchedule(
-                level, patchStrat_.get(),
-                std::make_shared<FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>());
         }
 
 
@@ -397,6 +382,96 @@ public:
     }
 };
 
+
+
+
+/** @brief Refiner of a border sum (field_border_sum.hpp), for population moments: per level, a
+ * schedule whose transactions store the contributions to the ghost box nodes shared by the
+ * patches, and the BorderSums that adds them up once the schedule has run.
+ */
+template<typename ResourcesManager, RefinerType Type>
+class BorderSumRefiner
+{
+    static_assert(isBorderSum(Type));
+
+    using FieldData_t       = ResourcesManager::UserField_t::patch_data_type;
+    using VecFieldData_t    = ResourcesManager::template UserTensorField_t<1>::patch_data_type;
+    using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
+    using Data_t
+        = std::conditional_t<Type == RefinerType::PatchTensorFieldBorderSum, TensorFieldData_t,
+                             std::conditional_t<Type == RefinerType::PatchVecFieldBorderSum,
+                                                VecFieldData_t, FieldData_t>>;
+
+    struct LevelSum
+    {
+        std::shared_ptr<SAMRAI::hier::PatchLevel> level;
+        std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule;
+        std::shared_ptr<BorderSums<Data_t>> sums;
+
+        void fill(double const fillTime)
+        {
+            schedule->fillData(fillTime);
+            foldBorderSums(*sums, *level);
+        }
+    };
+
+    LevelSum makeLevelSum_(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level) const
+    {
+        auto sums     = std::make_shared<BorderSums<Data_t>>();
+        auto schedule = algo_->createSchedule(
+            level, patchStrat_.get(),
+            std::make_shared<FieldBorderSumTransactionFactory<Data_t>>(sums));
+        finalizeBorderSums(*sums, *level);
+        return {level, schedule, sums};
+    }
+
+    std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo_
+        = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat_;
+    std::map<int, LevelSum> levels_;
+
+public:
+    BorderSumRefiner(std::string const& dst, std::string const& src,
+                     std::shared_ptr<ResourcesManager> const& rm,
+                     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                     std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                     std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr)
+        : patchStrat_{patchStrat}
+    {
+        auto&& [idDst, idSrc] = rm->getIDsList(dst, src);
+        algo_->registerRefine(idDst, idSrc, idDst, refineOp, fillPattern);
+    }
+
+    void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                       std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
+    {
+        levels_.insert_or_assign(level->getLevelNumber(), makeLevelSum_(level));
+    }
+
+    void removeLevel(int const levelNumber) { levels_.erase(levelNumber); }
+
+    // a new level gets its border sum from registerLevel, nothing comes from the level it replaces
+    void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                int const /*levelNumber*/,
+                std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
+                double const /*initDataTime*/)
+    {
+        throw std::runtime_error("BorderSumRefiner: border sums are not regridded");
+    }
+
+    void fill(int const levelNumber, double const fillTime)
+    {
+        levels_.at(levelNumber).fill(fillTime);
+    }
+
+    // builds the schedule for the level, fills once and discards it
+    void fillTransient(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                       std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                       double const fillTime) const
+    {
+        makeLevelSum_(level).fill(fillTime);
+    }
+};
 
 
 } // namespace PHARE::amr
