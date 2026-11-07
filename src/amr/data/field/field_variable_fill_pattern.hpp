@@ -293,7 +293,7 @@ NO_DISCARD bool isSamePatch(Geometry_t const& dst_geometry, Geometry_t const& sr
  *               |          | particles |
  *               0
  * */
-template<typename Gridlayout_t> // ASSUMED ALL PRIMAL!
+template<typename Gridlayout_t> // ghost field boxes follow the field's centering, primal or dual
 class FieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
     std::size_t constexpr static dim = Gridlayout_t::dimension;
@@ -367,7 +367,7 @@ private:
     }
 };
 
-template<typename Gridlayout_t, std::size_t rank_ = 1> // ASSUMED ALL PRIMAL!
+template<typename Gridlayout_t, std::size_t rank_ = 1> // per component, each with its own centering
 class TensorFieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
     std::size_t constexpr static dim = Gridlayout_t::dimension;
