@@ -65,8 +65,9 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
 class IDiagnosticsManager
 {
 public:
-    virtual bool dump(double timeStamp, double timeStep)         = 0;
-    virtual void dump_level(std::size_t level, double timeStamp) = 0;
+    virtual bool dump(double timeStamp, double timeStep)                   = 0;
+    virtual void dump_level(std::size_t level, double timeStamp)           = 0;
+    virtual void emergency_dump_level(std::size_t level, double timeStamp) = 0;
     inline virtual ~IDiagnosticsManager();
 };
 IDiagnosticsManager::~IDiagnosticsManager() {}
@@ -83,6 +84,8 @@ public:
 
 
     void dump_level(std::size_t level, double timeStamp) override;
+
+    void emergency_dump_level(std::size_t level, double timeStamp) override;
 
 
     DiagnosticsManager(std::unique_ptr<Writer>&& writer_ptr)
@@ -228,6 +231,22 @@ void DiagnosticsManager<Writer>::dump_level(std::size_t level, double timeStamp)
         activeDiagnostics.emplace_back(&diag);
 
     writer_->dump_level(level, activeDiagnostics, timeStamp);
+}
+
+
+// as dump_level, without the quantities computed before writing (momentum tensor, MHD V/P):
+// computing them needs a valid state, which the exception that triggers an emergency dump does
+// not leave, see https://github.com/PHAREHUB/PHARE/issues/1559
+template<typename Writer>
+void DiagnosticsManager<Writer>::emergency_dump_level(std::size_t level, double timeStamp)
+{
+    std::vector<DiagnosticProperties*> diagnostics;
+
+    for (auto& diag : diagnostics_)
+        if (!writer_->modelView().computes(diag.quantity))
+            diagnostics.emplace_back(&diag);
+
+    writer_->dump_level(level, diagnostics, timeStamp);
 }
 
 
