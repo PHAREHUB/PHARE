@@ -389,9 +389,17 @@ struct IonUpdaterTest : public ::testing::Test
     // grid configuration
     std::array<int, dim> ncells;
     GridLayout layout;
-    // assumes no level ghost cells
-    Boxing_t const boxing{layout,
-                          {grow(layout.AMRBox(), GridLayout::options.particle_ghost_width)}};
+    // level ghost cells on the left, a same-level neighbour on the right (as the particles
+    // loaded below: level ghost particles left, patch ghost particles right)
+    Boxing_t const boxing{layout, {nonLevelGhostBox(layout)}};
+
+    static auto nonLevelGhostBox(GridLayout const& layout)
+    {
+        static_assert(dim == 1);
+        auto box = layout.AMRBox();
+        box.upper[0] += GridLayout::options.particle_ghost_width;
+        return box;
+    }
 
 
     // data for electromagnetic fields
@@ -914,11 +922,11 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
         this->EM.B.zero();
     }
 
+    static constexpr int ghosts = Super::GridLayout::options.particle_ghost_width;
+
     Boxing_t makeBoxing(std::vector<Box_t> const& nonOwned) const
     {
-        return {this->layout,
-                {grow(this->layout.AMRBox(), Super::GridLayout::options.particle_ghost_width)},
-                nonOwned};
+        return {this->layout, {Super::nonLevelGhostBox(this->layout)}, nonOwned};
     }
 
     static Box_t box(int lower, int upper) { return Box_t{{lower}, {upper}}; }
@@ -1028,6 +1036,71 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ++ipop;
         }
     }
+
+    // One cell of level ghost between this patch and a same-level neighbour on the left, whose
+    // domain ends at the outer ghost cell (needs 2 particle ghost cells). Every patch holds its
+    // own copy of the level ghost particles: one entering the neighbour's domain is the
+    // neighbour's, this patch drops its copy and does not deposit it.
+    // A 1-cell gap between same-level patches does not occur at refinement ratio 2 (gaps are
+    // even): this is the smallest 1D geometry with a neighbour's domain inside the ghost box. The
+    // case that occurs, a patch corner on the coarse-fine edge, is covered by
+    // tests/simulator/test_patch_layout_independence.py.
+    void checkLevelGhostEnteringNeighbourDomain(UpdaterMode const mode)
+    {
+        if constexpr (ghosts < 2)
+            GTEST_SKIP() << "no level ghost cell between two patches within the particle ghost box";
+        else
+        {
+            typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+            auto const domainBox = this->layout.AMRBox();
+            auto const lower     = domainBox.lower[0];
+            auto const gapCell   = lower - 1;
+            auto const nbrCell   = lower - 2;
+            Boxing_t const boxing{
+                this->layout, {box(nbrCell, nbrCell), box(lower, domainBox.upper[0] + ghosts)}, {}};
+
+            auto const enteringNbr = [&](auto const& p) {
+                return p.iCell[0] == gapCell and p.delta[0] - cellsPerStep < 0.;
+            };
+
+            std::vector<std::size_t> nbrDomain, nbrStaying;
+            for (auto& pop : this->ions)
+            {
+                auto& levelGhosts = pop.levelGhostParticles();
+                auto range        = makeIndexRange(levelGhosts);
+                auto const inGap  = levelGhosts.partition(
+                    range, [&](auto const& cell) { return cell[0] == gapCell; });
+                levelGhosts.erase(makeRange(levelGhosts, inGap.iend(), levelGhosts.size()));
+
+                setVelocityX(pop.domainParticles(), 0);
+                setVelocityX(levelGhosts, -1);
+                nbrDomain.push_back(pop.domainParticles().size());
+                auto const nbrEntering = count(levelGhosts, enteringNbr);
+                nbrStaying.push_back(levelGhosts.size() - nbrEntering);
+                ASSERT_GT(nbrEntering, 0u);
+                ASSERT_GT(nbrStaying.back(), 0u);
+            }
+
+            ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, mode);
+
+            std::size_t ipop = 0;
+            for (auto& pop : this->ions)
+            {
+                auto const expected = weights(pop.domainParticles());
+                EXPECT_NEAR(total(pop.particleDensity()), expected, 1e-10 * expected);
+
+                if (mode == UpdaterMode::all)
+                {
+                    EXPECT_EQ(pop.domainParticles().size(), nbrDomain[ipop]);
+                    EXPECT_EQ(pop.patchGhostParticles().size(), 0u);
+                    // the others stay in the level ghost layer
+                    EXPECT_EQ(pop.levelGhostParticles().size(), nbrStaying[ipop]);
+                }
+                ++ipop;
+            }
+        }
+    }
 };
 
 using DimInterps1D = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
@@ -1098,6 +1171,19 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringOwnedCellIsDepositedInMome
 TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotDepositedInMomentsOnlyMode)
 {
     this->checkLevelGhostDeposit(/*withNonOwned=*/true);
+}
+
+
+
+// see checkLevelGhostEnteringNeighbourDomain
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNeighbourDomainIsDropped)
+{
+    this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::all);
+}
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNeighbourDomainIsNotDepositedMomentsOnly)
+{
+    this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::domain_only);
 }
 
 
