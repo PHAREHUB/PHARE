@@ -14,4 +14,12 @@ add_custom_command(
     DEPENDS pusher
 )
 
-add_phare_cpp_benchmark(10 ${PROJECT_NAME} push_raw_use ${CMAKE_CURRENT_BINARY_DIR})
+add_phare_cpp_benchmark(10 push_raw_use_impl0 push_raw_use ${CMAKE_CURRENT_BINARY_DIR})
+if(TARGET push_raw_use_impl0_push_raw_use) # only made in the exec level range
+  target_compile_definitions(push_raw_use_impl0_push_raw_use PRIVATE PHARE_UPDATER_IMPL=0)
+endif()
+
+add_phare_cpp_benchmark(10 push_raw_use_impl1 push_raw_use ${CMAKE_CURRENT_BINARY_DIR})
+if(TARGET push_raw_use_impl1_push_raw_use) # only made in the exec level range
+  target_compile_definitions(push_raw_use_impl1_push_raw_use PRIVATE PHARE_UPDATER_IMPL=1)
+endif()
