@@ -10,6 +10,7 @@
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_ppc.hpp"
+#include "amr/solvers/solver_ppc_steps.hpp"
 
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 
@@ -60,7 +61,7 @@ public:
         model_->fillMessengerInfo(infoFromCoarser);
         solver_->fillMessengerInfo(infoFromFiner);
 
-        messenger_->registerQuantities(std::move(infoFromFiner), std::move(infoFromCoarser));
+        messenger_->registerQuantities(std::move(infoFromCoarser), std::move(infoFromFiner));
     }
 
 

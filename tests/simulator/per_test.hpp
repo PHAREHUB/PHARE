@@ -4,8 +4,14 @@
 #include "phare_solver.hpp"
 #include "simulator/simulator_def.hpp"
 
-#include "simulator/simulator.hpp"
+#include "core/data/vector.hpp"
+#include "core/def/phare_config.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+
+#include "amr/samrai.hpp"
 #include "initializer/python_data_provider.hpp"
+
+#include "simulator/simulator.hpp"
 
 #include "gtest/gtest.h"
 
@@ -17,24 +23,49 @@ using PHARE::has_hybrid_v;
 using PHARE::has_mhd_v;
 namespace MHDOpts = PHARE::MHDOpts;
 
-static_assert(has_hybrid_v<SimOpts{}> && !has_mhd_v<SimOpts{}>); // 3-field
+static_assert(has_hybrid_v<SimOpts{}> && !has_mhd_v<SimOpts{}>); // defaults
 
-static_assert(has_hybrid_v<SimOpts{2, 1, 4, MHDOpts::ReconstructionType::WENOZ,
-                                   MHDOpts::SlopeLimiterType::None,
-                                   MHDOpts::RiemannSolverType::Rusanov}>); // 7-field
 static_assert(
-    has_mhd_v<SimOpts{2, 1, 4, MHDOpts::ReconstructionType::WENOZ, MHDOpts::SlopeLimiterType::None,
-                      MHDOpts::RiemannSolverType::Rusanov}>);
+    has_hybrid_v<SimOpts{.dimension           = 2,
+                         .interp_order        = 1,
+                         .nbRefinedPart       = 4,
+                         .layout_mode         = PHARE::core::LayoutMode::AoSMapped,
+                         .alloc_mode          = PHARE::core::AllocatorMode::CPU,
+                         .reconstruction_type = MHDOpts::ReconstructionType::WENOZ,
+                         .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                         .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov}>); // coupled
+static_assert(has_mhd_v<SimOpts{.dimension           = 2,
+                                .interp_order        = 1,
+                                .nbRefinedPart       = 4,
+                                .layout_mode         = PHARE::core::LayoutMode::AoSMapped,
+                                .alloc_mode          = PHARE::core::AllocatorMode::CPU,
+                                .reconstruction_type = MHDOpts::ReconstructionType::WENOZ,
+                                .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                                .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov}>);
 
-static_assert(!has_hybrid_v<SimOpts{2, 0, 0, MHDOpts::ReconstructionType::WENOZ,
-                                    MHDOpts::SlopeLimiterType::None,
-                                    MHDOpts::RiemannSolverType::Rusanov}>); // 5-field
-static_assert(
-    has_mhd_v<SimOpts{2, 0, 0, MHDOpts::ReconstructionType::WENOZ, MHDOpts::SlopeLimiterType::None,
-                      MHDOpts::RiemannSolverType::Rusanov}>);
+static_assert(!has_hybrid_v<SimOpts{.dimension           = 2,
+                                    .interp_order        = 0,
+                                    .nbRefinedPart       = 0,
+                                    .layout_mode         = PHARE::core::LayoutMode::AoSMapped,
+                                    .alloc_mode          = PHARE::core::AllocatorMode::CPU,
+                                    .reconstruction_type = MHDOpts::ReconstructionType::WENOZ,
+                                    .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                                    .riemann_solver_type
+                                    = MHDOpts::RiemannSolverType::Rusanov}>); // decoupled MHD-only
+static_assert(has_mhd_v<SimOpts{.dimension           = 2,
+                                .interp_order        = 0,
+                                .nbRefinedPart       = 0,
+                                .layout_mode         = PHARE::core::LayoutMode::AoSMapped,
+                                .alloc_mode          = PHARE::core::AllocatorMode::CPU,
+                                .reconstruction_type = MHDOpts::ReconstructionType::WENOZ,
+                                .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                                .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov}>);
 
 static_assert(SimOpts{}.mhd_axes_consistent());
 } // namespace
+
+using enum PHARE::core::LayoutMode;
+using enum PHARE::core::AllocatorMode;
 
 struct __attribute__((visibility("hidden"))) StaticIntepreter
 {
@@ -48,11 +79,11 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
 };
 
 
-template<std::size_t _dim>
+template<std::size_t dim>
 struct HierarchyMaker
 {
     HierarchyMaker(PHARE::initializer::PHAREDict& dict)
-        : hierarchy{std::make_shared<PHARE::amr::DimHierarchy<_dim>>(dict)}
+        : hierarchy{std::make_shared<PHARE::amr::DimHierarchy<dim>>(dict)}
     {
     }
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy;
@@ -133,26 +164,5 @@ TYPED_TEST_SUITE(SimulatorTest, Simulators);
 template<std::size_t dim, std::size_t interp, std::size_t... nbRefinedParts>
 using SimulatorTestParams
     = testing::Types<SimulatorTestParam<SimOpts{dim, interp, nbRefinedParts}>...>;
-
-// one set per dim/interp so each test binary instantiates only a few simulators
-//  to prevent OOM when compiling, all permutations of a dim in a single source file can
-//  exceed CI memory limits, see tests/diagnostic/CMakeLists.txt
-template<std::size_t dim, std::size_t interp>
-struct SimulatorPermutations;
-
-// clang-format off
-template<> struct SimulatorPermutations<1, 1> { using type = SimulatorTestParams<1, 1, 2, 3>; };
-template<> struct SimulatorPermutations<1, 2> { using type = SimulatorTestParams<1, 2, 2, 3, 4>; };
-template<> struct SimulatorPermutations<1, 3> { using type = SimulatorTestParams<1, 3, 2, 3, 4, 5>; };
-
-template<> struct SimulatorPermutations<2, 1> { using type = SimulatorTestParams<2, 1, 4, 5, 8, 9>; };
-template<> struct SimulatorPermutations<2, 2> { using type = SimulatorTestParams<2, 2, 4, 5, 8, 9, 16>; };
-template<> struct SimulatorPermutations<2, 3> { using type = SimulatorTestParams<2, 3, 4, 5, 8, 25>; };
-
-template<> struct SimulatorPermutations<3, 1> { using type = SimulatorTestParams<3, 1, 6>; };
-template<> struct SimulatorPermutations<3, 2> { using type = SimulatorTestParams<3, 2, 6>; };
-template<> struct SimulatorPermutations<3, 3> { using type = SimulatorTestParams<3, 3, 6>; };
-// clang-format on
-
 
 #endif /* PHARE_TEST_SIMULATOR_PER_TEST_H */

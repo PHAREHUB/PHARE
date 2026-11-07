@@ -28,6 +28,7 @@ class MHDAdvanceTest(AdvanceTestBase):
         extra_diag_options=None,
         timestamps=None,
         diag_outputs="",
+        model_layout="AoS",
         **kwargs
     ):
         # the shared hybrid+MHD base passes this positionally: an MHD-only run
@@ -75,6 +76,7 @@ class MHDAdvanceTest(AdvanceTestBase):
             hall=hall,
             model_options=["MHDModel"],
             max_mhd_level=3,
+            model_layout=model_layout,
         )
         diag_outputs = sim.diag_options["options"]["dir"]
         L = sim.simulation_domain()

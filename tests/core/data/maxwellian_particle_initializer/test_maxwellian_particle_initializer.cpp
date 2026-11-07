@@ -2,12 +2,13 @@
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/particles/particle_utilities.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/random.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+#include "core/data/particles/particle_utilities.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
 #include "gtest/gtest.h"
 
@@ -26,17 +27,27 @@ namespace PHARE::initializer::test_fn::func_1d
 {
 
 
+template<typename ParticleArrayT>
 class AMaxwellianParticleInitializer1D : public ::testing::Test
 {
 private:
     using GridLayoutT       = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
-    using ParticleArrayT    = ParticleArray<1>;
     using InitFunctionArray = std::array<InitFunction<1>, 3>;
 
+    auto static init_particles(GridLayoutT const& layout)
+    {
+        if constexpr (any_in(ParticleArrayT::layout_mode, LayoutMode::AoSMapped))
+            return ParticleArrayT{layout.AMRBox()};
+        else
+            return ParticleArrayT{};
+    }
+
 public:
+    static constexpr std::uint32_t nbrParticlesPerCell = 10000;
+
     AMaxwellianParticleInitializer1D()
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
-        , particles{layout.AMRBox()}
+        , particles{init_particles(layout)}
         , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
               density, InitFunctionArray{vx, vy, vz}, InitFunctionArray{vthx, vthy, vthz},
               nbrParticlesPerCell)}
@@ -45,30 +56,40 @@ public:
 
     GridLayoutT layout;
     ParticleArrayT particles;
-    std::uint32_t nbrParticlesPerCell{10000};
     std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
+
+    auto operator()() { return std::forward_as_tuple(layout, particles, initializer); }
 };
 
 
+using Tests1d = testing::Types<AoSMappedParticleArray<1>, AoSParticleArray<1>, SoAParticleArray<1>>;
+TYPED_TEST_SUITE(AMaxwellianParticleInitializer1D, Tests1d);
 
-TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
+
+TYPED_TEST(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 {
+    auto const& [layout, particles, initializer] = (*this)();
+
     auto nbrCells             = layout.nbrCells();
-    auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
+    auto expectedNbrParticles = TestFixture::nbrParticlesPerCell * nbrCells[0];
     initializer->loadParticles(particles, layout);
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
 
 
 
-TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
+
+TYPED_TEST(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
 {
+    auto const& [layout, particles, initializer] = (*this)();
+
     initializer->loadParticles(particles, layout);
-    for (auto const& particle : particles)
+
+    for (std::size_t i = 0; i < particles.size(); i++)
     {
-        EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
-        auto pos       = positionAsPoint(particle, layout);
-        auto endDomain = (layout.AMRBox().upper[0] + 1) * layout.meshSize()[0];
+        EXPECT_TRUE(particles.iCell(i)[0] >= 50 && particles.iCell(i)[0] <= 99);
+        auto pos       = positionAsPoint(particles, i, layout);
+        auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
         if (!((pos[0] > 0.) and (pos[0] < endDomain)))
             std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << ")\n";
@@ -85,7 +106,7 @@ namespace PHARE::initializer::test_fn::func_2d
 class AMaxwellianParticleInitializer2D : public ::testing::Test
 {
 private:
-    using ParticleArrayT    = ParticleArray<2>;
+    using ParticleArrayT    = AoSMappedParticleArray<2>;
     using InitFunctionArray = std::array<InitFunction<2>, 3>;
     using GridLayoutT       = PHARE::core::PHARE_Types<PHARE::SimOpts{2, 1}>::Hybrid::GridLayout_t;
 
@@ -136,7 +157,7 @@ struct SeededLoader
 {
     using GridLayoutT =
         typename PHARE::core::PHARE_Types<PHARE::SimOpts{dim, 1}>::Hybrid::GridLayout_t;
-    using ParticleArrayT    = ParticleArray<dim>;
+    using ParticleArrayT    = AoSMappedParticleArray<dim>;
     using InitFunctionArray = std::array<InitFunction<dim>, 3>;
     using Cell              = std::array<int, dim>;
     using CellParticles     = std::map<Cell, std::vector<Particle<dim>>>;
@@ -179,7 +200,7 @@ struct SeededLoader
             ParticleArrayT particles{layout.AMRBox()};
             initializer.loadParticles(particles, layout);
             for (auto const& particle : particles)
-                cells[particle.iCell].push_back(particle);
+                cells[particle.iCell()].push_back(particle);
         }
         return cells;
     }
@@ -201,7 +222,7 @@ TEST(PerCellSeed, sameCellOfTwoPatchesGetsDifferentParticles)
     auto const& b    = cells.at({20});
     ASSERT_EQ(a.size(), b.size());
     for (std::size_t i = 0; i < a.size(); ++i)
-        EXPECT_NE(a[i].delta, b[i].delta);
+        EXPECT_NE(a[i].delta(), b[i].delta());
 }
 
 
@@ -237,7 +258,7 @@ TEST(PerCellSeed, neighbourCellsGetDifferentParticles)
         {
             if (cells.count(neighbour))
             {
-                EXPECT_NE(particles[0].delta, cells.at(neighbour)[0].delta);
+                EXPECT_NE(particles[0].delta(), cells.at(neighbour)[0].delta());
             }
         }
 }
@@ -247,17 +268,18 @@ TEST(PerCellSeed, sameSeedGivesSameParticlesOtherSeedDoesNot)
 {
     auto const reference = Loader1D::load(wholeDomain1D, 1337);
     EXPECT_EQ(reference, Loader1D::load(wholeDomain1D, 1337));
-    EXPECT_NE(reference.at({5})[0].delta, Loader1D::load(wholeDomain1D, 1338).at({5})[0].delta);
+    EXPECT_NE(reference.at({5})[0].delta(),
+              Loader1D::load(wholeDomain1D, 1338).at({5})[0].delta());
 }
 
 
 TEST(PerCellSeed, populationAndLevelChangeTheParticles)
 {
     auto const reference = Loader1D::load(wholeDomain1D, 1337, "protons", 0);
-    EXPECT_NE(reference.at({5})[0].delta,
-              Loader1D::load(wholeDomain1D, 1337, "alpha", 0).at({5})[0].delta);
-    EXPECT_NE(reference.at({5})[0].delta,
-              Loader1D::load(wholeDomain1D, 1337, "protons", 1).at({5})[0].delta);
+    EXPECT_NE(reference.at({5})[0].delta(),
+              Loader1D::load(wholeDomain1D, 1337, "alpha", 0).at({5})[0].delta());
+    EXPECT_NE(reference.at({5})[0].delta(),
+              Loader1D::load(wholeDomain1D, 1337, "protons", 1).at({5})[0].delta());
 }
 
 
@@ -265,7 +287,7 @@ TEST(PerCellSeed, unseededLoadsDiffer)
 {
     auto const a = Loader1D::load(wholeDomain1D, std::nullopt);
     auto const b = Loader1D::load(wholeDomain1D, std::nullopt);
-    EXPECT_NE(a.at({5})[0].delta, b.at({5})[0].delta);
+    EXPECT_NE(a.at({5})[0].delta(), b.at({5})[0].delta());
 }
 
 
@@ -281,14 +303,14 @@ TEST(PerCellSeed, velocitiesAreMaxwellianAndUncorrelatedBetweenCells)
     {
         double const x = (cell[0] + 0.5) * 0.1;
         for (auto const& particle : particles)
-            for (auto const v : particle.v)
+            for (auto const v : particle.v())
             {
                 double const z = (v - x) / x;
                 sum += z;
                 sum2 += z * z;
                 ++nbr;
             }
-        firstOfCell.push_back((particles[0].v[0] - x) / x);
+        firstOfCell.push_back((particles[0].v()[0] - x) / x);
     }
     double const mean = sum / nbr;
     EXPECT_LT(std::abs(mean), 5. / std::sqrt(nbr));

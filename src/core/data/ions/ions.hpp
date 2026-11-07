@@ -1,26 +1,26 @@
 #ifndef PHARE_IONS_HPP
 #define PHARE_IONS_HPP
 
-#include <algorithm>
-#include <functional>
-#include <iterator>
-#include <sstream>
-#include <string>
-#include <cmath>
-#include <vector>
-#include <array>
-#include <stdexcept>
-
 
 #include "core/def.hpp"
+#include "core/utilities/algorithm.hpp"
+#include "core/data/field/field_tiles.hpp"
+#include "initializer/data_provider.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "initializer/data_provider.hpp"
-#include "particle_initializers/particle_initializer_factory.hpp"
-#include "core/utilities/algorithm.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/range/range.hpp"
+#include "core/data/particles/particle_array_exporter.hpp"
+// #include "particle_initializers/particle_initializer_factory.hpp"
+
+
+
+#include <array>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <iterator>
+#include <stdexcept>
+#include <functional>
 
 namespace PHARE
 {
@@ -80,11 +80,15 @@ namespace core
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
+        // the compute functions below work on the whole field, or only on tile tile_idx of tiled
+        // fields, distinct tiles can then be computed concurrently
+
         // the charge density of a population is its charge times its particle density,
         // which is complete (border sums, level ghost particles) when this is called
-        void computeChargeDensity()
+        void computeChargeDensity(auto const&... tile_idx)
         {
-            chargeDensity_.zero();
+            auto&& chargeDensity = maybe_tile_at(chargeDensity_, tile_idx...);
+            chargeDensity.zero();
 
             for (auto& pop : populations_)
             {
@@ -92,20 +96,18 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto const& particleDensity = pop.particleDensity();
-                auto& popDensity            = pop.chargeDensity();
-                std::transform(std::begin(particleDensity), std::end(particleDensity),
-                               std::begin(popDensity),
-                               [q = pop.charge()](Float const& n) { return q * n; });
-                std::transform(std::begin(chargeDensity_), std::end(chargeDensity_),
-                               std::begin(popDensity), std::begin(chargeDensity_),
-                               std::plus<Float>{});
+                auto&& particleDensity = maybe_tile_at(pop.particleDensity(), tile_idx...);
+                auto&& popDensity      = maybe_tile_at(pop.chargeDensity(), tile_idx...);
+                core::transform(particleDensity, popDensity,
+                                [q = pop.charge()](Float const& n) { return q * n; });
+                core::transform(chargeDensity, popDensity, chargeDensity, std::plus<Float>{});
             }
         }
 
-        void computeMassDensity()
+        void computeMassDensity(auto const&... tile_idx)
         {
-            massDensity_.zero();
+            auto&& massDensity = maybe_tile_at(massDensity_, tile_idx...);
+            massDensity.zero();
 
             for (auto const& pop : populations_)
             {
@@ -113,23 +115,24 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.particleDensity();
-                std::transform(
-                    std::begin(massDensity_), std::end(massDensity_), std::begin(popDensity),
-                    std::begin(massDensity_),
+                auto&& popDensity = maybe_tile_at(pop.particleDensity(), tile_idx...);
+                core::transform(
+                    massDensity, popDensity, massDensity,
                     [&pop](auto const& n, auto const& pop_n) { return n + pop_n * pop.mass(); });
             }
         }
 
 
-        void computeBulkVelocity()
+        void computeBulkVelocity(auto const&... tile_idx)
         {
-            computeMassDensity();
+            computeMassDensity(tile_idx...);
 
-            bulkVelocity_.zero();
-            auto& vx = bulkVelocity_.getComponent(Component::X);
-            auto& vy = bulkVelocity_.getComponent(Component::Y);
-            auto& vz = bulkVelocity_.getComponent(Component::Z);
+            auto&& massDensity  = maybe_tile_at(massDensity_, tile_idx...);
+            auto&& bulkVelocity = maybe_tile_at(bulkVelocity_, tile_idx...);
+            bulkVelocity.zero();
+            auto& vx = bulkVelocity[0];
+            auto& vy = bulkVelocity[1];
+            auto& vz = bulkVelocity[2];
 
             for (auto& pop : populations_)
             {
@@ -137,63 +140,62 @@ namespace core
                 std::function<Float(Float, Float)> plusMass
                     = [&pop](Float const& v, Float const& f) { return v + f * pop.mass(); };
 
-                auto const& flux    = pop.flux();
-                auto&& [fx, fy, fz] = flux();
+                auto&& flux = maybe_tile_at(pop.flux(), tile_idx...);
 
-                std::transform(std::begin(vx), std::end(vx), std::begin(fx), std::begin(vx),
-                               plusMass);
-                std::transform(std::begin(vy), std::end(vy), std::begin(fy), std::begin(vy),
-                               plusMass);
-                std::transform(std::begin(vz), std::end(vz), std::begin(fz), std::begin(vz),
-                               plusMass);
+                core::transform(vy, flux[1], vy, plusMass);
+                core::transform(vx, flux[0], vx, plusMass);
+                core::transform(vz, flux[2], vz, plusMass);
             }
 
-
-            std::transform(std::begin(vx), std::end(vx), std::begin(massDensity_), std::begin(vx),
-                           std::divides<Float>{});
-            std::transform(std::begin(vy), std::end(vy), std::begin(massDensity_), std::begin(vy),
-                           std::divides<Float>{});
-            std::transform(std::begin(vz), std::end(vz), std::begin(massDensity_), std::begin(vz),
-                           std::divides<Float>{});
+            core::transform(vx, massDensity, vx, std::divides<Float>{});
+            core::transform(vy, massDensity, vy, std::divides<Float>{});
+            core::transform(vz, massDensity, vz, std::divides<Float>{});
         }
 
 
         // sum_s q_s F_s, the charge flux entering the electron velocity
-        void computeChargeFlux()
+        void computeChargeFlux(auto const&... tile_idx)
         {
-            chargeFlux_.zero();
+            auto&& chargeFlux = maybe_tile_at(chargeFlux_, tile_idx...);
+            chargeFlux.zero();
 
             for (auto const& pop : populations_)
             {
                 auto const plusCharge
                     = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
 
-                for (std::size_t i = 0; i < chargeFlux_.size(); ++i)
-                {
-                    auto& c       = chargeFlux_[i];
-                    auto const& f = pop.flux()[i];
-                    std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
-                                   plusCharge);
-                }
+                auto&& flux = maybe_tile_at(pop.flux(), tile_idx...);
+
+                core::transform(chargeFlux[0], flux[0], chargeFlux[0], plusCharge);
+                core::transform(chargeFlux[1], flux[1], chargeFlux[1], plusCharge);
+                core::transform(chargeFlux[2], flux[2], chargeFlux[2], plusCharge);
             }
         }
 
 
         void computeFullMomentumTensor()
         {
+            assert(momentumTensor_.isUsable());
             momentumTensor_.zero();
             auto& mom = momentumTensor_;
 
             for (auto& pop : populations_)
             {
+                assert(pop.momentumTensor().isUsable());
                 auto& p_mom = pop.momentumTensor();
-                for (auto p_mij = p_mom.begin(), mij = mom.begin(); p_mij != p_mom.end();
-                     ++p_mij, ++mij)
-                {
-                    std::transform(std::begin(*mij), std::end(*mij), std::begin(*p_mij),
-                                   std::begin(*mij), std::plus<typename field_type::type>{});
-                }
+                auto p_mij  = p_mom.begin();
+                auto mij    = mom.begin();
+                for (; p_mij != p_mom.end(); ++p_mij, ++mij)
+                    core::transform(*mij, *p_mij, *mij, std::plus<typename field_type::type>{});
             }
+        }
+
+
+        void update(auto const&... tile_idx)
+        {
+            computeChargeDensity(tile_idx...);
+            computeBulkVelocity(tile_idx...);
+            computeChargeFlux(tile_idx...);
         }
 
 
@@ -205,13 +207,7 @@ namespace core
                 return;
 
             for (auto& pop : populations_)
-            {
-                auto& particles = pop.domainParticles();
-                auto range      = makeIndexRange(particles);
-                auto const kept = particles.partition(
-                    range, [&](auto const& cell) { return !isIn(Point{cell}, boxes); });
-                particles.erase(makeRange(particles, kept.iend(), particles.size()));
-            }
+                delete_particles_in(pop.domainParticles(), boxes);
         }
 
 
@@ -236,18 +232,22 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
-                                  chargeFlux_)
-                   and core::all(populations_, [](auto const& pop) { return pop.isUsable(); });
+            auto usable = core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_,
+                                         massDensity_, chargeFlux_);
+            for (auto const& pop : populations_)
+                usable &= usable and pop.isUsable();
+            return usable;
         }
 
 
 
         NO_DISCARD bool isSettable() const
         {
-            return core::isSettable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
-                                    chargeFlux_)
-                   and core::all(populations_, [](auto const& pop) { return pop.isSettable(); });
+            auto settable = core::isSettable(chargeDensity_, bulkVelocity_, momentumTensor_,
+                                             massDensity_, chargeFlux_);
+            for (auto const& pop : populations_)
+                settable = settable and pop.isSettable();
+            return settable;
         }
 
 

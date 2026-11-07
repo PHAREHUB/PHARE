@@ -13,17 +13,70 @@
 #include <string>
 #include <sstream>
 
+namespace PHARE::core::basic
+{
+// the fields of an MHDState without its initializers, a view (e.g. of one tile) is made via as
+template<typename VecFieldT>
+struct MHDState
+{
+    using vecfield_type = VecFieldT;
+    using field_type    = VecFieldT::field_type;
+
+    static constexpr auto dimension = VecFieldT::dimension;
+
+    template<typename VF>
+    using view_t = MHDState<VF>;
+
+    template<typename View>
+    auto as(auto&& a, auto&&... args)
+    {
+        return View{{a(rho, args...)},  {a(V, args...)},    {a(B, args...)}, {a(P, args...)},
+                    {a(rhoV, args...)}, {a(Etot, args...)}, {a(E, args...)}, {a(J, args...)}};
+    }
+
+    template<typename View>
+    auto as(auto&& a, auto&&... args) const
+    {
+        return View{{a(rho, args...)},  {a(V, args...)},    {a(B, args...)}, {a(P, args...)},
+                    {a(rhoV, args...)}, {a(Etot, args...)}, {a(E, args...)}, {a(J, args...)}};
+    }
+
+    field_type rho;
+    VecFieldT V;
+    VecFieldT B;
+    field_type P;
+
+    VecFieldT rhoV;
+    field_type Etot;
+
+    VecFieldT E;
+    VecFieldT J;
+};
+
+} // namespace PHARE::core::basic
+
+
 namespace PHARE
 {
 namespace core
 {
 
     template<typename VecFieldT>
-    class MHDState : public IPhysicalState
+    class MHDState : public basic::MHDState<VecFieldT>, public IPhysicalState
     {
     public:
+        using Super         = basic::MHDState<VecFieldT>;
         using vecfield_type = VecFieldT;
         using field_type    = VecFieldT::field_type;
+
+        using Super::B;
+        using Super::E;
+        using Super::Etot;
+        using Super::J;
+        using Super::P;
+        using Super::rho;
+        using Super::rhoV;
+        using Super::V;
 
         static constexpr auto dimension = VecFieldT::dimension;
 
@@ -67,22 +120,19 @@ namespace core
         }
 
         MHDState(PHARE::initializer::PHAREDict const& dict)
-            : rho{dict["name"].template to<std::string>() + "_" + "rho", MHDQuantity::Scalar::rho}
-            , V{dict["name"].template to<std::string>() + "_" + "V", MHDQuantity::Vector::V}
-            , B{dict["name"].template to<std::string>() + "_" + "B", MHDQuantity::Vector::B}
-            , P{dict["name"].template to<std::string>() + "_" + "P", MHDQuantity::Scalar::P}
+            : MHDState{dict["name"].template to<std::string>(), dict}
+        {
+        }
 
-
-            , rhoV{dict["name"].template to<std::string>() + "_" + "rhoV",
-                   MHDQuantity::Vector::rhoV}
-            , Etot{dict["name"].template to<std::string>() + "_" + "Etot",
-                   MHDQuantity::Scalar::Etot}
-
-
-            , E{dict["name"].template to<std::string>() + "_" + "E", MHDQuantity::Vector::E}
-            , J{dict["name"].template to<std::string>() + "_" + "J", MHDQuantity::Vector::J}
-
-
+        MHDState(std::string const& name, PHARE::initializer::PHAREDict const& dict)
+            : Super{{name + "_" + "rho", MHDQuantity::Scalar::rho},
+                    {name + "_" + "V", MHDQuantity::Vector::V},
+                    {name + "_" + "B", MHDQuantity::Vector::B},
+                    {name + "_" + "P", MHDQuantity::Scalar::P},
+                    {name + "_" + "rhoV", MHDQuantity::Vector::rhoV},
+                    {name + "_" + "Etot", MHDQuantity::Scalar::Etot},
+                    {name + "_" + "E", MHDQuantity::Vector::E},
+                    {name + "_" + "J", MHDQuantity::Vector::J}}
             , rhoinit_{dict["density"]["initializer"]
                            .template to<initializer::InitFunction<dimension>>()}
             , Vinit_{dict["velocity"]["initializer"]}
@@ -94,19 +144,14 @@ namespace core
         }
 
         MHDState(std::string name)
-            : rho{name + "_" + "rho", MHDQuantity::Scalar::rho}
-            , V{name + "_" + "V", MHDQuantity::Vector::V}
-            , B{name + "_" + "B", MHDQuantity::Vector::B}
-            , P{name + "_" + "P", MHDQuantity::Scalar::P}
-
-
-            , rhoV{name + "_" + "rhoV", MHDQuantity::Vector::rhoV}
-            , Etot{name + "_" + "Etot", MHDQuantity::Scalar::Etot}
-
-
-            , E{name + "_" + "E", MHDQuantity::Vector::E}
-            , J{name + "_" + "J", MHDQuantity::Vector::J}
-
+            : Super{{name + "_" + "rho", MHDQuantity::Scalar::rho},
+                    {name + "_" + "V", MHDQuantity::Vector::V},
+                    {name + "_" + "B", MHDQuantity::Vector::B},
+                    {name + "_" + "P", MHDQuantity::Scalar::P},
+                    {name + "_" + "rhoV", MHDQuantity::Vector::rhoV},
+                    {name + "_" + "Etot", MHDQuantity::Scalar::Etot},
+                    {name + "_" + "E", MHDQuantity::Vector::E},
+                    {name + "_" + "J", MHDQuantity::Vector::J}}
             , gamma_{}
         {
         }
@@ -123,17 +168,6 @@ namespace core
                 rho, V, B, P, rhoV, Etot); // initial to conservative conversion because we
                                            // store conservative quantities on the grid
         }
-
-        field_type rho;
-        VecFieldT V;
-        VecFieldT B;
-        field_type P;
-
-        VecFieldT rhoV;
-        field_type Etot;
-
-        VecFieldT E;
-        VecFieldT J;
 
     private:
         initializer::InitFunction<dimension> rhoinit_;

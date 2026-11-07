@@ -1,4 +1,6 @@
 
+#include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -7,6 +9,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+using namespace PHARE;
 using namespace PHARE::core;
 
 template<typename Simulator>
@@ -25,41 +28,40 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
     constexpr std::size_t size = 10;
     constexpr Box<int, dim> domain{ConstArray<int, dim>(0), ConstArray<int, dim>(size - 1)};
 
-    ContiguousParticles<dim> contiguous{size};
+    using Hybrid        = PHARE_Types<SimOpts{dim, 1}>::Hybrid;
+    using ParticleAoS_t = Hybrid::ParticleAoS_t;
+    using ParticleSoA_t = Hybrid::ParticleSoA_t;
+
+    ParticleSoA_t soa{size};
     for (std::size_t i = 0; i < size; i++)
     {
-        auto view   = contiguous[i];
-        view.weight = 1 + i;
-        view.iCell  = ConstArray<int, dim>(i);
-        view.delta  = ConstArray<double, dim>(i + 1);
-        view.v      = ConstArray<double, 3>(view.weight + 2);
-        EXPECT_EQ(std::copy(view), view);
+        soa.weight(i) = 1 + i;
+        soa.iCell(i)  = ConstArray<int, dim>(i);
+        soa.delta(i)  = ConstArray<double, dim>(i + 1);
+        soa.v(i)      = ConstArray<double, 3>(soa.weight(i) + 2);
     }
-    EXPECT_EQ(contiguous.size(), size);
+    EXPECT_EQ(soa.size(), size);
 
     for (std::size_t i = 0; i < size; i++)
     {
-        EXPECT_EQ(contiguous.weight[i], i + 1); // fastest
-        EXPECT_EQ(contiguous[i].weight, i + 1);
-        EXPECT_EQ(contiguous[i], std::copy(contiguous[i]));
+        EXPECT_EQ(soa.weight()[i], i + 1);
+        EXPECT_EQ(soa.weight(i), i + 1);
     }
 
-    ParticleArray<dim> particleArray{domain};
-    for (auto const& view : contiguous)
+    ParticleAoS_t aos{domain};
+    for (std::size_t i = 0; i < size; i++)
     {
-        auto i = particleArray.size();
-        particleArray.emplace_back(std::copy(view));
-        EXPECT_EQ(contiguous[i], particleArray.back());
+        aos.emplace_back(soa.copy(i));
+        EXPECT_EQ(soa.copy(i), aos.back());
     }
-    EXPECT_EQ(particleArray.size(), size);
-    EXPECT_EQ(contiguous.size(), particleArray.size());
+    EXPECT_EQ(aos.size(), size);
+    EXPECT_EQ(soa.size(), aos.size());
 
-    ContiguousParticles<dim> AoSFromSoA{particleArray.size()};
-    ParticlePacker<dim>{particleArray}.pack(AoSFromSoA);
+    ParticleSoA_t soaFromAoS{aos.size()};
+    ParticlePacker<ParticleAoS_t>{aos}.pack(soaFromAoS);
 
-    std::size_t i = 0;
-    for (auto const& particle : AoSFromSoA)
-        EXPECT_EQ(particle, particleArray[i++]);
+    for (std::size_t i = 0; i < size; i++)
+        EXPECT_EQ(soaFromAoS.copy(i), aos[i]);
 }
 
 int main(int argc, char** argv)

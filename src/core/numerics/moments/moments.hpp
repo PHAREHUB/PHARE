@@ -2,7 +2,10 @@
 #define MOMENTS_HPP
 
 
-#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+#include "core/data/field/field_tiles.hpp"
+
+#include <type_traits>
 
 #include <stdexcept>
 
@@ -11,13 +14,14 @@ namespace PHARE
 {
 namespace core
 {
+    // whole fields, or only tile tile_idx of tiled fields
     template<typename Ions>
-    void resetMoments(Ions& ions)
+    void resetMoments(Ions& ions, auto const&... tile_idx)
     {
         for (auto& pop : ions)
         {
-            pop.particleDensity().zero();
-            pop.flux().zero();
+            maybe_tile_at(pop.particleDensity(), tile_idx...).zero();
+            maybe_tile_at(pop.flux(), tile_idx...).zero();
         }
     }
 
@@ -31,26 +35,32 @@ namespace core
     };
 
 
+    // whole patch, or only into tile tile_idx of tiled moments
     template<typename DepositTag>
-    void depositParticles(auto& ions, auto& layout, auto interpolate, DepositTag)
+    void depositParticles(auto& ions, auto& layout, auto interpolate, DepositTag,
+                          auto const&... tile_idx)
     {
+        static_assert(std::is_same_v<DepositTag, DomainDeposit>
+                      or std::is_same_v<DepositTag, LevelGhostDeposit>);
+
+        auto constexpr type = std::is_same_v<DepositTag, DomainDeposit> ? ParticleType::Domain
+                                                                        : ParticleType::LevelGhost;
         for (auto& pop : ions)
         {
             auto& particleDensity = pop.particleDensity();
             auto& flux            = pop.flux();
+            auto& particles       = [&]() -> auto& {
+                if constexpr (type == ParticleType::Domain)
+                    return pop.domainParticles();
+                else
+                    return pop.levelGhostParticlesOld();
+            }();
 
-            if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
-            {
-                auto& partArray = pop.domainParticles();
-                interpolate(partArray, particleDensity, flux, layout);
-            }
-            else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
-            {
-                auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, particleDensity, flux, layout);
-            }
+            if constexpr (sizeof...(tile_idx) > 0)
+                interpolate.template particleToMesh_tile<type>(tile_idx..., particles,
+                                                               particleDensity, flux);
             else
-                throw std::runtime_error("unknown deposit tag");
+                interpolate.template particleToMesh<type>(particles, layout, particleDensity, flux);
         }
     }
 

@@ -28,20 +28,6 @@ namespace amr
 
 
 
-
-    /**
-     * @brief AMRToLocal sets the AMRBox to local indexing relative to the referenceAMRBox
-     */
-    SAMRAI::hier::Box& AMRToLocal(SAMRAI::hier::Box& AMRBox,
-                                  SAMRAI::hier::Box const& referenceAMRBox)
-    {
-        AMRBox.setLower(AMRBox.lower() - referenceAMRBox.lower());
-        AMRBox.setUpper(AMRBox.upper() - referenceAMRBox.lower());
-        return AMRBox;
-    }
-
-
-
     /**
      * @brief AMRToLocal returns a local indexed box relative to the referenceAMRBox from the AMRBox
      */
