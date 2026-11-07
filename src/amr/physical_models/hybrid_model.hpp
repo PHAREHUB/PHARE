@@ -191,9 +191,6 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
         hybridInfo.ghostFlux.emplace_back(pop.flux().name());
         hybridInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
     }
-
-    hybridInfo.maxBorderFields.emplace_back(state.ions.chargeDensity().name());
-    hybridInfo.maxBorderVecFields.emplace_back(state.ions.chargeFlux().name());
 }
 
 

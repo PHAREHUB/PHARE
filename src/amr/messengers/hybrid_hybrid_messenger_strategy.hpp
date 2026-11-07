@@ -405,19 +405,6 @@ namespace amr
         }
 
 
-        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
-        {
-            assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
-            assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-        }
-
-
-
         /**
          * @brief fillIonPopMomentGhosts works on moment ghost nodes
          *
@@ -692,11 +679,6 @@ namespace amr
 
             for (auto& refiner : popDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
         }
 
 
@@ -890,22 +872,6 @@ namespace amr
                     .addStaticRefiner(
                         field, nullptr, field,
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-
-            assert(info->maxBorderFields.size() == 1); // charge density
-            for (auto const& field : info->maxBorderFields)
-                ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        field, field, nullptr, field,
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-            assert(info->maxBorderVecFields.size() == 1); // charge flux
-            for (auto const& vecfield : info->maxBorderVecFields)
-                ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -1039,7 +1005,6 @@ namespace amr
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
-        using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
         using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
@@ -1048,9 +1013,6 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
-
-        std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
-        std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 

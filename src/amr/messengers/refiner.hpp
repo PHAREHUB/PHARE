@@ -27,7 +27,6 @@ enum class RefinerType {
     PatchFieldBorderSum,
     PatchVecFieldBorderSum,
     PatchTensorFieldBorderSum,
-    PatchFieldBorderMax,
     PatchVecFieldBorderMax,
     ExteriorGhostParticles
 };
@@ -107,18 +106,7 @@ private:
         }
 
 
-        // schedule used to == max of density and flux for populations
-        // on complete overlaped ghost box nodes
-        else if constexpr (Type == RefinerType::PatchFieldBorderMax)
-        {
-            return algo->createSchedule(
-                level, patchStrat_.get(),
-                std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>());
-        }
-
-
-        // schedule used to == max of density and flux for populations
-        // on complete overlaped ghost box nodes
+        // schedule used to == max of vector field values on complete overlapped ghost box nodes
         else if constexpr (Type == RefinerType::PatchVecFieldBorderMax)
         {
             return algo->createSchedule(
