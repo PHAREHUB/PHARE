@@ -164,10 +164,12 @@ struct UpdaterSelectionBoxing
               });
           };
 
-    Selector_t const inGhostLayer
-        = [ghostBox = ghostBox, domainBox = domainBox](auto& particleRange) {
+    // ghost cells outside the level: cells of a same-level neighbour's domain are excluded, a
+    // level ghost particle entering one is that neighbour's (it holds its own copy)
+    Selector_t const inLevelGhostLayer
+        = [ghostBox = ghostBox, nonLevelGhostBox = nonLevelGhostBox](auto& particleRange) {
               return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isIn(cell, ghostBox) and !isIn(cell, domainBox);
+                  return isIn(cell, ghostBox) and !isIn(Point{cell}, nonLevelGhostBox);
               });
           };
 
@@ -293,7 +295,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
             auto particleRange = makeIndexRange(pop.levelGhostParticles());
             auto inGhostLayerRange
                 = pusher_->move(particleRange, particleRange, em, pop.charge(), pop.mass(),
-                                interpolator_, layout, boxing.inGhostBox, boxing.inGhostLayer);
+                                interpolator_, layout, boxing.inGhostBox, boxing.inLevelGhostLayer);
 
             auto& particleArray = particleRange.array();
             particleArray.export_particles(domainParticles,
