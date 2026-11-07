@@ -3,6 +3,7 @@
 #include "simulator/simulator_def.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/moments/level_ghost_ownership.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
@@ -534,7 +535,12 @@ struct IonUpdaterTest : public ::testing::Test
         depositParticles(ions, layout, Interpolator<dim, interp_order>{}, DomainDeposit{});
 
 
-        depositParticles(ions, layout, Interpolator<dim, interp_order>{}, LevelGhostDeposit{});
+        // a single patch: it owns its whole level ghost region
+        auto const ownership
+            = makeLevelGhostOwnership(layout.AMRBox(), std::vector<Box<int, dim>>{},
+                                      GridLayout::options.particle_ghost_width);
+        depositParticles(ions, layout, Interpolator<dim, interp_order>{},
+                         LevelGhostDeposit{ownership});
 
 
         ions.computeChargeDensity();
@@ -1184,6 +1190,32 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNeighbourDomainIsDropped)
 TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNeighbourDomainIsNotDepositedMomentsOnly)
 {
     this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::domain_only);
+}
+
+
+
+// A same-level neighbour on the left, before this patch, whose ghost box covers the outer level
+// ghost cell of this one: the level ghost particles of that cell are the neighbour's to deposit.
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostDepositIsRestrictedToOwnedCells)
+{
+    auto constexpr ghosts = TestFixture::GridLayout::options.particle_ghost_width;
+    auto const lower      = this->layout.AMRBox().lower[0];
+    auto const outerCell  = lower - ghosts;
+    std::vector const neighbours{TestFixture::box(lower - 20, outerCell - ghosts)};
+    auto const ownership = makeLevelGhostOwnership(this->layout.AMRBox(), neighbours, ghosts);
+
+    resetMoments(this->ions);
+    depositParticles(this->ions, this->layout, Interpolator<1, TestFixture::interp_order>{},
+                     LevelGhostDeposit{ownership});
+
+    for (auto& pop : this->ions)
+    {
+        double owned = 0, ceded = 0;
+        for (auto const& p : pop.levelGhostParticlesOld())
+            (p.iCell[0] == outerCell ? ceded : owned) += p.weight;
+        ASSERT_GT(ceded, 0.);
+        EXPECT_NEAR(TestFixture::total(pop.particleDensity()), owned, 1e-10 * (owned + ceded));
+    }
 }
 
 

@@ -7,6 +7,7 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/moments/moments.hpp"
 
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
@@ -36,6 +37,7 @@
 #include <SAMRAI/hier/CoarseFineBoundary.h>
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -452,7 +454,9 @@ namespace amr
          *
          * level border nodes are completed by the deposition
          * of level ghost [old,new] particles for all populations, linear time interpolation
-         * is used to get the contribution of old/new particles
+         * is used to get the contribution of old/new particles.
+         * Each patch deposits the level ghost particles it owns only, so this is called before
+         * the border sums, which add these deposits to the other patches.
          */
         void fillIonPopMomentGhosts(IonsT& ions, level_t& level,
                                     double const afterPushTime) override
@@ -480,17 +484,30 @@ namespace amr
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
-                        // grab levelGhostParticlesOld and levelGhostParticlesNew
-                        // and project them with alpha and (1-alpha) coefs, respectively
-                        auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, flux, layout,
-                                     1. - alpha);
-
-                        auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, flux, layout,
-                                     alpha);
+                        // levelGhostParticlesOld and New, those this patch owns, with (1-alpha)
+                        // and alpha coefs, respectively
+                        auto const& ownership = levelGhostOwnership_.at(level.getLevelNumber())
+                                                    .at(patch->getGlobalId());
+                        core::depositOwned(interpolate_, pop.levelGhostParticlesOld(),
+                                           particleDensity, flux, layout, ownership, 1. - alpha);
+                        core::depositOwned(interpolate_, pop.levelGhostParticlesNew(),
+                                           particleDensity, flux, layout, ownership, alpha);
                     }
                 }
+            }
+        }
+
+
+        // at level initialization, each patch deposits the levelGhostParticlesOld it owns, from
+        // the ownership built with the level's schedules
+        void depositLevelGhostParticlesOld(IonsT& ions, level_t& level) override
+        {
+            auto const& ownership = levelGhostOwnership_.at(level.getLevelNumber());
+            for (auto& patch : resourcesManager_->enumerate(level, ions))
+            {
+                auto const layout = layoutFromPatch<GridLayoutT>(*patch);
+                core::depositParticles(ions, layout, interpolate_,
+                                       core::LevelGhostDeposit{ownership.at(patch->getGlobalId())});
             }
         }
 
@@ -667,6 +684,21 @@ namespace amr
         void buildSameLevelSchedules_(hierarchy_ptr const& hierarchy, int const levelNumber)
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
+
+            if (levelNumber != rootLevelNumber)
+            {
+                auto& ownership = levelGhostOwnership_[levelNumber];
+                ownership.clear();
+                auto const neighbors
+                    = makeLevelGhostNeighbors<GridLayoutT>(*hierarchy, levelNumber);
+                for (auto const& patch : *level)
+                    ownership.emplace(patch->getGlobalId(),
+                                      makeLevelGhostOwnershipFor<GridLayoutT>(*patch, neighbors));
+                PHARE_DEBUG_DO(checkLevelGhostOwnership<GridLayoutT>(
+                                   *hierarchy, *level, [&](auto const& patch) -> auto const& {
+                                       return ownership.at(patch.getGlobalId());
+                                   });)
+            }
 
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
@@ -1103,6 +1135,11 @@ namespace amr
         RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
         RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
+
+        // per level and patch, the level ghost particles the patch deposits
+        std::map<int, std::map<SAMRAI::hier::GlobalId,
+                               core::LevelGhostOwnership<GridLayoutT::dimension>>>
+            levelGhostOwnership_;
 
 
         //! to grab particle leaving neighboring patches and inject into domain
