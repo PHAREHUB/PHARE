@@ -5,6 +5,8 @@
 #include "tools/bench/core/bench.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
+#include "benchmark/benchmark.h"
+
 #include <array>
 #include <vector>
 #include <cstdint>
