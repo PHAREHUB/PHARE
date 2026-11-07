@@ -134,6 +134,14 @@ private:
 
     // a particle is moved only if its new cell is allowed, else this throws first
     static void move_to_(auto& particle, auto const& next, auto const& allowed, char const* step);
+
+    // the exceptions' messages, out of line so the per particle functions above inline
+    [[noreturn, gnu::cold, gnu::noinline]] static void
+    throw_not_allowed_(auto const& particle, auto const& cell, char const* step);
+    [[noreturn, gnu::cold, gnu::noinline]] void
+    throw_pre_push_(boris::MoveTwoCellException const& e) const;
+    [[noreturn, gnu::cold, gnu::noinline]] void
+    throw_post_push_(boris::MoveTwoCellException const& e, auto const& local_em) const;
 };
 
 
@@ -180,23 +188,19 @@ void IonUpdater1<Ions>::update_ref(auto& ions, auto const& em, auto const& boxin
 // ---------------------------------------------------------------------------
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::move_to_(auto& particle, auto const& next, auto const& allowed,
-                                         char const* step)
+PHARE_ALWAYS_INLINE void IonUpdater1<Ions>::Pusher::move_to_(auto& particle, auto const& next,
+                                                             auto const& allowed, char const* step)
 {
     auto const& [delta, cell] = next;
     if (!allowed(cell))
-    {
-        std::stringstream ss;
-        ss << step << " domain particle would leave the ghost box, from cell "
-           << Point{particle.iCell} << " to " << Point{cell} << std::endl;
-        throw DictionaryException{ss.str()};
-    }
+        throw_not_allowed_(particle, cell, step);
     particle.delta = delta;
     particle.iCell = cell;
 }
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::advance(auto& particle, auto const& allowed) const
+PHARE_ALWAYS_INLINE void IonUpdater1<Ions>::Pusher::advance(auto& particle,
+                                                            auto const& allowed) const
 {
     try
     {
@@ -204,16 +208,14 @@ void IonUpdater1<Ions>::Pusher::advance(auto& particle, auto const& allowed) con
     }
     catch (boris::MoveTwoCellException const& e)
     {
-        std::stringstream ss;
-        ss << "PrePush Particle moved 2 cells with delta/vel: " << e.delta << "/" << e.vel
-           << std::endl;
-        throw DictionaryException{ss.str()};
+        throw_pre_push_(e);
     }
 }
 
 template<typename Ions>
-void IonUpdater1<Ions>::Pusher::accel_and_advance(auto& particle, auto const& local_em,
-                                                  auto const& allowed) const
+PHARE_ALWAYS_INLINE void IonUpdater1<Ions>::Pusher::accel_and_advance(auto& particle,
+                                                                      auto const& local_em,
+                                                                      auto const& allowed) const
 {
     try
     {
@@ -222,18 +224,43 @@ void IonUpdater1<Ions>::Pusher::accel_and_advance(auto& particle, auto const& lo
     }
     catch (boris::MoveTwoCellException const& e)
     {
-        std::stringstream ss;
-        ss << "PostPush Particle moved 2 cells with delta/vel: " << e.delta << "/" << e.vel
-           << std::endl;
-        DictionaryException ex{ss.str()};
-        auto const& [E, B] = local_em;
-        for (std::uint16_t k = 0; k < 3; ++k)
-            ex("E_" + std::to_string(k), std::to_string(E[k]));
-        for (std::uint16_t k = 0; k < 3; ++k)
-            ex("B_" + std::to_string(k), std::to_string(B[k]));
-        ex("level", std::to_string(layout.levelNumber()));
-        throw ex;
+        throw_post_push_(e, local_em);
     }
+}
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::throw_not_allowed_(auto const& particle, auto const& cell,
+                                                   char const* step)
+{
+    std::stringstream ss;
+    ss << step << " domain particle would leave the ghost box, from cell " << Point{particle.iCell}
+       << " to " << Point{cell} << std::endl;
+    throw DictionaryException{ss.str()};
+}
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::throw_pre_push_(boris::MoveTwoCellException const& e) const
+{
+    std::stringstream ss;
+    ss << "PrePush Particle moved 2 cells with delta/vel: " << e.delta << "/" << e.vel << std::endl;
+    throw DictionaryException{ss.str()};
+}
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::throw_post_push_(boris::MoveTwoCellException const& e,
+                                                 auto const& local_em) const
+{
+    std::stringstream ss;
+    ss << "PostPush Particle moved 2 cells with delta/vel: " << e.delta << "/" << e.vel
+       << std::endl;
+    DictionaryException ex{ss.str()};
+    auto const& [E, B] = local_em;
+    for (std::uint16_t k = 0; k < 3; ++k)
+        ex("E_" + std::to_string(k), std::to_string(E[k]));
+    for (std::uint16_t k = 0; k < 3; ++k)
+        ex("B_" + std::to_string(k), std::to_string(B[k]));
+    ex("level", std::to_string(layout.levelNumber()));
+    throw ex;
 }
 
 

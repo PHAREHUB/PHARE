@@ -2,6 +2,7 @@
 #define PHARE_CORE_PUSHER_BORIS_HPP
 
 
+#include "core/def.hpp"
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
@@ -35,7 +36,8 @@ struct MoveTwoCellException : std::exception
 
 // the particle position after half a time step, as {delta, iCell}, the particle is unchanged
 template<typename Particle_t, typename Float, std::size_t dim>
-auto static next_position(Particle_t const& p, std::array<Float, dim> const& halfDtOverDl)
+PHARE_ALWAYS_INLINE auto next_position(Particle_t const& p,
+                                       std::array<Float, dim> const& halfDtOverDl)
 {
     std::pair<decltype(p.delta), std::array<int, dim>> next;
     auto& [newDelta, newCell] = next;
@@ -55,7 +57,7 @@ auto static next_position(Particle_t const& p, std::array<Float, dim> const& hal
 }
 
 template<typename Particle_t, typename Float, std::size_t dim>
-auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl)
+PHARE_ALWAYS_INLINE auto advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl)
 {
     auto const [delta, cell] = next_position(p, halfDtOverDl);
     p.delta                  = delta;
@@ -67,7 +69,7 @@ auto static advance(Particle_t& p, std::array<Float, dim> const& halfDtOverDl)
 /** Accelerate the particles in rangeIn and put the new velocity in rangeOut
  */
 template<typename Particle, typename ParticleEB, typename Float>
-void accelerate(Particle& p, ParticleEB const& eb, Float const coef1)
+PHARE_ALWAYS_INLINE void accelerate(Particle& p, ParticleEB const& eb, Float const coef1)
 {
     static constexpr Float one = 1;
     static constexpr Float two = 2;
