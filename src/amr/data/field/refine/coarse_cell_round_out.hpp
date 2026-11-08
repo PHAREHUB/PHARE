@@ -108,13 +108,13 @@ NO_DISCARD bool isWholeCoarseCells(SAMRAI::hier::Box const& box)
 
 
 /**
- * @brief True if copies of this quantity into a coarse-interpolation temporary must cover whole
- * coarse cells: the B components.
+ * @brief True for the quantities whose copies into a coarse-interpolation temporary must cover
+ * whole coarse cells: the B components.
  *
- * The touch-up on a temporary reads whole coarse cells, and the temporary's edge can cut one.
- * Copied up to that edge only, the faces past it are gathered from the next coarser level while a
- * neighbouring temporary holds same-level copies of them, and the two touch-ups disagree on the
- * shared fine faces.
+ * The divB touch-up on a temporary reads whole coarse cells, but the temporary's edge can cut a
+ * coarse cell in half. If B were copied only up to that edge, the faces beyond it would be
+ * interpolated from the next coarser level, while a neighbouring temporary holds same-level
+ * copies of them, and the two touch-ups would write different values to the shared fine faces.
  */
 template<typename PhysicalQuantity>
 NO_DISCARD constexpr bool copiesWholeCoarseCells(PhysicalQuantity const qty)

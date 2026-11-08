@@ -347,13 +347,13 @@ namespace amr
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillStateGhosts(mhdModel.state, level, initDataTime);
 
-            // the faces on both sides of a periodic boundary are one face, initialised at two
-            // coordinates: make the patches holding them agree once, before anything reads B.
-            // Only after the refill: the max runs over whole ghost overlaps, and ghosts still
-            // holding the initializer's values would leak into the interior.
+            // A face on a periodic boundary is initialised twice, at x=0 and at x=L, and the two
+            // values can differ in the last bits: make every patch holding it agree once, before
+            // anything reads B. This must follow the ghost fill: the max is taken over whole ghost
+            // overlaps, so ghosts still holding initializer values would leak into the interior.
             magMaxRefiners_.fill(mhdModel.state.B, level.getLevelNumber(), initDataTime);
 
-            // the finer levels refill their ghosts from this level's old data
+            // set the old data now: finer levels interpolate their ghosts in time from it
             prepareStep(model, level, initDataTime);
         }
 
@@ -464,11 +464,11 @@ namespace amr
             refluxSchedules_.erase(levelNumber);
         }
 
-        // The init and regrid schedules interpolate in space only, reading coarser levels at their
-        // latest time, so a level made between two coarser syncs gets ghosts from coarser data
-        // ahead of its init time. Its ghosts are refilled, interpolated in time as in a step, once
-        // onHierarchyChanged has built the schedules that do so. The root level has no coarser
-        // level: only its old data is set.
+        // The init and regrid schedules interpolate in space only and read the coarser levels at
+        // their latest time. A level made partway through a coarser step thus gets ghosts from
+        // coarser data ahead of its own time. Its ghosts are refilled with time interpolation, as
+        // in a step, by onHierarchyChanged once the schedules for it are built. The root level
+        // has no coarser level, so only its old data is set.
         void fillGhostsAtInitTime_(MHDModel& model, level_t& level, double const initDataTime)
         {
             if (level.getLevelNumber() == rootLevelNumber)
@@ -477,8 +477,8 @@ namespace amr
                 pendingGhostRefills_[level.getLevelNumber()] = {&model, initDataTime};
         }
 
-        // The refill reads the coarser levels' old data, so the level keeps its own as of its init
-        // time for the levels made finer than it.
+        // After the refill, the level's old data is set to its init time: finer levels
+        // interpolate their own ghosts in time from it.
         void refillGhostsAtInitTime_(hierarchy_ptr const& hierarchy, int const levelNumber)
         {
             auto const pending = pendingGhostRefills_.find(levelNumber);

@@ -43,9 +43,10 @@ void linear_time_interpolate(Dst& fieldDest, auto const& fieldSrcOld, auto const
 /**
  * @brief Call `interpolate(localDestBox, localSrcBox)` over every destination box of `overlap`.
  *
- * Not over SAMRAI's `where` (the source mask): a rounded B overlap
- * (FieldGeometry::calculateOverlap) is larger. Under an offset the destination is a temporary in
- * source space, hence the inverse transform, as in FieldData::packStream.
+ * The overlap is used rather than SAMRAI's `where` (the source mask), because a B overlap rounded
+ * out to whole coarse cells (FieldGeometry::calculateOverlap) extends past it. Under a periodic
+ * offset the destination data is a temporary located in source space, so the destination boxes
+ * are inverse-transformed, as in FieldData::packStream.
  */
 void interpolateOverOverlap(FieldOverlap const& overlap, SAMRAI::hier::Box const& ghostBox,
                             SAMRAI::hier::Box const& srcGhostBox, auto&& interpolate)

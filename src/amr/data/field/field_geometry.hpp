@@ -22,8 +22,8 @@ namespace amr
 
 
     /**
-     * @brief Field and tensor-field geometry as PHARE's fill patterns use it: the overlap of the
-     * given boxes as they are, never rounded like FieldGeometry::calculateOverlap.
+     * @brief Geometry interface for PHARE's fill patterns: the overlap of the boxes exactly as
+     * given, without the coarse-cell rounding of FieldGeometry::calculateOverlap.
      */
     class FillPatternGeometry : public SAMRAI::hier::BoxGeometry
     {
@@ -109,11 +109,11 @@ namespace amr
          * the mask will be shifted).
          * Finally we can also add some restrictions on the boxes for the destination.
          *
-         * PHARE's fill patterns call calculateUnroundedOverlap instead, so this is reached through
-         * SAMRAI's default pattern only: on coarse-interpolation temporaries, where SAMRAI forces
-         * it, and for algorithms registered without a fill pattern. A quantity in
-         * copiesWholeCoarseCells has its fill box and source mask rounded out to whole coarse
-         * cells (coarse_cell_round_out.hpp), so its refiners must keep passing a PHARE pattern.
+         * PHARE's fill patterns call calculateUnroundedOverlap instead, so this is only reached
+         * through SAMRAI's default pattern: on coarse-interpolation temporaries, where SAMRAI
+         * imposes it, and for algorithms registered without a fill pattern. For the quantities of
+         * copiesWholeCoarseCells it rounds the fill box and source mask out to whole coarse cells
+         * (coarse_cell_round_out.hpp), so their refiners must always pass a PHARE fill pattern.
          */
         std::shared_ptr<SAMRAI::hier::BoxOverlap> calculateOverlap(
             SAMRAI::hier::BoxGeometry const& destinationGeometry,
