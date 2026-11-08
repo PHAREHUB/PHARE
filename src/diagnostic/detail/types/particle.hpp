@@ -123,7 +123,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
         auto shape = null ? std::vector<std::size_t>(0)
                           : attr[key].template to<std::vector<std::size_t>>();
 
-        if constexpr (hdf5::is_array_dataset<ValueType, dimension>)
+        if constexpr (hdf5::IsArrayDataset<ValueType, dimension>)
         {
             h5file.template create_data_set_per_mpi<typename ValueType::value_type>(path, shape);
         }

@@ -202,7 +202,7 @@ def check_path(**kwargs):
 
 
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
-# This should match possibleSimulators() in meta_utilities.h
+# This should match possibleSimulators() in src/simulator/simulator_def.hpp
 valid_refined_particle_nbr = {
     # dim : {interp : [valid list refined_particle_nbr]}
     1: {1: [2, 3], 2: [2, 3, 4], 3: [2, 3, 4, 5]},
@@ -1110,7 +1110,7 @@ class Simulation:
         * **refined_particle_nbr** (``ìnt``), number of refined particles per coarse particle. This is not a
           free parameter: only a handful of values are valid, and which ones depends on `ndim` and
           `interp_order`. The authoritative list of valid combinations is `possibleSimulators()` in
-          `src/core/utilities/meta/meta_utilities.hpp`, since each combination corresponds to a distinct
+          `src/simulator/simulator_def.hpp`, since each combination corresponds to a distinct
           pre-compiled instantiation of the code - passing a value outside that list raises an error at
           `Simulation` construction time (mirrored on the Python side in `valid_refined_particle_nbr`,
           `pyphare/pharein/simulation.py`). If omitted, the first valid value for the given
