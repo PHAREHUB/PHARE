@@ -158,14 +158,18 @@ void checkAllGrids(int const w, int const neighbourWidth, bool const expectParti
                 {
                     ++nbrFailures;
                     if (expectPartition)
+                    {
                         ADD_FAILURE() << "w=" << w << " stagger=" << stagger
                                       << " gap[0]=" << gaps[0] << ": " << failure;
+                    }
                 }
             }
         }
     EXPECT_GT(nbrLayouts, 0u);
     if (!expectPartition)
+    {
         EXPECT_GT(nbrFailures, 0u) << "a narrower neighbour search should miss some neighbour";
+    }
 }
 
 } // namespace
