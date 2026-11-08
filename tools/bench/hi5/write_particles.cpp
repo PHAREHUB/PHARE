@@ -24,7 +24,7 @@ void do_bench(benchmark::State& state)
 
     auto getSize = [](auto const& value) -> std::size_t {
         using ValueType = std::decay_t<decltype(value)>;
-        if constexpr (hdf5::is_array_dataset<ValueType, dim>)
+        if constexpr (hdf5::IsArrayDataset<ValueType, dim>)
             return value.size();
         else
             return 1u; /* not an array so value one of type ValueType*/
@@ -32,7 +32,7 @@ void do_bench(benchmark::State& state)
 
     auto createDataSet_ = [&](auto& hi5, auto const& path, auto const size, auto const& value) {
         using ValueType = std::decay_t<decltype(value)>;
-        if constexpr (hdf5::is_array_dataset<ValueType, dim>)
+        if constexpr (hdf5::IsArrayDataset<ValueType, dim>)
             return hi5.template create_data_set<typename ValueType::value_type>(
                 path, HighFive::DataSpace(size));
         else
