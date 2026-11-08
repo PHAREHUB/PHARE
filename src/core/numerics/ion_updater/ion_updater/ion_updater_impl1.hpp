@@ -4,6 +4,7 @@
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/numerics/pusher/boris.hpp"
 #include "core/utilities/range/range.hpp"
@@ -11,6 +12,12 @@
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "core/numerics/ion_updater/ion_updater_def.hpp"
 #include "core/numerics/boundary_condition/boundary_condition.hpp"
+
+#include <array>
+#include <cstdint>
+#include <cstddef>
+#include <algorithm>
+#include <stdexcept>
 
 
 namespace PHARE::core
@@ -128,6 +135,30 @@ private:
     // leaving the level ghost area are dropped
     void move_level_ghost_ref(auto& pop, auto const& em, auto const& boxing,
                               auto& interpolator) const;
+
+    // the copy paths push batches of particles as structure of arrays, so the per particle
+    // maths vectorises: one array per dimension or component
+    static constexpr std::size_t batch_size = 1024;
+    struct SoABatch
+    {
+        alignas(64) std::array<std::array<double, batch_size>, dimension> delta;
+        alignas(64) std::array<std::array<int, batch_size>, dimension> iCell;
+        alignas(64) std::array<std::array<double, batch_size>, 3> v, E, B;
+        alignas(64) std::array<double, batch_size> weight;
+
+        void load(auto const& particles, std::size_t const base, std::size_t const n);
+        auto particle(std::size_t const j) const;
+    };
+
+    // half push of the batch's first n particles, returns how many moved more than two cells or
+    // out of the box, those are not usable and the batch is redone by the per particle path
+    std::size_t half_advance_(SoABatch& batch, std::size_t const n, auto const& box) const;
+    void accelerate_(SoABatch& batch, std::size_t const n) const;
+
+    // the per particle copy push of a batch, to throw what it throws
+    [[noreturn, gnu::cold, gnu::noinline]] void
+    throw_domain_batch_(auto const& domain, std::size_t const base, std::size_t const n,
+                        auto const& em, auto const& boxing, auto& interpolator) const;
 
     void advance(auto& particle, auto const& allowed) const;
     void accel_and_advance(auto& particle, auto const& local_em, auto const& allowed) const;
@@ -306,12 +337,10 @@ template<typename Ions>
 void IonUpdater1<Ions>::Pusher::move_domain_copy(auto& pop, auto const& em, auto const& boxing,
                                                  auto& interpolator) const
 {
-    using Particle_t = std::decay_t<decltype(pop.domainParticles()[0])>;
-
     auto& domain = pop.domainParticles();
 
-    constexpr std::size_t batch_size = 1024;
-    std::array<Particle_t, batch_size> batch;
+    SoABatch batch; // uninitialised, load() writes what's used
+    std::array<std::uint32_t, batch_size> deposit;
     std::size_t const total = domain.size();
 
     for (std::size_t base = 0; base < total; base += batch_size)
@@ -319,26 +348,126 @@ void IonUpdater1<Ions>::Pusher::move_domain_copy(auto& pop, auto const& em, auto
         std::size_t const n = std::min(batch_size, total - base);
 
         // phase 1: copy + half advance
+        batch.load(domain, base, n);
+        if (half_advance_(batch, n, boxing.ghostBox)) [[unlikely]]
+            throw_domain_batch_(domain, base, n, em, boxing, interpolator);
+
+        // phase 2: fields to particles, acceleration, half advance
         for (std::size_t j = 0; j < n; ++j)
         {
-            batch[j] = domain[base + j];
-            advance(batch[j], inGhostBox(boxing));
+            auto const p         = batch.particle(j);
+            auto const& [pE, pB] = interpolator(p, em, layout);
+            for (std::size_t k = 0; k < 3; ++k)
+                batch.E[k][j] = pE[k], batch.B[k][j] = pB[k];
         }
+        accelerate_(batch, n);
+        if (half_advance_(batch, n, boxing.ghostBox)) [[unlikely]]
+            throw_domain_batch_(domain, base, n, em, boxing, interpolator);
 
-        // phase 2: interpolate + accelerate + half advance, compact valid to front
+        // phase 3: deposit those still in the domain or patch ghost box
         std::size_t m = 0;
         for (std::size_t j = 0; j < n; ++j)
-        {
-            auto const& local_em = interpolator(batch[j], em, layout);
-            accel_and_advance(batch[j], local_em, inGhostBox(boxing));
-            if (boxing.isInNonLevelGhostBox(batch[j]))
-                batch[m++] = batch[j];
-        }
-
-        // phase 3: deposit valid particles
-        for (std::size_t j = 0; j < m; ++j)
-            interpolator.particleToMesh(batch[j], pop.particleDensity(), pop.flux(), layout);
+            if (auto const p = batch.particle(j); boxing.isInNonLevelGhostBox(p))
+                deposit[m++] = j;
+        for (std::size_t i = 0; i < m; ++i)
+            interpolator.particleToMesh(batch.particle(deposit[i]), pop.particleDensity(),
+                                        pop.flux(), layout);
     }
+}
+
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::SoABatch::load(auto const& particles, std::size_t const base,
+                                               std::size_t const n)
+{
+    for (std::size_t j = 0; j < n; ++j)
+    {
+        auto const& p = particles[base + j];
+        for (std::size_t d = 0; d < dimension; ++d)
+            delta[d][j] = p.delta[d], iCell[d][j] = p.iCell[d];
+        for (std::size_t k = 0; k < 3; ++k)
+            v[k][j] = p.v[k];
+        weight[j] = p.weight;
+    }
+}
+
+template<typename Ions>
+PHARE_ALWAYS_INLINE auto IonUpdater1<Ions>::Pusher::SoABatch::particle(std::size_t const j) const
+{
+    return Particle<dimension>{weight[j],
+                               for_N_make_array<dimension>([&](auto d) { return iCell[d][j]; }),
+                               for_N_make_array<dimension>([&](auto d) { return delta[d][j]; }),
+                               {v[0][j], v[1][j], v[2][j]}};
+}
+
+template<typename Ions>
+std::size_t IonUpdater1<Ions>::Pusher::half_advance_(SoABatch& batch, std::size_t const n,
+                                                     auto const& box) const
+{
+    // boris::next_position's maths, bit identical: floor by truncation is exact for |delta| <= 2
+    // and the vectoriser takes it, std::floor it doesn't without -fno-trapping-math, nor a
+    // select (std::min/max, ?:) on doubles, hence the multiply
+    std::size_t bad = 0;
+    for (std::size_t d = 0; d < dimension; ++d)
+    {
+        double const h               = halfDtOverDl[d];
+        int const lower              = box.lower[d];
+        int const upper              = box.upper[d];
+        double* __restrict dlt       = batch.delta[d].data();
+        int* __restrict cell         = batch.iCell[d].data();
+        double const* __restrict vel = batch.v[d].data();
+        for (std::size_t j = 0; j < n; ++j)
+        {
+            double const next = dlt[j] + static_cast<double>(h * vel[j]);
+            double const safe = next * static_cast<double>(std::abs(next) <= 2); // no overflow
+            int const trunc   = static_cast<int>(safe);
+            int const shift   = trunc - (safe < static_cast<double>(trunc));
+            int const c       = cell[j] + shift;
+            bad += (std::abs(next) > 2) | (c < lower) | (c > upper);
+            dlt[j]  = next - shift;
+            cell[j] = c;
+        }
+    }
+    return bad;
+}
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::accelerate_(SoABatch& batch, std::size_t const n) const
+{
+    struct
+    {
+        std::array<double, 3> v;
+    } p;
+    for (std::size_t j = 0; j < n; ++j)
+    {
+        p.v = {batch.v[0][j], batch.v[1][j], batch.v[2][j]};
+        std::array<std::array<double, 3>, 2> const eb{
+            {{batch.E[0][j], batch.E[1][j], batch.E[2][j]},
+             {batch.B[0][j], batch.B[1][j], batch.B[2][j]}}};
+        boris::accelerate(p, eb, coef1);
+        for (std::size_t k = 0; k < 3; ++k)
+            batch.v[k][j] = p.v[k];
+    }
+}
+
+template<typename Ions>
+void IonUpdater1<Ions>::Pusher::throw_domain_batch_(auto const& domain, std::size_t const base,
+                                                    std::size_t const n, auto const& em,
+                                                    auto const& boxing, auto& interpolator) const
+{
+    for (std::size_t j = 0; j < n; ++j)
+    {
+        auto p = domain[base + j];
+        advance(p, inGhostBox(boxing));
+    }
+    for (std::size_t j = 0; j < n; ++j)
+    {
+        auto p = domain[base + j];
+        advance(p, inGhostBox(boxing));
+        auto const& local_em = interpolator(p, em, layout);
+        accel_and_advance(p, local_em, inGhostBox(boxing));
+    }
+    throw std::runtime_error("IonUpdater1: batched push failed but the per particle one did not");
 }
 
 

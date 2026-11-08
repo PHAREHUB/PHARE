@@ -704,7 +704,8 @@ protected:
 
 private:
     template<auto quantity, typename GridLayout>
-    NO_DISCARD auto meshToParticle(auto const& field, GridLayout const&, auto const& indexWeights)
+    NO_DISCARD PHARE_ALWAYS_INLINE auto meshToParticle(auto const& field, GridLayout const&,
+                                                       auto const& indexWeights)
     {
         return meshToParticle_.template operator()<GridLayout, quantity>(field, indexWeights);
     }
