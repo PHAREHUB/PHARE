@@ -14,7 +14,7 @@ dependencies = [
 [dependency-groups]
 test = ["ddt"]
 vtk = ["vtk"]
-timing = ["phlop"]
+timing = ["phlop @ git+https://github.com/PhilipDeegan/phlop@5189bff1f1505b5a8e8f5349d2966e622e1706bd"]
 docs = [
     "pandas",
     "appdirs",

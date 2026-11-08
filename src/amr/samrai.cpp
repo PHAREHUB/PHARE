@@ -31,6 +31,10 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
 
 SamraiLifeCycle::~SamraiLifeCycle()
 {
+    // write the scope timer file now, while MPI and phlop's perf config are alive, not from
+    //  phlop's static destructor
+    PHARE_WITH_PHLOP(if (phlop::scope_timer().active) phlop::shutdown_scope_timer();)
+
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::finalize();
     SAMRAI::tbox::SAMRAI_MPI::finalize();

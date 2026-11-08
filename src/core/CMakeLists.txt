@@ -72,14 +72,7 @@ set( SOURCES_CPP
      utilities/index/index.cpp
     )
 
-set( CORE_EXTRA_SOURCES_CPP )
-if (withPhlop)
-  set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp
-                              ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/common_threaded_timer.cpp
-   )
-endif(withPhlop)
-
-add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
+add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer
     PUBLIC cppdict ${PHARE_BASE_LIBS}
