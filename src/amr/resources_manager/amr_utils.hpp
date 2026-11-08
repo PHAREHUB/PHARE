@@ -324,12 +324,7 @@ namespace amr
         // 0 along non periodic directions
         auto const period
             = hierarchy.getGridGeometry()->getPeriodicShift(level.getRatioToLevelZero());
-        auto constexpr nbrShifts = [] {
-            std::size_t n = 1;
-            for (std::size_t d = 0; d < dimension; ++d)
-                n *= 3;
-            return n;
-        }();
+        std::size_t constexpr nbrShifts = dimension == 1 ? 3 : dimension == 2 ? 9 : 27; // 3^dim
 
         std::vector<core::Box<int, dimension>> images;
         for (auto const& box : level.getBoxLevel()->getGlobalizedVersion().getGlobalBoxes())

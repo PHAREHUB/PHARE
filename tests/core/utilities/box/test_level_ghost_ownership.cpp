@@ -68,9 +68,7 @@ std::string checkPartition(std::vector<Box_t<dim>> const& patches,
 {
     auto const images = makeImages(patches, period);
 
-    std::vector<Box_t<dim>> allBoxes;
-    for (auto const& image : images)
-        allBoxes.push_back(image.box);
+    auto const allBoxes = generate_from([](auto const& image) { return image.box; }, images);
 
     // what each patch builds from the neighbours a connector of `neighbourWidth` gives it
     std::vector<LevelGhostOwnership<dim>> ownership;
