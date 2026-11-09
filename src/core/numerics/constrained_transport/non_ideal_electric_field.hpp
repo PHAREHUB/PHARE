@@ -76,6 +76,8 @@ public:
                     if constexpr (isHyperResistive)
                         e -= hyper_coef_<component, hyper>(B, rho, idx)
                              * laplacian(layout_, Jc, idx);
+                    if constexpr (Hall)
+                        e += hall_<component>(J, B, rho, idx);
                     Ec(idx) = e;
                 });
             });
@@ -83,6 +85,36 @@ public:
     }
 
 private:
+    template<auto component>
+    double hall_(auto const& J, auto const& B, auto const& rho, MeshIndex<dimension> idx) const
+    {
+        using Scalar = MHDQuantity::Scalar;
+
+        auto hall = [&]<auto dst>() {
+            auto const jx = GridLayout::template project<Scalar::Jx, dst>(J(Component::X), idx);
+            auto const jy = GridLayout::template project<Scalar::Jy, dst>(J(Component::Y), idx);
+            auto const jz = GridLayout::template project<Scalar::Jz, dst>(J(Component::Z), idx);
+            auto const bx = GridLayout::template project<Scalar::Bx, dst>(B(Component::X), idx);
+            auto const by = GridLayout::template project<Scalar::By, dst>(B(Component::Y), idx);
+            auto const bz = GridLayout::template project<Scalar::Bz, dst>(B(Component::Z), idx);
+            auto const n  = GridLayout::template project<Scalar::rho, dst>(rho, idx);
+
+            if constexpr (dst == Scalar::Ex)
+                return (jy * bz - jz * by) / n;
+            else if constexpr (dst == Scalar::Ey)
+                return (jz * bx - jx * bz) / n;
+            else
+                return (jx * by - jy * bx) / n;
+        };
+
+        if constexpr (component == Component::X)
+            return hall.template operator()<Scalar::Ex>();
+        else if constexpr (component == Component::Y)
+            return hall.template operator()<Scalar::Ey>();
+        else
+            return hall.template operator()<Scalar::Ez>();
+    }
+
     template<auto component, HyperMode hyper>
     double hyper_coef_(auto const& B, auto const& rho, MeshIndex<dimension> idx) const
     {

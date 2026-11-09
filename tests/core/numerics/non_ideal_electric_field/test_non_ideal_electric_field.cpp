@@ -1,6 +1,8 @@
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/numerics/differential_operators.hpp"
 #include "core/numerics/constrained_transport/non_ideal_electric_field.hpp"
 
 #include "gtest/gtest.h"
@@ -211,6 +213,105 @@ TYPED_TEST(NonIdealElectricFieldTest, resistiveOnlyIsEtaJ)
     }
 }
 
+
+TYPED_TEST(NonIdealElectricFieldTest, hallIsJcrossBoverRhoAtEdges)
+{
+    auto const& layout = this->layout;
+
+    auto j = [](std::size_t c, auto const& x) { return affine(x, 0.4 + c, 0.7, -0.2 * c, 0.3); };
+    auto b = [](std::size_t c, auto const& x) {
+        return affine(x, 0.3 + 0.5 * c, 0.2 - 0.1 * c, -0.1, 0.05 * c);
+    };
+    auto r = [](auto const& x) { return affine(x, 2., 0.1, 0.2, -0.1); };
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        fill(layout, this->J.view[c], [&](auto const& x) { return j(c, x); });
+        fill(layout, this->B.view[c], [&](auto const& x) { return b(c, x); });
+    }
+    fill(layout, this->rho.field, r);
+
+    this->template compute<true>(OhmInfo{0.0, 0.0, HyperMode::constant});
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto const a          = (c + 1) % 3;
+        auto const bb         = (c + 2) % 3;
+        auto const& Ec        = this->E.view[c];
+        auto const ecentering = layout.centering(Ec);
+        for_each_point(physicalBox(layout, ecentering), [&](auto const& idx) {
+            auto const x        = coordinates(layout, ecentering, idx);
+            auto const expected = (j(a, x) * b(bb, x) - j(bb, x) * b(a, x)) / r(x);
+            EXPECT_NEAR(Ec(idx), expected, 1e-12);
+        });
+    }
+}
+
+
+template<typename Layout, typename Field>
+double maxAbsOn(Layout const& layout, Field const& f)
+{
+    double m = 0.;
+    for_each_point(physicalBox(layout, layout.centering(f)),
+                   [&](auto const& idx) { m = std::max(m, std::abs(f(idx))); });
+    return m;
+}
+
+
+TYPED_TEST(NonIdealElectricFieldTest, hallCurlVanishesForB0PerpK)
+{
+    static constexpr auto dim = TestFixture::dim;
+    if constexpr (dim >= 2)
+    {
+        auto const& layout = this->layout;
+        auto const& dl     = layout.meshSize();
+        double const ky    = 2. * M_PI * 3. / (cellCounts[1] * dl[1]);
+        double const amp   = 1e-3;
+
+        std::size_t const along = dim == 2 ? 2 : 0;
+        for (std::size_t c = 0; c < 3; ++c)
+            fill(layout, this->B.view[c], [&](auto const& x) {
+                if (c != along)
+                    return 0.;
+                if constexpr (dim == 2)
+                {
+                    double const kx = 2. * M_PI * 2. / (cellCounts[0] * dl[0]);
+                    return 1. + amp * std::cos(kx * x[0] + ky * x[1]);
+                }
+                else
+                {
+                    double const kz = 2. * M_PI * 2. / (cellCounts[2] * dl[2]);
+                    return 1. + amp * std::cos(ky * x[1] + kz * x[2]);
+                }
+            });
+        fill(layout, this->rho.field, [](auto const&) { return 1.; });
+        for (std::size_t c = 0; c < 3; ++c)
+            fill(layout, this->J.view[c], [](auto const&) { return 0.; });
+
+        Ampere<typename TestFixture::Layout>{layout}(this->B.view, this->J.view);
+        for (std::size_t c = 0; c < 3; ++c)
+            fill(layout, this->B.view[c], [&](auto const&) { return c == along ? 1. : 0.; });
+        this->template compute<true>(OhmInfo{0.0, 0.0, HyperMode::constant});
+
+        double maxE = 0.;
+        for (std::size_t c = 0; c < 3; ++c)
+            maxE = std::max(maxE, maxAbsOn(layout, this->E.view[c]));
+        EXPECT_GT(maxE, 1e-5);
+
+        auto const curlE = curl(layout, this->E.view);
+        double maxCurl   = 0.;
+        auto check       = [&](auto const& component, auto const& Bc) {
+            for_each_point(physicalBox(layout, layout.centering(Bc)), [&](auto const& idx) {
+                maxCurl = std::max(maxCurl, std::abs(component(idx)));
+            });
+        };
+        if constexpr (dim == 2)
+            check(curlE.z, this->B.view[2]);
+        else
+            check(curlE.x, this->B.view[0]);
+        EXPECT_LT(maxCurl, 1e-12);
+    }
+}
 
 } // namespace PHARE::core
 
