@@ -25,7 +25,6 @@ import numpy as np
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
-from pyphare import cpp
 from pyphare.core.box import Box1D, Box2D
 from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
@@ -110,7 +109,10 @@ def config(test, ndim, interp, cells, patch_size, out, refinement_boxes=None):
         refinement_boxes=refinement_boxes,
         resistivity=0.0,
         hyper_resistivity=0.001,
-        diag_options={"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}},
+        diag_options={
+            "format": "phareh5",
+            "options": {"dir": f"phare_outputs/{out}", "mode": "overwrite"},
+        },
     )
     uniform_plasma(ndim, ppc[ndim])
     add_diagnostics(timestamps())
@@ -230,9 +232,6 @@ class PatchLayoutIndependenceTest(SimulatorTest):
         )
         whole = self.run_sim(config(self, ndim, interp, cells, cells, "patch_layout/whole", boxes))
 
-        if cpp.mpi_rank() != 0:
-            return
-
         self.assertEqual(self.nbr_patches(whole, 1), 1)
         self.assertGreater(self.nbr_patches(small, 1), 1)
 
@@ -254,9 +253,6 @@ class PatchLayoutIndependenceTest(SimulatorTest):
         cells = width * 6
         small = self.run_sim(config(self, ndim, interp, cells, width, "patch_layout/small"))
         whole = self.run_sim(config(self, ndim, interp, cells, cells, "patch_layout/whole"))
-
-        if cpp.mpi_rank() != 0:
-            return
 
         self.assertEqual(self.nbr_patches(whole, 0), 1)
         self.assertEqual(self.nbr_patches(small, 0), 6**ndim)
@@ -283,7 +279,7 @@ class PatchLayoutIndependenceTest(SimulatorTest):
             hyper_resistivity=0.0,
             diag_options={
                 "format": "phareh5",
-                "options": {"dir": "patch_layout/tagging", "mode": "overwrite"},
+                "options": {"dir": "phare_outputs/patch_layout/tagging", "mode": "overwrite"},
             },
         )
 
@@ -310,9 +306,6 @@ class PatchLayoutIndependenceTest(SimulatorTest):
         ph.ElectronModel(closure="isothermal", Te=0.0)
         add_diagnostics(times)
         diag_dir = self.run_sim(sim)
-
-        if cpp.mpi_rank() != 0:
-            return
 
         counts = self.particle_counts(diag_dir, times)
         self.assertGreater(max(ilvl for _, ilvl in counts), 0, "no refined level")

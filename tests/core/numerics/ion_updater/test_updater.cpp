@@ -1053,58 +1053,56 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     // tests/simulator/test_patch_layout_independence.py.
     void checkLevelGhostEnteringNeighbourDomain(UpdaterMode const mode)
     {
-        if constexpr (ghosts < 2)
-            GTEST_SKIP() << "no level ghost cell between two patches within the particle ghost box";
-        else
+        static_assert(ghosts >= 2,
+                      "needs a level ghost cell between two patches within the particle ghost box");
+
+        typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+        auto const domainBox = this->layout.AMRBox();
+        auto const lower     = domainBox.lower[0];
+        auto const gapCell   = lower - 1;
+        auto const nbrCell   = lower - 2;
+        Boxing_t const boxing{
+            this->layout, {box(nbrCell, nbrCell), box(lower, domainBox.upper[0] + ghosts)}, {}};
+
+        auto const enteringNbr = [&](auto const& p) {
+            return p.iCell[0] == gapCell and p.delta[0] - cellsPerStep < 0.;
+        };
+
+        std::vector<std::size_t> nbrDomain, nbrStaying;
+        for (auto& pop : this->ions)
         {
-            typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+            auto& levelGhosts = pop.levelGhostParticles();
+            auto range        = makeIndexRange(levelGhosts);
+            auto const inGap  = levelGhosts.partition(
+                range, [&](auto const& cell) { return cell[0] == gapCell; });
+            levelGhosts.erase(makeRange(levelGhosts, inGap.iend(), levelGhosts.size()));
 
-            auto const domainBox = this->layout.AMRBox();
-            auto const lower     = domainBox.lower[0];
-            auto const gapCell   = lower - 1;
-            auto const nbrCell   = lower - 2;
-            Boxing_t const boxing{
-                this->layout, {box(nbrCell, nbrCell), box(lower, domainBox.upper[0] + ghosts)}, {}};
+            setVelocityX(pop.domainParticles(), 0);
+            setVelocityX(levelGhosts, -1);
+            nbrDomain.push_back(pop.domainParticles().size());
+            auto const nbrEntering = count(levelGhosts, enteringNbr);
+            nbrStaying.push_back(levelGhosts.size() - nbrEntering);
+            ASSERT_GT(nbrEntering, 0u);
+            ASSERT_GT(nbrStaying.back(), 0u);
+        }
 
-            auto const enteringNbr = [&](auto const& p) {
-                return p.iCell[0] == gapCell and p.delta[0] - cellsPerStep < 0.;
-            };
+        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, mode);
 
-            std::vector<std::size_t> nbrDomain, nbrStaying;
-            for (auto& pop : this->ions)
+        std::size_t ipop = 0;
+        for (auto& pop : this->ions)
+        {
+            auto const expected = weights(pop.domainParticles());
+            EXPECT_NEAR(total(pop.particleDensity()), expected, 1e-10 * expected);
+
+            if (mode == UpdaterMode::all)
             {
-                auto& levelGhosts = pop.levelGhostParticles();
-                auto range        = makeIndexRange(levelGhosts);
-                auto const inGap  = levelGhosts.partition(
-                    range, [&](auto const& cell) { return cell[0] == gapCell; });
-                levelGhosts.erase(makeRange(levelGhosts, inGap.iend(), levelGhosts.size()));
-
-                setVelocityX(pop.domainParticles(), 0);
-                setVelocityX(levelGhosts, -1);
-                nbrDomain.push_back(pop.domainParticles().size());
-                auto const nbrEntering = count(levelGhosts, enteringNbr);
-                nbrStaying.push_back(levelGhosts.size() - nbrEntering);
-                ASSERT_GT(nbrEntering, 0u);
-                ASSERT_GT(nbrStaying.back(), 0u);
+                EXPECT_EQ(pop.domainParticles().size(), nbrDomain[ipop]);
+                EXPECT_EQ(pop.patchGhostParticles().size(), 0u);
+                // the others stay in the level ghost layer
+                EXPECT_EQ(pop.levelGhostParticles().size(), nbrStaying[ipop]);
             }
-
-            ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, mode);
-
-            std::size_t ipop = 0;
-            for (auto& pop : this->ions)
-            {
-                auto const expected = weights(pop.domainParticles());
-                EXPECT_NEAR(total(pop.particleDensity()), expected, 1e-10 * expected);
-
-                if (mode == UpdaterMode::all)
-                {
-                    EXPECT_EQ(pop.domainParticles().size(), nbrDomain[ipop]);
-                    EXPECT_EQ(pop.patchGhostParticles().size(), 0u);
-                    // the others stay in the level ghost layer
-                    EXPECT_EQ(pop.levelGhostParticles().size(), nbrStaying[ipop]);
-                }
-                ++ipop;
-            }
+            ++ipop;
         }
     }
 };
@@ -1181,13 +1179,22 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotDeposited
 
 
 
-// see checkLevelGhostEnteringNeighbourDomain
-TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNeighbourDomainIsDropped)
+// see checkLevelGhostEnteringNeighbourDomain: particle ghost width 2, interp 2 and 3 only
+template<typename DimInterpT>
+struct IonUpdaterNeighbourDomainTest : public IonUpdaterOwnershipTest<DimInterpT>
+{
+};
+
+using DimInterps1DTwoGhosts = ::testing::Types<DimInterp<1, 2>, DimInterp<1, 3>>;
+TYPED_TEST_SUITE(IonUpdaterNeighbourDomainTest, DimInterps1DTwoGhosts, );
+
+TYPED_TEST(IonUpdaterNeighbourDomainTest, levelGhostEnteringNeighbourDomainIsDropped)
 {
     this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::all);
 }
 
-TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNeighbourDomainIsNotDepositedMomentsOnly)
+TYPED_TEST(IonUpdaterNeighbourDomainTest,
+           levelGhostEnteringNeighbourDomainIsNotDepositedMomentsOnly)
 {
     this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::domain_only);
 }
