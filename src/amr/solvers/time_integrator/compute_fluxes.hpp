@@ -30,10 +30,10 @@ class ComputeFluxes
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
-    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
+    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
-    using NonIdealElectricField_t = Dispatchers_t::template NonIdealElectricField_t<false>;
+    using NonIdealElectricField_t = Dispatchers_t::template NonIdealElectricField_t<Hall>;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
@@ -104,9 +104,9 @@ public:
 private:
     FVMethodInfo_t fVMethodInfo_;
     ConstrainedTransportInfo_t constrainedTransportInfo_;
-    bool const isNonIdeal_{fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()};
+    bool const isNonIdeal_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()};
 
-    core::UpwindConstrainedTransportState<VecField> ct_{Hall};
+    core::UpwindConstrainedTransportState<VecField> ct_{};
     core::NonIdealElectricFieldState<VecField> non_ideal_electric_state_{isNonIdeal_};
     double to_primitive_gamma_;
     double to_conservative_gamma_;

@@ -111,37 +111,15 @@ public:
                         = Reconstructor_t::template reconstruct<direction>(state, {indices...});
                     auto&& u = std::forward_as_tuple(uL, uR);
 
-                    if constexpr (Hall)
-                    {
-                        auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, Scalar::Jx, Scalar::Jy, Scalar::Jz, Scalar::rho>(
-                            state.J, {indices...});
+                    auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
+                        return equations_.template compute<direction>(std::get<i>(u));
+                    });
 
-                        auto const& j = std::forward_as_tuple(jL, jR);
+                    fluxes.template get_dir<direction>({indices...})
+                        = riemann_.template solve<direction>(uL, uR, fL, fR);
 
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u),
-                                                                          std::get<i>(j));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
-                                                          riemann_.uct_coefs, {indices...});
-                    }
-                    else
-                    {
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
-                                                          {indices...});
-                    }
+                    ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
+                                                      {indices...});
                 });
 
             if (non_ideal_electric_state.active())

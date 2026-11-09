@@ -197,11 +197,11 @@ public:
 
 
 
-template<typename GridLayout, typename Model, template<typename> typename Reconstruction, auto Hall>
+template<typename GridLayout, typename Model, template<typename> typename Reconstruction>
 class ConstrainedTransportTransformer
 {
     using level_t   = Model::amr_types::level_t;
-    using core_type = core::UpwindConstrainedTransport<GridLayout, Reconstruction, Hall>;
+    using core_type = core::UpwindConstrainedTransport<GridLayout, Reconstruction>;
 
 public:
     using info_type = core_type::Info_t;
@@ -275,9 +275,9 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
     template<bool Hall>
     using NonIdealElectricField_t = NonIdealElectricFieldTransformer<Model, Hall>;
 
-    template<template<typename> typename Reconstruction, auto Hall>
+    template<template<typename> typename Reconstruction>
     using ConstrainedTransport_t
-        = ConstrainedTransportTransformer<GridLayout, Model, Reconstruction, Hall>;
+        = ConstrainedTransportTransformer<GridLayout, Model, Reconstruction>;
 
     using RKUtils_t = RKUtilsTransformer<Model>;
 };
