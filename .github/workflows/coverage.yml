@@ -58,7 +58,8 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: . /.venv/bin/activate; ctest -j 2 -LE nightly --output-on-failure
+      # physics: dispersion checks, ~2h each under gcov for code other tests already cover
+      run: . /.venv/bin/activate; ctest -j 2 -LE "nightly|physics" --output-on-failure
 
     # a failing test still leaves coverage worth reporting
     - name: Coverage report
