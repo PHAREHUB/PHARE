@@ -74,17 +74,6 @@ public:
     }
 
     template<auto direction>
-    auto compute(auto const& u, auto const& J) const
-    {
-        PerIndex f = compute<direction>(u);
-
-        if constexpr (Hall)
-            hall_contribution_<direction>(u.rho, u.B, J, f.B, f.P);
-
-        return f;
-    }
-
-    template<auto direction>
     void non_ideal_contributions(auto const& Et, auto const& Bt, auto& F_B, auto& F_Etot) const
     {
         if constexpr (direction == Direction::X)
@@ -109,39 +98,6 @@ public:
 
 private:
     double const gamma_;
-
-    template<auto direction>
-    void hall_contribution_(auto const& rho, auto const& B, auto const& J, auto& F_B,
-                            auto& F_Etot) const
-    {
-        auto const invRho = 1.0 / rho;
-
-        auto const JxB_x = J.y * B.z - J.z * B.y;
-        auto const JxB_y = J.z * B.x - J.x * B.z;
-        auto const JxB_z = J.x * B.y - J.y * B.x;
-
-        auto const BdotJ = B.x * J.x + B.y * J.y + B.z * J.z;
-        auto const BdotB = B.x * B.x + B.y * B.y + B.z * B.z;
-
-        if constexpr (direction == Direction::X)
-        {
-            F_B.y += -JxB_z * invRho;
-            F_B.z += JxB_y * invRho;
-            F_Etot += (BdotJ * B.x - BdotB * J.x) * invRho;
-        }
-        if constexpr (direction == Direction::Y)
-        {
-            F_B.x += JxB_z * invRho;
-            F_B.z += -JxB_x * invRho;
-            F_Etot += (BdotJ * B.y - BdotB * J.y) * invRho;
-        }
-        if constexpr (direction == Direction::Z)
-        {
-            F_B.x += -JxB_y * invRho;
-            F_B.y += JxB_x * invRho;
-            F_Etot += (BdotJ * B.z - BdotB * J.z) * invRho;
-        }
-    }
 };
 
 } // namespace PHARE::core
