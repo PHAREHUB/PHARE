@@ -26,7 +26,7 @@ def timestamps(final_time):
     return np.arange(0, final_time + time_step, final_time / 5)
 
 
-def config(cells, final_time, diag_dir, **kwargs):
+def config(cells, final_time, diag_dir, time_step=time_step, levels=2, **kwargs):
     L = 0.5
 
     sim = ph.Simulation(
@@ -35,8 +35,8 @@ def config(cells, final_time, diag_dir, **kwargs):
         cells=cells,
         dl=dl,
         refinement="tagging",
-        max_mhd_level=2,
-        max_nbr_levels=2,
+        max_mhd_level=levels,
+        max_nbr_levels=levels,
         hyper_resistivity=0.0,
         resistivity=0.0,
         diag_options={
@@ -163,6 +163,13 @@ def plot(diag_dir, plot_dir, times):
         plt.close("all")
 
 
+def dumped_times(diag_dir):
+    import h5py
+
+    with h5py.File(f"{diag_dir}/EM_B.h5", "r") as f:
+        return sorted(float(t) for t in f["t"])
+
+
 class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -185,7 +192,9 @@ class HarrisTest(SimulatorTest):
         if not sim.dry_run and cpp.mpi_rank() == 0:
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
             plot_dir.mkdir(parents=True, exist_ok=True)
-            plot(diag_dir, plot_dir, timestamps(final_time))
+            adaptive = isinstance(kwargs.get("time_step"), dict)
+            times = dumped_times(diag_dir) if adaptive else timestamps(final_time)
+            plot(diag_dir, plot_dir, times)
             self.check(diag_dir)
         cpp.mpi_barrier()
         return self

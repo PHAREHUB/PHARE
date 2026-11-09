@@ -90,6 +90,38 @@ class TimeStepValidation(unittest.TestCase):
         )
         self.assertEqual(sim.time_stepper.cfl_diffusive, 0.2)
 
+    def test_adaptive_fine_level_substeps_max_defaults_to_1000(self):
+        sim = ph.Simulation(
+            time_step={"mode": "adaptive", "cfl_wave": 0.4}, final_time=1.0, **baseArgs
+        )
+        self.assertEqual(sim.time_stepper.fine_level_substeps_max, 1000)
+
+    def test_adaptive_fine_level_substeps_max_explicit(self):
+        sim = ph.Simulation(
+            time_step={
+                "mode": "adaptive",
+                "cfl_wave": 0.4,
+                "fine_level_substeps_max": 50,
+            },
+            final_time=1.0,
+            **baseArgs,
+        )
+        self.assertEqual(sim.time_stepper.fine_level_substeps_max, 50)
+
+    def test_adaptive_fine_level_substeps_max_rejects_invalid(self):
+        for value in (0, -3, 2.5):
+            ph.global_vars.sim = None
+            with self.assertRaises(ValueError):
+                ph.Simulation(
+                    time_step={
+                        "mode": "adaptive",
+                        "cfl_wave": 0.4,
+                        "fine_level_substeps_max": value,
+                    },
+                    final_time=1.0,
+                    **baseArgs,
+                )
+
     def test_adaptive_requires_cfl_wave(self):
         with self.assertRaises(ValueError):
             ph.Simulation(time_step={"mode": "adaptive"}, final_time=1.0, **baseArgs)
