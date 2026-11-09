@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_DISSIPATIVE_ELECTRIC_FIELD_HPP
-#define PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_DISSIPATIVE_ELECTRIC_FIELD_HPP
+#ifndef PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_NON_IDEAL_ELECTRIC_FIELD_HPP
+#define PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_NON_IDEAL_ELECTRIC_FIELD_HPP
 
 #include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
@@ -17,18 +17,20 @@ namespace PHARE::core
 {
 
 template<typename VecField>
-class DissipativeElectricFieldState
+class NonIdealElectricFieldState
 {
 public:
-    DissipativeElectricFieldState() = default;
-    explicit DissipativeElectricFieldState(bool const isDissipative)
+    NonIdealElectricFieldState() = default;
+    explicit NonIdealElectricFieldState(bool const isNonIdeal)
     {
-        if (isDissipative)
-            E_.emplace_back("E_diss", MHDQuantity::Vector::E);
+        if (isNonIdeal)
+            E_.emplace_back("E_nonideal", MHDQuantity::Vector::E);
     }
 
     NO_DISCARD std::vector<VecField>& getRunTimeResourcesViewList() { return E_; }
     NO_DISCARD std::vector<VecField> const& getRunTimeResourcesViewList() const { return E_; }
+
+    NO_DISCARD bool active() const { return !E_.empty(); }
 
     NO_DISCARD auto& E() { return E_[0]; }
     NO_DISCARD auto const& E() const { return E_[0]; }
@@ -38,8 +40,8 @@ private:
 };
 
 
-template<typename GridLayout>
-class DissipativeElectricField : public OhmInfo
+template<typename GridLayout, bool Hall>
+class NonIdealElectricField : public OhmInfo
 {
     using Super                     = OhmInfo;
     constexpr static auto dimension = GridLayout::dimension;
@@ -47,15 +49,15 @@ class DissipativeElectricField : public OhmInfo
 public:
     using Info_t = Super;
 
-    DissipativeElectricField(OhmInfo const& info, GridLayout const& layout)
+    NonIdealElectricField(OhmInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
     {
     }
 
-    void operator()(auto& dissipative_electric_state, auto const& mhd_state) const
+    void operator()(auto& non_ideal_electric_state, auto const& mhd_state) const
     {
-        auto& E         = dissipative_electric_state.E();
+        auto& E         = non_ideal_electric_state.E();
         auto const& J   = mhd_state.J;
         auto const& B   = mhd_state.B;
         auto const& rho = mhd_state.rho;
@@ -100,7 +102,7 @@ private:
                     B(Component::Z), idx);
                 auto const n
                     = GridLayout::template project<MHDQuantity::Scalar::rho, dst>(rho, idx);
-                auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
+                auto const b = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);
             };
 

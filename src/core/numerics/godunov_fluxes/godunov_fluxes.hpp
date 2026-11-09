@@ -88,15 +88,13 @@ public:
     explicit Godunov(GodunovInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , is_resistive_{info.isResistive()}
-        , is_hyper_resistive_{info.isHyperResistive()}
         , equations_{gamma}
         , riemann_{gamma}
     {
     }
 
     template<typename State, typename Fluxes>
-    void operator()(auto& ct_state, auto const& dissipative_electric_state, State& state,
+    void operator()(auto& ct_state, auto const& non_ideal_electric_state, State& state,
                     Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
@@ -146,20 +144,17 @@ public:
                     }
                 });
 
-            if (is_resistive_ || is_hyper_resistive_)
+            if (non_ideal_electric_state.active())
                 layout_.evalOnBox(fluxes.template expose_centering<direction>(),
                                   [&](auto&... indices) {
                                       auto F = fluxes.template get_dir<direction>({indices...});
                                       auto const [Et, Bt] = transverse_on_face_<direction>(
-                                          dissipative_electric_state.E(), state.B, {indices...});
-                                      equations_.template dissipative_contributions<direction>(
+                                          non_ideal_electric_state.E(), state.B, {indices...});
+                                      equations_.template non_ideal_contributions<direction>(
                                           Et, Bt, F.B, F.Etot());
                                   });
         });
     }
-
-    bool isResistive() const { return is_resistive_; }
-    bool isHyperResistive() const { return is_hyper_resistive_; }
 
 private:
     template<auto direction>
@@ -201,8 +196,6 @@ private:
     }
 
     GridLayout layout_;
-    bool const is_resistive_;
-    bool const is_hyper_resistive_;
     Equations equations_;
     RiemannSolver_t riemann_;
 };

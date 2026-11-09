@@ -85,7 +85,7 @@ public:
     }
 
     template<auto direction>
-    void dissipative_contributions(auto const& Et, auto const& Bt, auto& F_B, auto& F_Etot) const
+    void non_ideal_contributions(auto const& Et, auto const& Bt, auto& F_B, auto& F_Etot) const
     {
         if constexpr (direction == Direction::X)
         {

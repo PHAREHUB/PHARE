@@ -27,11 +27,10 @@ public:
     UpwindConstrainedTransport(UpwindConstrainedTransportInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , is_dissipative_{info.isResistive() || info.isHyperResistive()}
     {
     }
 
-    void operator()(auto& ct_state, auto const& dissipative_electric_state, auto& mhd_state) const
+    void operator()(auto& ct_state, auto const& non_ideal_electric_state, auto& mhd_state) const
     {
         auto& E       = mhd_state.E;
         auto const& B = mhd_state.B;
@@ -44,11 +43,12 @@ public:
         layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}); });
         layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}); });
 
-        if (is_dissipative_)
+        if (non_ideal_electric_state.active())
         {
-            auto const& Ediss = dissipative_electric_state.E();
+            auto const& Enonideal = non_ideal_electric_state.E();
             for (auto c : {Component::X, Component::Y, Component::Z})
-                layout_.evalOnBox(E(c), [&](auto&... args) { E(c)(args...) += Ediss(c)(args...); });
+                layout_.evalOnBox(E(c),
+                                  [&](auto&... args) { E(c)(args...) += Enonideal(c)(args...); });
         }
     }
 
@@ -324,7 +324,6 @@ private:
     }
 
     GridLayout layout_;
-    bool const is_dissipative_;
 };
 } // namespace PHARE::core
 
