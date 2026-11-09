@@ -17,7 +17,6 @@ import numpy as np
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
-from pyphare import cpp
 from pyphare.core.box import Box1D, Box2D
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.simulator.simulator import Simulator
@@ -52,7 +51,7 @@ def config(test, ndim, interp, patch_size):
         hyper_resistivity=0.001,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": f"patch_layout/p{patch_size}", "mode": "overwrite"},
+            "options": {"dir": f"phare_outputs/patch_layout/p{patch_size}", "mode": "overwrite"},
         },
     )
 
@@ -128,9 +127,6 @@ class PatchLayoutIndependenceTest(SimulatorTest):
         print(f"{self._testMethodName}: {ndim}D interp {interp}")
         small, nbr_small = self.run_layout(ndim, interp, small_patch_size)
         whole, nbr_whole = self.run_layout(ndim, interp, cells[ndim])
-
-        if cpp.mpi_rank() != 0:
-            return
 
         self.assertEqual(nbr_whole, 1)
         self.assertGreater(nbr_small, 1)
