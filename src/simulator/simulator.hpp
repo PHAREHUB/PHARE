@@ -505,7 +505,7 @@ void Simulator<opts>::initialize()
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
             double const dt = multiphysInteg_->computeStableDt(
-                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
+                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_}, currentTime_);
             dt_ = std::min(dt, finalTime_ - currentTime_);
         }
     }
@@ -564,7 +564,7 @@ double Simulator<opts>::advance()
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
             double const dt = multiphysInteg_->computeStableDt(
-                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
+                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_}, currentTime_);
             dt_ = std::min(dt, finalTime_ - currentTime_);
         }
 

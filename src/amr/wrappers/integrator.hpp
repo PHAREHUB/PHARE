@@ -210,6 +210,8 @@ Integrator<_dimension>::Integrator(
         "tag_buffer", std::vector<int>(hierarchy->getMaxNumberOfLevels(),
                                        dict["simulation"]["AMR"]["tag_buffer"].template to<int>()));
 
+    db->putDouble("grow_dt", 1e3);
+
 
     timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(
         "TimeRefinementIntegrator", db, hierarchy, timeRefLevelStrategy, gridding);

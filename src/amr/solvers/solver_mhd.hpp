@@ -18,6 +18,8 @@
 #include "initializer/data_provider.hpp"
 
 #include <cmath>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -396,7 +398,8 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
     auto& B        = mhdModel.state.B;
     auto& Etot     = mhdModel.state.Etot;
 
-    double dt = std::numeric_limits<double>::max();
+    double dt                = std::numeric_limits<double>::max();
+    bool nonFiniteCellLogged = false;
 
     for (auto& patch : level)
     {
@@ -440,20 +443,41 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             std::array<double, 3> const v{vx, vy, vz};
             std::array<double, 3> const b{bx, by, bz};
 
-            // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
+            // sum_d (|v_d| + c_fast_d + v_w_d - v_A) / dx_d over simulated directions
             double invDtWave = 0;
             for (std::size_t d = 0; d < dimension; ++d)
             {
                 auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
                 // Hall whistler
-                auto const cw = isHall_ ? std::numbers::pi
-                                              * core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
+                auto const cw = isHall_ ? core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
+                                              - std::sqrt(BdotB / r)
                                         : 0.0;
                 invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
+            }
+            if (!std::isfinite(invDtWave))
+            {
+                if (!nonFiniteCellLogged)
+                {
+                    auto const amrIndex
+                        = layout.localToAMR(core::Point<std::uint32_t, dimension>{args...});
+                    auto const position = layout.fieldNodeCoordinates(rho, amrIndex);
+                    std::stringstream ss;
+                    ss << "non-finite wave speed on level " << level.getLevelNumber()
+                       << ": cell at (";
+                    for (std::size_t d = 0; d < dimension; ++d)
+                        ss << (d ? ", " : "") << position[d];
+                    ss << "): rho = " << r << ", P = " << P << ", |B| = " << std::sqrt(BdotB);
+                    PHARE_LOG_ERROR(ss.str());
+                    nonFiniteCellLogged = true; // print only the first one
+                }
+                return;
             }
             dt = std::min(dt, wave / invDtWave);
         });
     }
+
+    if (mpi::any_errors())
+        throw core::DictionaryException{}("ID", "SolverMHD::computeStableDt");
 
     return dt;
 }

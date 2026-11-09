@@ -4,9 +4,10 @@ Time-step resolution and validation for pharein.Simulation.
 'time_step' (the public Simulation constructor option) may be:
   - a scalar (or absent)                 -> ConstantTimeStepper
   - {'mode': 'constant', 'value': <dt>}  -> ConstantTimeStepper ('value' optional)
-  - {'mode': 'adaptive', 'cfl_wave': <w>, 'cfl_diffusive': <d>}
+  - {'mode': 'adaptive', 'cfl_wave': <w>, 'cfl_diffusive': <d>, 'fine_level_substeps_max': <n>}
                                          -> AdaptiveTimeStepper
-                                            ('cfl_diffusive' defaults to 'cfl_wave')
+                                            ('cfl_diffusive' defaults to 'cfl_wave',
+                                             'fine_level_substeps_max' to 1000)
 
 resolve_time_stepper(**kwargs) is the single entry point used by Simulation's checker();
 it returns the TimeStepper instance stored as Simulation.time_stepper.
@@ -68,6 +69,7 @@ class AdaptiveTimeStepper(TimeStepper):
 
     cfl_wave: float = None
     cfl_diffusive: float = None
+    fine_level_substeps_max: int = 1000
 
     def within_simulation_duration(self, time_period):
         raise NotImplementedError(
@@ -79,6 +81,9 @@ class AdaptiveTimeStepper(TimeStepper):
         # dt is computed each step on the C++ side; bound the run by final_time
         dp.add_double("simulation/time_step/cfl_wave", self.cfl_wave)
         dp.add_double("simulation/time_step/cfl_diffusive", self.cfl_diffusive)
+        dp.add_int(
+            "simulation/time_step/fine_level_substeps_max", self.fine_level_substeps_max
+        )
 
 
 # ------------------------------------------------------------------------------
@@ -152,7 +157,7 @@ def _resolve_dict_time_step(ts, *, start_time, final_time, time_step_nbr):
 
     # adaptive: dt is recomputed each step from a CFL constraint. 'time_step_nbr' is not
     # allowed (imposing a step count with a variable dt is out of scope for now).
-    _check_keys({"mode", "cfl_wave", "cfl_diffusive"})
+    _check_keys({"mode", "cfl_wave", "cfl_diffusive", "fine_level_substeps_max"})
     if "cfl_wave" not in ts:
         raise ValueError("Error: adaptive time_step requires 'cfl_wave'")
     if time_step_nbr is not None:
@@ -168,10 +173,17 @@ def _resolve_dict_time_step(ts, *, start_time, final_time, time_step_nbr):
         raise ValueError("Error: adaptive time_step 'cfl_wave' must be > 0")
     if cfl_diffusive <= 0:
         raise ValueError("Error: adaptive time_step 'cfl_diffusive' must be > 0")
+    fine_level_substeps_max = ts.get("fine_level_substeps_max", 1000)
+    if not isinstance(fine_level_substeps_max, int) or fine_level_substeps_max < 1:
+        raise ValueError(
+            "Error: adaptive time_step 'fine_level_substeps_max' must be an integer >= 1"
+        )
     if final_time - start_time < 0:
         raise RuntimeError("Simulation time cannot be negative - review inputs")
 
-    return AdaptiveTimeStepper(start_time, final_time, cfl_wave, cfl_diffusive)
+    return AdaptiveTimeStepper(
+        start_time, final_time, cfl_wave, cfl_diffusive, fine_level_substeps_max
+    )
 
 
 def resolve_time_stepper(**kwargs):
