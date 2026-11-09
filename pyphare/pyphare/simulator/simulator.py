@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import time as timem
+import weakref
 from pathlib import Path
 
 import numpy as np
@@ -22,10 +23,10 @@ SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "False").lower() in ("true", "1",
 
 @atexit.register
 def simulator_shutdown():
-    from ._simulator import obj
+    from . import _simulator
 
-    if obj is not None:  # needs to be killed before MPI
-        obj.reset()
+    if (live := _simulator.live()) is not None:  # needs to be killed before MPI
+        live.reset()
     life_cycles.clear()
 
 
@@ -97,15 +98,12 @@ class Simulator:
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
 
-        from pyphare.simulator import _simulator
-
-        _simulator.obj = self
-
     def __del__(self):
         self.reset()
 
     def setup(self):
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
+        self._replace_live_simulator()  # can raise - errors to user
         try:
             startMPI()
 
@@ -177,6 +175,8 @@ class Simulator:
     def run(self, plot_times=False, monitoring=None):
         """
         Run the simulation until the end time, calling :meth:`advance` in a loop.
+        The simulator stays alive afterwards (e.g. for :meth:`data_wrangler`), diagnostic files are
+        closed. It is released by :meth:`reset`, when another simulator is set up, or at exit.
 
         *  **plot_times**: (``bool``), default False. If True, plots (rank 0 only) the wall-clock time
            taken by each timestep once the run ends.
@@ -228,7 +228,8 @@ class Simulator:
             plot_timestep_time(perf)
 
         mon.monitoring_shutdown()
-        return self.reset()
+        self.cpp_sim.flush_diagnostics()  # files flush_every left open
+        return self
 
     def dump(self, *args):
         # do diagnostics/restarts dump if active at this time
@@ -257,8 +258,13 @@ class Simulator:
         self.cpp_sim = None
         self.cpp_hier = None
         self.initialized = False
-        if "samrai" in life_cycles:
-            type(life_cycles["samrai"]).reset()
+
+        from pyphare.simulator import _simulator
+
+        if _simulator.live() in (self, None):  # not under another live simulator
+            _simulator.obj = None
+            if "samrai" in life_cycles:
+                type(life_cycles["samrai"]).reset()
         return self
 
     def timeStep(self):
@@ -289,6 +295,27 @@ class Simulator:
         self.cpp_sim.initialize()
         self.initialized = True
         return self
+
+    def _replace_live_simulator(self):
+        # only one simulator per process (SAMRAI statics): the previous one stays alive after
+        # run(), for its data wrangler, until the next one is set up. One that has not reached
+        # its final time is still in use: raise rather than reset it underneath its owner.
+        from pyphare.simulator import _simulator
+
+        live = _simulator.live()
+        if live is not None and live is not self:
+            if not live._finished():
+                raise RuntimeError(
+                    f"Simulator.setup(): another Simulator is live at t={live.currentTime()}"
+                    f" < final time {live.cpp_sim.endTime()}, reset() it first"
+                )
+            live.reset()
+        _simulator.obj = weakref.ref(self)
+
+    def _finished(self):
+        if self.cpp_sim is None or self.simulation.dry_run:
+            return True
+        return self.cpp_sim.currentTime() >= self.cpp_sim.endTime()
 
     def _check_init(self):
         if not self.initialized:
