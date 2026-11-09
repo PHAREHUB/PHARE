@@ -108,8 +108,21 @@ class TimeStepValidation(unittest.TestCase):
         )
         self.assertEqual(sim.time_stepper.fine_level_substeps_max, 50)
 
+    def test_adaptive_fine_level_substeps_max_accepts_numpy_integer(self):
+        sim = ph.Simulation(
+            time_step={
+                "mode": "adaptive",
+                "cfl_wave": 0.4,
+                "fine_level_substeps_max": np.int64(50),
+            },
+            final_time=1.0,
+            **baseArgs,
+        )
+        self.assertEqual(sim.time_stepper.fine_level_substeps_max, 50)
+        self.assertIs(type(sim.time_stepper.fine_level_substeps_max), int)
+
     def test_adaptive_fine_level_substeps_max_rejects_invalid(self):
-        for value in (0, -3, 2.5):
+        for value in (0, -3, 2.5, True):
             ph.global_vars.sim = None
             with self.assertRaises(ValueError):
                 ph.Simulation(

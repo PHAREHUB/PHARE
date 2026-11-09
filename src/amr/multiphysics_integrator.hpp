@@ -108,10 +108,12 @@ namespace solver
                           == core::TimeStepType::adaptive}
             , constantDt_{cppdict::get_value(dict, "time_step/value", 0.)}
             , levelDts_(nbrOfLevels_, std::numeric_limits<double>::quiet_NaN())
-            , cfl_{cppdict::get_value(dict, "time_step/cfl_wave", 0.),
-                   cppdict::get_value(dict, "time_step/cfl_diffusive", 0.)}
+            , cfl_{isAdaptive_
+                       ? CFLNumbers{dict["time_step"]["cfl_wave"].template to<double>(),
+                                    dict["time_step"]["cfl_diffusive"].template to<double>()}
+                       : CFLNumbers{}}
             , fineLevelSubstepsMax_{
-                  cppdict::get_value(dict, "time_step/fine_level_substeps_max", 1000)}
+                  isAdaptive_ ? dict["time_step"]["fine_level_substeps_max"].template to<int>() : 0}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -450,7 +452,7 @@ namespace solver
         {
             auto const levelNumber = level->getLevelNumber();
             if (isAdaptive_)
-                levelDts_.at(levelNumber) = levelStableDt_(levelNumber, *level, cfl_, time);
+                levelDts_.at(levelNumber) = levelStableDt_(levelNumber, *level, time);
             return levelDts_.at(levelNumber);
         }
 
@@ -498,11 +500,21 @@ namespace solver
         }
 
 
-        double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability,
-                               double const time)
+        double computeStableDt(AMR_Types::hierarchy_t& hierarchy, double const time)
         {
-            return levelDts_.at(0)
-                   = levelStableDt_(0, *hierarchy.getPatchLevel(0), stability, time);
+            return levelDts_.at(0) = levelStableDt_(0, *hierarchy.getPatchLevel(0), time);
+        }
+
+        /**
+         * @brief Return the level 0 stable dt at startup: the one getLevelDt computed while
+         * SAMRAI built the hierarchy, or computeStableDt on restart, where getLevelDt is not
+         * called.
+         */
+        double initialStableDt(AMR_Types::hierarchy_t& hierarchy, double const time)
+        {
+            if (std::isnan(levelDts_.at(0)))
+                return computeStableDt(hierarchy, time);
+            return levelDts_[0];
         }
 
 
@@ -637,7 +649,7 @@ namespace solver
 
             auto const coarseDt
                 = subcycleEndTimes_.at(iLevel - 1) - subcycleStartTimes_.at(iLevel - 1);
-            levelDts_.at(iLevel) = levelStableDt_(iLevel, *level, cfl_, newTime);
+            levelDts_.at(iLevel) = levelStableDt_(iLevel, *level, newTime);
             return std::min(coarseDt, levelDts_[iLevel]);
         }
 
@@ -771,21 +783,28 @@ namespace solver
         /**
          * @brief Compute the level's stable dt, reduced across MPI ranks.
          *
-         * For a level > 0, throw if it is more than fine_level_substeps_max times smaller than
-         * the coarser level's stable dt, or if that one was never computed (NaN). The caller
-         * stores the result in levelDts_.
+         * Throw if a rank found a cell with a non-finite wave speed: the solver then returns a
+         * negative dt, which the min reduction gives to all ranks. For a level > 0, also throw
+         * if the stable dt is more than fine_level_substeps_max times smaller than the coarser
+         * level's stable dt, or if that one was never computed (NaN). The caller stores the
+         * result in levelDts_.
          *
          * @param iLevel the level number
          * @param level the level
-         * @param cfl the CFL numbers
          * @param time the time of the level's data, used in the error message
          * @return the stable dt of the level
          */
-        double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level,
-                              CFLNumbers const& cfl, double const time)
+        double levelStableDt_(int const iLevel, SAMRAI::hier::PatchLevel& level, double const time)
         {
             auto const dt
-                = mpi::min(getSolver_(iLevel).computeStableDt(getModel_(iLevel), level, cfl));
+                = mpi::min(getSolver_(iLevel).computeStableDt(getModel_(iLevel), level, cfl_));
+            if (!(dt > 0))
+            {
+                std::ostringstream ss;
+                ss << std::setprecision(17) << "non-finite wave speed on level " << iLevel
+                   << " at t = " << time;
+                throw std::runtime_error(ss.str());
+            }
             if (iLevel > 0)
             {
                 auto const coarserDt = levelDts_.at(iLevel - 1);

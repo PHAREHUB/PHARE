@@ -13,10 +13,13 @@ resolve_time_stepper(**kwargs) is the single entry point used by Simulation's ch
 it returns the TimeStepper instance stored as Simulation.time_stepper.
 """
 
+import numbers
 from abc import ABC
 from dataclasses import dataclass
 
 from ..core import phare_utilities
+
+FINE_LEVEL_SUBSTEPS_MAX_DEFAULT = 1000
 
 
 def _restart_start_time(restart_options):
@@ -69,7 +72,7 @@ class AdaptiveTimeStepper(TimeStepper):
 
     cfl_wave: float = None
     cfl_diffusive: float = None
-    fine_level_substeps_max: int = 1000
+    fine_level_substeps_max: int = FINE_LEVEL_SUBSTEPS_MAX_DEFAULT
 
     def within_simulation_duration(self, time_period):
         raise NotImplementedError(
@@ -173,11 +176,18 @@ def _resolve_dict_time_step(ts, *, start_time, final_time, time_step_nbr):
         raise ValueError("Error: adaptive time_step 'cfl_wave' must be > 0")
     if cfl_diffusive <= 0:
         raise ValueError("Error: adaptive time_step 'cfl_diffusive' must be > 0")
-    fine_level_substeps_max = ts.get("fine_level_substeps_max", 1000)
-    if not isinstance(fine_level_substeps_max, int) or fine_level_substeps_max < 1:
+    fine_level_substeps_max = ts.get(
+        "fine_level_substeps_max", FINE_LEVEL_SUBSTEPS_MAX_DEFAULT
+    )
+    if (
+        isinstance(fine_level_substeps_max, bool)
+        or not isinstance(fine_level_substeps_max, numbers.Integral)
+        or fine_level_substeps_max < 1
+    ):
         raise ValueError(
             "Error: adaptive time_step 'fine_level_substeps_max' must be an integer >= 1"
         )
+    fine_level_substeps_max = int(fine_level_substeps_max)
     if final_time - start_time < 0:
         raise RuntimeError("Simulation time cannot be negative - review inputs")
 

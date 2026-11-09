@@ -158,8 +158,6 @@ private:
     int maxMHDLevel_                 = 0;
     double dt_                       = 0;
     core::TimeStepType timeStepType_ = core::TimeStepType::constant;
-    double cflWave_                  = 0;
-    double cflDiffusive_             = 0;
     int timeStepNbr_                 = 0;
     double restartTime_              = 0;
     double finalTime_                = 0;
@@ -388,8 +386,6 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
     dt_               = cppdict::get_value(dict, "simulation/time_step/value", 0.);
     timeStepType_
         = cppdict::get_value(dict, "simulation/time_step/mode", core::TimeStepType::constant);
-    cflWave_        = cppdict::get_value(dict, "simulation/time_step/cfl_wave", 0.);
-    cflDiffusive_   = cppdict::get_value(dict, "simulation/time_step/cfl_diffusive", 0.);
     timeStepNbr_    = cppdict::get_value(dict, "simulation/time_step_nbr", 0);
     finalTime_      = dict["simulation"]["final_time"].template to<double>();
     functors_       = functors_setup(dict);
@@ -504,9 +500,8 @@ void Simulator<opts>::initialize()
         // First dt_ for the init dump
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
-            double const dt = multiphysInteg_->computeStableDt(
-                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_}, currentTime_);
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            double const dt = multiphysInteg_->initialStableDt(*hierarchy_, currentTime_);
+            dt_             = std::min(dt, finalTime_ - currentTime_);
         }
     }
     catch (core::DictionaryException const& ex)
@@ -563,9 +558,8 @@ double Simulator<opts>::advance()
 
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
-            double const dt = multiphysInteg_->computeStableDt(
-                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_}, currentTime_);
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            double const dt = multiphysInteg_->computeStableDt(*hierarchy_, currentTime_);
+            dt_             = std::min(dt, finalTime_ - currentTime_);
         }
 
         auto next = restartTime_ + ((*timeStamper) += dt_);

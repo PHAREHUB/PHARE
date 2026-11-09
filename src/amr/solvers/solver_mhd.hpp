@@ -476,10 +476,7 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
         });
     }
 
-    if (mpi::any_errors())
-        throw core::DictionaryException{}("ID", "SolverMHD::computeStableDt");
-
-    return dt;
+    return nonFiniteCellLogged ? -1.0 : dt;
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
