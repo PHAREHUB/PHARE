@@ -228,7 +228,9 @@ struct IonsBuffers
     UsableVecFieldND protonF, alphaF, Vi, chargeFlux;
     UsableTensorField<dim> M, alpha_M, protons_M;
 
-    static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
+    static constexpr int ghostSafeMapLayer
+        = ghostWidthForParticles<interp_order>()
+          + particleMapMargin(ghostWidthForParticles<interp_order>());
 
     ParticleArray protonDomain;
     ParticleArray protonPatchGhost;
