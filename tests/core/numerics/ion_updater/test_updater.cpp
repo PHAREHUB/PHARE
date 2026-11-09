@@ -1028,6 +1028,34 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ++ipop;
         }
     }
+
+    // Level ghosts moving left by cellsPerHalfPush (up to 2: Boris throws past that), those of the
+    // outermost ghost cell end up 2 cells past the ghost box after the first half push. The ghost
+    // box selector partitions through the cell map: it only drops them before fields are
+    // interpolated on them if the map reaches that far, else they also stay level ghosts.
+    void checkLevelGhostsPastTheGhostBoxAreDropped(double const cellsPerHalfPush)
+    {
+        typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+        auto const boxing = makeBoxing({});
+        auto const pastGhostBox
+            = [&](auto const& p) { return !isIn(Point{p.iCell}, boxing.ghostBox); };
+        auto const twoCellsPast = [&](auto const& p) {
+            return p.iCell[0] == boxing.ghostBox.lower[0] and p.delta[0] - cellsPerHalfPush < -1.;
+        };
+
+        for (auto& pop : this->ions)
+        {
+            setVelocityX(pop.domainParticles(), 0);
+            setVelocityX(pop.levelGhostParticles(), -4 * cellsPerHalfPush);
+            ASSERT_GT(count(pop.levelGhostParticles(), twoCellsPast), 0u);
+        }
+
+        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+
+        for (auto& pop : this->ions)
+            EXPECT_EQ(count(pop.levelGhostParticles(), pastGhostBox), 0u);
+    }
 };
 
 using DimInterps1D = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
@@ -1098,6 +1126,13 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringOwnedCellIsDepositedInMome
 TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotDepositedInMomentsOnlyMode)
 {
     this->checkLevelGhostDeposit(/*withNonOwned=*/true);
+}
+
+
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostsPushedPastTheGhostBoxAreDropped)
+{
+    this->checkLevelGhostsPastTheGhostBoxAreDropped(2.0); // the most Boris allows
 }
 
 
