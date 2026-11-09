@@ -109,7 +109,7 @@ def build_boxes(domain_box, **kwargs):
             lower_box = Box(0, middle_cell)
             upper_box = Box(middle_cell + 1, domain_box.upper)
 
-        if ndim >= 2:
+        else:
             middle_cell = np.round(domain_box.upper / 2)
             lower_box = Box([0] * ndim, middle_cell - 1)
             upper_box = Box(middle_cell, domain_box.upper)

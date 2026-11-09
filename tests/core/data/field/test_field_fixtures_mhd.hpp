@@ -13,4 +13,4 @@ using FieldMHD = Field<dim, MHDQuantity::Scalar, double>;
 } // namespace PHARE::core
 
 
-#endif /*PHARE_TEST_CORE_DATA_TEST_FIELD_FIXTURES_HPP*/
+#endif /*PHARE_TEST_CORE_DATA_TEST_FIELD_MHD_HPP*/

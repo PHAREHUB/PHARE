@@ -311,8 +311,6 @@ namespace amr
         {
             auto levelNumber = level.getLevelNumber();
 
-            auto& hybridModel = static_cast<HybridModel&>(model);
-
             auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
 
             // init-only schedules are used once, so they are built at fill time, not stored

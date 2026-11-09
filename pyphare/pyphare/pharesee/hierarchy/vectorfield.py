@@ -33,9 +33,6 @@ class VectorField(tensorfield.AnyTensorField):
         return self.__mul__(other)
 
     def __add__(self, other):
-        names_self_kept = self.quantities()
-        names_other_kept = other.quantities()
-
         if isinstance(other, VectorField):
             names_self = ["self_x", "self_y", "self_z"]
             names_other = ["other_x", "other_y", "other_z"]
@@ -50,15 +47,9 @@ class VectorField(tensorfield.AnyTensorField):
             (h_self, h_other),
         )
 
-        self = rename(h_self, names_self_kept)  # needed ?
-        other = rename(h_other, names_other_kept)
-
         return VectorField.FROM(h)
 
     def __sub__(self, other):
-        names_self_kept = self.quantities()
-        names_other_kept = other.quantities()
-
         if isinstance(other, VectorField):
             names_self = ["self_x", "self_y", "self_z"]
             names_other = ["other_x", "other_y", "other_z"]
@@ -72,9 +63,6 @@ class VectorField(tensorfield.AnyTensorField):
             _compute_sub,
             (h_self, h_other),
         )
-
-        self = rename(h_self, names_self_kept)
-        other = rename(h_other, names_other_kept)
 
         return VectorField.FROM(h)
 
