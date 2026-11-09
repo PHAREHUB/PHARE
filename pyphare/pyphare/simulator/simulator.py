@@ -192,8 +192,7 @@ class Simulator:
         if self.simulation.dry_run:
             return self
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -292,6 +291,13 @@ class Simulator:
         self.cpp_sim.initialize()
         self.initialized = True
         return self
+
+    def print_summary(self):
+        print_rank0("SUMMARY:", self.summary())  # summary() is collective, called on all ranks
+
+    def summary(self):
+        self._check_setup()
+        return self.cpp_sim.summary()
 
     def _replace_live_simulator(self):
         # only one simulator per process (SAMRAI statics): the previous one stays alive after
