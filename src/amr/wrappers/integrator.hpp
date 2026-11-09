@@ -24,8 +24,13 @@
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
+#include <iomanip>
+#include <sstream>
+#include <stdexcept>
+
 
 #include "initializer/data_provider.hpp"
+#include "core/utilities/timestamps.hpp"
 
 #include "amr/load_balancing/load_balancer_details.hpp"
 #include "amr/load_balancing/coarsest_rebalance_check.hpp"
@@ -54,13 +59,25 @@ class Integrator
 public:
     static constexpr std::size_t dimension = _dimension;
 
-    double advance(double dt)
+    double currentTime() const { return timeRefIntegrator_->getIntegratorTime(); }
+
+    void advanceTo(double const newTime)
     {
+        auto const t                = currentTime();
         bool rebalance_coarsest_now = _should_rebalance_now();
 
-        auto new_time = timeRefIntegrator_->advanceHierarchy(dt, rebalance_coarsest_now);
+        // pass the dt such that SAMRAI's internal time follows exactly the PHARE one.
+        timeRefIntegrator_->advanceHierarchy(core::dt_between(t, newTime), rebalance_coarsest_now);
         ++time_step_idx;
-        return new_time;
+
+        // forbid PHARE and SAMRAI's times to drift apart.
+        if (!core::reaches_target(currentTime(), newTime))
+        {
+            std::stringstream ss;
+            ss << std::setprecision(17) << "Integrator::advanceTo: SAMRAI time " << currentTime()
+               << " did not land on the new time " << newTime << " from t = " << t;
+            throw std::runtime_error(ss.str());
+        }
     }
 
     void initialize() { timeRefIntegrator_->initializeHierarchy(); }
@@ -70,8 +87,7 @@ public:
                std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
                std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
                std::shared_ptr<SAMRAI::mesh::CascadePartitioner> loadBalancer, //
-               double startTime, double endTime, amr::LoadBalancerDetails const& lb_info,
-               int loadBalancerPatchId);
+               double endTime, amr::LoadBalancerDetails const& lb_info, int loadBalancerPatchId);
 
 private:
     amr::LoadBalancerDetails const lb_info_;
@@ -140,8 +156,8 @@ Integrator<_dimension>::Integrator(
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
     std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
     std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
-    std::shared_ptr<SAMRAI::mesh::CascadePartitioner> loadBalancer, double startTime,
-    double endTime, amr::LoadBalancerDetails const& lb_info, int loadBalancerPatchId)
+    std::shared_ptr<SAMRAI::mesh::CascadePartitioner> loadBalancer, double endTime,
+    amr::LoadBalancerDetails const& lb_info, int loadBalancerPatchId)
     : lb_info_{lb_info}
     , is_tagging_refinement{_is_tagging_refinement(dict)}
     , is_hybrid_coarsest{_is_hybrid_coarsest(dict)}
@@ -187,7 +203,7 @@ Integrator<_dimension>::Integrator(
         = std::make_shared<SAMRAI::tbox::MemoryDatabase>("TRIdb");
 
 
-    db->putDouble("start_time", startTime);
+    db->putDouble("start_time", 0.0);
     db->putDouble("end_time", endTime);
     db->putInteger("max_integrator_steps", 1000000);
     db->putIntegerVector(

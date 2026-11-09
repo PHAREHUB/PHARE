@@ -166,7 +166,7 @@ class Simulator:
 
     def times(self):
         return np.arange(
-            self.cpp_sim.startTime(),
+            self.cpp_sim.restartTime(),
             self.cpp_sim.endTime() + self.timeStep(),
             self.timeStep(),
         )

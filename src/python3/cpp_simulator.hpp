@@ -43,7 +43,7 @@ void declareSimulator(PyClass&& sim)
 {
     sim.def("initialize", &Simulator::initialize)
         .def("advance", &Simulator::advance)
-        .def("startTime", &Simulator::startTime)
+        .def("restartTime", &Simulator::restartTime)
         .def("currentTime", &Simulator::currentTime)
         .def("endTime", &Simulator::endTime)
         .def("timeStep", &Simulator::timeStep)
