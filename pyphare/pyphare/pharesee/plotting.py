@@ -117,12 +117,12 @@ def dist_plot(particles, **kwargs):
                 raise ValueError("stride must be a positive integer")
             markersize = kwargs.get("markersize", 0.5)
             alpha = kwargs.get("alpha", 0.5)
-            im = ax.scatter(
+            ax.scatter(
                 x[::stride],
                 y[::stride],
                 color=color,
                 marker=".",
-                markersize=markersize,
+                s=markersize,
                 alpha=alpha,
             )
 
@@ -169,7 +169,7 @@ def dist_plot(particles, **kwargs):
         h, xh = np.histogram(x, bins=bins, weights=new_particles.weights[:, 0])
 
         xh_ = 0.5 * (xh[:-1] + xh[1:])
-        im = ax.plot(xh_, h, drawstyle=drawstyle)
+        ax.plot(xh_, h, drawstyle=drawstyle)
 
         ax.set_ylabel(kwargs.get("ylabel", "f"))
 

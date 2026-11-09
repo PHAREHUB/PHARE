@@ -576,6 +576,8 @@ class PatchHierarchy:
                     bins = (vbins, vbins)
             elif len(axis) == 1:
                 bins = vbins
+            else:
+                raise ValueError(f"axis must have 1 or 2 elements, got {axis}")
             kwargs["bins"] = bins
 
         else:
