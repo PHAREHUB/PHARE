@@ -13,6 +13,7 @@
 #include "gridlayoutdefs.hpp"
 
 #include <array>
+#include <algorithm>
 #include <tuple>
 #include <cstddef>
 #include <cstdint>
@@ -53,6 +54,16 @@ namespace core
     NO_DISCARD std::uint32_t constexpr ghostWidthForParticles()
     {
         return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
+    }
+
+    // cells to map around the particle ghost box, so the selectors (cell map partitions) see every
+    // particle a push can produce. A half push moves a particle up to 2 cells (Boris throws past
+    // that): level ghosts are selected after each half push, up to 2 cells past the ghost box;
+    // domain particles after both, up to 4 cells past the domain, which is the ghost box shrunk by
+    // the particle ghost width
+    NO_DISCARD int constexpr particleMapMargin(int const particleGhostWidth)
+    {
+        return std::max(2, 4 - particleGhostWidth);
     }
 
 
