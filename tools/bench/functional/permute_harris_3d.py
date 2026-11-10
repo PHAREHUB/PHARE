@@ -7,7 +7,6 @@ import shutil
 import numpy as np
 from copy import deepcopy
 
-from pyphare import cpp
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import startMPI
 
@@ -155,7 +154,7 @@ def config(**kwargs):
             "charge": 1,
             "density": density,
             **vvv,
-            "init": {"seed": cpp.mpi_rank() + 12},
+            "init": {"seed": 12},
         },
     )
 

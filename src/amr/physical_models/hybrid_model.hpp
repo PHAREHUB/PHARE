@@ -4,10 +4,11 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
-#include "mpi/mpi_utils.hpp"
 #include "core/models/hybrid_state.hpp"
 #include "core/boundary/boundary_manager.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+
+#include "mpi/mpi_utils.hpp"
 
 #include "initializer/data_provider.hpp"
 
