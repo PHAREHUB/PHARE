@@ -156,6 +156,17 @@ NO_DISCARD Box<Type, dim> shift(Box<Type, dim> const& box, Shifter const& offset
 }
 
 
+// lexicographic order of the lower, then upper corners: a total order on distinct boxes that a
+// common translation of both boxes preserves
+template<typename Type, std::size_t dim>
+NO_DISCARD bool lexicographicLess(Box<Type, dim> const& a, Box<Type, dim> const& b)
+{
+    if (a.lower != b.lower)
+        return std::ranges::lexicographical_compare(a.lower, b.lower);
+    return std::ranges::lexicographical_compare(a.upper, b.upper);
+}
+
+
 
 template<typename Type, std::size_t dim>
 auto& operator<<(std::ostream& os, Box<Type, dim> const& box)
