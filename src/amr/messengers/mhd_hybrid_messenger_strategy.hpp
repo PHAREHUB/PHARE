@@ -110,6 +110,7 @@ namespace amr
                                     double const /*fillTime*/) override
         {
         }
+        void depositLevelGhostParticlesOld(IonsT& /*ions*/, level_t& /*level*/) override {}
 
 
         void fillFluxBorders(IonsT& /*ions*/, level_t& /*level*/,
@@ -118,9 +119,6 @@ namespace amr
         }
         void fillDensityBorders(IonsT& /*ions*/, level_t& /*level*/,
                                 double const /*fillTime*/) override
-        {
-        }
-        void fillIonBorders(IonsT& /*ions*/, level_t& /*level*/, double const /*fillTime*/) override
         {
         }
 

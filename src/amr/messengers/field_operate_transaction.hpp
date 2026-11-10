@@ -80,7 +80,7 @@ public:
 
     virtual void printClassData(std::ostream& stream) const;
 
-private:
+protected:
     std::shared_ptr<SAMRAI::hier::PatchLevel> d_dst_level;
     std::shared_ptr<SAMRAI::hier::PatchLevel> d_src_level;
     std::shared_ptr<SAMRAI::hier::BoxOverlap> d_overlap;

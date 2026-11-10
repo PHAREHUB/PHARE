@@ -84,6 +84,8 @@ namespace amr
         virtual void fillIonPopMomentGhosts(IonsT& ions, level_t& level, double const afterPushTime)
             = 0;
 
+        virtual void depositLevelGhostParticlesOld(IonsT& ions, level_t& level) = 0;
+
 
         virtual std::string fineModelName() const = 0;
 
@@ -115,7 +117,6 @@ namespace amr
 
         virtual void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)    = 0;
         virtual void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) = 0;
-        virtual void fillIonBorders(IonsT& ions, level_t& level, double const fillTime)     = 0;
 
 
         std::string name() const { return stratname_; }

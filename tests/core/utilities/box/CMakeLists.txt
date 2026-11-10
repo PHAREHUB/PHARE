@@ -21,3 +21,4 @@ endfunction(_box_test)
 
 _box_test(test_box.cpp test-box)
 _box_test(test_box_spans.cpp test-box-spans)
+_box_test(test_level_ghost_ownership.cpp test-level-ghost-ownership)

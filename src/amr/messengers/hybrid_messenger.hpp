@@ -320,6 +320,16 @@ namespace amr
         }
 
 
+        /**
+         * @brief depositLevelGhostParticlesOld deposits the levelGhostParticlesOld of each patch
+         * of a refined level that the patch owns, when the level is initialized
+         */
+        void depositLevelGhostParticlesOld(IonsT& ions, level_t& level)
+        {
+            strat_->depositLevelGhostParticlesOld(ions, level);
+        }
+
+
         // synchronization/coarsening methods
 
         void syncMagnetic(VecFieldT& B) { strat_->syncMagnetic(B); }
@@ -335,11 +345,6 @@ namespace amr
         void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime)
         {
             strat_->fillDensityBorders(ions, level, fillTime);
-        }
-
-        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime)
-        {
-            strat_->fillIonBorders(ions, level, fillTime);
         }
 
         /* -------------------------------------------------------------------------

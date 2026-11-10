@@ -8,7 +8,9 @@
 #include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/range/range.hpp"
+#include "core/numerics/moments/level_ghost_ownership.hpp"
 
 #include "amr/amr_constants.hpp"
 #include "amr/types/amr_types.hpp"
@@ -18,10 +20,15 @@
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/HierarchyNeighbors.h>
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 
+#include <vector>
+#include <sstream>
+#include <iterator>
 #include <algorithm>
 #include <stdexcept>
 
@@ -277,6 +284,124 @@ namespace amr
 
         return makeNonOwnedBoxes(phare_box_from<dimension>(patch.getBox()), patch.getGlobalId(),
                                  neighborIds);
+    }
+
+
+    // same-level neighbours of the patches of level `ilvl` whose particle ghost box may overlap
+    // theirs, periodic images included
+    template<typename GridLayoutT>
+    NO_DISCARD auto makeLevelGhostNeighbors(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                            int const ilvl)
+    {
+        auto constexpr ghosts = static_cast<int>(GridLayoutT::options.particle_ghost_width);
+        bool constexpr do_same_level_nbrs = true;
+        return SAMRAI::hier::HierarchyNeighbors{hierarchy, ilvl, ilvl, do_same_level_nbrs,
+                                                core::levelGhostNeighbourWidth(ghosts)};
+    }
+
+
+    // which level ghost particles `patch` deposits, see core::LevelGhostOwnership
+    // `neighbors` from makeLevelGhostNeighbors
+    template<typename GridLayoutT>
+    NO_DISCARD auto makeLevelGhostOwnershipFor(SAMRAI::hier::Patch const& patch,
+                                               SAMRAI::hier::HierarchyNeighbors const& neighbors)
+    {
+        auto constexpr dimension = GridLayoutT::dimension;
+        auto constexpr ghosts    = static_cast<int>(GridLayoutT::options.particle_ghost_width);
+        auto const neighbours    = core::generate_from(
+            [](auto const& box) { return phare_box_from<dimension>(box); },
+            neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber()));
+        return core::makeLevelGhostOwnership(phare_box_from<dimension>(patch.getBox()), neighbours,
+                                             ghosts);
+    }
+
+
+    // all boxes of `level`, from every rank (MPI collective), and their periodic images
+    template<std::size_t dimension>
+    NO_DISCARD auto periodicImagesOfLevelBoxes(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                               SAMRAI::hier::PatchLevel const& level)
+    {
+        // 0 along non periodic directions
+        auto const period
+            = hierarchy.getGridGeometry()->getPeriodicShift(level.getRatioToLevelZero());
+        std::size_t constexpr nbrShifts = dimension == 1 ? 3 : dimension == 2 ? 9 : 27; // 3^dim
+
+        std::vector<core::Box<int, dimension>> images;
+        for (auto const& box : level.getBoxLevel()->getGlobalizedVersion().getGlobalBoxes())
+        {
+            if (box.isPeriodicImage())
+                continue;
+            auto const real = phare_box_from<dimension>(box);
+            for (std::size_t i = 0; i < nbrShifts; ++i) // -1, 0, +1 period along each direction
+            {
+                core::Point<int, dimension> shift;
+                bool valid = true;
+                for (std::size_t d = 0, k = i; d < dimension; ++d, k /= 3)
+                {
+                    int const s = static_cast<int>(k % 3) - 1;
+                    valid       = valid and (s == 0 or period[d] != 0);
+                    shift[d]    = s * period[d];
+                }
+                if (valid)
+                    images.push_back(core::shift(real, shift));
+            }
+        }
+        return images;
+    }
+
+
+    // Throws unless every level ghost cell of `patchBox` is owned by exactly one of `boxes` and
+    // the ownership in use, `inUse`, is the one built from `boxes`. `boxes`: all same-level boxes
+    // whose ghost box overlaps that of `patchBox`, periodic images included.
+    template<std::size_t dimension>
+    void checkLevelGhostOwnershipOf(core::Box<int, dimension> const& patchBox, auto const& inUse,
+                                    std::vector<core::Box<int, dimension>> const& boxes,
+                                    int const ghosts)
+    {
+        auto const ghostBox = core::grow(patchBox, ghosts);
+        auto const holders  = core::generate_from(
+            [&](auto const& box) { return core::makeLevelGhostOwnership(box, boxes, ghosts); },
+            boxes);
+        auto const reference = core::makeLevelGhostOwnership(patchBox, boxes, ghosts);
+
+        core::for_each_point(ghostBox, [&](auto const& cell) {
+            if (core::isIn(cell, boxes))
+                return; // not a level ghost cell
+            std::size_t owners = 0;
+            for (auto const& holder : holders)
+                owners += holder.owns(cell);
+            if (owners != 1 or inUse.owns(cell) != reference.owns(cell))
+            {
+                std::stringstream ss;
+                ss << "level ghost ownership broken at cell " << cell << " of patch " << patchBox
+                   << ": " << owners << " owners";
+                throw std::runtime_error(ss.str());
+            }
+        });
+    }
+
+
+    // Checks the level ghost ownership of the local patches of `level`, `ownershipOf(patch)`,
+    // against the boxes of the level gathered from all ranks (MPI collective), independently of
+    // the SAMRAI neighbour search that built it. Only the boxes whose ghost box overlaps that of a
+    // patch can own or cede its level ghost cells, so each patch is checked against those only.
+    template<typename GridLayoutT>
+    void checkLevelGhostOwnership(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                  SAMRAI::hier::PatchLevel const& level, auto&& ownershipOf)
+    {
+        auto constexpr dimension = GridLayoutT::dimension;
+        auto constexpr ghosts    = static_cast<int>(GridLayoutT::options.particle_ghost_width);
+
+        auto const all = periodicImagesOfLevelBoxes<dimension>(hierarchy, level);
+        for (auto const& patch : level)
+        {
+            auto const patchBox = phare_box_from<dimension>(patch->getBox());
+            auto const reach    = core::grow(patchBox, core::levelGhostNeighbourWidth(ghosts));
+            std::vector<core::Box<int, dimension>> nearby;
+            std::ranges::copy_if(all, std::back_inserter(nearby),
+                                 [&](auto const& box) { return (box * reach).has_value(); });
+            checkLevelGhostOwnershipOf(patchBox, ownershipOf(*patch), nearby, ghosts);
+        }
     }
 
 

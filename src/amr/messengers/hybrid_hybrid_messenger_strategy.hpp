@@ -7,6 +7,7 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/moments/moments.hpp"
 
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
@@ -36,6 +37,7 @@
 #include <SAMRAI/hier/CoarseFineBoundary.h>
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -385,66 +387,22 @@ namespace amr
 
 
 
+        // the border sums add, in place, the deposits of the patches sharing a node, in the same
+        // order on all of them (see field_border_sum.hpp)
         void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
-            using value_type = FieldT::value_type;
-
-
-            // we cannot have the schedule doign the += in place in the flux array
-            // because some overlaps could be counted several times.
-            // we therefore first copy flux into a sumVec buffer and then
-            // execute the schedule onto that before copying it back onto the flux array
-            for (std::size_t i = 0; i < ions.size(); ++i)
-            {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
-
-
-                popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
-            }
+            assert(popFluxBorderSumRefiners_.size() == ions.size());
+            for (auto& refiner : popFluxBorderSumRefiners_)
+                refiner.fill(level.getLevelNumber(), fillTime);
         }
 
         void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            using value_type = FieldT::value_type;
-
             // one particle density per population, the charge density is computed from it
             assert(popDensityBorderSumRefiners_.size() == ions.size());
-
-            for (std::size_t i = 0; i < ions.size(); ++i)
-            {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-
-                popDensityBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-            }
-        }
-
-
-        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
-        {
-            assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
-            assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
+            for (auto& refiner : popDensityBorderSumRefiners_)
                 refiner.fill(level.getLevelNumber(), fillTime);
         }
-
 
 
         /**
@@ -452,7 +410,9 @@ namespace amr
          *
          * level border nodes are completed by the deposition
          * of level ghost [old,new] particles for all populations, linear time interpolation
-         * is used to get the contribution of old/new particles
+         * is used to get the contribution of old/new particles.
+         * Each patch deposits the level ghost particles it owns only, so this is called before
+         * the border sums, which add these deposits to the other patches.
          */
         void fillIonPopMomentGhosts(IonsT& ions, level_t& level,
                                     double const afterPushTime) override
@@ -480,17 +440,30 @@ namespace amr
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
-                        // grab levelGhostParticlesOld and levelGhostParticlesNew
-                        // and project them with alpha and (1-alpha) coefs, respectively
-                        auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, flux, layout,
-                                     1. - alpha);
-
-                        auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, flux, layout,
-                                     alpha);
+                        // levelGhostParticlesOld and New, those this patch owns, with (1-alpha)
+                        // and alpha coefs, respectively
+                        auto const& ownership = levelGhostOwnership_.at(level.getLevelNumber())
+                                                    .at(patch->getGlobalId());
+                        core::depositOwned(interpolate_, pop.levelGhostParticlesOld(),
+                                           particleDensity, flux, layout, ownership, 1. - alpha);
+                        core::depositOwned(interpolate_, pop.levelGhostParticlesNew(),
+                                           particleDensity, flux, layout, ownership, alpha);
                     }
                 }
+            }
+        }
+
+
+        // at level initialization, each patch deposits the levelGhostParticlesOld it owns, from
+        // the ownership built with the level's schedules
+        void depositLevelGhostParticlesOld(IonsT& ions, level_t& level) override
+        {
+            auto const& ownership = levelGhostOwnership_.at(level.getLevelNumber());
+            for (auto& patch : resourcesManager_->enumerate(level, ions))
+            {
+                auto const layout = layoutFromPatch<GridLayoutT>(*patch);
+                core::depositParticles(ions, layout, interpolate_,
+                                       core::LevelGhostDeposit{ownership.at(patch->getGlobalId())});
             }
         }
 
@@ -668,6 +641,21 @@ namespace amr
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
+            if (levelNumber != rootLevelNumber)
+            {
+                auto& ownership = levelGhostOwnership_[levelNumber];
+                ownership.clear();
+                auto const neighbors
+                    = makeLevelGhostNeighbors<GridLayoutT>(*hierarchy, levelNumber);
+                for (auto const& patch : *level)
+                    ownership.emplace(patch->getGlobalId(),
+                                      makeLevelGhostOwnershipFor<GridLayoutT>(*patch, neighbors));
+                PHARE_DEBUG_DO(checkLevelGhostOwnership<GridLayoutT>(
+                                   *hierarchy, *level, [&](auto const& patch) -> auto const& {
+                                       return ownership.at(patch.getGlobalId());
+                                   });)
+            }
+
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
 
@@ -690,11 +678,6 @@ namespace amr
                 refiner.registerLevel(hierarchy, level);
 
             for (auto& refiner : popDensityBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
         }
 
@@ -880,31 +863,15 @@ namespace amr
             for (auto const& vecfield : info->ghostFlux)
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
+                        vecfield, nullptr, vecfield,
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumField_.name(), field, nullptr, sumField_.name(),
+                        field, nullptr, field,
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-
-            assert(info->maxBorderFields.size() == 1); // charge density
-            for (auto const& field : info->maxBorderFields)
-                ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        field, field, nullptr, field,
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-            assert(info->maxBorderVecFields.size() == 1); // charge flux
-            for (auto const& vecfield : info->maxBorderVecFields)
-                ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -1004,9 +971,12 @@ namespace amr
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
         VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
 
+        // scratch fields of the diagnostics, which use them under these names
+        // (diagnostic_model_view.hpp)
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
         FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+
 
 
 
@@ -1035,7 +1005,6 @@ namespace amr
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
-        using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
         using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
@@ -1044,9 +1013,6 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
-
-        std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
-        std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
@@ -1103,6 +1069,11 @@ namespace amr
         RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
         RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
+
+        // per level and patch, the level ghost particles the patch deposits
+        std::map<int, std::map<SAMRAI::hier::GlobalId,
+                               core::LevelGhostOwnership<GridLayoutT::dimension>>>
+            levelGhostOwnership_;
 
 
         //! to grab particle leaving neighboring patches and inject into domain

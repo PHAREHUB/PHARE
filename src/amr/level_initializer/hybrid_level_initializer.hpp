@@ -94,13 +94,16 @@ namespace solver
                 ions.eraseDomainParticlesIn(
                     amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
 
-            // now all particles are here, we must compute moments.
+            // now all particles are here, we must compute moments. Level ghost particles are
+            // held by every patch whose ghost box covers them, only one of them deposits them.
             for (auto& patch : rm.enumerate(level, ions))
             {
                 auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
             }
+            if (!isRootLevel(levelNumber))
+                hybMessenger.depositLevelGhostParticlesOld(ions, level);
 
             // at this point flux and density is computed for all pops
             // but nodes on ghost box overlaps are not complete because they lack
@@ -109,24 +112,14 @@ namespace solver
             hybMessenger.fillFluxBorders(ions, level, initDataTime);
             hybMessenger.fillDensityBorders(ions, level, initDataTime);
 
-            // the only remaning incomplete nodes are those next to and on level ghost layers
-            // we now complete them by depositing levelghost particles
             for (auto& patch : rm.enumerate(level, ions))
             {
-                if (!isRootLevel(levelNumber))
-                {
-                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                    core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
-                }
-
-
                 // now all nodes are complete, the total ion moments
                 // can safely be computed.
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
                 ions.computeChargeFlux();
             }
-            hybMessenger.fillIonBorders(ions, level, initDataTime);
 
             // moments are not time interpolated: their level ghost nodes come from the
             // deposit of level ghost particles above. Only E and B ghosts are, from the

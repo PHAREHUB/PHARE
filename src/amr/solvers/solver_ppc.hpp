@@ -617,6 +617,11 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     // this needs to be done before calling the messenger
     setTime(ions);
 
+    // level ghost particles are deposited by one patch each, the border sums then add them up
+    {
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
+        fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
+    }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillFluxBorders");
         fromCoarser.fillFluxBorders(ions, level, newTime);
@@ -624,10 +629,6 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillDensityBorders");
         fromCoarser.fillDensityBorders(ions, level, newTime);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
-        fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
     }
 
     if (mode != core::UpdaterMode::domain_only)
@@ -658,10 +659,6 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     for (auto& patch : rm.enumerate(level, ions))
         ionUpdater_.updateIons(ions);
 
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonBorders");
-        fromCoarser.fillIonBorders(ions, level, newTime);
-    }
     // no need to update time, since it has been done before
 }
 
