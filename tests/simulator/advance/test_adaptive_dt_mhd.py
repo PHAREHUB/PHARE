@@ -250,6 +250,12 @@ class AdaptiveDtMHDTest(SimulatorTest):
         hier = hierarchy_from(h5_filename=diag_dir + "/mhd_rho.h5")
         times = sorted(hier.time_hier.keys(), key=float)
         self.assertGreater(len(times), 1)
+        rho_dtype = hier.level(0, times[0]).patches[0]["mhdRho"].dataset[:].dtype
+        if np.dtype(rho_dtype) != np.float64:
+            self.skipTest(
+                f"needs double-precision diagnostics (rho was dumped as {rho_dtype}): "
+                "rebuild with -DPHARE_DIAG_DOUBLES=1"
+            )
         for t in times[1:]:
             errors = covered_increment_errors(
                 diag_dir, times[0], t, ["mhdRho", "Bx", "By", "Bz"]
