@@ -26,9 +26,9 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
-    using Attributes = typename Super::Attributes;
-    using GridLayout = typename H5Writer::GridLayout;
-    using FloatType  = typename H5Writer::FloatType;
+    using Attributes = Super::Attributes;
+    using GridLayout = H5Writer::GridLayout;
+    using FloatType  = H5Writer::FloatType;
 
     static constexpr auto dimension = GridLayout::dimension;
 

@@ -154,7 +154,7 @@ public:
     }
 
 protected:
-    using Particle = typename ParticleArray<dim>::Particle_t;
+    using Particle = ParticleArray<dim>::Particle_t;
     Trajectory expectedTrajectory;
     DummyLayout<dim> layout;
     ParticleArray<dim> particlesIn;

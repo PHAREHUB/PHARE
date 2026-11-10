@@ -32,10 +32,10 @@ public:
 
     using Box               = PHARE::core::Box<int, dimension>;
     using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
-    using VecField          = typename Ions::vecfield_type;
-    using ParticleArray     = typename Ions::particle_array_type;
-    using Particle_t        = typename ParticleArray::Particle_t;
-    using PartIterator      = typename ParticleArray::iterator;
+    using VecField          = Ions::vecfield_type;
+    using ParticleArray     = Ions::particle_array_type;
+    using Particle_t        = ParticleArray::Particle_t;
+    using PartIterator      = ParticleArray::iterator;
     using ParticleRange     = IndexRange<ParticleArray>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
     using Pusher = PHARE::core::Pusher<dimension, ParticleRange, Electromag, Interpolator,

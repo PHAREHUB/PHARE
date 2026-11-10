@@ -43,7 +43,7 @@ struct AParticlesDataND : public testing::Test
 
     ParticlesData<ParticleArray<dim>> destData{destDomain, ghost, "name"};
     ParticlesData<ParticleArray<dim>> sourceData{sourceDomain, ghost, "name"};
-    typename ParticleArray<dim>::Particle_t particle;
+    ParticleArray<dim>::Particle_t particle;
 
 
     AParticlesDataND()

@@ -23,7 +23,7 @@ public:
     auto static constexpr dimension = dim;
     using Super                     = TensorField<FieldMHD<dim>, MHDQuantity, rank_>;
     using Grid_t                    = Grid<NdArrayVector<dim>, MHDQuantity::Scalar>;
-    using tensor_t                  = typename Super::tensor_t;
+    using tensor_t                  = Super::tensor_t;
 
     template<typename GridLayout>
     UsableTensorFieldMHD(std::string const& name, GridLayout const& layout, tensor_t qty)

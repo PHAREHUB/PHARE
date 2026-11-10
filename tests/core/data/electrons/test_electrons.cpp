@@ -533,11 +533,11 @@ struct TwoPopulationElectronsTest : public ::testing::Test
 
     static constexpr auto dim = Base::dim;
 
-    using GridYee         = typename Base::GridYee;
-    using GridND          = typename Base::GridND;
-    using ParticleArray_t = typename Base::ParticleArray_t;
-    using PartPackND      = typename Base::PartPackND;
-    using IonsT           = typename Base::IonsT;
+    using GridYee         = Base::GridYee;
+    using GridND          = Base::GridND;
+    using ParticleArray_t = Base::ParticleArray_t;
+    using PartPackND      = Base::PartPackND;
+    using IonsT           = Base::IonsT;
 
     struct Population
     {

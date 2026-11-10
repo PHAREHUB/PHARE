@@ -42,8 +42,8 @@ namespace amr
     class Communicator
     {
     private:
-        using Schedule  = typename ComType::schedule_type;
-        using Algorithm = typename ComType::algorithm_type;
+        using Schedule  = ComType::schedule_type;
+        using Algorithm = ComType::algorithm_type;
 
         std::map<int, std::map<Algorithm* const, std::shared_ptr<Schedule>>> schedules_;
 

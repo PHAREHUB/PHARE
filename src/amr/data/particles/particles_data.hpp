@@ -64,7 +64,7 @@ namespace amr
     {
         using Super = SAMRAI::hier::PatchData;
 
-        using Particle_t          = typename ParticleArray::Particle_t;
+        using Particle_t          = ParticleArray::Particle_t;
         static constexpr auto dim = ParticleArray::dimension;
         // add one cell surrounding ghost box to map particles exiting the ghost layer
         static constexpr int ghostSafeMapLayer = 1;

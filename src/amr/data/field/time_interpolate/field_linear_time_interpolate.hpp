@@ -113,7 +113,7 @@ class TensorFieldLinearTimeInterpolate : public SAMRAI::hier::TimeInterpolateOpe
     static constexpr std::size_t N = TensorFieldDataT::N;
 
 public:
-    using GridLayoutImpl = typename GridLayoutT::implT;
+    using GridLayoutImpl = GridLayoutT::implT;
 
     TensorFieldLinearTimeInterpolate()
         : SAMRAI::hier::TimeInterpolateOperator{"TensorFieldLinearTimeInterpolate"}

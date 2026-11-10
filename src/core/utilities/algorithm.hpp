@@ -48,7 +48,7 @@ namespace core
 
 
 
-    template<typename Container, typename ContainedT = typename Container::value_type>
+    template<typename Container, typename ContainedT = Container::value_type>
     NO_DISCARD bool notIn(ContainedT& obj, Container& list)
     {
         auto sameItem = std::find_if(std::begin(list), std::end(list), [&obj](auto& currentItem) {
