@@ -288,6 +288,13 @@ class TestSimulation(unittest.TestCase):
                 )
             self.assertIn("not available for tagging yet", str(error.exception))
 
+    def test_tagging_duplicate_quantity_rejected(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging", tagging={"quantities": [("B", 0.1), ("B", 0.4)]}
+            )
+        self.assertIn("given more than once", str(error.exception))
+
     def test_tagging_fallback_uses_tagging_threshold(self):
         for spec in ({"method": "lohner-per-direction"}, {"quantities": {}}):
             tag = tagging.resolve_tagging(
