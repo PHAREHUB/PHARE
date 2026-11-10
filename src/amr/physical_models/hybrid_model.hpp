@@ -163,7 +163,7 @@ std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Gri
 
         auto const level_stats = LevelStats<GridLayoutT, physical_quantity_type>::GET(
                                      lvl, hierarchy, GridLayoutT::options.field_ghost_width)
-                                     .collect();
+                                     .collect(lvl);
 
         if (mpi::rank() == 0)
             ss << "lvl:" << lvl.getLevelNumber() << " (" << level_stats << ") " // << minmax
