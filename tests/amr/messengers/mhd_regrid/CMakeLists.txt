@@ -1,0 +1,28 @@
+cmake_minimum_required (VERSION 3.20.1)
+
+project(test-mhd-regrid-time)
+
+set(SOURCES_CPP
+  test_mhd_regrid_time.cpp
+   )
+
+add_executable(${PROJECT_NAME} ${SOURCES_CPP})
+
+add_dependencies(${PROJECT_NAME} cpp_etc)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  ${GTEST_INCLUDE_DIRS}
+  )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  phare_simulator
+  pybind11::embed
+  ${GTEST_LIBS}
+)
+
+
+add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)

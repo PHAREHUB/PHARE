@@ -263,6 +263,8 @@ namespace amr
                 interLevelBuiltOn_[levelNumber]
                     = levelsOf_(hierarchy, rootLevelNumber, levelNumber);
             }
+
+            refillGhostsAtInitTime_(hierarchy, levelNumber);
         }
 
 
@@ -276,7 +278,8 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             stateInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            magMaxRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, *level, initDataTime);
         }
 
 
@@ -305,6 +308,8 @@ namespace amr
 
             // init-only schedules are used once, so they are built at fill time, not stored
             stateInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, level, initDataTime);
         }
 
         void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
@@ -341,6 +346,15 @@ namespace amr
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillStateGhosts(mhdModel.state, level, initDataTime);
+
+            // A face on a periodic boundary is initialised twice, at x=0 and at x=L, and the two
+            // values can differ in the last bits: make every patch holding it agree once, before
+            // anything reads B. This must follow the ghost fill: the max is taken over whole ghost
+            // overlaps, so ghosts still holding initializer values would leak into the interior.
+            magMaxRefiners_.fill(mhdModel.state.B, level.getLevelNumber(), initDataTime);
+
+            // set the old data now: finer levels interpolate their ghosts in time from it
+            prepareStep(model, level, initDataTime);
         }
 
         void synchronize(level_t& level) final {}
@@ -359,8 +373,7 @@ namespace amr
             // quantities, the ghosts are filled in the end of the euler step anyways.
         }
 
-        // Fills the ghosts of the conserved state (B, rho, rhoV, Etot), then equalizes the B
-        // values shared by neighbour patches.
+        // Fills the ghosts of the conserved state (B, rho, rhoV, Etot).
         void fillStateGhosts(MHDStateT& state, level_t const& level, double const fillTime)
         {
             PHARE_LOG_SCOPE(3, "MHDMessenger::fillStateGhosts");
@@ -372,7 +385,6 @@ namespace amr
             setNaNsOnVecfieldGhosts(state.rhoV, level);
             setNaNsOnFieldGhosts(state.Etot, level);
             stateGhostsRefiners_.fillByKey(state.B.name(), levelNumber, fillTime);
-            magMaxRefiners_.fill(state.B, levelNumber, fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime)
@@ -398,7 +410,8 @@ namespace amr
             {
                 forEachGhostFieldPool_([&](auto& pool) { pool.registerLevel(hierarchy, level); });
             }
-            magMaxRefiners_.registerLevel(hierarchy, level);
+            if (levelNumber == rootLevelNumber)
+                magMaxRefiners_.registerLevel(hierarchy, level);
         }
 
 
@@ -449,6 +462,35 @@ namespace amr
         {
             forEachGhostFieldPool_([&](auto& pool) { pool.removeLevel(levelNumber); });
             refluxSchedules_.erase(levelNumber);
+        }
+
+        // The init and regrid schedules interpolate in space only and read the coarser levels at
+        // their latest time. A level made partway through a coarser step thus gets ghosts from
+        // coarser data ahead of its own time. Its ghosts are refilled with time interpolation, as
+        // in a step, by onHierarchyChanged once the schedules for it are built. The root level
+        // has no coarser level, so only its old data is set.
+        void fillGhostsAtInitTime_(MHDModel& model, level_t& level, double const initDataTime)
+        {
+            if (level.getLevelNumber() == rootLevelNumber)
+                prepareStep(model, level, initDataTime);
+            else
+                pendingGhostRefills_[level.getLevelNumber()] = {&model, initDataTime};
+        }
+
+        // After the refill, the level's old data is set to its init time: finer levels
+        // interpolate their own ghosts in time from it.
+        void refillGhostsAtInitTime_(hierarchy_ptr const& hierarchy, int const levelNumber)
+        {
+            auto const pending = pendingGhostRefills_.find(levelNumber);
+            if (pending == pendingGhostRefills_.end())
+                return;
+
+            auto const [model, initDataTime] = pending->second;
+            pendingGhostRefills_.erase(pending);
+
+            auto& level = *hierarchy->getPatchLevel(levelNumber);
+            fillStateGhosts(model->state, level, initDataTime);
+            prepareStep(*model, level, initDataTime);
         }
 
         // Select the field-refinement operators once at construction. The composite runtime
@@ -545,12 +587,12 @@ namespace amr
                         std::vector<CompositeRefinePatchStrategy::strategy_ptr>{
                             magPatchStrats[i], rhoPatchStrats[i], momentumPatchStrats[i],
                             totalEnergyPatchStrats[i]}));
-
-                magMaxRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], info->ghostMagnetic[i], nullptr, info->ghostMagnetic[i],
-                    std::make_shared<
-                        TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
             }
+
+            magMaxRefiners_.addStaticRefiner(
+                info->modelMagnetic, info->modelMagnetic, nullptr, info->modelMagnetic,
+                std::make_shared<
+                    TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -698,11 +740,19 @@ namespace amr
         std::map<int, std::vector<std::weak_ptr<level_t>>> sameLevelBuiltOn_;
         std::map<int, std::vector<std::weak_ptr<level_t>>> interLevelBuiltOn_;
 
+        // levels made in the current regrid pass, whose ghosts await refillGhostsAtInitTime_
+        struct PendingGhostRefill
+        {
+            MHDModel* model;
+            double initDataTime;
+        };
+        std::map<int, PendingGhostRefill> pendingGhostRefills_;
+
         PatchGhostRefinerPool elecGhostsRefiners_{resourcesManager_};
         // B, rho, rhoV and Etot of each state, keyed by the state's B name
         GhostRefinerPool stateGhostsRefiners_{resourcesManager_};
 
-        // ghostMagnetic includes the model B, also equalized after regrid
+        // model B, root level only, for the one-time equalization in fillRootGhosts
         VecFieldGhostMaxRefinerPool magMaxRefiners_{resourcesManager_};
 
         // B, rho, rhoV and Etot of the model state on new and regridded levels
