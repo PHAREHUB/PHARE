@@ -219,10 +219,8 @@ TYPED_TEST(NonIdealElectricFieldTest, hallIsJcrossBoverRhoAtEdges)
     auto const& layout = this->layout;
 
     auto j = [](std::size_t c, auto const& x) { return affine(x, 0.4 + c, 0.7, -0.2 * c, 0.3); };
-    auto b = [](std::size_t c, auto const& x) {
-        return affine(x, 0.3 + 0.5 * c, 0.2 - 0.1 * c, -0.1, 0.05 * c);
-    };
-    auto r = [](auto const& x) { return affine(x, 2., 0.1, 0.2, -0.1); };
+    auto b = [](std::size_t c, auto const&) { return 0.3 + 0.5 * c; };
+    auto r = [](auto const&) { return 2.; };
 
     for (std::size_t c = 0; c < 3; ++c)
     {
@@ -245,6 +243,53 @@ TYPED_TEST(NonIdealElectricFieldTest, hallIsJcrossBoverRhoAtEdges)
             EXPECT_NEAR(Ec(idx), expected, 1e-12);
         });
     }
+}
+
+
+TYPED_TEST(NonIdealElectricFieldTest, hallDoesNoWork)
+{
+    static constexpr auto dim = TestFixture::dim;
+    auto const& layout        = this->layout;
+    auto const& dl            = layout.meshSize();
+
+    auto bump = [&](auto const& x) {
+        double w = 1.;
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            double const margin = 3. * dl[d];
+            double const length = cellCounts[d] * dl[d] - 2. * margin;
+            double const u      = (x[d] - margin) / length;
+            w *= (u <= 0. or u >= 1.) ? 0. : std::pow(std::sin(M_PI * u), 2);
+        }
+        return w;
+    };
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        fill(layout, this->J.view[c], [&](auto const& x) {
+            return bump(x) * std::sin(1.3 * x[0] + 0.7 * c + 0.4 * x[1] - 0.2 * x[2]);
+        });
+        fill(layout, this->B.view[c], [&](auto const& x) {
+            return 0.5 + 0.3 * c + 0.2 * std::sin(0.9 * x[0] - 0.5 * x[1] + 0.8 * x[2] + c);
+        });
+    }
+    fill(layout, this->rho.field,
+         [](auto const& x) { return 1.5 + 0.5 * std::sin(0.6 * x[0] + 1.1 * x[1] - 0.7 * x[2]); });
+
+    this->template compute<true>(OhmInfo{0.0, 0.0, HyperMode::constant});
+
+    double work = 0., absWork = 0.;
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto const& Ec = this->E.view[c];
+        auto const& Jc = this->J.view[c];
+        for_each_point(physicalBox(layout, layout.centering(Ec)), [&](auto const& idx) {
+            work += Jc(idx) * Ec(idx);
+            absWork += std::abs(Jc(idx) * Ec(idx));
+        });
+    }
+    EXPECT_GT(absWork, 1e-3);
+    EXPECT_LT(std::abs(work) / absWork, 1e-13);
 }
 
 

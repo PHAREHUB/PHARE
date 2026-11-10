@@ -4,12 +4,14 @@
 #include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/numerics/differential_operators.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include <cmath>
+#include <type_traits>
 #include <vector>
 #include <algorithm>
 
@@ -85,34 +87,52 @@ public:
     }
 
 private:
+    template<auto srcJ, auto face, typename JField, typename BField, typename RhoField>
+    struct FaceProduct
+    {
+        using type                      = double;
+        constexpr static auto dimension = GridLayout::dimension;
+
+        NO_DISCARD double operator()(MeshIndex<dimension> const& p) const
+        {
+            return GridLayout::template project<srcJ, face>(j, p) * b(p)
+                   / GridLayout::template project<MHDQuantity::Scalar::rho, face>(rho, p);
+        }
+
+        JField const& j;
+        BField const& b;
+        RhoField const& rho;
+    };
+
+    template<auto dst, auto srcJ, auto face>
+    static double pair_(auto const& Ja, auto const& Bb, auto const& rho, MeshIndex<dimension> idx)
+    {
+        FaceProduct<srcJ, face, std::decay_t<decltype(Ja)>, std::decay_t<decltype(Bb)>,
+                    std::decay_t<decltype(rho)>> const product{Ja, Bb, rho};
+        return core::project<GridLayout::centering(face), GridLayout::centering(dst)>(product, idx);
+    }
+
     template<auto component>
     double hall_(auto const& J, auto const& B, auto const& rho, MeshIndex<dimension> idx) const
     {
         using Scalar = MHDQuantity::Scalar;
 
-        auto hall = [&]<auto dst>() {
-            auto const jx = GridLayout::template project<Scalar::Jx, dst>(J(Component::X), idx);
-            auto const jy = GridLayout::template project<Scalar::Jy, dst>(J(Component::Y), idx);
-            auto const jz = GridLayout::template project<Scalar::Jz, dst>(J(Component::Z), idx);
-            auto const bx = GridLayout::template project<Scalar::Bx, dst>(B(Component::X), idx);
-            auto const by = GridLayout::template project<Scalar::By, dst>(B(Component::Y), idx);
-            auto const bz = GridLayout::template project<Scalar::Bz, dst>(B(Component::Z), idx);
-            auto const n  = GridLayout::template project<Scalar::rho, dst>(rho, idx);
-
-            if constexpr (dst == Scalar::Ex)
-                return (jy * bz - jz * by) / n;
-            else if constexpr (dst == Scalar::Ey)
-                return (jz * bx - jx * bz) / n;
-            else
-                return (jx * by - jy * bx) / n;
-        };
+        auto const& Jx = J(Component::X);
+        auto const& Jy = J(Component::Y);
+        auto const& Jz = J(Component::Z);
+        auto const& Bx = B(Component::X);
+        auto const& By = B(Component::Y);
+        auto const& Bz = B(Component::Z);
 
         if constexpr (component == Component::X)
-            return hall.template operator()<Scalar::Ex>();
+            return pair_<Scalar::Ex, Scalar::Jy, Scalar::Bz>(Jy, Bz, rho, idx)
+                   - pair_<Scalar::Ex, Scalar::Jz, Scalar::By>(Jz, By, rho, idx);
         else if constexpr (component == Component::Y)
-            return hall.template operator()<Scalar::Ey>();
+            return pair_<Scalar::Ey, Scalar::Jz, Scalar::Bx>(Jz, Bx, rho, idx)
+                   - pair_<Scalar::Ey, Scalar::Jx, Scalar::Bz>(Jx, Bz, rho, idx);
         else
-            return hall.template operator()<Scalar::Ez>();
+            return pair_<Scalar::Ez, Scalar::Jx, Scalar::By>(Jx, By, rho, idx)
+                   - pair_<Scalar::Ez, Scalar::Jy, Scalar::Bx>(Jy, Bx, rho, idx);
     }
 
     template<auto component, HyperMode hyper>
