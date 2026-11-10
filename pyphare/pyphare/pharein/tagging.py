@@ -128,6 +128,12 @@ def resolve_tagging(**kwargs):
     if quantities:
         items = quantities.items() if isinstance(quantities, dict) else quantities
         quantities = [(str(name), float(thr)) for name, thr in items]
+        names = [name for name, _ in quantities]
+        duplicates = sorted({name for name in names if names.count(name) > 1})
+        if duplicates:
+            raise ValueError(
+                f"Error: tagging quantities {duplicates} given more than once"
+            )
     else:
         quantities = [("B", threshold)]
 
