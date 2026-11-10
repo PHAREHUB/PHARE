@@ -299,7 +299,9 @@ class Simulator:
         print_rank0("SUMMARY:", self.summary())  # summary() is collective, called on all ranks
 
     def summary(self):
-        self._check_setup()
+        """Collective: every rank must call it, in the same order. Raises if not initialized."""
+        if not self.initialized:
+            raise RuntimeError("Simulator.summary(): simulator is not initialized")
         return self.cpp_sim.summary()
 
     def _replace_live_simulator(self):
