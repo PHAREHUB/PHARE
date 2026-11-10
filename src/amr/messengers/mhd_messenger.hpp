@@ -276,7 +276,7 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             stateInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            magMaxRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
+            magMaxRefiners_.fill(mhdModel.state.B1, level->getLevelNumber(), initDataTime);
         }
 
 
@@ -322,8 +322,8 @@ namespace amr
             for (auto& patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, mhdModel.state.rho, mhdModel.state.rhoV, mhdModel.state.Etot,
-                    mhdModel.state.B, rhoOld_, rhoVold_, EtotOld_, Bold_);
+                    *patch, mhdModel.state.rho, mhdModel.state.rhoV, mhdModel.state.Etot1,
+                    mhdModel.state.B1, rhoOld_, rhoVold_, EtotOld_, Bold_);
 
                 resourcesManager_->setTime(rhoOld_, *patch, currentTime);
                 resourcesManager_->setTime(rhoVold_, *patch, currentTime);
@@ -332,8 +332,8 @@ namespace amr
 
                 rhoOld_.copyData(mhdModel.state.rho);
                 rhoVold_.copyData(mhdModel.state.rhoV);
-                EtotOld_.copyData(mhdModel.state.Etot);
-                Bold_.copyData(mhdModel.state.B);
+                EtotOld_.copyData(mhdModel.state.Etot1);
+                Bold_.copyData(mhdModel.state.B1);
             }
         }
 
@@ -367,12 +367,12 @@ namespace amr
 
             auto const levelNumber = level.getLevelNumber();
 
-            setNaNsOnVecfieldGhosts(state.B, level);
+            setNaNsOnVecfieldGhosts(state.B1, level);
             setNaNsOnFieldGhosts(state.rho, level);
             setNaNsOnVecfieldGhosts(state.rhoV, level);
-            setNaNsOnFieldGhosts(state.Etot, level);
-            stateGhostsRefiners_.fillByKey(state.B.name(), levelNumber, fillTime);
-            magMaxRefiners_.fill(state.B, levelNumber, fillTime);
+            setNaNsOnFieldGhosts(state.Etot1, level);
+            stateGhostsRefiners_.fillByKey(state.B1.name(), levelNumber, fillTime);
+            magMaxRefiners_.fill(state.B1, levelNumber, fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime)
@@ -669,9 +669,9 @@ namespace amr
         FieldT rhoOld_{stratName + "rhoOld", core::MHDQuantity::Scalar::rho};
 
         VecFieldT rhoVold_{stratName + "rhoVold", core::MHDQuantity::Vector::rhoV};
-        FieldT EtotOld_{stratName + "EtotOld", core::MHDQuantity::Scalar::Etot};
+        FieldT EtotOld_{stratName + "EtotOld", core::MHDQuantity::Scalar::Etot1};
 
-        VecFieldT Bold_{stratName + "Bold", core::MHDQuantity::Vector::B};
+        VecFieldT Bold_{stratName + "Bold", core::MHDQuantity::Vector::B1};
 
 
         using rm_t = MHDModel::resources_manager_type;

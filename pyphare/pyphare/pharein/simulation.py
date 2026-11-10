@@ -1161,6 +1161,7 @@ class Simulation:
         self.diagnostics = {}
         self.model = None
         self.electrons = None
+        self.external_field = None
         self.load_balancer = None
 
         validate_restart_options(self)
@@ -1265,6 +1266,13 @@ class Simulation:
         :meta private:
         """
         self.electrons = electrons
+
+    def set_external_field(self, external_field):
+        """
+
+        :meta private:
+        """
+        self.external_field = external_field
 
 
 # ------------------------------------------------------------------------------

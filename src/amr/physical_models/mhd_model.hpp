@@ -3,10 +3,12 @@
 
 #include "core/boundary/boundary_manager.hpp"
 #include "core/def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/external_field_manager.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
@@ -31,19 +33,21 @@ public:
     using level_t   = amr_types::level_t;
     using Interface = IPhysicalModel<AMR_Types>;
 
-    using physical_quantity_type = core::MHDQuantity;
-    using vecfield_type          = VecFieldT;
-    using field_type             = vecfield_type::field_type;
-    using state_type             = core::MHDState<vecfield_type>;
-    using gridlayout_type        = GridLayoutT;
-    using grid_type              = Grid_t;
-    using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
-    using boundary_manager_type  = core::BoundaryManager<gridlayout_type, field_type>;
+    using physical_quantity_type      = core::MHDQuantity;
+    using vecfield_type               = VecFieldT;
+    using field_type                  = vecfield_type::field_type;
+    using state_type                  = core::MHDState<vecfield_type>;
+    using gridlayout_type             = GridLayoutT;
+    using grid_type                   = Grid_t;
+    using resources_manager_type      = amr::ResourcesManager<gridlayout_type, Grid_t>;
+    using boundary_manager_type       = core::BoundaryManager<gridlayout_type, field_type>;
+    using external_field_manager_type = ExternalFieldManager<vecfield_type, gridlayout_type>;
 
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
     state_type state;
+    external_field_manager_type externalFieldManager;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
     double gamma_; //!< heat capacity ratio
@@ -51,6 +55,9 @@ public:
     // diagnostics buffers
     vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     field_type P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+    vecfield_type BTotal_diag_{"diagnostics_BTotal_", core::MHDQuantity::Vector::B};
+    field_type EtotTotal_diag_{"diagnostics_EtotTotal_", core::MHDQuantity::Scalar::Etot};
+    field_type divB_diag_{"diagnostics_divB_", core::MHDQuantity::Scalar::divB};
 
     // maybe these could have a single allocation shared for hybrid and mhd, as they are strictly
     // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
@@ -65,8 +72,12 @@ public:
         resourcesManager->allocate(state, patch, allocateTime);
         resourcesManager->allocate(V_diag_, patch, allocateTime);
         resourcesManager->allocate(P_diag_, patch, allocateTime);
+        resourcesManager->allocate(BTotal_diag_, patch, allocateTime);
+        resourcesManager->allocate(EtotTotal_diag_, patch, allocateTime);
+        resourcesManager->allocate(divB_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
+        resourcesManager->allocate(externalFieldManager.state(), patch, allocateTime);
     }
 
 
@@ -81,18 +92,22 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
+        , externalFieldManager{model_name, dict}
         , resourcesManager{_resourcesManager}
         , gamma_{dict["mhd_state"]["to_conservative_init"]["heat_capacity_ratio"]}
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
+        resourcesManager->registerResources(BTotal_diag_);
+        resourcesManager->registerResources(EtotTotal_diag_);
+        resourcesManager->registerResources(divB_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
 
         std::vector<core::MHDQuantity::Scalar> scalarQuantities
-            = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot};
+            = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot1};
         std::vector<core::MHDQuantity::Vector> vectorQuantities = {
-            core::MHDQuantity::Vector::B,
+            core::MHDQuantity::Vector::B1,
             core::MHDQuantity::Vector::E,
             core::MHDQuantity::Vector::rhoV,
         };
@@ -102,7 +117,17 @@ public:
         auto const has_bcs = dict.contains("grid") && dict["grid"].contains("domain_boundaries");
         boundaryManager    = std::make_shared<boundary_manager_type>(
             has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
-            scalarQuantities, vectorQuantities, gamma_);
+            scalarQuantities, vectorQuantities, gamma_, externalFieldManager.updater());
+    }
+
+    void initializeExternalField(level_t& level, double time) override
+    {
+        externalFieldManager.initialize(*resourcesManager, level, time);
+    }
+
+    void updateExternalField(level_t& level, double time) override
+    {
+        externalFieldManager.update(*resourcesManager, level, time);
     }
 
     ~MHDModel() override = default;
@@ -112,13 +137,22 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable(); }
+    NO_DISCARD bool isUsable() const { return core::isUsable(state, externalFieldManager.state()); }
 
-    NO_DISCARD bool isSettable() const { return state.isSettable(); }
+    NO_DISCARD bool isSettable() const
+    {
+        return core::isSettable(state, externalFieldManager.state());
+    }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(state, externalFieldManager.state());
+    }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(state, externalFieldManager.state());
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -130,12 +164,11 @@ public:
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
 void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& level)
 {
-    for (auto& patch : level)
+    auto& rm = *(this->resourcesManager);
+    for (auto& patch : rm.enumerate(level, *this))
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state);
-
-        state.initialize(layout);
+        externalFieldManager.state().visitB0([&](auto const& B0) { state.initialize(layout, B0); });
     }
 }
 
@@ -147,10 +180,10 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
 
     MHDInfo.modelDensity     = state.rho.name();
     MHDInfo.modelVelocity    = state.V.name();
-    MHDInfo.modelMagnetic    = state.B.name();
+    MHDInfo.modelMagnetic    = state.B1.name();
     MHDInfo.modelPressure    = state.P.name();
     MHDInfo.modelMomentum    = state.rhoV.name();
-    MHDInfo.modelTotalEnergy = state.Etot.name();
+    MHDInfo.modelTotalEnergy = state.Etot1.name();
     MHDInfo.modelElectric    = state.E.name();
 
     MHDInfo.initDensity.push_back(MHDInfo.modelDensity);
@@ -166,8 +199,6 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
     MHDInfo.ghostTotalEnergy.push_back(MHDInfo.modelTotalEnergy);
     MHDInfo.ghostElectric.push_back(MHDInfo.modelElectric);
 }
-
-
 
 
 template<typename Model>

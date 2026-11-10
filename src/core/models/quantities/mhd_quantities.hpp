@@ -23,9 +23,13 @@ public:
         Bx,
         By,
         Bz,
+        B1x,
+        B1y,
+        B1z,
         P, // pressure
 
-        Etot,  // total energy
+        Etot, // total energy
+        Etot1,
         rhoVx, // momentum components
         rhoVy,
         rhoVz,
@@ -50,6 +54,8 @@ public:
         VecFluxY_z,
         VecFluxZ_z,
 
+        divB,
+
         ScalarAllPrimal,
         VecAllPrimalX,
         VecAllPrimalY,
@@ -60,6 +66,7 @@ public:
     enum class Vector : std::uint16_t {
         V = 0,
         B,
+        B1,
         rhoV,
         E,
         J,
@@ -74,6 +81,7 @@ public:
     static constexpr auto vector_components = make_enum_table<Vector, std::array<Scalar, 3>>({
         {Vector::V, {Scalar::Vx, Scalar::Vy, Scalar::Vz}},
         {Vector::B, {Scalar::Bx, Scalar::By, Scalar::Bz}},
+        {Vector::B1, {Scalar::B1x, Scalar::B1y, Scalar::B1z}},
         {Vector::rhoV, {Scalar::rhoVx, Scalar::rhoVy, Scalar::rhoVz}},
         {Vector::E, {Scalar::Ex, Scalar::Ey, Scalar::Ez}},
         {Vector::J, {Scalar::Jx, Scalar::Jy, Scalar::Jz}},
@@ -91,6 +99,7 @@ public:
 
     NO_DISCARD static constexpr auto V() { return componentsQuantities(Vector::V); }
     NO_DISCARD static constexpr auto B() { return componentsQuantities(Vector::B); }
+    NO_DISCARD static constexpr auto B1() { return componentsQuantities(Vector::B1); }
     NO_DISCARD static constexpr auto rhoV() { return componentsQuantities(Vector::rhoV); }
 
     NO_DISCARD static constexpr auto E() { return componentsQuantities(Vector::E); }

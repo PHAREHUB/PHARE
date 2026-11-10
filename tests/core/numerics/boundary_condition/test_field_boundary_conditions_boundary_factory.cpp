@@ -1,12 +1,14 @@
 #include "gtest/gtest.h"
 
 #include "core/boundary/boundary_factory.hpp"
+#include "core/models/external_field_updater.hpp"
 #include "initializer/data_provider.hpp"
 
 #include "tests/core/numerics/boundary_condition/mhd_bc_test_fixtures.hpp"
 
 #include <array>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,11 +22,12 @@ using Factory = BoundaryFactory<GridLayoutMHD1D, FieldMHD<1>>;
 using Scalar  = MHDQuantity::Scalar;
 using Vector  = MHDQuantity::Vector;
 using FBC     = FieldBoundaryConditionType;
+using UpdaterPtr = std::shared_ptr<Factory::external_field_updater_type>;
 
 double constexpr heatCapacityRatio = 5.0 / 3.0;
 
-std::vector<Scalar> const mhdScalars{Scalar::rho, Scalar::Etot};
-std::vector<Vector> const mhdVectors{Vector::B, Vector::E, Vector::rhoV};
+std::vector<Scalar> const mhdScalars{Scalar::rho, Scalar::Etot1};
+std::vector<Vector> const mhdVectors{Vector::B1, Vector::E, Vector::rhoV};
 
 void fillInflowData(PHAREDict& dict)
 {
@@ -55,10 +58,25 @@ struct ExpectedDispatch
     std::map<Vector, FBC> vectors;
 };
 
-void checkDispatch(BoundaryType const type, ExpectedDispatch const& expected)
+struct StaticUpdaterStub : Factory::external_field_updater_type
+{
+    using vecfield_type = Factory::external_field_updater_type::vecfield_type;
+
+    void computePotential(vecfield_type&, double, GridLayoutMHD1D const&) override {}
+    void computePotentialTimeDerivative(vecfield_type&, double, GridLayoutMHD1D const&) override {}
+    bool isTimeDependent() const override { return false; }
+};
+
+UpdaterPtr anExternalFieldUpdater()
+{
+    return std::make_shared<StaticUpdaterStub>();
+}
+
+void checkDispatch(BoundaryType const type, ExpectedDispatch const& expected,
+                   UpdaterPtr const& updater = nullptr)
 {
     auto boundary = Factory::create(BoundaryLocation::XLower, dictFor(type), mhdScalars, mhdVectors,
-                                    heatCapacityRatio);
+                                    heatCapacityRatio, updater);
     ASSERT_NE(boundary, nullptr) << "factory returned null for type " << static_cast<int>(type);
 
     for (auto const& [qty, expectedType] : expected.scalars)
@@ -87,34 +105,60 @@ void checkDispatch(BoundaryType const type, ExpectedDispatch const& expected)
 TEST(BoundaryFactory, NoneLeavesEveryQuantityUntouched)
 {
     checkDispatch(BoundaryType::None,
-                  {{{Scalar::rho, FBC::None}, {Scalar::Etot, FBC::None}},
-                   {{Vector::B, FBC::None}, {Vector::E, FBC::None}, {Vector::rhoV, FBC::None}}});
+                  {{{Scalar::rho, FBC::None}, {Scalar::Etot1, FBC::None}},
+                   {{Vector::B1, FBC::None}, {Vector::E, FBC::None}, {Vector::rhoV, FBC::None}}});
 }
 
 TEST(BoundaryFactory, Reflective)
 {
     checkDispatch(BoundaryType::Reflective,
-                  {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot, FBC::Neumann}},
-                   {{Vector::B, FBC::DivergenceFreeTransverseNeumann},
+                  {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot1, FBC::Neumann}},
+                   {{Vector::B1, FBC::DivergenceFreeTransverseNeumann},
                     {Vector::E, FBC::AntiSymmetric},
                     {Vector::rhoV, FBC::Symmetric}}});
 }
 
 TEST(BoundaryFactory, Open)
 {
-    checkDispatch(BoundaryType::Open, {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot, FBC::Neumann}},
-                                       {{Vector::B, FBC::DivergenceFreeTransverseNeumann},
+    checkDispatch(BoundaryType::Open, {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot1, FBC::Neumann}},
+                                       {{Vector::B1, FBC::DivergenceFreeTransverseNeumann},
                                         {Vector::E, FBC::None},
                                         {Vector::rhoV, FBC::Neumann}}});
 }
 
-TEST(BoundaryFactory, SuperMagnetofastInflow)
+TEST(BoundaryFactory, InflowWithoutUpdaterKeepsMasterConditions)
 {
     checkDispatch(BoundaryType::SuperMagnetofastInflow,
-                  {{{Scalar::rho, FBC::Dirichlet}, {Scalar::Etot, FBC::Dirichlet}},
-                   {{Vector::B, FBC::DivergenceFreeTransverseDirichlet},
+                  {{{Scalar::rho, FBC::Dirichlet}, {Scalar::Etot1, FBC::Dirichlet}},
+                   {{Vector::B1, FBC::DivergenceFreeTransverseDirichlet},
                     {Vector::E, FBC::Dirichlet},
                     {Vector::rhoV, FBC::Dirichlet}}});
+}
+
+TEST(BoundaryFactory, InflowWithExternalFieldDispatch)
+{
+    checkDispatch(BoundaryType::SuperMagnetofastInflow,
+                  {{{Scalar::rho, FBC::Dirichlet}, {Scalar::Etot1, FBC::Etot1FromInflowState}},
+                   {{Vector::B1, FBC::B1FromTotalDirichlet},
+                    {Vector::E, FBC::Dirichlet},
+                    {Vector::rhoV, FBC::Dirichlet}}},
+                  anExternalFieldUpdater());
+}
+
+TEST(BoundaryFactory, ReflectiveAndOpenIgnoreTheExternalField)
+{
+    checkDispatch(BoundaryType::Reflective,
+                  {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot1, FBC::Neumann}},
+                   {{Vector::B1, FBC::DivergenceFreeTransverseNeumann},
+                    {Vector::E, FBC::AntiSymmetric},
+                    {Vector::rhoV, FBC::Symmetric}}},
+                  anExternalFieldUpdater());
+    checkDispatch(BoundaryType::Open,
+                  {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot1, FBC::Neumann}},
+                   {{Vector::B1, FBC::DivergenceFreeTransverseNeumann},
+                    {Vector::E, FBC::None},
+                    {Vector::rhoV, FBC::Neumann}}},
+                  anExternalFieldUpdater());
 }
 
 TEST(BoundaryFactory, SuperMagnetofastInflowImposesTotalEnergyFromInflowState)
@@ -122,7 +166,7 @@ TEST(BoundaryFactory, SuperMagnetofastInflowImposesTotalEnergyFromInflowState)
     auto boundary
         = Factory::create(BoundaryLocation::XLower, dictFor(BoundaryType::SuperMagnetofastInflow),
                           mhdScalars, mhdVectors, heatCapacityRatio);
-    auto bc = boundary->getFieldCondition(Scalar::Etot);
+    auto bc = boundary->getFieldCondition(Scalar::Etot1);
     ASSERT_NE(bc, nullptr);
 
     double const rho = 1.0, P = 2.0, vx = 3.0, Bx = 0.75, By = 1.0;
@@ -130,7 +174,7 @@ TEST(BoundaryFactory, SuperMagnetofastInflowImposesTotalEnergyFromInflowState)
         = P / (heatCapacityRatio - 1.0) + 0.5 * rho * vx * vx + 0.5 * (Bx * Bx + By * By);
 
     GridLayoutMHD1D layout{{0.1}, {nCellsMHD}, {0.0}};
-    GridMHD1D grid{"Etot", Scalar::Etot, layout.allocSize(Scalar::Etot)};
+    GridMHD1D grid{"Etot1", Scalar::Etot1, layout.allocSize(Scalar::Etot1)};
     FieldMHD<1>& Etot{*(&grid)};
     for (std::uint32_t i = 0; i < Etot.shape()[0]; ++i)
         Etot(i) = expected;

@@ -4,6 +4,7 @@ import numpy as np
 
 from pyphare.core import phare_utilities
 from pyphare.pharein import global_vars, simulation
+from pyphare.pharein.external_field import DipoleExternalField
 from pyphare.pharein.mhd_model import MHDModel
 
 
@@ -199,6 +200,27 @@ class TestSimulation(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             MHDModel(bx=lambda x: np.where(x > 9.0, 0.6, 0.5), by=lambda x: 1.0)
+
+    def _inflow_sim_2d(self, with_external_field):
+        sim = self._inflow_sim(cells=(80, 40), domain_size=(10.0, 8.0))
+        if with_external_field:
+            DipoleExternalField(position=(5.0, 4.0), moment=(0.0, 1.0), radius=1.0)
+        return sim
+
+    def test_inflow_normal_b_skipped_for_b1_with_external_field(self):
+        s = self._inflow_sim_2d(with_external_field=True)
+        MHDModel(b1x=lambda x, y: 0.7 + 0 * x)
+        self.assertIsNotNone(s.model)
+
+    def test_inflow_normal_b_checked_for_b1_without_external_field(self):
+        self._inflow_sim_2d(with_external_field=False)
+        with self.assertRaises(ValueError):
+            MHDModel(b1x=lambda x, y: 0.7 + 0 * x)
+
+    def test_inflow_normal_b_checked_for_total_with_external_field(self):
+        self._inflow_sim_2d(with_external_field=True)
+        with self.assertRaises(ValueError):
+            MHDModel(bx=lambda x, y: 0.7 + 0 * x)
 
 
 if __name__ == "__main__":

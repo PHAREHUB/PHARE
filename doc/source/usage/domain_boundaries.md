@@ -122,6 +122,15 @@ same normal component as `B` on the whole inflow boundary. This is checked when 
 components of the initial magnetic field need not match `B`.
 ```
 
+```{note}
+`B` is the total magnetic field. With an external field (`DipoleExternalField` or
+`UserDefinedExternalField`), the evolved perturbation $\vb{B}_1 = \vb{B} - \vb{B}_0$ and the
+reduced energy are filled in the ghost cells from $\vb{B}_\text{in} - \vb{B}_0$, where $\vb{B}_0$ is the external field at the ghost
+locations and at the time of the fill. The check on the normal component compares the total initial
+field when `bx, by, bz` are given; it is skipped when the perturbation `b1x, b1y, b1z` is given
+together with an external field.
+```
+
 ## Example
 
 A 1D domain with a super-magnetofast inflow at `xlower` and an open outflow at `xupper`:

@@ -120,6 +120,43 @@ closure, and is required in every Hybrid simulation.
 
 Not needed for an MHD simulation.
 
+External magnetic field
+-----------------------
+
+Either model can be given an external (background) magnetic field B0. It is
+declared with one of the blocks below, right after the
+``Simulation`` and before the model; declaring it after the model, or a second
+time, is an error. Without such a block there is no B0: it is neither
+allocated nor dumped.
+
+The MHD solver splits the magnetic field as B = B0 + B1 and evolves the
+perturbation B1 and the energy density without the external field
+contributions, ``Etot1``. The ``bx``, ``by``, ``bz`` given to ``MHDModel``
+are the total field; ``b1x``, ``b1y``, ``b1z`` give B1 instead.
+``ElectromagDiagnostics`` dumps the total field with ``quantity="B"`` and the
+perturbation with ``quantity="B1"``. The Hybrid solver does not use B0 yet.
+
+.. autoclass:: pyphare.pharein.DipoleExternalField
+
+.. autoclass:: pyphare.pharein.UserDefinedExternalField
+
+.. code-block:: python
+
+    import pyphare.pharein as ph
+
+    sim = ph.Simulation(...)
+
+    def az(x, y, t):
+        return x * y * (1.0 + t)
+
+    def daz_dt(x, y, t):
+        return x * y
+
+    ph.UserDefinedExternalField(a0z=az, da0z_dt=daz_dt)
+
+    ph.MaxwellianFluidModel(...)
+    ph.ElectromagDiagnostics(quantity="B0", write_timestamps=timestamps)
+
 MHD: MHDModel
 --------------
 

@@ -3,6 +3,10 @@ cmake_minimum_required (VERSION 3.20.1)
 project(test-pharesee)
 
 
+if(HighFive) # reads diagnostics dumps
+  add_python3_test(test-pharesee-external-field test_external_field.py ${PROJECT_SOURCE_DIR})
+endif()
+
 add_python3_test(test-pharesee-geometry_1d test_geometry.py ${PROJECT_SOURCE_DIR})
 add_python3_test(test-pharesee-geometry_2d test_geometry_2d.py ${PROJECT_SOURCE_DIR})
 
