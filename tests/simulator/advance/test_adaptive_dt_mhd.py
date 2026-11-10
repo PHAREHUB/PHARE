@@ -243,6 +243,7 @@ class AdaptiveDtMHDTest(SimulatorTest):
             simulator.advance()
             dts.append(simulator.currentTime() - t_before)
         simulator.reset()
+        del simulator
 
         if mode == "adaptive":
             self.assertGreater(max(dts) / min(dts), 2.0)
