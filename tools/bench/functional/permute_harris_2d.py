@@ -1,10 +1,11 @@
 #
 #
-# how to use
+# how to use - UPDATE <datetime> or tab complete!
 """
 PHARE_SCOPE_TIMING=1 python3 -Ou tools/bench/functional/permute_harris_2d.py
-python3 tools/python3/bench.py print_summary -i .phare_bench/20260528-151026.tar.gz > perms
-python3 -c "from tools.bench.functional.permutor import sort_summaries as sort; sort('perms')"
+python3 tools/python3/bench.py print_summary -i .phare_bench/<datetime>.tar.gz > perms
+python3 -c "from tools.bench.functional.permutor import sort_summaries as sort; sort('perms')" # optional, to read perms in order
+python3 tools/bench/functional/plot_permutations.py -i perms
 """
 
 import numpy as np
@@ -17,7 +18,7 @@ from pyphare.simulator.simulator import startMPI
 ndim = 2
 dl = [0.4] * ndim
 time_step = 0.001
-final_time = 0.001
+final_time = 0.01
 cells = [100, 100]
 ppc = 100
 
