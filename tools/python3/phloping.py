@@ -5,7 +5,7 @@
 import argparse
 import contextlib
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 
 import numpy as np
 import phlop.timing.scope_timer as phst
@@ -17,7 +17,7 @@ substeps_per_finer_level = 4
 
 @dataclass
 class ScopeTimerFile(phst.ScopeTimerFile):
-    run: Run
+    run: Run | None = None  # phst.ScopeTimerFile fields have defaults
     advances: list = field(default_factory=list)
     particles_per_level_per_time_step: dict = field(default_factory=dict)
 
@@ -158,15 +158,13 @@ class ScopeTimerFile(phst.ScopeTimerFile):
 
 
 def file_parser(run, times_filepath):
-    supe = phst.file_parser(times_filepath)
-    return ScopeTimerFile(supe.id_keys, supe.roots, run)
+    return _from_phlop(phst.file_parser(times_filepath), run)
 
 
 def make_scope_timer_file_from(input):
     if type(input) is not list:
         return file_parser(None, input)
-    supe = phst.lines_parser(input)
-    return ScopeTimerFile(supe.id_keys, supe.roots, run=None)
+    return _from_phlop(phst.lines_parser(input), run=None)
 
 
 def write_root_as_csv(scope_timer_file, outfile, headers=None, regex=None):
@@ -222,6 +220,12 @@ def print_scope_timings(scope_timer_filepath=None, sort_worst_first=True, root_i
         if args.filter:
             root_id = args.filter
     phst.print_scope_timings(scope_timer_filepath, sort_worst_first, root_id)
+
+
+def _from_phlop(supe, run):  # keeps all phlop fields (perf, ctx, ...)
+    return ScopeTimerFile(
+        **{f.name: getattr(supe, f.name) for f in fields(supe)}, run=run
+    )
 
 
 if __name__ == "__main__":

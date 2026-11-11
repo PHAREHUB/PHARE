@@ -4,14 +4,14 @@
 
 import os
 import sys
-import ast
+import json
 import tarfile
 import argparse
 import numpy as np
 from io import BytesIO
 from pathlib import Path
 from typing import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from pyphare.pharesee.run import Run
 import phlop.timing.scope_timer as phst
@@ -33,86 +33,79 @@ def steps_per(ilvl):
 
 
 @dataclass
-class LevelStats:
-    ilvl: int = 0
-    patches: int = 0
-    cells: int = 0
-    patch_ghost_cells: int = 0
-    level_ghost_cells: int = 0
-    particles: int = 0
-    cell_ratio: int = 0
+class LevelStats:  # one level of Simulator.summary(), see model_stats.hpp
+    level: int
+    model: str  # "hybrid" or "mhd"
+    patches: int
+    cells: int
+    patch_ghosts: int  # ghost cells covered by a same level neighbour
+    level_ghosts: int  # the other ghost cells
+    remote_ghosts: int  # the patch ghosts owned by another rank
+    remote_ranks_max: int  # other ranks owning patch ghosts, max over ranks
+    remote_ranks_avg: float
+    cell_imbalance: float  # max per rank over average, 1 is perfectly balanced
+    particles: int | None = None  # hybrid levels only
+    particle_imbalance: float | None = None  # hybrid levels only
 
-    def __repr__(self):
-        return (
-            "LevelStats:\n"
-            f"\t ilvl: {self.ilvl}\n"
-            f"\t patches: {self.patches}\n"
-            f"\t cells: {self.cells}\n"
-            f"\t patch_ghost_cells: {self.patch_ghost_cells}\n"
-            f"\t level_ghost_cells: {self.level_ghost_cells}\n"
-            f"\t cell_ratio: {self.cell_ratio}\n"
-            f"\t particles: {self.particles}\n"
-        )
+    @property
+    def is_hybrid(self):
+        return self.model == "hybrid"
+
+    @property
+    def cell_ratio(self):  # ghost over domain cells
+        return (self.patch_ghosts + self.level_ghosts) / self.cells
+
+    @property
+    def remote_pc(self):  # % of patch ghosts owned by another rank
+        return 100 * self.remote_ghosts / self.patch_ghosts if self.patch_ghosts else 0
 
 
 @dataclass
 class SummaryFile:
     kwargs: dict
-    levels: list
-    particles: int
+    samples: list  # [(time, [LevelStats, ...]), ...] in time order
 
-    def __iter__(self):
-        return iter((self.kwargs, self.levels, self.particles))
+    @property
+    def levels(self):  # the final hierarchy
+        return self.samples[-1][1]
+
+    @property
+    def particles(self):  # None without hybrid levels
+        hybrid = [lvl.particles for lvl in self.levels if lvl.is_hybrid]
+        return sum(hybrid) if hybrid else None
 
     def normalized_nanoseconds_for_time_per_push(self, time_ns, n_cores):
-        ppp = particles_per_push = 0
-        for ilvl, lvl in enumerate(self.levels):
-            ppp += lvl.particles * steps_per(ilvl)
+        """None without particles, as for MHD only runs"""
+        ppp = sum(
+            lvl.particles * steps_per(lvl.level) for lvl in self.levels if lvl.is_hybrid
+        )
         if ppp == 0:
-            raise ValueError("No particles found across levels - MHD maybe?")
+            return None
         return ppp, time_ns / ppp * n_cores
 
 
-def _parse_level_info(level):
-    trim = [")", ","]
-    while any(level.endswith(t) for t in trim):
-        level = level[:-1]
-    bits = [s for s in level.strip().split(" ") if s]
-    ilvl = bits[0].split(":")[1]
-    particles = 0  # MHD levels have none
-    for bit in bits:
-        needle = "parts("
-        if bit.startswith(needle):
-            particles = int(bit[len(needle) :])
-    bits = bits[1][1:-1].split(",")
-    patches, cells, p_ghosts_cells, l_ghosts_cells = [int(s) for s in bits]
-    ratio = (p_ghosts_cells + l_ghosts_cells) / cells
-    stats = LevelStats(
-        ilvl, patches, cells, p_ghosts_cells, l_ghosts_cells, particles, ratio
-    )
-    return stats
-
-
 def parse_summary_file(input):
-    lines = _as_lines(input)
-    kwargs = lines[0]
-    levels = lines[1:-1]
-    total = lines[-1].split(":")[1]
+    """the permutor's summary.json: the run's kwargs and Simulator.summary() samples"""
+    summary = json.loads(input if type(input) is bytes else Path(input).read_text())
     return SummaryFile(
-        ast.literal_eval(kwargs),
-        [_parse_level_info(lvl.strip()) for lvl in levels],
-        total,
+        summary["kwargs"],
+        [
+            (sample["time"], [LevelStats(**lvl) for lvl in sample["levels"]])
+            for sample in summary["samples"]
+        ],
     )
 
 
-def percent_level_refined(summary_file):
-    kwargs, levels, _ = summary_file
-    cells = kwargs["cells"]
-    ndim = len(cells)
-    dic = {i: 0 for i in range(0, len(levels) - 1)}
-    for i in range(0, len(levels) - 1):
-        dic[i] = int((levels[i + 1].cells / (2**ndim)) / levels[i].cells * 100)
-    return dic
+def percent_level_refined(levels, ndim):
+    """per level, % of it covered by the next finer level, None on the finest"""
+    return [
+        (
+            int(levels[i + 1].cells / 2**ndim / levels[i].cells * 100)
+            if i + 1 < len(levels)
+            else None
+        )
+        for i in range(len(levels))
+    ]
 
 
 def average_L0_advance_time_from(timer_files):
@@ -129,26 +122,43 @@ def max_memory_required_from(stat_files):
 
 
 def _print_stats(summary_file, timer_files, stat_files):
+    """one JSON object per run on stdout, read back with parse_stats_line"""
     if not timer_files:
-        print("no timer files, run with PHARE_SCOPE_TIMING=1", summary_file.kwargs)
+        print(
+            "no timer files, run with PHARE_SCOPE_TIMING=1",
+            summary_file.kwargs,
+            file=sys.stderr,
+        )
         return
-    pc_refined = percent_level_refined(summary_file)
-    # tags = {k: v for k, v in summary_file.kwargs.items() if k.startswith("tag")}
     time = average_L0_advance_time_from(timer_files)
-    max_mem = max_memory_required_from(stat_files)
-    ppp, push_time = summary_file.normalized_nanoseconds_for_time_per_push(
+    pushes = summary_file.normalized_nanoseconds_for_time_per_push(
         time, len(timer_files)
     )
-    cell_ratios = ",".join([f"{lvl.cell_ratio:.2f}" for lvl in summary_file.levels])
-    print(
-        f"% refined:{pc_refined}",
-        f"N particles:{summary_file.particles}",
-        f"cell_ratios:{cell_ratios}",
-        f"time:{time / 1e9:.10f}s",
-        f"MEM:{max_mem}mb",
-        f"pushs:{ppp} ppp time:{push_time:.3f}ns",
-        summary_file.kwargs,
+    ndim = len(summary_file.kwargs["cells"])
+    samples = [
+        dict(time=t, levels=_level_records(levels, ndim))
+        for t, levels in summary_file.samples
+    ]
+    record = dict(
+        kwargs=summary_file.kwargs,
+        time_s=time / 1e9,  # average L0 advance
+        mem_mb=max_memory_required_from(stat_files),
+        particles=summary_file.particles,
+        pushes=pushes[0] if pushes else None,
+        ppp_ns=pushes[1] if pushes else None,  # per particle push, normalised by cores
+        levels=samples[-1]["levels"],  # the final hierarchy
+        samples=samples,
     )
+    print(json.dumps(record))
+
+
+def parse_stats_line(line):
+    """a print_summary output line as a dict, None for anything else"""
+    try:
+        record = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    return record if isinstance(record, dict) and "levels" in record else None
 
 
 def extract_nested_tarfile(data):
@@ -185,7 +195,7 @@ def handle_pertumation(objects):
         handle_timer_file(v) for k, v in objects.items() if "phare/timings/" in k
     ]
     for k, v in objects.items():
-        if k.endswith("phare/summary.txt"):
+        if k.endswith("phare/summary.json"):
             _print_stats(parse_summary_file(v), timer_files, stat_files)
 
 
@@ -227,15 +237,12 @@ def is_tar_file(any):
     return str(any).endswith(".tar.gz")
 
 
-def handle_nested_item(path):
-    this_or_that(
-        is_tar_file(path), handle_nested_tarfile, handle_nested_directory, path
-    )
-
-
 def handle_directory(path):
-    for d in Path(path).iterdir():
-        handle_nested_item(d)
+    path = Path(path)
+    if (path / "summary.json").exists():  # a single run's .phare
+        return handle_nested_directory(path)
+    for d in path.iterdir():  # e.g. .phare_bench: outer archives or run directories
+        this_or_that(is_tar_file(d), handle_tarfile, handle_nested_directory, d)
 
 
 def handle_input(path):
@@ -253,6 +260,19 @@ def print_summary(filepath=None, root_id=None):
         return handle_input(args.input)
     else:
         parser.print_help()
+
+
+def _level_records(levels, ndim):  # LevelStats as dicts, with the computed values
+    refined = percent_level_refined(levels, ndim)
+    return [
+        dict(
+            asdict(lvl),
+            cell_ratio=lvl.cell_ratio,
+            remote_pc=lvl.remote_pc,
+            refined_pc=refined[i],
+        )
+        for i, lvl in enumerate(levels)
+    ]
 
 
 if __name__ == "__main__":

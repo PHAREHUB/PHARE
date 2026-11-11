@@ -1,7 +1,12 @@
 #
 #
-#
-
+# how to use - UPDATE <datetime> or tab complete!
+"""
+PHARE_SCOPE_TIMING=1 python3 -Ou tools/bench/functional/permute_harris_3d.py
+python3 tools/python3/bench.py print_summary -i .phare_bench/<datetime>.tar.gz > perms
+python3 -c "from tools.bench.functional.permutor import sort_summaries as sort; sort('perms')" # optional, to read perms in order
+python3 tools/bench/functional/plot_permutations.py -i perms
+"""
 
 import shutil
 import numpy as np
@@ -15,8 +20,8 @@ from pyphare.simulator.simulator import startMPI
 ndim = 3
 dl = [0.4] * ndim
 time_step = 0.001
-final_time = 0.001
-cells = [30, 30, 30]
+final_time = 0.01
+cells = [40, 80, 20]
 ppc = 100
 
 
@@ -33,8 +38,8 @@ permutables = [
     ("cells", _cells()),
     ("ppc", [100]),
     ("max_nbr_levels", [2]),
-    ("tag_buffer", [3, 4]),  # , 5
-    ("tagging_threshold", [0.1]),  # , 0.2, 0.3, 0.4
+    ("tag_buffer", [3, 4]),
+    ("tagging_threshold", [0.1, 0.2, 0.3]),
 ]
 
 

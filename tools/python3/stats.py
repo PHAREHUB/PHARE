@@ -9,11 +9,17 @@ class StatFileSnapshot:
     open_files: int
     mem_used_mb: int
     cpu_usage: float
+    extra: dict = field(default_factory=dict)  # other columns by header, e.g. gpu0_util
 
     @staticmethod
-    def FROM_CSV(input):
-        a, b, c = input.split(",")
-        return StatFileSnapshot(int(a), int(b), float(c))
+    def FROM_CSV(input, headers=("fds", "mem_used_mb", "cpu_usage")):
+        values = dict(zip(headers, input.split(",")))
+        return StatFileSnapshot(
+            int(values.pop("fds")),
+            int(values.pop("mem_used_mb")),
+            float(values.pop("cpu_usage")),
+            values,
+        )
 
 
 @dataclass
@@ -24,11 +30,15 @@ class StatFile:
     start: str
     end: str
     snapshots: List[StatFileSnapshot]
+    gpus: list = field(default_factory=list)  # phlop with GPUs found
 
     def __post_init__(self):
-        self.snapshots = self.snapshots or []  # "snapshots:" without value loads as None
+        # "snapshots:" without value loads as None
+        self.snapshots = self.snapshots or []
         if self.snapshots and type(self.snapshots[0]) is not StatFileSnapshot:
-            self.snapshots = [StatFileSnapshot.FROM_CSV(v["v"]) for v in self.snapshots]
+            self.snapshots = [
+                StatFileSnapshot.FROM_CSV(v["v"], self.headers) for v in self.snapshots
+            ]
 
 
 def lines_parser(input):

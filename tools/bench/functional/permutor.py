@@ -23,18 +23,19 @@ log_dir = Path(".log")
 local_dir = Path(".phare")
 out_dir = Path(f".phare_bench/{datetime_now()}")
 monitoring_options = MonitoringOptions(interval=5, rank_modulo=1)
+summary_every = 1  # coarse steps between Simulator.summary() samples
 
 
-def sort_summaries(path):
-    import re
+def sort_summaries(path, keys=("tag_buffer", "tagging_threshold")):
+    """sorts the JSON lines of bench.py print_summary by kwargs, missing keys last"""
+    import json
 
     with open(path) as f:
         lines = [line.rstrip("\n") for line in f if line.strip()]
 
     def key(line):
-        tb = float(re.search(r"'tag_buffer': (\d+)", line).group(1))
-        tt = float(re.search(r"'tagging_threshold': ([0-9.]+)", line).group(1))
-        return (tb, tt)
+        kwargs = json.loads(line)["kwargs"]
+        return tuple((k not in kwargs, kwargs.get(k)) for k in keys)
 
     lines.sort(key=key)
 
@@ -61,11 +62,12 @@ def make_tarfile(outdir, outfile=None):
         clean_dir(outdir)
 
 
-def post_sim(summary, kwargs):
-    log = local_dir / "summary.txt"
+def post_sim(samples, kwargs):
+    import json
+
+    log = local_dir / "summary.json"
     with open(log, "w") as f:
-        f.write(f"{kwargs}\n")
-        f.write(summary)
+        json.dump(dict(kwargs=kwargs, samples=samples), f, indent=1)
     # unique even for permutations finishing in the same second
     to = Path(tempfile.mkdtemp(prefix=f"{datetime_now()}_", dir=out_dir))
     shutil.copytree(log_dir, to / log_dir.name)
@@ -79,13 +81,26 @@ def execute_permutation(config_fn, keys, permutation):
     def run():
         ph.global_vars.sim = None
         kwargs = {keys[i]: permutation[i] for i in range(len(keys))}
-        sim = Simulator(config_fn(**kwargs)).run(monitoring=monitoring_options)
-        summary = sim.summary()
+        samples, steps = [], [0]  # summaries over time, rank 0 only
+
+        def sample():  # collective, every rank calls it
+            if summary := sim.summary():  # None on ranks > 0
+                samples.append(dict(time=sim.currentTime(), **summary))
+
+        def post_advance(time):  # after every coarse step, on every rank
+            steps[0] += 1
+            # the final hierarchy is sampled after run(), even if there was no step
+            if time < sim.cpp_sim.endTime() and steps[0] % summary_every == 0:
+                sample()
+
+        sim = Simulator(config_fn(**kwargs), post_advance=post_advance)
+        sim.run(monitoring=monitoring_options)
+        sample()
         sim.reset()
         cpp.mpi_barrier()
         if cpp.mpi_rank() == 0:
             try:
-                post_sim(summary, kwargs)
+                post_sim(samples, kwargs)
             except Exception:  # the other ranks wait in the next barrier
                 import traceback
                 from mpi4py import MPI

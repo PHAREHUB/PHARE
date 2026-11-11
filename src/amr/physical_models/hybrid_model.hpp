@@ -20,7 +20,7 @@
 
 
 #include <string>
-#include <sstream>
+#include <vector>
 
 
 namespace PHARE::solver
@@ -112,8 +112,8 @@ public:
 
     virtual ~HybridModel() override {}
 
-    std::string summarize(auto& hierarchy, std::size_t const minlvl, std::size_t const maxlvl,
-                          std::string const& format = "");
+    std::vector<LevelSummary> summarize(auto& hierarchy, std::size_t const minlvl,
+                                        std::size_t const maxlvl);
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -144,14 +144,13 @@ public:
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
          typename AMR_Types, typename Grid_t>
-std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
-    auto& hierarchy, std::size_t const minlvl, std::size_t const maxlvl, std::string const& format)
+auto HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
+    auto& hierarchy, std::size_t const minlvl, std::size_t const maxlvl)
+    -> std::vector<LevelSummary>
 {
     auto& rm = *this->resourcesManager;
 
-    std::stringstream ss;
-
-    std::size_t total = 0;
+    std::vector<LevelSummary> levels; // rank 0 only
 
     auto on_level = [&](auto& lvl) mutable {
         auto const lcl = core::sum_from(rm.enumerate(lvl, state.ions), [&](auto const&) {
@@ -159,24 +158,24 @@ std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Gri
                                   [](auto const& pop) { return pop.domainParticles().size(); });
         });
 
-        auto const on_lvl = mpi::sum_on_rank_0(lcl);
-        total += on_lvl;
+        auto const on_lvl  = mpi::sum_on_rank_0(lcl);
+        auto const max_lcl = mpi::max(lcl);
 
         auto const level_stats = LevelStats<GridLayoutT, physical_quantity_type>::GET(
-                                     lvl, hierarchy, GridLayoutT::options.field_ghost_width)
+                                     lvl, GridLayoutT::options.field_ghost_width)
                                      .collect(lvl);
 
         if (mpi::rank() == 0)
-            ss << "lvl:" << lvl.getLevelNumber() << " (" << level_stats << ") " // << minmax
-               << " parts(" << on_lvl << "), " << std::endl;
+        {
+            auto& level = levels.emplace_back(level_stats.summary(lvl.getLevelNumber(), "hybrid"));
+            level["particles"]          = on_lvl;
+            level["particle_imbalance"] = imbalance(max_lcl, on_lvl);
+        }
     };
 
     amr::onLevels(hierarchy, on_level, minlvl, maxlvl);
 
-    if (mpi::rank() == 0)
-        ss << "tot:" << total;
-
-    return ss.str();
+    return levels;
 }
 
 
