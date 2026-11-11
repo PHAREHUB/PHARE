@@ -1,5 +1,6 @@
 import atexit
 import datetime
+import json
 import os
 import sys
 import time as timem
@@ -296,13 +297,20 @@ class Simulator:
         return self
 
     def print_summary(self):
-        print_rank0("SUMMARY:", self.summary())  # summary() is collective, called on all ranks
+        summary = self.summary()  # collective, called on all ranks
+        if summary is not None:
+            print("SUMMARY:", json.dumps(summary, indent=1))
 
     def summary(self):
-        """Collective: every rank must call it, in the same order. Raises if not initialized."""
+        """
+        Per level stats, {"levels": [{"level": 0, "model": "hybrid", ...}, ...]}, on rank 0,
+        None on other ranks. Collective: every rank must call it, in the same order.
+        Raises if not initialized.
+        """
         if not self.initialized:
             raise RuntimeError("Simulator.summary(): simulator is not initialized")
-        return self.cpp_sim.summary()
+        levels = self.cpp_sim.summary()  # list of dicts on rank 0, empty on other ranks
+        return dict(levels=levels) if cpp.mpi_rank() == 0 else None
 
     def _replace_live_simulator(self):
         # only one simulator per process (SAMRAI statics): the previous one stays alive after
