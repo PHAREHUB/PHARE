@@ -159,7 +159,8 @@ private:
     {
         auto& levelBoxing = boxing[level->getLevelNumber()] = LevelBoxing{level, {}};
 
-        auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, level->getLevelNumber());
+        auto const neighbors
+            = amr::makeSameLevelNeighbors<GridLayout>(hierarchy, level->getLevelNumber());
 
         for (auto const& patch : *level)
             if (auto [it, suc] = levelBoxing.patches.try_emplace(
