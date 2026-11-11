@@ -103,6 +103,14 @@ public:
         return false;
     }
 
+    // closes diagnostic files left open by flush_every, the next dump reopens them
+    void flush_diagnostics() override
+    {
+        if (dMan)
+            dMan->flush();
+    }
+
+    std::string summary() const;
 
 
 protected:
@@ -492,6 +500,22 @@ std::string Simulator<opts>::to_str()
 }
 
 
+template<auto opts>
+std::string Simulator<opts>::summary() const
+{
+    std::stringstream ss;
+    if constexpr (has_mhd_v<opts>)
+    {
+        if (mhd_.model_)
+            ss << mhd_.model_->summarize(*hierarchy_, 0, maxMHDLevel_ - 1);
+    }
+    if constexpr (has_hybrid_v<opts>)
+    {
+        if (hyb_.model_)
+            ss << hyb_.model_->summarize(*hierarchy_, maxMHDLevel_, maxLevelNumber_ - 1);
+    }
+    return ss.str();
+}
 
 
 template<auto opts>
