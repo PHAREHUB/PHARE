@@ -48,6 +48,11 @@ class UsableIonsPopulation : public _defaults::IonPopulation_t
     using ParticleArray_t = _defaults::ParticleArray_t;
     using Super           = IonPopulation<ParticleArray_t, VecField_t, TensorField_t>;
 
+    // as amr::ParticlesData, the cell map covers every cell a push can move a particle to
+    auto static constexpr particleGhostWidth = GridLayout_t::options.particle_ghost_width;
+    auto static constexpr ghostSafeMapLayer
+        = particleGhostWidth + particleMapMargin(particleGhostWidth);
+
 public:
     UsableIonsPopulation(initializer::PHAREDict const& dict, GridLayout_t const& layout)
         : Super{dict}
@@ -55,7 +60,7 @@ public:
         , chargeDensity{this->name() + "_chargeDensity", layout, HybridQuantity::Scalar::rho}
         , F{this->name() + "_flux", layout, HybridQuantity::Vector::V}
         , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , particles{this->name(), layout.AMRBox()}
+        , particles{this->name(), grow(layout.AMRBox(), ghostSafeMapLayer)}
     {
         auto&& [_F, _M, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
         F.set_on(_F);
