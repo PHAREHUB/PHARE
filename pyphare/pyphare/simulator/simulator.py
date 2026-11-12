@@ -323,15 +323,18 @@ class Simulator:
 
     def _call_post_advance(self):
         # what post_advance does is up to the user: if it raises on one rank, the others may be
-        # blocked in a collective (theirs or the next advance) and only an MPI abort ends them
+        # blocked in a collective (theirs or the next advance) and only an MPI abort ends them,
+        # sys.exit() and KeyboardInterrupt included
         try:
             self.post_advance(self.cpp_sim.currentTime())
-        except Exception:
+        except BaseException:
             if cpp.mpi_size() == 1:
                 raise
             import traceback
 
-            print(f"rank {cpp.mpi_rank()}: exception in post_advance, aborting the MPI job")
+            print(
+                f"rank {cpp.mpi_rank()}: exception in post_advance, aborting the MPI job"
+            )
             traceback.print_exc()
             sys.stdout.flush()
             cpp.mpi_abort(1)
