@@ -80,8 +80,9 @@ struct LevelStats
                 if (neighbor.getOwnerRank() == rank)
                     level_ghost_boxes.removeIntersections(neighbor);
             auto const not_local = level_ghost_boxes.getTotalSizeOfBoxes();
+            // the connector can be wider than ghost_width: skip neighbours outside the ghost box
             for (auto const& neighbor : neighbors)
-                if (neighbor.getOwnerRank() != rank)
+                if (neighbor.getOwnerRank() != rank and neighbor.intersects(ghost_box))
                 {
                     level_ghost_boxes.removeIntersections(neighbor);
                     remote_ranks.insert(neighbor.getOwnerRank());

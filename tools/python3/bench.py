@@ -109,16 +109,17 @@ def percent_level_refined(levels, ndim):
 
 
 def average_L0_advance_time_from(timer_files):
-    advance_times = [tf.advances[0].run_time for tf in timer_files]
+    # every coarse step of each rank, then over ranks
+    advance_times = [
+        np.average([advance.run_time for advance in tf.advances]) for tf in timer_files
+    ]
     return np.average(advance_times)
 
 
 def max_memory_required_from(stat_files):
-    ret = 0
-    for file in stat_files:
-        for snapshot in file.snapshots:
-            ret = max(ret, snapshot.mem_used_mb)
-    return ret
+    """None if there is no memory sample"""
+    mem = [snapshot.mem_used_mb for file in stat_files for snapshot in file.snapshots]
+    return max(mem) if mem else None
 
 
 def _print_stats(summary_file, timer_files, stat_files):

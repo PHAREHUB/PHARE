@@ -31,8 +31,10 @@ def main():
     if not records:
         sys.exit(f"no print_summary lines found in {args.input}")
 
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
     for name, group in groups(records, args.x, args.l).items():
-        plot_group(group, args.x, args.l, Path(args.outdir), name)
+        plot_group(group, args.x, args.l, outdir, name)
     print_fastest(records)
 
 
