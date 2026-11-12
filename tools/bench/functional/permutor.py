@@ -57,8 +57,7 @@ def make_tarfile(outdir, outfile=None):
         path = outdir.parent
         outfile = outfile or outdir.name
         args = ["tar", "czf", f"{path/outfile}.tar.gz", "-C", str(path), outdir.name]
-        ec = subprocess.call(args)
-        assert ec == 0, f"{ec}"
+        subprocess.run(args, check=True)  # raises before the results are deleted
         clean_dir(outdir)
 
 
