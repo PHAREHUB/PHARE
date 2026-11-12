@@ -3,6 +3,7 @@ This file exists independently from test_initialization.py to isolate dimension
   test cases and allow each to be overridden in some way if required.
 """
 
+import itertools
 import unittest
 
 import numpy as np
@@ -10,6 +11,7 @@ from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
+from pyphare.cpp import supported_model_layouts, supported_mhd_model_layouts
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 from tests.simulator.initialize.test_init_mhd import MHDInitializationTest
 
@@ -21,14 +23,26 @@ interp_orders = [1, 2, 3]
 
 def permute_hybrid():
     return [
-        dict(super_class=HybridInitializationTest, interp_order=interp_order)
-        for interp_order in interp_orders
+        dict(
+            super_class=HybridInitializationTest,
+            interp_order=interp_order,
+            model_layout=layout,
+        )
+        for interp_order, layout in itertools.product(
+            interp_orders, supported_model_layouts()
+        )
     ]
 
 
 def permute_mhd():
     return [
-        dict(super_class=MHDInitializationTest, hall=False, interp_order=None),
+        dict(
+            super_class=MHDInitializationTest,
+            hall=False,
+            interp_order=None,
+            model_layout=layout,
+        )
+        for layout in supported_mhd_model_layouts()
     ]
 
 

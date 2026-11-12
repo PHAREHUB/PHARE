@@ -1,3 +1,8 @@
+#include "core/numerics/pusher/boris.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/boundary_condition/boundary_condition.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "push_bench.hpp"
 
 // Does not include google benchmark as we want to see only PHARE operations/instructions/etc
@@ -6,19 +11,19 @@ template<std::size_t dim, std::size_t interp>
 void push()
 {
     auto static constexpr opts    = PHARE::SimOpts{dim, interp};
-    constexpr std::uint32_t cells = 65;
+    constexpr std::uint32_t cells = 15;
     // constexpr std::uint32_t n_parts = 1e7;
 
-    using PHARE_Types       = PHARE::core::PHARE_Types<opts>;
-    using GridLayout_t      = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
-    using Interpolator      = PHARE::core::Interpolator<dim, interp>;
-    using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
-    using Electromag_t      = PHARE::core::UsableElectromag<dim>;
-    using Ions_t            = PHARE_Types::Hybrid::Ions_t;
-    using ParticleArray     = Ions_t::particle_array_type;
-    using ParticleRange     = PHARE::core::IndexRange<ParticleArray>;
-    using BorisPusher_t = PHARE::core::BorisPusher<dim, ParticleRange, Electromag_t, Interpolator,
-                                                   BoundaryCondition, GridLayout_t>;
+    using PHARE_Types  = PHARE::core::PHARE_Types<opts>;
+    using GridLayout_t = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
+    using Interpolator = PHARE::core::Interpolator<dim, interp>;
+    using Hybrid_t     = PHARE_Types::Hybrid;
+
+    auto constexpr static field_opts = PHARE::core::TensorFieldOptions<Hybrid_t>{};
+    using Electromag_t               = PHARE::core::UsableElectromag<field_opts>;
+    using Ions_t                     = PHARE_Types::Hybrid::Ions_t;
+    using ParticleArray              = Ions_t::particle_array_type;
+    using BorisPusher_t              = PHARE::core::BorisPusher<dim>;
 
     GridLayout_t layout{cells};
     Electromag_t em{layout};
@@ -27,7 +32,7 @@ void push()
 
     std::stringstream ss;
     ss << "unsorted_particles_" << dim << ".raw";
-    PHARE::core::bench::read_raw_from_file(domainParticles, ss.str());
+    PHARE::core::read_raw_from_file(domainParticles, ss.str());
 
     // std::sort(domainParticles);
 

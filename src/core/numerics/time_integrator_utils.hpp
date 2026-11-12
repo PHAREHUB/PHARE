@@ -2,7 +2,9 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_UTILS_HPP
 
 
+#include "core/utilities/algorithm.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/data/field/field_tiles.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -43,9 +45,26 @@ public:
         // node's abscissa (blending the endpoint ghosts here would use scheme weights, not
         // the node's time-interpolation alpha).
         for_N<num_fields>([&](auto i) {
-            layout_.evalOnBox(std::get<i>(result_fields), [&](auto... indices) {
-                RKstep_(result_fields, weight_tuple, state_field_tuples, i, {indices...});
-            });
+            auto const combine = [&](auto const& layout, auto&& r, auto const&... vals) {
+                auto const vals_tuple = std::forward_as_tuple(vals...);
+                layout.evalOnBox(r, [&](auto... indices) {
+                    MeshIndex<dimension> const index{indices...};
+                    double sum = 0.0;
+                    for_N<sizeof...(vals)>([&](auto j) {
+                        sum += std::get<j>(weight_tuple) * std::get<j>(vals_tuple)(index);
+                    });
+                    r(index) = sum;
+                });
+            };
+            std::apply(
+                [&](auto const&... states) {
+                    auto& res = std::get<i>(result_fields);
+                    if constexpr (is_field_tile_set_v<std::decay_t<decltype(res)>>)
+                        tile_exec_with_layout(combine, res, std::get<i>(states)...);
+                    else
+                        combine(layout_, res, std::get<i>(states)...);
+                },
+                state_field_tuples);
         });
     }
 
@@ -56,21 +75,6 @@ private:
         return std::forward_as_tuple(state.rho, state.rhoV(Component::X), state.rhoV(Component::Y),
                                      state.rhoV(Component::Z), state.B(Component::X),
                                      state.B(Component::Y), state.B(Component::Z), state.Etot);
-    }
-
-    template<typename ReturnState, typename WeightsTuple, typename StatesTuple, typename IndexType>
-    static void RKstep_(ReturnState& res, WeightsTuple const& weights, StatesTuple const& states,
-                        IndexType field_index, MeshIndex<dimension> const index)
-    {
-        auto sum = 0.0;
-
-        constexpr auto num_terms = std::tuple_size_v<std::decay_t<decltype(weights)>>;
-
-        for_N<num_terms>([&](auto j) {
-            sum += std::get<j>(weights) * std::get<field_index>(std::get<j>(states))(index);
-        });
-
-        std::get<field_index>(res)(index) = sum;
     }
 
 

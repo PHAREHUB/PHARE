@@ -16,12 +16,12 @@ namespace PHARE::core::bench
 
 constexpr SimOpts mhdOpts(std::size_t dim)
 {
-    return SimOpts{dim,
-                   0,
-                   0,
-                   MHDOpts::ReconstructionType::Constant,
-                   MHDOpts::SlopeLimiterType::None,
-                   MHDOpts::RiemannSolverType::Rusanov};
+    return SimOpts{.dimension           = dim,
+                   .interp_order        = 0,
+                   .nbRefinedPart       = 0,
+                   .reconstruction_type = MHDOpts::ReconstructionType::Constant,
+                   .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                   .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov};
 }
 
 template<std::size_t dim>

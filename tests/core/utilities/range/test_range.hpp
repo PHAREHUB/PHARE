@@ -1,10 +1,10 @@
+#ifndef PHARE_TEST_UTILITY_TEST_RANGE_HPP
+#define PHARE_TEST_UTILITY_TEST_RANGE_HPP
 
 #include <string>
 
 #include "core/utilities/range/range.hpp"
 
-
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
@@ -37,11 +37,4 @@ TEST(ARange, returnBeginAndEnd)
 }
 
 
-
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-
-    return RUN_ALL_TESTS();
-}
+#endif /*  PHARE_TEST_UTILITY_TEST_RANGE_HPP  */

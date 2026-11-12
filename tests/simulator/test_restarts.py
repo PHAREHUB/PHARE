@@ -19,11 +19,14 @@ from tests.diagnostic import dump_all_diags
 from tests.simulator import SimulatorTest
 
 
-def permute(dic, expected_num_levels):
+def permute(dic, expected_num_levels, layouts=("AoSMapped",)):
     # from pyphare.pharein.simulation import supported_dimensions # eventually
     dims = [1]  # supported_dimensions()
     return [
-        [dim, interp, dic, expected_num_levels] for dim in dims for interp in [1, 2, 3]
+        [dim, interp, dic, expected_num_levels, layout]
+        for dim in dims
+        for interp in [1, 2, 3]
+        for layout in layouts
     ]
 
 
@@ -182,6 +185,7 @@ class RestartsTest(SimulatorTest):
 
             self.assertGreater(len(datahier0.levels()), 0)
 
+            mismatches = []
             for ilvl, lvl0 in datahier0.levels().items():
                 patch_level1 = datahier1.levels()[ilvl]
                 for p_idx, patch0 in enumerate(lvl0):
@@ -197,9 +201,16 @@ class RestartsTest(SimulatorTest):
                                 print(
                                     f"FAILED domain particles at time {time} {ilvl} {patch1.box} {patch0.box}"
                                 )
-                        else:
-                            np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
+                        elif not np.array_equal(
+                            pd0.dataset[:], pd1.dataset[:], equal_nan=True
+                        ):
+                            diff = np.nanmax(np.abs(pd0.dataset[:] - pd1.dataset[:]))
+                            mismatches.append(
+                                f"{pd_key} level {ilvl} {patch0.box} time {time} max diff {diff}"
+                            )
                         checks += 1
+
+            self.assertEqual(mismatches, [], "\n" + "\n".join(mismatches))
 
             n_levels, n_patches = count_levels_and_patches(
                 run0.GetB(time, all_primal=False)
@@ -216,27 +227,37 @@ class RestartsTest(SimulatorTest):
                 )
             ),
             expected_num_levels=3,
+            layouts=cpp.supported_model_layouts(),
         ),
-        *permute(dup(dict()), expected_num_levels=2),  # refinement boxes set later
+        *permute(  # refinement boxes set later
+            dup(dict()), expected_num_levels=2, layouts=cpp.supported_model_layouts()
+        ),
+        *permute(  # single level
+            dup(dict(refinement_boxes={})),
+            expected_num_levels=1,
+            layouts=cpp.supported_model_layouts(),
+        ),
     )
     @unpack
-    def test_restarts(self, ndim, interp, simInput, expected_num_levels):
-        print(f"test_restarts dim/interp:{ndim}/{interp}")
+    def test_restarts(self, ndim, interp, simInput, expected_num_levels, layout):
+        print(f"test_restarts dim/interp/layout:{ndim}/{interp}/{layout}")
 
         simput = copy.deepcopy(simInput)
+        simput["model_layout"] = layout
 
         for key in ["cells", "dl"]:
             simput[key] = [simput[key]] * ndim
 
-        if "refinement" not in simput:
-            # three levels has issues with refinementboxes and possibly regridding
-            b0 = [[10] * ndim, [19] * ndim]
-            simput["refinement_boxes"] = {"L0": {"B0": b0}}
-        else:  # https://github.com/LLNL/SAMRAI/issues/199
+        if "refinement" in simput:  # https://github.com/LLNL/SAMRAI/issues/199
+            assert simput["refinement"] == "tagging"
             # tagging can handle more than one timestep as it does not
             #  appear subject to regridding issues, so we make more timesteps
             #  to confirm simulations are still equivalent
             simput["time_step_nbr"] = 10
+        elif "refinement_boxes" not in simput:  # an empty dict is a single level
+            # three levels has issues with refinementboxes and possibly regridding
+            b0 = [[10] * ndim, [19] * ndim]
+            simput["refinement_boxes"] = {"L0": {"B0": b0}}
 
         # if restart time exists it "loads" from restart file
         #  otherwise just saves restart files based on timestamps
@@ -290,7 +311,9 @@ class RestartsTest(SimulatorTest):
         ),
     )
     @unpack
-    def test_restarts_elapsed_time(self, ndim, interp, simInput, expected_num_levels):
+    def test_restarts_elapsed_time(
+        self, ndim, interp, simInput, expected_num_levels, layout
+    ):
         print(f"test_restarts_elapsed_time dim/interp:{ndim}/{interp}")
 
         simput = copy.deepcopy(simInput)

@@ -5,6 +5,8 @@
 
 #include "amr/tagging/tagger_factory.hpp"
 
+#include "simulator/simulator_def.hpp"
+
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
@@ -43,15 +45,19 @@ TEST(test_tagger, fromFactoryInvalid)
 // minimal model for the tagger: only the magnetic field is read
 struct UniformBModel
 {
-    using gridlayout_type
-        = PHARE::core::PHARE_Types<PHARE::SimOpts{1ul, 1ul}>::Hybrid::GridLayout_t;
+    using HybridTypes                = PHARE::core::PHARE_Types<PHARE::SimOpts{1ul, 1ul}>::Hybrid;
+    using gridlayout_type            = HybridTypes::GridLayout_t;
+    auto static constexpr field_opts = PHARE::core::TensorFieldOptions<HybridTypes>{};
+    using UsableVecField_t           = UsableVecField<field_opts>;
+    using field_type                 = UsableVecField_t::Field_t;
+
     static constexpr std::size_t dimension            = 1;
     static constexpr std::string_view model_type_name = "HybridModel";
     struct
     {
         struct
         {
-            UsableVecField<dimension>& B;
+            UsableVecField_t& B;
         } electromag;
     } state;
 };
@@ -61,12 +67,12 @@ TEST(test_tagger, everyCellIsWrittenIn1D)
     // SAMRAI pre-sets to 1 the tags of cells covered by the existing finer level before calling
     // the tagger, so every cell must be overwritten or it stays refined forever.
     // At interp order 1 the last cell of the patch is not evaluated: it must still be reset.
-    auto static constexpr dim = UniformBModel::dimension;
-    using GridLayoutT         = UniformBModel::gridlayout_type;
+    using GridLayoutT = UniformBModel::gridlayout_type;
 
     std::uint32_t constexpr nCells = 20;
     auto layout                    = TestGridLayout<GridLayoutT>::make(nCells);
-    UsableVecField<dim> B{"EM_B", layout, HybridQuantity::Vector::B}; // uniform (zero) field
+    UniformBModel::UsableVecField_t B{"EM_B", layout,
+                                      HybridQuantity::Vector::B}; // uniform (zero) field
 
     UniformBModel model{{{B}}};
 
@@ -212,8 +218,12 @@ struct TestTagger : public ::testing::Test
     using Electromag  = phare_types::Hybrid::Electromag_t;
     using Ions        = phare_types::Hybrid::Ions_t;
     using Electrons   = phare_types::Hybrid::Electrons_t;
-    using GridLayoutT
-        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using core_types  = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes = core_types::Hybrid;
+    using GridLayoutT = HybridTypes::GridLayout_t;
+
+    auto static constexpr field_opts = PHARE::core::TensorFieldOptions<HybridTypes>{};
+    using UsableVecField_t           = PHARE::core::UsableVecField<field_opts>;
 
     struct SinglePatchHybridModel
     {
@@ -224,13 +234,13 @@ struct TestTagger : public ::testing::Test
 
     GridLayoutT layout;
 
-    UsableVecField<dim> B, E;
+    UsableVecField_t B, E;
 
     SinglePatchHybridModel model;
     std::vector<int> tags;
 
     TestTagger()
-        : layout{TestGridLayout<GridLayoutT>::make(20)}
+        : layout{TestGridLayout<GridLayoutT>::make(20u)}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
         , model{createDict<dim>()}

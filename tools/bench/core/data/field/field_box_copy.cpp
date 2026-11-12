@@ -5,6 +5,8 @@
 #include "tools/bench/core/bench.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
+#include "benchmark/benchmark.h"
+
 #include <array>
 #include <vector>
 #include <cstdint>
@@ -43,7 +45,10 @@ auto make_box(std::uint32_t const shift)
 
 struct Fixture
 {
-    using GridLayout_t = TestGridLayout<PHARE_Types<SimOpts{3, 1}>::Hybrid::GridLayout_t>;
+    using Hybrid_t     = PHARE_Types<SimOpts{3, 1}>::Hybrid;
+    using GridLayout_t = TestGridLayout<Hybrid_t::GridLayout_t>;
+
+    auto constexpr static field_opts = TensorFieldOptions<Hybrid_t>{};
 
     Fixture()
     {
@@ -53,8 +58,8 @@ struct Fixture
     }
 
     GridLayout_t layout{cells};
-    UsableVecField<3> src{"src", layout, HybridQuantity::Vector::E};
-    UsableVecField<3> dst{"dst", layout, HybridQuantity::Vector::E};
+    UsableVecField<field_opts> src{"src", layout, HybridQuantity::Vector::E};
+    UsableVecField<field_opts> dst{"dst", layout, HybridQuantity::Vector::E};
 };
 
 

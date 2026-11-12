@@ -189,21 +189,27 @@ void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& 
 {
     auto& modelView = this->h5Writer_.modelView();
 
-    std::string const tree{"/ions/"};
-    if (isActiveDiag(diagnostic, tree, "charge_density")
-        or isActiveDiag(diagnostic, tree, "mass_density"))
-        modelView.requestTmpField();
-    else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-        modelView.requestTmpVecField();
+    auto& ions = modelView.getIons();
 
-    for (auto& pop : modelView.getIons())
+    std::string const tree{"/ions/"};
+    if (isActiveDiag(diagnostic, tree, "charge_density"))
+        modelView.requestTmpFieldFor(ions.chargeDensity());
+    else if (isActiveDiag(diagnostic, tree, "mass_density"))
+        modelView.requestTmpFieldFor(ions.massDensity());
+    else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
+        modelView.requestTmpVecFieldFor(ions.velocity());
+    else if (isActiveDiag(diagnostic, tree, "charge_flux"))
+        modelView.requestTmpVecFieldFor(ions.chargeFlux());
+
+    for (auto& pop : ions)
     {
         std::string const pop_tree{tree + "pop/" + pop.name() + "/"};
-        if (isActiveDiag(diagnostic, pop_tree, "density")
-            or isActiveDiag(diagnostic, pop_tree, "charge_density"))
-            modelView.requestTmpField();
+        if (isActiveDiag(diagnostic, pop_tree, "density"))
+            modelView.requestTmpFieldFor(pop.particleDensity());
+        else if (isActiveDiag(diagnostic, pop_tree, "charge_density"))
+            modelView.requestTmpFieldFor(pop.chargeDensity());
         else if (isActiveDiag(diagnostic, pop_tree, "flux"))
-            modelView.requestTmpVecField();
+            modelView.requestTmpVecFieldFor(pop.flux());
     }
 }
 
@@ -215,10 +221,12 @@ void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& 
     auto& modelView = this->h5Writer_.modelView();
 
     std::string const tree{"/mhd/"};
-    if (isActiveDiag(diagnostic, tree, "rho") or isActiveDiag(diagnostic, tree, "Etot"))
-        modelView.requestTmpField();
+    if (isActiveDiag(diagnostic, tree, "rho"))
+        modelView.requestTmpFieldFor(modelView.getRho());
+    else if (isActiveDiag(diagnostic, tree, "Etot"))
+        modelView.requestTmpFieldFor(modelView.getEtot());
     else if (isActiveDiag(diagnostic, tree, "rhoV"))
-        modelView.requestTmpVecField();
+        modelView.requestTmpVecFieldFor(modelView.getRhoV());
     else if (isActiveDiag(diagnostic, tree, "P"))
     {
         modelView.requestP();
