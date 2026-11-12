@@ -195,6 +195,7 @@ class Simulator:
 
         if self.simulation.dry_run:
             return self
+        mon.remove_stale_stats()  # also on ranks not monitoring
         if monitoring:
             mon.setup_monitoring(monitoring)
         perf = []

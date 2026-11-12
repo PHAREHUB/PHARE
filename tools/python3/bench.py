@@ -109,11 +109,13 @@ def percent_level_refined(levels, ndim):
 
 
 def average_L0_advance_time_from(timer_files):
-    # every coarse step of each rank, then over ranks
+    """every coarse step of each rank, then over ranks, None without any step"""
     advance_times = [
-        np.average([advance.run_time for advance in tf.advances]) for tf in timer_files
+        np.average([advance.run_time for advance in tf.advances])
+        for tf in timer_files
+        if tf.advances
     ]
-    return np.average(advance_times)
+    return np.average(advance_times) if advance_times else None
 
 
 def max_memory_required_from(stat_files):
@@ -132,8 +134,10 @@ def _print_stats(summary_file, timer_files, stat_files):
         )
         return
     time = average_L0_advance_time_from(timer_files)
-    pushes = summary_file.normalized_nanoseconds_for_time_per_push(
-        time, len(timer_files)
+    pushes = (
+        summary_file.normalized_nanoseconds_for_time_per_push(time, len(timer_files))
+        if time is not None
+        else None
     )
     ndim = len(summary_file.kwargs["cells"])
     samples = [
@@ -142,7 +146,7 @@ def _print_stats(summary_file, timer_files, stat_files):
     ]
     record = dict(
         kwargs=summary_file.kwargs,
-        time_s=time / 1e9,  # average L0 advance
+        time_s=time / 1e9 if time is not None else None,  # average L0 advance
         mem_mb=max_memory_required_from(stat_files),
         particles=summary_file.particles,
         pushes=pushes[0] if pushes else None,
@@ -224,10 +228,14 @@ def handle_nested_tarfile(nested):
 
 
 def handle_tarfile(path):
+    nested = False
     with tarfile.open(str(path), "r:gz") as tar:
         for member in tar:
             if member.name.endswith(".tar.gz"):
+                nested = True
                 handle_nested_tarfile(BytesIO(tar.extractfile(member).read()))
+    if not nested:  # a single run's archive
+        handle_nested_tarfile(path)
 
 
 def this_or_that(pred, a, b, *args, **kwargs):

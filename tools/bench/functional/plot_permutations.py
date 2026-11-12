@@ -21,8 +21,12 @@ from tools.python3.bench import parse_stats_line
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", default="perms", help="print_summary output")
-    parser.add_argument("-x", default="tag_buffer", help="permuted key on the x axis")
-    parser.add_argument("-l", default="tagging_threshold", help="permuted key per line")
+    parser.add_argument(
+        "-x", "--x-axis", default="tag_buffer", help="permuted key on the x axis"
+    )
+    parser.add_argument(
+        "-l", "--line", default="tagging_threshold", help="permuted key per line"
+    )
     parser.add_argument("-o", "--outdir", default=".", help="where to save the figures")
     args = parser.parse_args()
 
@@ -30,11 +34,15 @@ def main():
         records = [r for r in (parse_stats_line(line) for line in f) if r]
     if not records:
         sys.exit(f"no print_summary lines found in {args.input}")
+    for flag, key in (("--x-axis", args.x_axis), ("--line", args.line)):
+        # list values like cells split the groups instead
+        if any(isinstance(r["kwargs"].get(key), list) for r in records):
+            sys.exit(f"{flag} needs a scalar permuted key, {key} has list values")
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    for name, group in groups(records, args.x, args.l).items():
-        plot_group(group, args.x, args.l, outdir, name)
+    for name, group in groups(records, args.x_axis, args.line).items():
+        plot_group(group, args.x_axis, args.line, outdir, name)
     print_fastest(records)
 
 
