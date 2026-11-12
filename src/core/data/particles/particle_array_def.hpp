@@ -1,0 +1,233 @@
+#ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_DEF_HPP
+#define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_DEF_HPP
+
+#include "core/def.hpp"
+#include "core/data/vector.hpp"
+#include "core/utilities/types.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/data/particles/particle.hpp"
+
+#include <array>
+#include <algorithm>
+#include <tuple>
+#include <cstdint>
+#include <type_traits>
+#include <string_view>
+
+namespace PHARE::core
+{
+
+enum class StorageMode : std::uint16_t { ARRAY = 0, VECTOR, SPAN };
+
+enum class LayoutMode : std::uint16_t {
+    AoS = 0,
+    AoSMapped, // 1
+    AoSCMTS,   // 2
+    SoA,       // 3 - internal only: HDF5/restart write buffer + python particle-splitting
+               //     interop (zero-copy span over numpy arrays), not user-selectable
+    AoSTS,     // 4 - tiled fields without particles: MHD only builds (AoS = untiled)
+};
+
+bool constexpr is_tiled(LayoutMode lm)
+{
+    using enum LayoutMode;
+    return any_in(lm, AoSCMTS, AoSTS);
+}
+
+std::string_view constexpr enum_name(LayoutMode const mode)
+{
+    switch (mode)
+    {
+        case LayoutMode::AoS: return "AoS";
+        case LayoutMode::AoSMapped: return "AoSMapped";
+        case LayoutMode::AoSCMTS: return "AoSCMTS";
+        case LayoutMode::SoA: return "SoA";
+        case LayoutMode::AoSTS: return "AoSTS";
+    }
+    return "UNKNOWN";
+}
+
+
+std::string_view constexpr enum_name(StorageMode const mode)
+{
+    switch (mode)
+    {
+        case StorageMode::ARRAY: return "ARRAY";
+        case StorageMode::VECTOR: return "VECTOR";
+        case StorageMode::SPAN: return "SPAN";
+    }
+    return "UNKNOWN";
+}
+
+enum class ParticleType : std::uint16_t { Domain = 0, Ghost, PatchGhost, LevelGhost, All };
+
+
+struct ParticleArrayOptions
+{
+    std::size_t dim          = 1;
+    LayoutMode layout_mode   = LayoutMode::AoSMapped;
+    StorageMode storage_mode = StorageMode::VECTOR;
+    AllocatorMode alloc_mode = AllocatorMode::CPU;
+    bool _const_             = 0; // sometimes needed
+
+    auto constexpr with_layout(LayoutMode const lm) const
+    {
+        auto copy        = *this;
+        copy.layout_mode = lm;
+        return copy;
+    }
+    auto constexpr with_storage(StorageMode const sm) const
+    {
+        auto copy         = *this;
+        copy.storage_mode = sm;
+        return copy;
+    }
+    auto constexpr with_alloc(AllocatorMode const am) const
+    {
+        auto copy       = *this;
+        copy.alloc_mode = am;
+        return copy;
+    }
+};
+
+
+
+template<std::size_t dim>
+struct ParticleDefaults
+{
+    using Particle_t = Particle<dim>;
+};
+
+
+// carries where a particle came from when registering a move with move_check;
+// per-cell layouts read icell (old AMR cell)
+template<std::size_t dim>
+struct ParticleTracker
+{
+    std::array<int, dim> icell{};
+};
+
+// tiled layouts additionally read tile_cell (old local tile cell)
+template<std::size_t dim>
+struct TiledParticleTracker
+{
+    std::array<int, dim> icell{};
+    std::array<std::uint32_t, dim> tile_cell{};
+};
+
+// level ghost moves resolve differently: ghost cells are clamp-owned by border tiles,
+// leaving the ghost box means deletion — distinct type so move_check can dispatch
+template<std::size_t dim>
+struct TiledLevelGhostParticleTracker
+{
+    std::array<int, dim> icell{};
+    std::array<std::uint32_t, dim> tile_cell{};
+};
+
+
+// the tracker kind is a compile-time function of the layout and the particle type
+template<LayoutMode layout_mode, ParticleType particle_type, std::size_t dim>
+using ParticleTracker_t = std::conditional_t<
+    is_tiled(layout_mode),
+    std::conditional_t<particle_type == ParticleType::LevelGhost,
+                       TiledLevelGhostParticleTracker<dim>, TiledParticleTracker<dim>>,
+    ParticleTracker<dim>>;
+
+template<LayoutMode layout_mode, ParticleType particle_type, std::size_t dim>
+auto make_particle_tracker(auto&&... args)
+{
+    return ParticleTracker_t<layout_mode, particle_type, dim>{args...};
+}
+
+
+template<typename R = std::uint32_t, std::size_t dim>
+auto as_local_cell(std::array<int, dim> const& lower, std::array<int, dim> const& icell)
+{
+    return array_minus<R>(icell, lower);
+}
+template<std::size_t dim>
+auto as_local_cell(Box<int, dim> const& box, std::array<int, dim> const& icell)
+{
+    return as_local_cell(box.lower.toArray(), icell);
+}
+template<std::size_t dim>
+auto as_local_cell(Box<int, dim> const& box, Point<int, dim> const& icell)
+{
+    return as_local_cell(box.lower.toArray(), icell.toArray());
+}
+
+template<typename I0, typename I1> // support const vs non-const iterators
+auto it_dist(I0&& i0, I1&& i1)
+{
+    auto const& begin = i0;
+    auto const& pos   = i1;
+    auto d            = std::distance(begin, pos);
+    PHARE_ASSERT(d < 1e18); // should never happen // eg 2635249153387078728
+    return d;
+}
+
+
+// !!! TODO(PHAREHUB/PHARE#1565): TEMPORARY, REMOVE WITH #1565 !!!
+// cells to map around the particle ghost box, so the selectors (cell map partitions) see every
+// particle a push can produce. A half push moves a particle up to 2 cells (Boris throws past
+// that): level ghosts are selected after each half push, up to 2 cells past the ghost box;
+// domain particles after both, up to 4 cells past the domain, which is the ghost box shrunk by
+// the particle ghost width.
+// #1565 makes this irrelevant: domain particles throw before leaving the ghost box, level ghosts
+// out of it are dropped by a predicate before interpolation, not through the cell map. Then
+// remove this and the margin in make_particles below (grep "#1565").
+NO_DISCARD int constexpr particleMapMargin(int const particleGhostWidth)
+{
+    return std::max(2, 4 - particleGhostWidth);
+}
+
+template<typename Particles_t, typename T, std::size_t D>
+Particles_t make_particles(Box<T, D> const& box, std::size_t const ghost_cells)
+{
+    static_assert(Particles_t::storage_mode == StorageMode::VECTOR);
+
+    using enum LayoutMode;
+    if constexpr (is_tiled(Particles_t::layout_mode))
+        return Particles_t{box, ghost_cells};
+    else if constexpr (any_in(Particles_t::layout_mode, AoSMapped))
+    {
+        // !!! TODO(PHAREHUB/PHARE#1565): TEMPORARY margin, back to grow(box, ghost_cells) !!!
+        int const ghosts = static_cast<int>(ghost_cells);
+        return Particles_t{grow(box, ghosts + particleMapMargin(ghosts))};
+    }
+    else
+        return Particles_t{};
+}
+
+template<typename Particles_t, typename GridLayout_t>
+Particles_t make_particles(GridLayout_t const& layout)
+{
+    return make_particles<Particles_t>(layout.AMRBox(), GridLayout_t::options.particle_ghost_width);
+}
+
+
+// guards a forwarding constructor `template<typename... Args> This(Args&&...)` so that a
+// single self-type argument (e.g. a non-const `This&`) is excluded and falls through to the
+// real copy/move constructor instead - otherwise the forwarding ctor is an exact match that
+// beats the copy ctor's `This const&` in overload resolution.
+template<typename This, typename Super, typename... Args>
+bool consteval self_excluding_constructible()
+{
+    using Tup = std::tuple<Args...>;
+
+    bool constexpr base = std::is_constructible_v<Super, Args&&...>;
+    if constexpr (std::tuple_size_v<Tup> > 0)
+    {
+        bool constexpr isself = std::is_same_v<std::decay_t<std::tuple_element_t<0, Tup>>, This>;
+        return !isself and base;
+    }
+    else
+        return base;
+}
+
+
+} // namespace PHARE::core
+
+
+#endif /*PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_DEF_HPP*/

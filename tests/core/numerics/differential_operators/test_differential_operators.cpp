@@ -19,12 +19,12 @@ namespace PHARE::core
 
 constexpr SimOpts mhdOpts(std::size_t dim, MHDOpts::ReconstructionType reconstruction)
 {
-    return SimOpts{dim,
-                   0,
-                   0,
-                   reconstruction,
-                   MHDOpts::SlopeLimiterType::None,
-                   MHDOpts::RiemannSolverType::Rusanov};
+    return SimOpts{.dimension           = dim,
+                   .interp_order        = 0,
+                   .nbRefinedPart       = 0,
+                   .reconstruction_type = reconstruction,
+                   .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                   .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov};
 }
 
 constexpr auto Constant = MHDOpts::ReconstructionType::Constant;

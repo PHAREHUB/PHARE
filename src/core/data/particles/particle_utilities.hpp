@@ -1,31 +1,51 @@
 #ifndef PHARE_PARTICLE_UTILITIES
 #define PHARE_PARTICLE_UTILITIES
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/particles/particle.hpp"
-#include "core/utilities/point/point.hpp"
 #include "core/def.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <array>
 
 
+
 namespace PHARE::core
 {
-template<typename GridLayout>
 /**
  * @brief positionAsPoint returns a point holding the physical position of the macroparticle.
  * The function assumes the iCell of the particle is in AMR index space.
  */
-NO_DISCARD auto positionAsPoint(Particle<GridLayout::dimension> const& particle,
+template<typename GridLayout, std ::size_t dim = GridLayout::dimension>
+NO_DISCARD auto positionAsPoint(std::array<int, dim> const& iCell_,    //
+                                std::array<double, dim> const& delta_, //
                                 GridLayout const& layout)
 {
+    auto const origin       = layout.origin();
+    auto const startIndexes = layout.physicalStartIndex(QtyCentering::primal);
+    auto const iCell        = layout.AMRToLocal(cellAsPoint(iCell_));
+    auto const meshSize     = layout.meshSize();
+
     Point<double, GridLayout::dimension> position;
-
-    auto const meshSize = layout.meshSize();
     for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
-        position[iDim] = (particle.iCell[iDim] + particle.delta[iDim]) * meshSize[iDim];
-
+    {
+        position[iDim] = origin[iDim];
+        position[iDim] += (iCell[iDim] - startIndexes[iDim] + delta_[iDim]) * meshSize[iDim];
+    }
     return position;
+}
+
+template<typename GridLayout, std ::size_t dim = GridLayout::dimension>
+NO_DISCARD auto positionAsPoint(Particle<dim> const& particle, GridLayout const& layout)
+{
+    return positionAsPoint(particle.iCell(), particle.delta(), layout);
+}
+
+template<typename ParticleArray_t, typename GridLayout>
+NO_DISCARD auto positionAsPoint(ParticleArray_t const& particles, std::size_t idx,
+                                GridLayout const& layout)
+{
+    return positionAsPoint(particles.iCell(idx), particles.delta(idx), layout);
 }
 
 
@@ -42,7 +62,7 @@ void checkDeltas(ParticleRange const& prange)
 
     for (auto const& part : prange)
     {
-        deltas.push_back(part.iCell[0] + part.delta[0]);
+        deltas.push_back(part.iCell()[0] + part.delta()[0]);
     }
     std::sort(std::begin(deltas), std::end(deltas));
     auto p = std::adjacent_find(std::begin(deltas), std::end(deltas));
@@ -51,11 +71,11 @@ void checkDeltas(ParticleRange const& prange)
         double delta = *p;
         std::cout << "Oops found duplicates \n";
         auto part = std::find_if(std::begin(prange), std::end(prange), [delta](auto const& par) {
-            return par.iCell[0] + par.delta[0] == delta;
+            return par.iCell()[0] + par.delta()[0] == delta;
         });
 
         auto part2 = std::find_if(part + 1, std::end(prange), [delta](auto const& par) {
-            return par.iCell[0] + par.delta[0] == delta;
+            return par.iCell()[0] + par.delta()[0] == delta;
         });
 
         if (part == std::end(prange))
@@ -64,15 +84,15 @@ void checkDeltas(ParticleRange const& prange)
             std::cout << "part2 at the end of prange\n";
         else
         {
-            std::cout << std::setprecision(12) << "part1 delta = " << part->delta[0]
-                      << " , part2 delta = " << part2->delta[0] << "\n";
-            std::cout << "part1 cell = " << part->iCell[0] << " , part2 Cell = " << part2->iCell[0]
-                      << "\n";
+            std::cout << std::setprecision(12) << "part1 delta = " << part->delta()[0]
+                      << " , part2 delta = " << part2->delta()[0] << "\n";
+            std::cout << "part1 cell = " << part->iCell()[0]
+                      << " , part2 Cell = " << part2->iCell()[0] << "\n";
             std::cout << "distance : " << std::distance(part, part2) << "\n";
             std::cout << "size : " << prange.size() << "\n";
-            std::cout << "p1.vx = " << part->v[0] << " p2.vx = " << part2->v[0] << "\n";
-            std::cout << "p1.vy = " << part->v[1] << " p2.vy = " << part2->v[1] << "\n";
-            std::cout << "p1.vz = " << part->v[2] << " p2.vz = " << part2->v[2] << "\n";
+            std::cout << "p1.vx = " << part->v()[0] << " p2.vx = " << part2->v()[0] << "\n";
+            std::cout << "p1.vy = " << part->v()[1] << " p2.vy = " << part2->v()[1] << "\n";
+            std::cout << "p1.vz = " << part->v()[2] << " p2.vz = " << part2->v()[2] << "\n";
             std::cout << &(*part) << " " << &(*part2) << "\n";
             throw std::runtime_error("Oops duplicates duplicates throooow");
         }

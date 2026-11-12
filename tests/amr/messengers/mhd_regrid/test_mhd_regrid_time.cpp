@@ -17,9 +17,13 @@
  * they differ between the regrid times, and the regrid at the midpoint gives their average.
  */
 
-using MHDSimulator = SimulatorTestParam<SimOpts{2, 0, 0, MHDOpts::ReconstructionType::WENOZ,
-                                                MHDOpts::SlopeLimiterType::None,
-                                                MHDOpts::RiemannSolverType::Rusanov}>;
+using MHDSimulator
+    = SimulatorTestParam<SimOpts{.dimension           = 2,
+                                 .interp_order        = 0,
+                                 .nbRefinedPart       = 0,
+                                 .reconstruction_type = MHDOpts::ReconstructionType::WENOZ,
+                                 .slope_limiter_type  = MHDOpts::SlopeLimiterType::None,
+                                 .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov}>;
 
 // every value of B, rho, rhoV and Etot on a patch, ghosts included, keyed by the patch box
 using LevelValues = std::map<std::string, std::vector<double>>;

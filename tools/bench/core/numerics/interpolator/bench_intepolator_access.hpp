@@ -30,9 +30,9 @@ public:
     NO_DISCARD inline auto operator()(Field const& field, IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
-            = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
+            = resolve_start_index_and_weights<0, GridLayout, quantity>(indexWeights);
         auto const& [yStartIndex, yWeights]
-            = start_index_and_weights_for_qty<1, GridLayout, quantity>(indexWeights);
+            = resolve_start_index_and_weights<1, GridLayout, quantity>(indexWeights);
 
         auto const& order_size = xWeights.size();
 
@@ -60,11 +60,11 @@ public:
     NO_DISCARD inline auto operator()(Field const& field, IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
-            = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
+            = resolve_start_index_and_weights<0, GridLayout, quantity>(indexWeights);
         auto const& [yStartIndex, yWeights]
-            = start_index_and_weights_for_qty<1, GridLayout, quantity>(indexWeights);
+            = resolve_start_index_and_weights<1, GridLayout, quantity>(indexWeights);
         auto const& [zStartIndex, zWeights]
-            = start_index_and_weights_for_qty<2, GridLayout, quantity>(indexWeights);
+            = resolve_start_index_and_weights<2, GridLayout, quantity>(indexWeights);
 
         auto const& order_size = xWeights.size();
 
@@ -107,7 +107,7 @@ public:
         auto const& [xWeights, yWeights]       = weights;
         auto const& order_size                 = xWeights.size();
 
-        auto const deposit = func(particle) * particle.weight * coef;
+        auto const deposit = func(particle) * particle.weight() * coef;
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
@@ -134,7 +134,7 @@ public:
         auto const& [xWeights, yWeights, zWeights]          = weights;
         auto const& order_size                              = xWeights.size();
 
-        auto const deposit = func(particle) * particle.weight * coef;
+        auto const deposit = func(particle) * particle.weight() * coef;
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
@@ -169,15 +169,15 @@ class Interpolator : public core::Interpolator<dim, interpOrder>
 
 public:
     template<typename Particle_t, typename Electromag, typename GridLayout>
-    inline auto operator()(Particle_t& currPart, Electromag const& Em, GridLayout const& layout)
+    inline auto m2p(Particle_t const& currPart, Electromag const& Em, GridLayout const& layout)
     {
         using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
         using Scalar    = HybridQuantity::Scalar;
 
-        auto& iCell = currPart.iCell;
-        auto& delta = currPart.delta;
-        this->template indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, iCell, delta);
-        this->template indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, iCell, delta);
+        auto const& iCell = currPart.iCell();
+        auto const& delta = currPart.delta();
+        this->template indexAndWeights_<QtyCentering::dual>(layout, iCell, delta);
+        this->template indexAndWeights_<QtyCentering::primal>(layout, iCell, delta);
 
         auto indexWeights = std::forward_as_tuple(dual_startIndex_, dual_weights_,
                                                   primal_startIndex_, primal_weights_);
@@ -210,20 +210,20 @@ public:
 
         for (auto currPart = particleRange.begin(); currPart != particleRange.end(); ++currPart)
         {
-            this->template indexAndWeights_<QtyCentering, QtyCentering::primal>(
-                layout, currPart->iCell, currPart->delta);
+            this->template indexAndWeights_<QtyCentering::primal>(layout, (*currPart).iCell(),
+                                                                  (*currPart).delta());
 
             particleToMesh_(
                 particleDensity, *currPart, [](auto const& part) { return 1.; }, startIndex_,
                 weights_, coef);
             particleToMesh_(
-                xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
+                xFlux, *currPart, [](auto const& part) { return part.v()[0]; }, startIndex_, weights_,
                 coef);
             particleToMesh_(
-                yFlux, *currPart, [](auto const& part) { return part.v[1]; }, startIndex_, weights_,
+                yFlux, *currPart, [](auto const& part) { return part.v()[1]; }, startIndex_, weights_,
                 coef);
             particleToMesh_(
-                zFlux, *currPart, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
+                zFlux, *currPart, [](auto const& part) { return part.v()[2]; }, startIndex_, weights_,
                 coef);
         }
     }

@@ -1,4 +1,6 @@
 
+#include "simulator/simulator_def.hpp"
+
 #include "gridlayout_test.hpp"
 #include "gridlayout_indexing.hpp"
 

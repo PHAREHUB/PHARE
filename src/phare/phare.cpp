@@ -5,9 +5,11 @@
 #include "amr/wrappers/hierarchy.hpp"
 
 #include "initializer/python_data_provider.hpp"
+#include "simulator/simulator_runtime.hpp"
+
+#include "phare.hpp"
 
 #include "simulator/simulator.hpp"
-#include "simulator/simulator_runtime.hpp"
 
 #include <atomic>
 #include <csignal>

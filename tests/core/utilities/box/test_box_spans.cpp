@@ -64,16 +64,19 @@ TEST(BoxSpansTest, ill_formed_box_is_empty)
 {
     auto constexpr max = std::numeric_limits<std::uint32_t>::max();
 
-    EXPECT_EQ(cells_in_spans(Box<int, 1>{{5}, {3}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 2>{{0, 5}, {9, 3}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 2>{{5, 0}, {3, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 3>{{5, 0, 0}, {3, 9, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 3>{{0, 5, 0}, {9, 3, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<int, 3>{{0, 0, 5}, {9, 9, 3}}), 0);
-    // unsigned upper = lower - 1 wraps to UINT_MAX at lower = 0
-    EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {max, 9, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {9, max, 9}}), 0);
-    EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {9, 9, max}}), 0);
+    if constexpr (!PHARE_DEBUG) // debug builds abort on constructing ill-formed boxes, see box.hpp
+    {
+        EXPECT_EQ(cells_in_spans(Box<int, 1>{{5}, {3}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<int, 2>{{0, 5}, {9, 3}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<int, 2>{{5, 0}, {3, 9}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<int, 3>{{5, 0, 0}, {3, 9, 9}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<int, 3>{{0, 5, 0}, {9, 3, 9}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<int, 3>{{0, 0, 5}, {9, 9, 3}}), 0);
+        // unsigned upper = lower - 1 wraps to UINT_MAX at lower = 0
+        EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {max, 9, 9}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {9, max, 9}}), 0);
+        EXPECT_EQ(cells_in_spans(Box<std::uint32_t, 3>{{0, 0, 0}, {9, 9, max}}), 0);
+    }
 }
 
 // two same-shaped boxes: matching spans sit at the same offset from each box's lower corner
@@ -150,8 +153,12 @@ TEST(BoxSpansTest, for_each_point_reverse)
     EXPECT_EQ(check(Box<std::uint32_t, 1>{{0}, {4}}), 5u);
     EXPECT_EQ(check(Box<std::uint32_t, 2>{{0, 0}, {3, 2}}), 4u * 3u);
     EXPECT_EQ(check(Box<std::uint32_t, 3>{{0, 0, 0}, {2, 3, 1}}), 3u * 4u * 2u);
-    EXPECT_EQ(check(Box<int, 3>{{0, 5, 0}, {9, 3, 9}}), 0u);
-    EXPECT_EQ(check(Box<std::uint32_t, 2>{{0, 5}, {9, 3}}), 0u);
+
+    if constexpr (!PHARE_DEBUG) // debug builds abort on constructing ill-formed boxes, see box.hpp
+    {
+        EXPECT_EQ(check(Box<int, 3>{{0, 5, 0}, {9, 3, 9}}), 0u);
+        EXPECT_EQ(check(Box<std::uint32_t, 2>{{0, 5}, {9, 3}}), 0u);
+    }
 }
 
 } // namespace PHARE::core

@@ -48,7 +48,9 @@ struct DiagnosticsManagerResolver
 {
     template<typename Hierarchy, typename Model>
     NO_DISCARD static std::unique_ptr<IDiagnosticsManager>
-    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
+    make_unique([[maybe_unused]] Hierarchy& hier, //
+                [[maybe_unused]] Model& model,    //
+                [[maybe_unused]] initializer::PHAREDict const& dict)
     {
 #if PHARE_HAS_HIGHFIVE
         using ModelView_t = ModelView<Hierarchy, Model>;

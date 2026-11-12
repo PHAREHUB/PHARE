@@ -14,7 +14,11 @@ if(HighFive)
   message(STATUS "HDF5_LIBRARIES " ${HDF5_LIBRARIES})
   message(STATUS "HDF5_INCLUDE_DIRS " ${HDF5_INCLUDE_DIRS})
   message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
-  include_directories(${HDF5_INCLUDE_DIRS})  # clangd mostly
+  # NOT include_directories()/add_definitions() here -- those are directory-scoped and leak
+  # HDF5's (and, since it's MPI-parallel, MPI's) include dirs into every target below this
+  # point, including phare_core/phare_mpi which must stay HDF5/MPI-agnostic. HDF5::HDF5 is
+  # instead linked PUBLIC on phare_amr only ("SAMRAI uses HDF5" - see amr/CMakeLists.txt),
+  # so its include dirs/definitions reach exactly the targets that link phare_amr and no more.
 
   if(NOT DEFINED PHARE_HIGHFIVE_VERSION)
     SET(PHARE_HIGHFIVE_VERSION "main")
@@ -28,7 +32,6 @@ if(HighFive)
   set(HIGHFIVE_USE_BOOST OFF)
   set(HIGHFIVE_BUILD_DOCS OFF) # conflicts with phare doc target
   set(HIGHFIVE_EXAMPLES OFF)
-  include_directories(${HIGHFIVE_SRC}/include)
   add_subdirectory(${HIGHFIVE_SRC})
 
   if(DEFINED HDF5_ENABLE_PARALLEL AND "${HDF5_ENABLE_PARALLEL}" STREQUAL "ON")
@@ -37,7 +40,6 @@ if(HighFive)
 
   if(${HDF5_IS_PARALLEL})
       message("HDF5 PARALLEL detected")
-      add_definitions(-DH5_HAVE_PARALLEL)
   else()
       message(WARNING "HDF5 NOT PARALLEL")
   endif()

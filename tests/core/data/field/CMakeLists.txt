@@ -1,21 +1,18 @@
 cmake_minimum_required (VERSION 3.20.1)
 
-project(test-recentered-field)
+project(test-field)
 
-set(SOURCES test_recentered_field.cpp)
+add_executable(test-recentered-field test_recentered_field.cpp)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(test-recentered-field PRIVATE
   ${GTEST_INCLUDE_DIRS}
   )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(test-recentered-field PRIVATE
   phare_core
   ${GTEST_LIBS})
 
-add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
-
+add_no_mpi_phare_test(test-recentered-field ${CMAKE_CURRENT_BINARY_DIR})
 
 function(_field_test test_name)
 
