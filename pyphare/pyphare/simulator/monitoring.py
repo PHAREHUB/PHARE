@@ -5,6 +5,7 @@
 #
 
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,6 +63,14 @@ def monitoring_yaml_file():
     path = Path(".phare") / "stats" / f"rank.{cpp.mpi_rank()}.yaml"
     path.parent.mkdir(exist_ok=True, parents=True)
     return path
+
+
+def remove_stale_stats():
+    """files left by an earlier run would be read as this one's. Collective: called by every
+    rank from Simulator.run(), whatever its monitoring, before any rank starts monitoring"""
+    if cpp.mpi_rank() == 0:
+        shutil.rmtree(Path(".phare") / "stats", ignore_errors=True)
+    cpp.mpi_barrier()
 
 
 def setup_monitoring(input):
