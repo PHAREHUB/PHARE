@@ -77,7 +77,8 @@ class Simulator:
         *  **post_advance**: (``Function``),  default None. A python function called with the current time
            after each advance, once any diagnostics active at that time have been dumped. Diagnostics may not
            exist for that time, in which case loading them raises
-           :class:`pyphare.pharesee.hierarchy.TimeNotFoundError`
+           :class:`pyphare.pharesee.hierarchy.TimeNotFoundError`. With more than one MPI rank, an
+           exception it raises aborts the MPI job, as the other ranks may be waiting on this one
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
 
     """
@@ -163,7 +164,7 @@ class Simulator:
 
         self.dump()
         if self.post_advance is not None:
-            self.post_advance(self.cpp_sim.currentTime())
+            self._call_post_advance()
         return self
 
     def times(self):
@@ -319,3 +320,18 @@ class Simulator:
             sys.exit(1)
         # or reraise
         raise RuntimeError(e)
+
+    def _call_post_advance(self):
+        # what post_advance does is up to the user: if it raises on one rank, the others may be
+        # blocked in a collective (theirs or the next advance) and only an MPI abort ends them
+        try:
+            self.post_advance(self.cpp_sim.currentTime())
+        except Exception:
+            if cpp.mpi_size() == 1:
+                raise
+            import traceback
+
+            print(f"rank {cpp.mpi_rank()}: exception in post_advance, aborting the MPI job")
+            traceback.print_exc()
+            sys.stdout.flush()
+            cpp.mpi_abort(1)

@@ -36,6 +36,9 @@ NO_DISCARD int rank();
 
 void barrier();
 
+// ends every rank, for errors where the other ranks may be blocked waiting on this one
+void abort(int const code);
+
 NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();

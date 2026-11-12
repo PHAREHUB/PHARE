@@ -113,6 +113,11 @@ def mpi_barrier():
     return cpp_etc_lib().mpi_barrier()
 
 
+def mpi_abort(code=1):
+    """ends every rank, for errors where the other ranks may be blocked waiting on this one"""
+    return cpp_etc_lib().mpi_abort(code)
+
+
 def mpi_initialized():
     return cpp_etc_lib().mpi_initialized()
 
