@@ -103,10 +103,9 @@ def execute_permutation(config_fn, keys, permutation):
                 post_sim(samples, kwargs)
             except Exception:  # the other ranks wait in the next barrier
                 import traceback
-                from mpi4py import MPI
 
                 traceback.print_exc()
-                MPI.COMM_WORLD.Abort(1)
+                cpp.mpi_abort(1)
 
     run()
     cpp.mpi_barrier()
