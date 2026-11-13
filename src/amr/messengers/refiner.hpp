@@ -106,7 +106,7 @@ private:
         }
 
 
-        // schedule used to == max of vector field values on complete overlapped ghost box nodes
+        // sets each node of the overlaps to the max of the copies the patches hold
         else if constexpr (Type == RefinerType::PatchVecFieldBorderMax)
         {
             return algo->createSchedule(

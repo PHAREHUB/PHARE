@@ -274,8 +274,8 @@ class PatchLayoutIndependenceTest(SimulatorTest):
             nesting_buffer=1,
             tagging_threshold=0.1,
             resistivity=0.0,
-            # without: E and B copies differ in the last bits where the current is not zero,
-            # from the hyper-resistive term, a separate cause
+            # with it, E and B copies of shared nodes differ in the last bits where J is not
+            # zero: the hyper-resistive term reads level 0 B ghosts unfilled at init (#1582)
             hyper_resistivity=0.0,
             diag_options={
                 "format": "phareh5",
