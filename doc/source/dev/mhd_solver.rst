@@ -12,6 +12,13 @@ MHD solver internals
 finite-volume scheme for density, momentum and energy, and constrained transport for
 the magnetic field, wrapped in a Runge-Kutta time integrator chosen at run time.
 
+In plain words: a *Godunov* scheme updates cell averages with the fluxes through the
+cell faces, each flux coming from a *Riemann solver* (an approximate solution of the
+jump between the two sides of the face). *Constrained transport* advances B on the faces
+with the curl of an electric field placed on the edges, which keeps
+:math:`\nabla\cdot\mathbf{B}` unchanged. *Refluxing* corrects a coarse level with the
+fluxes the finer level actually used at their common border.
+
 The numerical method itself (reconstruction, Riemann solvers, constrained transport,
 the formulas of each integrator) is explained for users on
 :doc:`/numerics/mhd_finite_volume` and :doc:`/numerics/time_integration`. This page is

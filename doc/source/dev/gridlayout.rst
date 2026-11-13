@@ -16,11 +16,11 @@ Why it exists
 -------------
 
 PHARE stores each field component in its own array, on a staggered grid (the *Yee
-layout*): B components sit on cell faces, E and J on cell edges, and the hybrid ion
+layout*, the standard staggered grid of electromagnetic codes): B components sit on cell faces, E and J on cell edges, and the hybrid ion
 moments on cell corners (*nodes*). Every numerical operator needs to know, for every
 array it reads, where its values are. Writing that by hand in every loop is how index
 bugs are born. ``GridLayout`` answers these questions in one place, and most answers are
-computed at compile time.
+computed by the compiler, so they cost nothing when the code runs.
 
 The user-side description of the grid (pictures of the cell, what lives where) is on
 :doc:`/numerics/grid`.
@@ -36,12 +36,13 @@ side). Each centering has its own array:
    :caption: Primal values (circles) sit on cell boundaries (nodes), dual values (squares) at cell
       centres. Both arrays start with the same number of ghost nodes (grey band), so
       their first domain value has the same *local* index, 2. The primal array has one
-      more value than the dual one. Below the axis: the *AMR* cell index of the same
-      places on the level, here with the patch starting at AMR cell 8.
+      more value than the dual one. The numbers on the primal and dual rows are *local*
+      indices (positions in the patch's arrays); the bottom row gives the *AMR* cell index
+      of the same places on the level, here with the patch starting at AMR cell 8.
 
    import matplotlib.pyplot as plt
 
-   fig, ax = plt.subplots(figsize=(6.5, 3.4))
+   fig, ax = plt.subplots(figsize=(5.2, 3.6))
    lo, hi = 8, 12            # domain cells 8..11 (AMR index)
    g = 2                     # ghost width
    ax.axvspan(lo - g, lo, color="0.85", lw=0)
@@ -53,22 +54,22 @@ side). Each centering has its own array:
    for k, x in enumerate(range(lo - g, hi + g + 1)):
        ghost = x < lo or x > hi
        ax.plot(x, 0.55, "o", ms=10, color="0.6" if ghost else "#2a7ab9")
-       ax.text(x, 0.85, str(k), ha="center", fontsize=11)
+       ax.text(x, 0.85, str(k), ha="center", fontsize=14)
    # dual: local 0..7 at x = 6.5..13.5
    for k in range(hi - lo + 2 * g):
        x = lo - g + k + 0.5
        ghost = x < lo or x > hi
        ax.plot(x, -0.55, "s", ms=9, color="0.6" if ghost else "#e07a1f")
-       ax.text(x, -0.95, str(k), ha="center", fontsize=11)
+       ax.text(x, -0.95, str(k), ha="center", fontsize=14)
    for c in range(lo - g, hi + g):
-       ax.text(c + 0.5, -1.45, str(c), ha="center", fontsize=11, color="0.25")
-   ax.text(lo - g - 0.3, 0.85, "primal, local", ha="right", fontsize=11)
-   ax.text(lo - g - 0.3, -0.95, "dual, local", ha="right", fontsize=11)
-   ax.text(lo - g - 0.3, -1.45, "AMR cell", ha="right", fontsize=11, color="0.25")
-   ax.text((lo + hi) / 2, 1.25, "domain (4 cells)", ha="center", fontsize=12)
-   ax.text(lo - g / 2, 1.25, "ghosts", ha="center", fontsize=11)
-   ax.text(hi + g / 2, 1.25, "ghosts", ha="center", fontsize=11)
-   ax.set_xlim(2.2, hi + g + 0.4)
+       ax.text(c + 0.5, -1.45, str(c), ha="center", fontsize=14, color="0.25")
+   ax.text(lo - g - 0.3, 0.85, "primal", ha="right", fontsize=14)
+   ax.text(lo - g - 0.3, -0.95, "dual", ha="right", fontsize=14)
+   ax.text(lo - g - 0.3, -1.45, "AMR", ha="right", fontsize=14, color="0.25")
+   ax.text((lo + hi) / 2, 1.25, "domain", ha="center", fontsize=14)
+   ax.text(lo - g / 2, 1.25, "ghosts", ha="center", fontsize=14)
+   ax.text(hi + g / 2, 1.25, "ghosts", ha="center", fontsize=14)
+   ax.set_xlim(3.6, hi + g + 0.4)
    ax.set_ylim(-1.7, 1.5)
    ax.axis("off")
    fig.tight_layout()
@@ -144,7 +145,8 @@ table.
 stencil at compile time from the two centerings (``recenteringStencil``,
 :src:`src/core/data/grid/gridlayoutdefs.hpp#L259-L275`). In every direction where they
 differ, it averages the two neighbours; across several directions it takes the product.
-In 2D, :math:`B_z` is dual–dual and :math:`E_x` is dual–primal, so
+In 1D, a primal velocity read at a dual :math:`E_x` point is
+:math:`\tfrac12\big(V(i) + V(i+1)\big)`. In 2D, :math:`B_z` is dual–dual and :math:`E_x` is dual–primal, so
 
 .. math::
 
@@ -160,7 +162,7 @@ Centerings are a compile-time table
 
 **Problem.** The centering of a quantity is asked inside hot loops.
 
-**Fix.** It is a ``constexpr`` array indexed by the quantity's enum value
+**Fix.** It is a ``constexpr`` array (filled by the compiler) indexed by the quantity's enum value
 (``centering``, :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L127-L144`):
 no switch, no runtime cost, and a missing or duplicate entry fails to compile.
 

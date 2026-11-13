@@ -16,7 +16,7 @@ Why it exists
 -------------
 
 The model state (``Electromag``, ``Ions``, the MHD state...) is built once for a whole
-simulation, but the data live in SAMRAI, one array per patch, and patches come and go
+simulation, but the data live in SAMRAI (the adaptive mesh refinement library PHARE is built on), one array per patch, and patches come and go
 when the mesh is refined. So the objects the solvers manipulate cannot own their data.
 They are views that are pointed at one patch's data, used, then pointed at the next
 patch. ``Field`` is that view for one scalar array.

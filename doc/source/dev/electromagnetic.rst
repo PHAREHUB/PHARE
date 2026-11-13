@@ -107,7 +107,8 @@ The electrons
 ``Electrons::update`` (:src:`src/core/data/electrons/electrons.hpp#L264-L272`) does two
 things before Ohm runs:
 
-* electron velocity, from quasi-neutrality and the current
+* electron velocity, from quasi-neutrality (the electron density equals the ion charge
+  density, :doc:`/theory/hybridpic`) and the current
   (``StandardHybridElectronFluxComputer::computeBulkVelocity``,
   :src:`src/core/data/electrons/electrons.hpp#L70-L98`):
 
@@ -149,7 +150,8 @@ inputs and often zero. Testing them in every cell of the hot loop costs time; co
 Laplacian that is multiplied by zero costs more.
 
 **Fix.** ``Ohm::operator()`` turns the two runtime flags (``eta > 0``, ``nu > 0``) into
-compile-time template arguments once per call, with ``Constexprifier``
+compile-time template arguments once per call, with ``Constexprifier`` (a small helper
+that makes the compiler build one version of the loop per combination of flags)
 (:src:`src/core/numerics/ohm/ohm.hpp#L56-L62`). The per-cell code then keeps or drops each
 term with ``if constexpr``.
 
