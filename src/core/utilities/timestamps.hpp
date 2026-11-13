@@ -6,7 +6,13 @@
 #include "initializer/data_provider.hpp"
 
 #include <cassert>
+#include <cmath>
 #include <cstdint>
+#include <iomanip>
+#include <limits>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 
 
@@ -14,6 +20,63 @@ namespace PHARE::core
 {
 
 enum class TimeStepType : std::uint8_t { constant, adaptive };
+
+
+// Returns the dt such that start + dt, rounded to a double, equals end bit-wise.
+inline double dt_between(double const start, double const end)
+{
+    // a step must move the clock forward
+    if (!(end > start))
+    {
+        std::stringstream ss;
+        ss << std::setprecision(17) << "dt_between: end " << end << " is not after start " << start;
+        throw std::runtime_error(ss.str());
+    }
+
+    auto constexpr inf = std::numeric_limits<double>::infinity();
+
+    // searches a dt such that start + dt == goal
+    auto const solve = [&](double const goal) -> std::optional<double> {
+        // first guess: when start >= goal / 2 the subtraction is exact (Sterbenz lemma)
+        // and start + dt == goal at once; this covers every constant step and almost
+        // every adaptive one
+        auto dt = goal - start;
+        // otherwise goal - start was rounded and start + dt may miss goal by an ulp;
+        // each iteration corrects dt; a few suffice, 8 bounds the loop
+        for (int iteration = 0; iteration < 8; ++iteration)
+        {
+            auto const landed = start + dt;
+            if (landed == goal)
+                return dt;
+            // landed is close to goal (within a factor 2), so goal - landed is exact
+            // (Sterbenz lemma): it is the miss, add it to dt
+            auto const corrected = dt + (goal - landed);
+            // if the miss is at most half an ulp of dt, adding it changes nothing:
+            // move dt by one ulp towards goal instead
+            dt = (corrected == dt) ? std::nextafter(dt, landed < goal ? inf : -inf) : corrected;
+        }
+        return std::nullopt;
+    };
+
+    // land exactly on end when some dt can
+    if (auto const dt = solve(end))
+        return *dt;
+    // round-half-even tie: every start + dt near end falls halfway between two doubles
+    // and rounds to the even one; end is odd so it is skipped, aim one ulp above it
+    if (auto const dt = solve(std::nextafter(end, inf)))
+        return *dt;
+
+    std::stringstream ss;
+    ss << std::setprecision(17) << "dt_between: no dt goes from " << start << " to " << end;
+    throw std::runtime_error(ss.str());
+}
+
+
+inline bool reaches_target(double const time, double const target)
+{
+    return time == target
+           or time == std::nextafter(target, std::numeric_limits<double>::infinity());
+}
 
 
 struct ITimeStamper

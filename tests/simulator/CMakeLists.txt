@@ -24,6 +24,10 @@ if(HighFive)
   ## These test use dump diagnostics so require HighFive!
   phare_python3_exec(9       diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       restarts    test_restarts.py     ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       restart_time test_restart_time.py ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  if (useExceptionsInsteadOfMPIAbort)
+    phare_python3_exec(9     advance_past_final_time test_advance_past_final_time.py ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       seed_tiling test_seed_tiling.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2

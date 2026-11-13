@@ -55,11 +55,28 @@ def try_delete_obsolete_restarts(simulator):
 
 
 def restart_time(restart_options):
-    if "restart_time" in restart_options:
-        if restart_options["restart_time"] == "auto":
-            return find_latest_time_from_restarts(restart_options)
-        return restart_options["restart_time"]
-    return None
+    if "restart_time" not in restart_options:
+        return None
+    requested = restart_options["restart_time"]
+    if requested == "auto":
+        requested = find_latest_time_from_restarts(restart_options)
+    if requested is None:
+        return None
+    return restored_time(restart_options.get("dir", "phare_outputs"), requested)
+
+
+def restored_time(directory, requested):
+    import h5py
+
+    from pyphare.cpp import cpp_etc_lib
+
+    folder = Path(cpp_etc_lib().restart_path_for_time(directory, requested))
+    for path in sorted(folder.glob("restore.*/nodes.*/proc.*")):
+        with h5py.File(path, "r") as f:
+            return float(
+                np.ravel(f["TimeRefinementIntegrator/d_integrator_time"][()])[0]
+            )
+    return requested
 
 
 def find_latest_time_from_restarts(restart_options):
