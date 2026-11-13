@@ -14,3 +14,6 @@ SET(PHARE_HIGHFIVE_VERSION "v3.0.0-beta2")
 
 # https://github.com/LaboratoryOfPlasmaPhysics/cppdict/releases/tag/v1.0.0
 SET(PHARE_CPPDICT_VERSION "v1.0.0")
+
+# https://github.com/PhilipDeegan/phlop/releases/tag/v0.0.45
+SET(PHARE_PHLOP_VERSION "v0.0.45")
