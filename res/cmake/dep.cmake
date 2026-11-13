@@ -39,3 +39,8 @@ include("${PHARE_PROJECT_DIR}/res/cmake/dep/pybind.cmake")
 
 # Phlop - enabled with -DwithPhlop
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/phlop.cmake")
+
+# mpiP
+#  enabled with -DMPIP_ROOT=/path/to/mpiP
+#    or -DwithLLNLMpiP, which downloads and builds in subprojects dir
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/mpip.cmake")
