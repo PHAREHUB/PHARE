@@ -57,8 +57,8 @@ public:
     static constexpr std::size_t rank      = rank_;
 
     using field_type = Field_t;
-    using value_type = typename Field_t::type;
-    using tensor_t   = typename PhysicalQuantity::template TensorType<rank>;
+    using value_type = Field_t::type;
+    using tensor_t   = PhysicalQuantity::template TensorType<rank>;
 
 
     TensorField()                                     = delete;

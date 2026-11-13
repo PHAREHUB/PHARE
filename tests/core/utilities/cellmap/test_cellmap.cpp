@@ -74,8 +74,7 @@ TEST(CellMap, canSortCells)
 
     cm.sort();
 
-    for (auto const& cell : cm.box())
-    {
+    for_each_point(cm.box(), [&](auto const& cell) {
         auto& indexes = cm(cell);
         int i         = -1;
         for (auto index : indexes)
@@ -90,7 +89,7 @@ TEST(CellMap, canSortCells)
                 i = index;
             }
         }
-    }
+    });
 }
 
 
@@ -135,8 +134,7 @@ auto make_particles_in(PHARE::core::Box<int, dim> box, std::size_t nppc)
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dis(0, 1.);
-    for (auto const& cell : box)
-    {
+    for_each_point(box, [&](auto const& cell) {
         for (auto ip = 0u; ip < nppc; ++ip)
         {
             TestParticle<dim> p;
@@ -147,7 +145,7 @@ auto make_particles_in(PHARE::core::Box<int, dim> box, std::size_t nppc)
             p.delta = dis(gen);
             particles.push_back(p);
         }
-    }
+    });
 
     return particles;
 }
@@ -196,15 +194,14 @@ TEST(CellMap, givesAccessToAllTestParticlesInACell)
     auto particles = make_particles_in(patchbox, nppc);
     cm.add(particles);
 
-    for (auto const& cell : patchbox)
-    {
+    for_each_point(patchbox, [&](auto const& cell) {
         auto& blist = cm(cell);
         EXPECT_EQ(blist.size(), nppc);
         for (auto particleIndex : blist)
         {
             EXPECT_EQ(Point{particles[particleIndex].iCell}, cell);
         }
-    }
+    });
 }
 
 

@@ -468,34 +468,33 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
     auto const& by         = fields[1];
     std::size_t interiorBx = 0, interiorBy = 0;
 
-    for (auto const& idx :
-         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::Bx, fineLayout)))
-    {
-        auto const loc = localOf(fineLayout, idx[0], idx[1]);
-        ASSERT_TRUE(std::isfinite(bx(loc[0], loc[1])))
-            << "Bx not written at amr (" << idx[0] << "," << idx[1] << ")";
-        EXPECT_NEAR(bx(loc[0], loc[1]), fineBxAt(idx[0], idx[1]), 1e-12);
-        if (idx[0] % 2 != 0)
-            ++interiorBx;
-    }
+    for_each_point(
+        phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::Bx, fineLayout)),
+        [&](auto const& idx) {
+            auto const loc = localOf(fineLayout, idx[0], idx[1]);
+            ASSERT_TRUE(std::isfinite(bx(loc[0], loc[1])))
+                << "Bx not written at amr (" << idx[0] << "," << idx[1] << ")";
+            EXPECT_NEAR(bx(loc[0], loc[1]), fineBxAt(idx[0], idx[1]), 1e-12);
+            if (idx[0] % 2 != 0)
+                ++interiorBx;
+        });
 
-    for (auto const& idx :
-         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::By, fineLayout)))
-    {
-        auto const loc = localOf(fineLayout, idx[0], idx[1]);
-        ASSERT_TRUE(std::isfinite(by(loc[0], loc[1])))
-            << "By not written at amr (" << idx[0] << "," << idx[1] << ")";
-        EXPECT_NEAR(by(loc[0], loc[1]), fineByAt(idx[0], idx[1]), 1e-12);
-        if (idx[1] % 2 != 0)
-            ++interiorBy;
-    }
+    for_each_point(
+        phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::By, fineLayout)),
+        [&](auto const& idx) {
+            auto const loc = localOf(fineLayout, idx[0], idx[1]);
+            ASSERT_TRUE(std::isfinite(by(loc[0], loc[1])))
+                << "By not written at amr (" << idx[0] << "," << idx[1] << ")";
+            EXPECT_NEAR(by(loc[0], loc[1]), fineByAt(idx[0], idx[1]), 1e-12);
+            if (idx[1] % 2 != 0)
+                ++interiorBy;
+        });
 
     EXPECT_GT(interiorBx, 0u); // the test is only meaningful if faces were reconstructed
     EXPECT_GT(interiorBy, 0u);
 
     // and the discrete divergence of every fine cell of the region is zero
-    for (auto const& cell : phare_box_from<2>(region))
-    {
+    for_each_point(phare_box_from<2>(region), [&](auto const& cell) {
         auto const bxLo = localOf(fineLayout, cell[0], cell[1]);
         auto const bxHi = localOf(fineLayout, cell[0] + 1, cell[1]);
         auto const byHi = localOf(fineLayout, cell[0], cell[1] + 1);
@@ -503,7 +502,7 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
         double const divB = (bx(bxHi[0], bxHi[1]) - bx(bxLo[0], bxLo[1]))
                             + (by(byHi[0], byHi[1]) - by(bxLo[0], bxLo[1]));
         EXPECT_NEAR(divB, 0., 1e-12) << "divB at fine cell (" << cell[0] << "," << cell[1] << ")";
-    }
+    });
 }
 
 
@@ -535,8 +534,8 @@ TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 // MagneticRefinePatchStrategy stage-2 touch-up tests (Balsara divB-free prolongation)
 // =================================================================================================
 //
-// Exercises the public static correctBx2d/correctBy2d directly: they are plain static functions,
-// so no SAMRAI Patch/ResourcesManager machinery is needed. Stage 1 (CompositeFieldRefiner, reused
+// Exercises the public static correctFace directly: it is a plain static function, so no SAMRAI
+// Patch/ResourcesManager machinery is needed. Stage 1 (CompositeFieldRefiner, reused
 // from the value-level tests above) fills every fine face of Bx/By from coarse data; these statics
 // then apply the stage-2 divergence-equalizing correction, sharing one DivScratch per postprocess
 // pass -- the same contract as MagneticRefinePatchStrategy::postprocessRefine.
@@ -560,7 +559,7 @@ GridYee2D identityLayout2D()
     return GridYee2D{{1., 1.}, {40u, 40u}, {{0., 0.}}, CoreBox{Point{G, G}, Point{G + 39, G + 39}}};
 }
 
-// raw ("flux") divergence of fine cell (cx,cy). The strategy's subzoneDiv2d_ weights each face
+// raw ("flux") divergence of fine cell (cx,cy). The strategy's subzoneDiv_ weights each face
 // difference by 1/D_c, so this is that same quantity on the unit mesh these cases run on
 // (identityLayout2D), which is what makes equalizing one equivalent to equalizing the other.
 double rawDiv2d(Grid2D& bx, Grid2D& by, int cx, int cy)
@@ -595,8 +594,8 @@ void fillFaces2D(Grid2D& bxCoarse, Grid2D& byCoarse, Grid2D& bxFine, Grid2D& byF
 
 // applies the stage-2 touch-up over the same fine box used to fill the faces (matches
 // MagneticRefinePatchStrategy::postprocessRefine's per-component loop shape: the parity
-// gate inside correctBx2d/correctBy2d selects only the interior/odd faces).
-void touchUp2D(Grid2D& bxFine, Grid2D& byFine)
+// gate inside correctFace selects only the interior/odd faces).
+void touchUp2D(std::array<Grid2D, 2>& fine)
 {
     auto const layout  = identityLayout2D();
     auto const destBox = boxOf<2>({6, 6}, {17, 17});
@@ -604,10 +603,10 @@ void touchUp2D(Grid2D& bxFine, Grid2D& byFine)
     TouchUp2D::DivScratch scratch;
     scratch.reset(destBox, layout);
 
-    for (auto const& i : phare_box_from<2>(destBox))
-        TouchUp2D::correctBx2d(scratch, bxFine, byFine, layout, i);
-    for (auto const& i : phare_box_from<2>(destBox))
-        TouchUp2D::correctBy2d(scratch, bxFine, byFine, layout, i);
+    for_each_point(phare_box_from<2>(destBox),
+                   [&](auto const& i) { TouchUp2D::correctFace<dirX>(scratch, fine, layout, i); });
+    for_each_point(phare_box_from<2>(destBox),
+                   [&](auto const& i) { TouchUp2D::correctFace<dirY>(scratch, fine, layout, i); });
 }
 
 void fillNaN2D(Grid2D& bxFine, Grid2D& byFine)
@@ -634,8 +633,9 @@ static void runDivFreeCase()
 
     Grid2D bxCoarse = makeGrid2D(HybridQuantity::Scalar::Bx, coarseN_);
     Grid2D byCoarse = makeGrid2D(HybridQuantity::Scalar::By, coarseN_);
-    Grid2D bxFine   = makeGrid2D(HybridQuantity::Scalar::Bx, fineN_);
-    Grid2D byFine   = makeGrid2D(HybridQuantity::Scalar::By, fineN_);
+    std::array fine{makeGrid2D(HybridQuantity::Scalar::Bx, fineN_),
+                    makeGrid2D(HybridQuantity::Scalar::By, fineN_)};
+    auto& [bxFine, byFine] = fine;
 
     for (int I = 0; I < coarseN_; ++I)
         for (int J = 0; J < coarseN_; ++J)
@@ -646,7 +646,7 @@ static void runDivFreeCase()
     fillNaN2D(bxFine, byFine);
 
     fillFaces2D<order>(bxCoarse, byCoarse, bxFine, byFine);
-    touchUp2D(bxFine, byFine);
+    touchUp2D(fine);
 
     for (int cx = 8; cx <= 15; ++cx)
         for (int cy = 8; cy <= 15; ++cy)
@@ -672,8 +672,9 @@ static void runEqualizeCase()
 
     Grid2D bxCoarse = makeGrid2D(HybridQuantity::Scalar::Bx, coarseN_);
     Grid2D byCoarse = makeGrid2D(HybridQuantity::Scalar::By, coarseN_);
-    Grid2D bxFine   = makeGrid2D(HybridQuantity::Scalar::Bx, fineN_);
-    Grid2D byFine   = makeGrid2D(HybridQuantity::Scalar::By, fineN_);
+    std::array fine{makeGrid2D(HybridQuantity::Scalar::Bx, fineN_),
+                    makeGrid2D(HybridQuantity::Scalar::By, fineN_)};
+    auto& [bxFine, byFine] = fine;
 
     for (int I = 0; I < coarseN_; ++I)
         for (int J = 0; J < coarseN_; ++J)
@@ -684,7 +685,7 @@ static void runEqualizeCase()
     fillNaN2D(bxFine, byFine);
 
     fillFaces2D<order>(bxCoarse, byCoarse, bxFine, byFine);
-    touchUp2D(bxFine, byFine);
+    touchUp2D(fine);
 
     for (int I = 4; I <= 7; ++I)
         for (int J = 4; J <= 7; ++J)

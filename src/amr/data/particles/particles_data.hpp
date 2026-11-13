@@ -64,20 +64,27 @@ namespace amr
     {
         using Super = SAMRAI::hier::PatchData;
 
-        using Particle_t          = typename ParticleArray::Particle_t;
+        using Particle_t          = ParticleArray::Particle_t;
         static constexpr auto dim = ParticleArray::dimension;
-        // add one cell surrounding ghost box to map particles exiting the ghost layer
-        static constexpr int ghostSafeMapLayer = 1;
+        // see core::particleMapMargin
+        static int ghostSafeMapLayer(SAMRAI::hier::IntVector const& ghost)
+        {
+            return core::particleMapMargin(ghost.min());
+        }
 
     public:
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost,
                       std::string const& name)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)
-            , domainParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
-            , patchGhostParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
-            , levelGhostParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
-            , levelGhostParticlesOld{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
-            , levelGhostParticlesNew{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
+            , domainParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer(ghost))}
+            , patchGhostParticles{grow(phare_box_from<dim>(getGhostBox()),
+                                       ghostSafeMapLayer(ghost))}
+            , levelGhostParticles{grow(phare_box_from<dim>(getGhostBox()),
+                                       ghostSafeMapLayer(ghost))}
+            , levelGhostParticlesOld{grow(phare_box_from<dim>(getGhostBox()),
+                                          ghostSafeMapLayer(ghost))}
+            , levelGhostParticlesNew{grow(phare_box_from<dim>(getGhostBox()),
+                                          ghostSafeMapLayer(ghost))}
             , pack{name,
                    &domainParticles,
                    &patchGhostParticles,

@@ -66,6 +66,16 @@ Warning: This documentation is a work in progress. It is not complete and may co
    numerics/domain_boundary_conditions
 
 
+.. Validation
+.. ----------
+.. toctree::
+   :caption: VALIDATION
+   :maxdepth: 1
+   :hidden:
+
+   validation/hybrid_dispersion
+
+
 .. Getting and Building
 .. --------------------
 .. toctree::

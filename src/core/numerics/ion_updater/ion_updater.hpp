@@ -32,10 +32,10 @@ public:
 
     using Box               = PHARE::core::Box<int, dimension>;
     using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
-    using VecField          = typename Ions::vecfield_type;
-    using ParticleArray     = typename Ions::particle_array_type;
-    using Particle_t        = typename ParticleArray::Particle_t;
-    using PartIterator      = typename ParticleArray::iterator;
+    using VecField          = Ions::vecfield_type;
+    using ParticleArray     = Ions::particle_array_type;
+    using Particle_t        = ParticleArray::Particle_t;
+    using PartIterator      = ParticleArray::iterator;
     using ParticleRange     = IndexRange<ParticleArray>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
     using Pusher = PHARE::core::Pusher<dimension, ParticleRange, Electromag, Interpolator,
@@ -278,10 +278,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                 auto const nearbyBox = grow(Box(particle.iCell, particle.iCell), 3);
                 for (auto const& xyz : em.E)
                     if (auto const overlap = nearbyBox * layout.AMRGhostBoxFor(xyz))
-                        for (auto const [bix, lix] : layout.amr_lcl_idx(*overlap))
-                        {
+                        layout.amr_lcl_idx(*overlap, [&](auto const& bix, auto const& lix) {
                             PHARE_LOG_LINE_SS(xyz.name() << " at:" << bix << ":" << xyz(lix));
-                        }
+                        });
             }
             if (outsideGhostBox.size())
                 throw core::DictionaryException{}("ID", "Updater::outsideGhostBox");

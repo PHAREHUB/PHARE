@@ -1,7 +1,6 @@
 #ifndef PHARE_CORE_NUMERICS_RECONSTRUCTIONS_RECONSTRUCTOR_HPP
 #define PHARE_CORE_NUMERICS_RECONSTRUCTIONS_RECONSTRUCTOR_HPP
 
-#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
@@ -14,6 +13,7 @@ struct Reconstructor
 {
 public:
     using GridLayout = Reconstruction::GridLayout_t;
+    using Scalar     = GridLayout::Scalar;
 
     template<auto direction, typename State>
     static auto reconstruct(State const& S, MeshIndex<GridLayout::dimension> index)
@@ -53,11 +53,11 @@ public:
     static constexpr auto faceQuantity()
     {
         if constexpr (direction == Direction::X)
-            return MHDQuantity::Scalar::Bx;
+            return Scalar::Bx;
         else if constexpr (direction == Direction::Y)
-            return MHDQuantity::Scalar::By;
+            return Scalar::By;
         else if constexpr (direction == Direction::Z)
-            return MHDQuantity::Scalar::Bz;
+            return Scalar::Bz;
     }
 
     // The normal direction for B is already face centered, so we only reconstruct the transverse
@@ -79,11 +79,11 @@ public:
         auto const Bt1 = B(static_cast<Component>(transverse[1]));
 
         auto [Bt0L, Bt0R] = Reconstruction::template center_reconstruct<
-            direction, Reconstructor::template faceQuantity<transverse[0]>(),
-            MHDQuantity::Scalar::rho>(Bt0, index);
+            direction, Reconstructor::template faceQuantity<transverse[0]>(), Scalar::rho>(Bt0,
+                                                                                           index);
         auto [Bt1L, Bt1R] = Reconstruction::template center_reconstruct<
-            direction, Reconstructor::template faceQuantity<transverse[1]>(),
-            MHDQuantity::Scalar::rho>(Bt1, index);
+            direction, Reconstructor::template faceQuantity<transverse[1]>(), Scalar::rho>(Bt1,
+                                                                                           index);
 
         PerIndexVector<typename VecField::value_type> BL, BR;
         BL(direction)     = Bn(index);

@@ -17,6 +17,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 
 
+#include <tuple>
 #include <type_traits>
 
 using namespace PHARE::core;
@@ -37,6 +38,12 @@ T srcFunc(T v, Args... args)
     // ASSERT_GT(n, 1);
     // ASSERT_LE(n, 3);
     return v + 10 * srcFunc(args...); // t + 10*x + 100*y + 1000*z
+}
+
+template<typename T, std::size_t dim>
+T srcFunc(T v, PHARE::core::Point<T, dim> const& position)
+{
+    return std::apply([&](auto... x) { return srcFunc(v, x...); }, position.toArray());
 }
 
 
@@ -91,8 +98,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
         auto& srcFieldOld = srcOld->field;
         auto& srcFieldNew = srcNew->field;
 
-        for (auto const amr_idx : layout.AMRGhostBoxFor(qty))
-        {
+        for_each_point(layout.AMRGhostBoxFor(qty), [&](auto const& amr_idx) {
             auto const position = layout.fieldNodeCoordinates(srcFieldOld, amr_idx);
             auto const lcl_idx  = layout.AMRToLocal(amr_idx);
 
@@ -113,7 +119,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
                 srcFieldNew(lcl_idx)
                     = srcFunc(newTime, position[dirX], position[dirY], position[dirZ]);
             }
-        }
+        });
     }
 
     auto zeroTransformation() const
@@ -121,6 +127,30 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
         return SAMRAI::hier::Transformation(SAMRAI::hier::Transformation::NO_ROTATE,
                                             SAMRAI::hier::IntVector::getZero(dimension),
                                             SAMRAI::hier::BlockId(0), SAMRAI::hier::BlockId(0));
+    }
+
+    //! the overlap a transaction filling the whole domain passes: the domain's field box
+    auto domainOverlap() const
+    {
+        SAMRAI::hier::BoxContainer boxes;
+        boxes.pushBack(FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(
+            domain, qty, srcOld->gridLayout));
+        return FieldOverlap{boxes, zeroTransformation()};
+    }
+
+    //! the same overlap from a source shifted by `offset` cells, as for a periodic image: its
+    //! destination boxes are in destination space, the data to interpolate in source space
+    auto shiftedDomainOverlap(int const offset) const
+    {
+        SAMRAI::hier::IntVector const shift{dimension, offset};
+        auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(domain, qty,
+                                                                              srcOld->gridLayout);
+        box.shift(shift);
+        SAMRAI::hier::BoxContainer boxes;
+        boxes.pushBack(box);
+        return FieldOverlap{boxes, SAMRAI::hier::Transformation(
+                                       SAMRAI::hier::Transformation::NO_ROTATE, shift,
+                                       SAMRAI::hier::BlockId(0), SAMRAI::hier::BlockId(0))};
     }
 };
 
@@ -149,9 +179,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
     auto& srcFieldOld = this->srcOld->field;
     auto& destField   = this->destNew->field;
 
-    auto zero_transformation{this->zeroTransformation()};
-    SAMRAI::hier::BoxContainer ghost_cntnr;
-    FieldOverlap overlap{ghost_cntnr, zero_transformation};
+    auto const overlap = this->domainOverlap();
 
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
@@ -232,9 +260,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     auto& srcFieldNew = this->srcNew->field;
     auto& destField   = this->destNew->field;
 
-    auto zero_transformation{this->zeroTransformation()};
-    SAMRAI::hier::BoxContainer ghost_cntnr;
-    FieldOverlap overlap{ghost_cntnr, zero_transformation};
+    auto const overlap = this->domainOverlap();
 
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
@@ -315,14 +341,12 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
     auto& layout    = this->srcOld->gridLayout;
     auto& destField = this->destNew->field;
 
-    SAMRAI::hier::BoxContainer ghost_cntnr;
-    FieldOverlap overlap{ghost_cntnr, this->zeroTransformation()};
+    auto const overlap = this->domainOverlap();
 
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-    for (auto const [amr_idx, lcl_idx] : layout.domain_amr_lcl_idx(destField))
-    {
+    layout.domain_amr_lcl_idx(destField, [&](auto const& amr_idx, auto const& lcl_idx) {
         auto const position = layout.fieldNodeCoordinates(destField, amr_idx);
 
         if constexpr (dim == 1)
@@ -340,7 +364,28 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
                 srcFunc(interpolateTime, position[dirX], position[dirY], position[dirZ]),
                 destField(lcl_idx));
         }
-    }
+    });
+}
+
+
+
+TYPED_TEST(aFieldLinearTimeInterpolate, interpolatesTheWholeOverlapOfAShiftedSource)
+{
+    double const interpolateTime = 0.2;
+    this->destNew->setTime(interpolateTime);
+
+    auto& layout    = this->srcOld->gridLayout;
+    auto& destField = this->destNew->field;
+
+    auto const overlap = this->shiftedDomainOverlap(3);
+
+    this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
+                                 *(this->srcNew));
+
+    layout.domain_amr_lcl_idx(destField, [&](auto const& amr_idx, auto const& lcl_idx) {
+        auto const position = layout.fieldNodeCoordinates(destField, amr_idx);
+        EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position), destField(lcl_idx));
+    });
 }
 
 

@@ -27,7 +27,7 @@ PHARE::core::Particle<dim> particle(int icell = 15)
 template<typename Particles>
 void write_raw_to_file(Particles const& particles, std::string const& filename)
 {
-    using Particle_t = typename Particles::value_type;
+    using Particle_t = Particles::value_type;
     std::ofstream f{filename};
     f.write(reinterpret_cast<char const*>(particles.vector().data()),
             particles.size() * sizeof(Particle_t));
@@ -36,7 +36,7 @@ void write_raw_to_file(Particles const& particles, std::string const& filename)
 template<typename Particles>
 void read_raw_from_file(Particles& particles, std::string const& filename)
 {
-    using Particle_t = typename Particles::value_type;
+    using Particle_t = Particles::value_type;
 
     std::ifstream f{filename};
 
@@ -151,7 +151,7 @@ namespace std
 template<std::size_t dim>
 auto& sort(PHARE::core::ParticleArray<dim>& particles)
 {
-    using box_t = typename PHARE::core::ParticleArray<dim>::box_t;
+    using box_t = PHARE::core::ParticleArray<dim>::box_t;
     PHARE::core::LocalisedCellFlattener<box_t> cell_flattener{grow(particles.box(), 1)};
     std::sort(particles.vector().begin(), particles.vector().end(),
               [&](auto const& a, auto const& b) {

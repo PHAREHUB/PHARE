@@ -37,6 +37,7 @@ private:
     using VecFieldT   = MHDModel::vecfield_type;
     using MHDStateT   = MHDModel::state_type;
     using GridLayout  = MHDModel::gridlayout_type;
+    using Scalar      = GridLayout::Scalar;
     using MHDQuantity = core::MHDQuantity;
     using Messenger   = TimeIntegratorStrategy::Messenger;
 
@@ -261,18 +262,6 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::fillMessengerInfo(
 {
     auto& mhdInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 
-    mhdInfo.ghostMagneticFluxesX.emplace_back(fluxes_.B_fx.name());
-
-    if constexpr (dimension >= 2)
-    {
-        mhdInfo.ghostMagneticFluxesY.emplace_back(fluxes_.B_fy.name());
-
-        if constexpr (dimension == 3)
-        {
-            mhdInfo.ghostMagneticFluxesZ.emplace_back(fluxes_.B_fz.name());
-        }
-    }
-
     evolve_.fillMessengerInfo(mhdInfo);
 
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
@@ -441,15 +430,9 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             auto const vy = rhoVy(index) / r;
             auto const vz = rhoVz(index) / r;
 
-            auto const bx
-                = GridLayout::template project<MHDQuantity::Scalar::Bx, MHDQuantity::Scalar::rho>(
-                    Bx, index);
-            auto const by
-                = GridLayout::template project<MHDQuantity::Scalar::By, MHDQuantity::Scalar::rho>(
-                    By, index);
-            auto const bz
-                = GridLayout::template project<MHDQuantity::Scalar::Bz, MHDQuantity::Scalar::rho>(
-                    Bz, index);
+            auto const bx = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
+            auto const by = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
+            auto const bz = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
 
             auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
             auto const BdotB = bx * bx + by * by + bz * bz;

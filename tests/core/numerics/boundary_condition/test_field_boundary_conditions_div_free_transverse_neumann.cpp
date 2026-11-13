@@ -41,12 +41,11 @@ struct DivFreeTransverseNeumannBC2D : testing::Test
             auto& bField         = Bvec[comp];
             auto const qty       = MHDQuantity::componentsQuantities(MHDQuantity::Vector::B)[comp];
             auto const centering = layout.centering(qty)[iNormal];
-            for (auto const& index : layout.toFieldBox(ghostBox, qty))
-            {
+            for_each_point(layout.toFieldBox(ghostBox, qty), [&](auto const& index) {
                 auto const mirror = layout.boundaryMirrored(direction, side, centering, index);
                 EXPECT_DOUBLE_EQ(bField(index), bField(mirror))
                     << "comp=" << comp << " index=(" << index[0] << "," << index[1] << ")";
-            }
+            });
         }
     }
 
@@ -54,13 +53,12 @@ struct DivFreeTransverseNeumannBC2D : testing::Test
     {
         auto& Bx = Bvec[0];
         auto& By = Bvec[1];
-        for (auto const& cell : ghostBox)
-        {
+        for_each_point(ghostBox, [&](auto const& cell) {
             double const div
                 = (Bx(cell.shift(0, 1)) - Bx(cell)) + (By(cell.shift(1, 1)) - By(cell));
             EXPECT_NEAR(div, 0.0, 1e-12)
                 << "cell=(" << cell[0] << "," << cell[1] << ") at " << static_cast<int>(loc);
-        }
+        });
     }
 
     void applyAndCheck(BoundaryLocation loc, Box<std::uint32_t, 2> const& ghostBox)
@@ -126,13 +124,12 @@ struct DivFreeTransverseNeumannBC2DAnisotropic : testing::Test
         auto& By        = Bvec[1];
         double const dx = layout.meshSize()[0];
         double const dy = layout.meshSize()[1];
-        for (auto const& cell : ghostBox)
-        {
+        for_each_point(ghostBox, [&](auto const& cell) {
             double const div
                 = (Bx(cell.shift(0, 1)) - Bx(cell)) / dx + (By(cell.shift(1, 1)) - By(cell)) / dy;
             EXPECT_NEAR(div, 0.0, 1e-12)
                 << "cell=(" << cell[0] << "," << cell[1] << ") at " << static_cast<int>(loc);
-        }
+        });
     }
 };
 
@@ -190,11 +187,10 @@ struct DivFreeTransverseNeumannBC3D : testing::Test
             auto& bField         = Bvec[comp];
             auto const qty       = MHDQuantity::componentsQuantities(MHDQuantity::Vector::B)[comp];
             auto const centering = layout.centering(qty)[iNormal];
-            for (auto const& index : layout.toFieldBox(ghostBox, qty))
-            {
+            for_each_point(layout.toFieldBox(ghostBox, qty), [&](auto const& index) {
                 auto const mirror = layout.boundaryMirrored(direction, side, centering, index);
                 EXPECT_DOUBLE_EQ(bField(index), bField(mirror)) << "comp=" << comp;
-            }
+            });
         }
 
         auto& Bx        = Bvec[0];
@@ -203,13 +199,12 @@ struct DivFreeTransverseNeumannBC3D : testing::Test
         double const dx = layout.meshSize()[0];
         double const dy = layout.meshSize()[1];
         double const dz = layout.meshSize()[2];
-        for (auto const& cell : ghostBox)
-        {
+        for_each_point(ghostBox, [&](auto const& cell) {
             double const div = (Bx(cell.shift(0, 1)) - Bx(cell)) / dx
                                + (By(cell.shift(1, 1)) - By(cell)) / dy
                                + (Bz(cell.shift(2, 1)) - Bz(cell)) / dz;
             EXPECT_NEAR(div, 0.0, 1e-12) << "at " << static_cast<int>(loc);
-        }
+        });
     }
 };
 

@@ -41,7 +41,7 @@ public:
         = Pusher<dim, ParticleRange, Electromag, Interpolator, BoundaryCondition, GridLayout>;
 
 private:
-    using ParticleSelector = typename Super::ParticleSelector;
+    using ParticleSelector = Super::ParticleSelector;
 
 public:
     // This move function should be considered when being used so that all particles are pushed

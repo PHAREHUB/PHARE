@@ -61,7 +61,7 @@ public:
                 SAMRAI::hier::BoxOverlap const& destinationOverlap,
                 SAMRAI::hier::IntVector const& ratio) const override
     {
-        using FieldGeometry = typename FieldDataT::Geometry;
+        using FieldGeometry = FieldDataT::Geometry;
 
         auto const& destinationFieldOverlap = dynamic_cast<FieldOverlap const&>(destinationOverlap);
         auto const& overlapBoxes            = destinationFieldOverlap.getDestinationBoxContainer();

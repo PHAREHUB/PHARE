@@ -7,9 +7,11 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
+#include "coarse_cell_round_out.hpp"
 #include "field_refiner_kernel.hpp"
 
 #include <SAMRAI/hier/Box.h>
@@ -20,6 +22,7 @@
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 
 namespace PHARE::amr
@@ -27,43 +30,76 @@ namespace PHARE::amr
 namespace detail
 {
     /**
-     * @brief The composite refinement fill: the order-`order` stencil tables, and the loop that
-     * applies them to every fine index of a region.
+     * @brief Where a fine index sits along one direction relative to its coarse anchor
+     * I = floor(f/2), for refinement ratio 2.
      *
-     * For ratio 2, each fine index maps to a coarse anchor I = floor(f/2) (toCoarseIndex) and a
-     * parity p = f − 2I ∈ {0,1} per direction. Per direction the 1-D weight row is chosen by
-     * centering+parity:
-     *   - primal, p=0 : exact copy (coincident node)            → {offset 0, 1.0}
-     *   - primal, p=1 : half-point midpoint (Primitive A.2)     → directionalInterp<dir,
-     *                                                             PrimalToDual>
-     *   - dual,   p   : ±¼ child ladder (Primitive B)           → directionalProlongation<dir,
-     *                                                             σ=2p−1>
-     * (both at <order>). The multi-D stencil is the outer product of the rows (consteval
-     * tensorProduct), which sizes each multi-D stencil exactly from its rows' own lengths (copy=1,
-     * half-point=2, dual-σ±=3) — no padding to a common length; the full set of centering×parity
-     * combinations (4^dim of them) is a compile-time table, indexed at runtime per fine index by
-     * centering+parity. Offsets are relative to the anchor I; values are gathered from the coarse
-     * field.
+     * Along a primal direction the even fine node coincides with coarse node I and the odd one
+     * lies halfway between nodes I and I+1. Along a dual direction coarse cell I splits into a
+     * left (even) and a right (odd) fine cell.
+     */
+    enum class FineSite { OnCoarseNode, BetweenCoarseNodes, LeftChild, RightChild };
+
+    NO_DISCARD constexpr FineSite fineSite(core::QtyCentering const centering, int const fineIndex)
+    {
+        bool const odd = isOddIndex(fineIndex);
+
+        if (centering == core::QtyCentering::primal)
+            return odd ? FineSite::BetweenCoarseNodes : FineSite::OnCoarseNode;
+
+        return odd ? FineSite::RightChild : FineSite::LeftChild;
+    }
+
+
+    /**
+     * @brief Call `fn` with `site` as a compile-time constant, so a stencil built from it stays a
+     * constexpr table.
+     */
+    template<typename Fn>
+    decltype(auto) withSite(FineSite const site, Fn&& fn)
+    {
+        using enum FineSite;
+
+        switch (site)
+        {
+            case OnCoarseNode: return fn(std::integral_constant<FineSite, OnCoarseNode>{});
+            case BetweenCoarseNodes:
+                return fn(std::integral_constant<FineSite, BetweenCoarseNodes>{});
+            case LeftChild: return fn(std::integral_constant<FineSite, LeftChild>{});
+            case RightChild: return fn(std::integral_constant<FineSite, RightChild>{});
+        }
+        throw std::logic_error("unknown FineSite");
+    }
+
+
+    /**
+     * @brief The composite refinement fill: every fine index of a region from the coarse field.
      *
-     * Stateless, with no virtual of its own: the kernels below are thin IFieldRefineKernel
-     * adapters over it, and differ only in the region they hand it. So a kernel costs one virtual
-     * call per overlap box and none per fine index.
+     * The stencil is separable. Along each direction the fine index's FineSite selects a 1-D row,
+     *   - OnCoarseNode         : copy of node I
+     *   - BetweenCoarseNodes   : midpoint of nodes I and I+1 (directionalInterp, PrimalToDual)
+     *   - LeftChild, RightChild: the ±¼ child of cell I, which means back to it
+     *                            (directionalProlongation)
+     * and the fine value is the tensor product of those rows applied to the coarse field. Every
+     * combination of sites is a compile-time stencil, selected per fine index.
+     *
+     * Stateless: the kernels below are thin IFieldRefineKernel adapters over it that differ only
+     * in the region they hand it, so a kernel costs one virtual call per overlap box.
      */
     template<typename GridLayoutT, typename FieldT, std::size_t order>
     struct CompositeFill
     {
         static constexpr std::size_t dimension = GridLayoutT::dimension;
 
-        static_assert(order == 2, "composite refiner ladder is order 2 (Linear)");
+        static_assert(order == 2, "composite refinement is order 2 (Linear)");
 
-        // order 2 reads ±1 coarse cell (max |offset| over both 1-D primitives).
+        // order 2 reads ±1 coarse cell, the midpoint and the child rows alike
         static constexpr int coarseStencilWidth() { return order / 2; }
 
         /**
          * @brief Fill every fine index of `region` from the coarse field.
          *
          * `region` is the caller's to choose: it must lie inside the destination allocation, and
-         * the kernel writes only the fine indices it contains.
+         * only its fine indices are written.
          */
         static void fill(FieldT const& sourceField, FieldT& destinationField,
                          SAMRAI::hier::Box const& region,
@@ -77,90 +113,64 @@ namespace detail
                     throw std::runtime_error(
                         "composite field refinement supports refinement ratio 2 only");
 
-            // Centering is fixed over the box, parity varies per fine index. The 2-bits-per-
-            // direction index built below (bit0 = parity, bit1 = dual) selects the matching
-            // compile-time stencil.
-            for (auto const fineIndex : phare_box_from<dimension>(region))
-            {
-                auto const anchor = toCoarseIndex<dimension>(fineIndex);
-
-                std::size_t combined = 0; // 2 bits/dir: (dual<<1)|parity
+            core::for_each_point(phare_box_from<dimension>(region), [&](auto const& fineIndex) {
+                std::array<FineSite, dimension> fineSites;
                 for (std::size_t d = 0; d < dimension; ++d)
-                {
-                    auto const parity = static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]);
-                    std::size_t const dualBit
-                        = (centering[d] == core::QtyCentering::dual) ? 1u : 0u;
-                    combined |= ((dualBit << 1) | parity) << (2u * d);
-                }
+                    fineSites[d] = fineSite(centering[d], fineIndex[d]);
 
-                auto const anchorLocal = AMRToLocal(anchor, sourceFieldBox);
-                auto const fineLocal   = AMRToLocal(fineIndex, destFieldBox);
+                auto const anchor = AMRToLocal(toCoarseIndex<dimension>(fineIndex), sourceFieldBox);
+                auto const value  = gather_<>(sourceField, anchor, fineSites);
 
-                double const value = gatherers_[combined](sourceField, anchorLocal);
-
-                assignFine_(destinationField, fineLocal, value);
-            }
-        }
-
-    private:
-        using Point_t       = core::Point<int, dimension>;
-        using WeightPoint_t = core::WeightPoint<dimension>;
-
-        // 2 bits of choice per direction (dual<<1 | parity) → 4^dim combinations.
-        static constexpr std::size_t nCombined = std::size_t{1} << (2 * dimension);
-
-        // 1-D weight row for direction d and the compile-time choice (dual<<1 | parity).
-        template<std::size_t d, std::size_t choice>
-        static consteval auto oneDRow_()
-        {
-            static_assert(choice < 4, "choice is 2 bits: dual << 1 | parity");
-
-            if constexpr (choice == 0) // primal, parity 0: coincident node, exact copy
-                return std::array{WeightPoint_t{Point_t{}, 1.0}};
-            else if constexpr (choice == 1) // primal, parity 1: half-point midpoint
-                return core::directionalInterp<dimension, d, core::InterpDir::PrimalToDual,
-                                               order>();
-            else if constexpr (choice == 2) // dual, parity 0: σ = −1 child
-                return core::directionalProlongation<dimension, d, -1, order>();
-            else // choice == 3 : dual, parity 1: σ = +1 child
-                return core::directionalProlongation<dimension, d, +1, order>();
-        }
-
-        // full multi-D stencil (exact size) for the combined choice index (2 bits per direction).
-        template<std::size_t combined>
-        static consteval auto makeStencil_()
-        {
-            static_assert(dimension >= 1 and dimension <= 3);
-
-            if constexpr (dimension == 1)
-                return oneDRow_<0, combined & 3u>();
-            else if constexpr (dimension == 2)
-                return core::tensorProduct<0, 1>(oneDRow_<0, combined & 3u>(),
-                                                 oneDRow_<1, (combined >> 2) & 3u>());
-            else
-                return core::tensorProduct<0, 1, 2>(oneDRow_<0, combined & 3u>(),
-                                                    oneDRow_<1, (combined >> 2) & 3u>(),
-                                                    oneDRow_<2, (combined >> 4) & 3u>());
-        }
-
-        // gather the coarse contributions for one fine index using the exact stencil of choice
-        // `combined` (its size is baked in at compile time — no zero-coef points iterated).
-        template<std::size_t combined>
-        static double gatherStencil_(FieldT const& src, Point_t const& anchorLocal)
-        {
-            return core::sum_from(makeStencil_<combined>(), [&](auto const& w) {
-                return w.coef * src(anchorLocal + w.indexes);
+                assignIfUnset_(destinationField, AMRToLocal(fineIndex, destFieldBox), value);
             });
         }
 
-        // runtime centering+parity → compile-time stencil: one gather fn per combination,
-        // dispatched by a plain index.
-        using Gatherer_t                 = double (*)(FieldT const&, Point_t const&);
-        static constexpr auto gatherers_ = core::for_N_make_array<nCombined>(
-            [](auto ic) { return Gatherer_t{&gatherStencil_<ic()>}; });
+    private:
+        using Point_t = core::Point<int, dimension>;
 
-        // preserve the legacy NaN-guard: only fill fine indices not already set
-        static void assignFine_(FieldT& dst, Point_t const& fineLocal, double const value)
+        // the 1-D row of direction `dir` for a fine index at `site`
+        template<std::size_t dir, FineSite site>
+        static consteval auto row_()
+        {
+            if constexpr (site == FineSite::OnCoarseNode)
+                return std::array{core::WeightPoint<dimension>{Point_t{}, 1.}};
+            else if constexpr (site == FineSite::BetweenCoarseNodes)
+                return core::directionalInterp<dimension, dir, core::InterpDir::PrimalToDual,
+                                               order>();
+            else if constexpr (site == FineSite::LeftChild)
+                return core::directionalProlongation<dimension, dir, -1, order>();
+            else
+                return core::directionalProlongation<dimension, dir, +1, order>();
+        }
+
+        // Recursive: each call moves the next direction's runtime fine site into the compile-time
+        // `site` pack. Once every direction is in it, the stencil is the constexpr tensor product
+        // of their rows, summed around the coarse anchor.
+        template<FineSite... site>
+        static double gather_(FieldT const& src, Point_t const& anchor,
+                              std::array<FineSite, dimension> const& fineSites)
+        {
+            if constexpr (sizeof...(site) == dimension)
+            {
+                return core::for_N_fold<dimension>([&](auto... dir) {
+                    constexpr auto stencil = core::tensorProduct<decltype(dir)::value...>(
+                        row_<decltype(dir)::value, site>()...);
+
+                    return core::sum_from(
+                        stencil, [&](auto const& w) { return w.coef * src(anchor + w.indexes); });
+                });
+            }
+            else
+            {
+                return withSite(fineSites[sizeof...(site)], [&](auto next) {
+                    return gather_<site..., decltype(next)::value>(src, anchor, fineSites);
+                });
+            }
+        }
+
+        // Writes only fine indices still NaN, so a value already in place (a same-level copy, or
+        // an earlier overlapping fill) is never overwritten.
+        static void assignIfUnset_(FieldT& dst, Point_t const& fineLocal, double const value)
         {
             if (auto& dst_val = dst(fineLocal); std::isnan(dst_val))
                 dst_val = value;

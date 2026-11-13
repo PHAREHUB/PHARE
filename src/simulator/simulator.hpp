@@ -7,6 +7,7 @@
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/field/field_scratch.hpp"
 #include "mpi/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 
@@ -67,6 +68,7 @@ public:
     {
         if (coutbuf != nullptr)
             std::cout.rdbuf(coutbuf);
+        core::release_field_scratch();
     }
 
 
@@ -143,8 +145,11 @@ private:
     std::unique_ptr<std::ofstream> log_out;
     std::streambuf* coutbuf = nullptr;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
+
+protected:
     std::unique_ptr<Integrator> integrator_;
 
+private:
     std::vector<std::string> modelNames_;
     std::vector<PHARE::amr::MessengerDescriptor> descriptors_;
     MessengerFactory messengerFactory_{{}};

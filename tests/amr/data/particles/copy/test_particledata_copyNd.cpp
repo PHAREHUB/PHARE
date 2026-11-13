@@ -43,7 +43,7 @@ struct AParticlesDataND : public testing::Test
 
     ParticlesData<ParticleArray<dim>> destData{destDomain, ghost, "name"};
     ParticlesData<ParticleArray<dim>> sourceData{sourceDomain, ghost, "name"};
-    typename ParticleArray<dim>::Particle_t particle;
+    ParticleArray<dim>::Particle_t particle;
 
 
     AParticlesDataND()
@@ -59,6 +59,34 @@ using WithAllDim = testing::Types<DimConst<1>, DimConst<2>, DimConst<3>>;
 
 TYPED_TEST_SUITE(AParticlesDataND, WithAllDim);
 
+
+
+
+// the selectors partition through the cell map, which only sees particles inside its own box: it
+// must cover what a push can produce. Ghost width 1 here (interp 1), the largest reach past it
+TYPED_TEST(AParticlesDataND, particlesPushedPastTheGhostBoxAreSeenBySelectors)
+{
+    static constexpr auto dim = TypeParam{}();
+
+    auto const ghostBox  = phare_box_from<dim>(this->destData.getGhostBox());
+    auto const domainBox = phare_box_from<dim>(this->destData.getBox());
+
+    auto const pushedOut = [&](auto& particles, auto const& from, int const cells) {
+        this->particle.iCell = *from;
+        particles.push_back(this->particle);
+        particles.change_icell(ConstArray<int, dim>(from[0] - cells), particles.size() - 1);
+
+        auto const inGhostBox = particles.partition(
+            makeIndexRange(particles), [&](auto const& c) { return isIn(Point{c}, ghostBox); });
+        EXPECT_EQ(inGhostBox.size(), particles.size() - 1);
+    };
+
+    // level ghosts are selected after each half push: 2 cells out of the outermost ghost cell
+    pushedOut(this->destData.levelGhostParticles, ghostBox.lower, 2);
+
+    // domain particles after both half pushes: 4 cells out of the domain
+    pushedOut(this->destData.domainParticles, domainBox.lower, 4);
+}
 
 
 

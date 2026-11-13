@@ -12,7 +12,7 @@ Hybrid
 
 * ``alfven_wave`` - propagation of a circularly polarized Alfvén wave.
 * ``conservation`` - checks energy and momentum conservation over a run.
-* ``dispersion`` - checks the Hybrid dispersion relation against theory, from noise and from prescribed modes.
+* ``dispersion`` - whistler and Alfvén/ion-cyclotron frequencies against theory, interpolation orders 1 to 3 (see :doc:`../validation/hybrid_dispersion`).
 * ``harris`` - magnetic reconnection in a Harris current sheet, 2D and 3D.
 * ``ionIonBeam`` - ion-ion beam instability growth rate.
 * ``shock`` - shock formation from a density/velocity jump.

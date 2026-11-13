@@ -26,7 +26,7 @@ namespace core
     template<typename Electromag, typename Ions, typename Electrons>
     class HybridState : public IPhysicalState
     {
-        using VecField = typename Electromag::vecfield_type;
+        using VecField = Electromag::vecfield_type;
 
     public:
         static constexpr auto dimension = Ions::dimension;

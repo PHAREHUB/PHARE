@@ -1123,16 +1123,12 @@ namespace amr
         std::shared_ptr<FieldFillPattern_t> nonOverwriteInteriorFieldFillPattern
             = std::make_shared<FieldFillPattern<dimension>>(); // stateless (mostly)
 
-        std::shared_ptr<FieldFillPattern_t> overwriteInteriorFieldFillPattern
-            = std::make_shared<FieldFillPattern<dimension>>(
-                /*overwrite_interior=*/true); // stateless (mostly)
-
         std::shared_ptr<TensorFieldFillPattern_t> nonOverwriteInteriorTFfillPattern
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>();
 
-        std::shared_ptr<TensorFieldFillPattern_t> overwriteInteriorTFfillPattern
-            = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
-                /*overwrite_interior=*/true);
+        std::shared_ptr<TensorFieldFillPattern<dimension, 1, /*overwrite_interior=*/true>>
+            overwriteInteriorTFfillPattern
+            = std::make_shared<TensorFieldFillPattern<dimension, 1, /*overwrite_interior=*/true>>();
 
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};

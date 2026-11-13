@@ -5,6 +5,7 @@
 #include <limits>
 #include <vector>
 #include <cstdint>
+#include <algorithm>
 #include <type_traits>
 
 namespace PHARE::core
@@ -46,13 +47,15 @@ TEST(BoxSpansTest, a_span_runs_along_the_last_direction)
                           {0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {1, 0, 0}, {1, 1, 0}, {1, 2, 0}}));
 }
 
-// same order as Box's own iterator, i.e. memory order
+// memory order: last direction fastest
 TEST(BoxSpansTest, points_come_in_memory_order)
 {
     Box<int, 3> const box{{-2, 0, 3}, {0, 2, 5}};
     std::vector<Point<int, 3>> expected;
-    for (auto const& point : box)
-        expected.push_back(point);
+    for (int x = -2; x <= 0; ++x)
+        for (int y = 0; y <= 2; ++y)
+            for (int z = 3; z <= 5; ++z)
+                expected.push_back({x, y, z});
     EXPECT_EQ(points_of(box), expected);
 }
 
@@ -99,6 +102,56 @@ TEST(BoxSpansTest, amr_and_local_boxes_walk_in_lockstep)
         cells += size;
     });
     EXPECT_EQ(cells, amr.size());
+}
+
+// for_each_point_zip pairs each point of `a`, in memory order, with the point at the same offset
+// in `b`, for boxes of different point types (e.g. a GridLayout's AMR and local boxes)
+TEST(BoxSpansTest, for_each_point_zip)
+{
+    auto const check = [](auto const& a, auto const& b) {
+        using PointA = std::decay_t<decltype(a.lower)>;
+        using PointB = std::decay_t<decltype(b.lower)>;
+        std::vector<PointA> points_a;
+        std::vector<PointB> points_b;
+
+        for_each_point_zip(a, b, [&](auto const& pa, auto const& pb) {
+            points_a.emplace_back(pa);
+            points_b.emplace_back(pb);
+        });
+
+        EXPECT_EQ(points_a, points_of(a));
+        EXPECT_EQ(points_b, points_of(b));
+    };
+
+    check(Box<int, 1>{{5}, {9}}, Box<std::uint32_t, 1>{{2}, {6}});
+    check(Box<int, 2>{{5, -2}, {9, 1}}, Box<std::uint32_t, 2>{{2, 0}, {6, 3}});
+    check(Box<int, 3>{{5, -2, 0}, {7, 1, 2}}, Box<std::uint32_t, 3>{{2, 0, 1}, {4, 3, 3}});
+}
+
+
+// for_each_point_reverse visits exactly the points of for_each_point, last to first, including
+// unsigned boxes starting at 0 (no underflow) and ill-formed boxes (nothing visited)
+TEST(BoxSpansTest, for_each_point_reverse)
+{
+    auto const check = [](auto const& box) {
+        using Point_t = std::decay_t<decltype(box.lower)>;
+        std::vector<Point_t> reverse;
+        for_each_point_reverse(box, [&](auto const& p) { reverse.emplace_back(p); });
+
+        auto forward = points_of(box);
+        std::reverse(forward.begin(), forward.end());
+        EXPECT_EQ(forward, reverse);
+        return reverse.size();
+    };
+
+    EXPECT_EQ(check(Box<int, 1>{{-2}, {9}}), 12u);
+    EXPECT_EQ(check(Box<int, 2>{{5, -2}, {9, 1}}), 5u * 4u);
+    EXPECT_EQ(check(Box<int, 3>{{5, -2, 0}, {7, 1, 2}}), 3u * 4u * 3u);
+    EXPECT_EQ(check(Box<std::uint32_t, 1>{{0}, {4}}), 5u);
+    EXPECT_EQ(check(Box<std::uint32_t, 2>{{0, 0}, {3, 2}}), 4u * 3u);
+    EXPECT_EQ(check(Box<std::uint32_t, 3>{{0, 0, 0}, {2, 3, 1}}), 3u * 4u * 2u);
+    EXPECT_EQ(check(Box<int, 3>{{0, 5, 0}, {9, 3, 9}}), 0u);
+    EXPECT_EQ(check(Box<std::uint32_t, 2>{{0, 5}, {9, 3}}), 0u);
 }
 
 } // namespace PHARE::core

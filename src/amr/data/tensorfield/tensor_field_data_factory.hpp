@@ -23,7 +23,7 @@ class TensorFieldDataFactory : public SAMRAI::hier::PatchDataFactory
 {
     static constexpr std::size_t n_ghosts = GridLayoutT::options.field_ghost_width;
 
-    using tensor_t = typename PhysicalQuantity::template TensorType<rank_>;
+    using tensor_t = PhysicalQuantity::template TensorType<rank_>;
 
 public:
     using grid_type                 = Grid_t;
@@ -46,10 +46,14 @@ public:
 
 
 
+    // The data members are protected and cloneFactory is overridable (not final) for
+    // CenteredFactory. Build this factory through make_centered_factory only: one built
+    // directly shares its type with every other centering, and SAMRAI then computes the
+    // overlaps of all their items from the first one.
     /*** \brief Clone the current TensorFieldDataFactory
      */
     std::shared_ptr<SAMRAI::hier::PatchDataFactory>
-    cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) final
+    cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) override
     {
         return std::make_shared<TensorFieldDataFactory>(fineBoundaryRepresentsVariable_,
                                                         dataLivesOnPatchBorder_, name_, quantity_);
@@ -137,7 +141,7 @@ public:
 
 
 
-private:
+protected:
     bool const fineBoundaryRepresentsVariable_ = false;
     bool const dataLivesOnPatchBorder_         = false;
     tensor_t const quantity_;

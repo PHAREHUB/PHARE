@@ -28,7 +28,7 @@ public:
     auto static constexpr dimension = dim;
     using Super                     = TensorField<Field_t<dim>, HybridQuantity, rank_>;
     using Grid_t                    = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
-    using tensor_t                  = typename Super::tensor_t;
+    using tensor_t                  = Super::tensor_t;
 
     template<typename GridLayout>
     UsableTensorField(std::string const& name, GridLayout const& layout, tensor_t qty)

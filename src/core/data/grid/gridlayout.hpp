@@ -13,6 +13,7 @@
 #include "gridlayoutdefs.hpp"
 
 #include <array>
+#include <algorithm>
 #include <tuple>
 #include <cstddef>
 #include <cstdint>
@@ -53,6 +54,16 @@ namespace core
     NO_DISCARD std::uint32_t constexpr ghostWidthForParticles()
     {
         return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
+    }
+
+    // cells to map around the particle ghost box, so the selectors (cell map partitions) see every
+    // particle a push can produce. A half push moves a particle up to 2 cells (Boris throws past
+    // that): level ghosts are selected after each half push, up to 2 cells past the ghost box;
+    // domain particles after both, up to 4 cells past the domain, which is the ghost box shrunk by
+    // the particle ghost width
+    NO_DISCARD int constexpr particleMapMargin(int const particleGhostWidth)
+    {
+        return std::max(2, 4 - particleGhostWidth);
     }
 
 
@@ -100,7 +111,6 @@ namespace core
     {
         using Options      = decltype(options_);
         using FieldOptions = Options::FieldOptions;
-        using Scalar       = FieldOptions::Scalar;
         using Vector       = FieldOptions::Vector;
         using Tensor       = FieldOptions::Tensor;
         using GridData     = Options::GridLayoutImpl::GridData;
@@ -115,6 +125,7 @@ namespace core
         using This     = GridLayout<options>;
         using implT    = Options::GridLayoutImpl;
         using AMRBox_t = Box<int, dimension>;
+        using Scalar   = FieldOptions::Scalar;
 
         /**
          * @brief Constructor of a GridLayout
@@ -221,11 +232,12 @@ namespace core
         template<typename T>
         NO_DISCARD auto indices(Box<T, dimension> const& box) const
         {
-            return generate_from(
-                [](auto const& amr_idx) -> tuple_fixed_type<T, dimension> {
-                    return for_N<dimension>([&](auto i) { return amr_idx[i]; });
-                },
-                box);
+            std::vector<tuple_fixed_type<T, dimension>> indices;
+            indices.reserve(box.size());
+            for_each_point(box, [&](auto const& amr_idx) {
+                indices.emplace_back(for_N<dimension>([&](auto i) { return amr_idx[i]; }));
+            });
+            return indices;
         }
 
 
@@ -986,12 +998,19 @@ namespace core
         auto levelNumber() const { return levelNumber_; }
 
 
-        auto amr_lcl_idx(auto const& box) const { return boxes_iterator{box, AMRToLocal(box)}; }
-        auto amr_lcl_idx() const { return amr_lcl_idx(AMRBox()); }
-        auto domain_amr_lcl_idx(auto const& field) const { return amr_lcl_idx(AMRBoxFor(field)); }
-        auto ghost_amr_lcl_idx(auto const& field) const
+        // call fn(amr_idx, lcl_idx) for each point of the AMR box
+        void amr_lcl_idx(auto const& box, auto&& fn) const
         {
-            return amr_lcl_idx(AMRGhostBoxFor(field));
+            for_each_point_zip(box, AMRToLocal(box), fn);
+        }
+        void amr_lcl_idx(auto&& fn) const { amr_lcl_idx(AMRBox(), fn); }
+        void domain_amr_lcl_idx(auto const& field, auto&& fn) const
+        {
+            amr_lcl_idx(AMRBoxFor(field), fn);
+        }
+        void ghost_amr_lcl_idx(auto const& field, auto&& fn) const
+        {
+            amr_lcl_idx(AMRGhostBoxFor(field), fn);
         }
 
     private:

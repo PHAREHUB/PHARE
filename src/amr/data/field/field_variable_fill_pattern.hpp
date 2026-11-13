@@ -20,26 +20,23 @@
 namespace PHARE::amr
 {
 /*
-  This class is used to synchronize pure ghost values from src domain values
-    in that case, we default overwrite_interior to "false" so none of the two patches overwrites
-    the shared border nodes and only pure ghost nodes are filled.
+  Mostly a copy of BoxGeometryVariableFillPattern. With overwrite_interior false (the default),
+  it fills pure ghost values from src domain values: neither patch overwrites the shared border
+  nodes. Notes on shared-node overwrite interior: https://github.com/LLNL/SAMRAI/issues/170
 
-  Notes on shared-node overwrite interior: https://github.com/LLNL/SAMRAI/issues/170
+  overwrite_interior is a template parameter so that the two settings are two types, which SAMRAI
+  never puts in one equivalence class (it computes the overlaps of a class from its first item).
+  Splitting by fill pattern type is fine for this flag only: on the coarse interpolation level,
+  where SAMRAI replaces the fill patterns (centered_factory.hpp), the whole patch data is filled
+  and the flag does not matter.
 */
-// This class is mostly a copy of BoxGeometryVariableFillPattern
-template<std::size_t dimension>
+template<std::size_t dimension, bool overwrite_interior = false>
 class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
     constexpr static std::size_t dim = dimension;
 
 public:
-    // defaulted param makes this the default constructor also
-    FieldFillPattern(bool overwrite_interior = false)
-        : overwrite_interior_{overwrite_interior}
-
-    {
-    }
-
+    FieldFillPattern() = default;
 
     virtual ~FieldFillPattern() {}
 
@@ -57,9 +54,9 @@ public:
 
         assert(fn_overwrite_interior == true); // expect default as true
 
-        return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior_,
-
-                                             transformation);
+        return dynamic_cast<FillPatternGeometry const&>(dst_geometry)
+            .calculateUnroundedOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
+                                       transformation);
     }
 
     /*
@@ -89,7 +86,7 @@ public:
         auto basic_overlap
             = pdf.getBoxGeometry(patch_box)->setUpOverlap(overlap_boxes, transformation);
 
-        if (overwrite_interior_)
+        if constexpr (overwrite_interior)
             return basic_overlap;
 
         // from here we do not overwrite interior values
@@ -126,21 +123,17 @@ private:
          */
         return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
     }
-
-    bool const overwrite_interior_;
 };
 
 
-template<std::size_t dimension, std::size_t rank_ = 1>
+// overwrite_interior as in FieldFillPattern
+template<std::size_t dimension, std::size_t rank_ = 1, bool overwrite_interior = false>
 class TensorFieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
     static constexpr std::size_t N = core::detail::tensor_field_dim_from_rank<rank_>();
 
 public:
-    TensorFieldFillPattern(bool overwrite_interior = false)
-        : overwrite_interior_{overwrite_interior}
-    {
-    }
+    TensorFieldFillPattern() = default;
 
     ~TensorFieldFillPattern() override = default;
 
@@ -152,10 +145,11 @@ public:
                      SAMRAI::hier::Transformation const& transformation) const override
     {
         // Note fn_overwrite_interior is the boolean passed by SAMRAI and is always true
-        // this `VariableFillPattern` overrides this behavior using its own `overwrite_interior_`
-        // set on construction and depending on the use case.
-        return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior_,
-                                             transformation);
+        // this `VariableFillPattern` overrides this behavior using its own `overwrite_interior`
+        // set by its type and depending on the use case.
+        return dynamic_cast<FillPatternGeometry const&>(dst_geometry)
+            .calculateUnroundedOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
+                                       transformation);
     }
 
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
@@ -173,7 +167,7 @@ public:
         auto basic_overlap
             = pdf.getBoxGeometry(patch_box)->setUpOverlap(overlap_boxes, transformation);
 
-        if (overwrite_interior_)
+        if constexpr (overwrite_interior)
             return basic_overlap;
 
         // from here we do not overwrite interior values
@@ -212,8 +206,6 @@ private:
         TBOX_ERROR("getStencilWidth() should not be called for TensorFieldFillPattern.");
         return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
     }
-
-    bool overwrite_interior_;
 };
 
 template<std::size_t dimension>

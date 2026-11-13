@@ -2,20 +2,13 @@
 #define PHARE_OHM_HPP
 
 
-#include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/field/field.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "initializer/data_provider.hpp"
-
-#include <algorithm>
-#include <cmath>
-#include <vector>
 
 
 namespace PHARE::core
@@ -47,7 +40,7 @@ class Ohm : public OhmInfo
 {
     using Super                     = OhmInfo;
     constexpr static auto dimension = GridLayout::dimension;
-    using Q                         = HybridQuantity::Scalar;
+    using Scalar                    = GridLayout::Scalar;
 
 public:
     explicit Ohm(OhmInfo const& info, GridLayout const& layout)
@@ -80,41 +73,21 @@ private:
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        // pressure_ reads n and Pe on the two nodes on each side of an E edge
-        auto const isPrimal = [](auto const c) { return c == QtyCentering::primal; };
-        if (not all(layout_.centering(n), isPrimal) or not all(layout_.centering(Pe), isPrimal))
-            throw std::runtime_error("Error - Ohm - n and Pe must be primal");
-
-        // ln(n) on every node of n, computed once, so that its derivative is a plain grad
-        auto lnNData = std::vector<double>(n.size());
-        std::transform(n.data(), n.data() + n.size(), lnNData.begin(),
-                       [](auto const ni) { return std::log(ni); });
-        auto const lnN = Field_t<Field>{"lnN", n.physicalQuantity(), lnNData.data(), n.shape()};
-
-        auto const gradN   = grad(layout_, n);
-        auto const gradLnN = grad(layout_, lnN);
-        auto const gradPe  = grad(layout_, Pe);
+        auto const gradPe = grad(layout_, Pe);
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J},
-                PressurePartials<Direction::X>{gradN.x, gradLnN.x, gradPe.x}, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J},
-                PressurePartials<Direction::Y>{gradN.y, gradLnN.y, gradPe.y}, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J},
-                PressurePartials<Direction::Z>{gradN.z, gradLnN.z, gradPe.z}, args...);
+                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
         });
     }
-
-    // a Field view of the same type as the moments, over memory owned by Ohm
-    template<typename Field>
-    using Field_t = core::Field<dimension, typename Field::physical_quantity_type>;
 
     template<typename VecField, typename Field>
     struct OhmPack
@@ -124,24 +97,17 @@ private:
         VecField const &Ve, &B, &J;
     };
 
-    // derivatives along one direction of the node quantities the pressure term reads
-    template<auto dir>
-    struct PressurePartials
-    {
-        Partial<dir, dimension> const &n, &lnN, &Pe;
-    };
 
-
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack,
-             typename PressurePartials, typename... IDXs>
-    void E_Eq_(OhmPack&& pack, PressurePartials const& D, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
+             typename... IDXs>
+    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ve, B, J] = pack;
-        auto& Exyz                   = E(Tag);
+        auto const& [E, n, Ve, B, J]     = pack;
+        auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, D, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, gradPe, {ijk...});
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -164,10 +130,10 @@ private:
             auto const& By = B(Component::Y);
             auto const& Bz = B(Component::Z);
 
-            auto const vyOnEx = GridLayout::template project<Q::Vy, Q::Ex>(Vy, index);
-            auto const vzOnEx = GridLayout::template project<Q::Vz, Q::Ex>(Vz, index);
-            auto const byOnEx = GridLayout::template project<Q::By, Q::Ex>(By, index);
-            auto const bzOnEx = GridLayout::template project<Q::Bz, Q::Ex>(Bz, index);
+            auto const vyOnEx = GridLayout::template project<Scalar::Vy, Scalar::Ex>(Vy, index);
+            auto const vzOnEx = GridLayout::template project<Scalar::Vz, Scalar::Ex>(Vz, index);
+            auto const byOnEx = GridLayout::template project<Scalar::By, Scalar::Ex>(By, index);
+            auto const bzOnEx = GridLayout::template project<Scalar::Bz, Scalar::Ex>(Bz, index);
 
             return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
         }
@@ -179,10 +145,10 @@ private:
             auto const& Bx = B(Component::X);
             auto const& Bz = B(Component::Z);
 
-            auto const vxOnEy = GridLayout::template project<Q::Vx, Q::Ey>(Vx, index);
-            auto const vzOnEy = GridLayout::template project<Q::Vz, Q::Ey>(Vz, index);
-            auto const bxOnEy = GridLayout::template project<Q::Bx, Q::Ey>(Bx, index);
-            auto const bzOnEy = GridLayout::template project<Q::Bz, Q::Ey>(Bz, index);
+            auto const vxOnEy = GridLayout::template project<Scalar::Vx, Scalar::Ey>(Vx, index);
+            auto const vzOnEy = GridLayout::template project<Scalar::Vz, Scalar::Ey>(Vz, index);
+            auto const bxOnEy = GridLayout::template project<Scalar::Bx, Scalar::Ey>(Bx, index);
+            auto const bzOnEy = GridLayout::template project<Scalar::Bz, Scalar::Ey>(Bz, index);
 
             return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
         }
@@ -194,40 +160,52 @@ private:
             auto const& Bx = B(Component::X);
             auto const& By = B(Component::Y);
 
-            auto const vxOnEz = GridLayout::template project<Q::Vx, Q::Ez>(Vx, index);
-            auto const vyOnEz = GridLayout::template project<Q::Vy, Q::Ez>(Vy, index);
-            auto const bxOnEz = GridLayout::template project<Q::Bx, Q::Ez>(Bx, index);
-            auto const byOnEz = GridLayout::template project<Q::By, Q::Ez>(By, index);
+            auto const vxOnEz = GridLayout::template project<Scalar::Vx, Scalar::Ez>(Vx, index);
+            auto const vyOnEz = GridLayout::template project<Scalar::Vy, Scalar::Ez>(Vy, index);
+            auto const bxOnEz = GridLayout::template project<Scalar::Bx, Scalar::Ez>(Bx, index);
+            auto const byOnEz = GridLayout::template project<Scalar::By, Scalar::Ez>(By, index);
 
             return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
         }
     }
 
 
-    // -grad(Pe)/n is evaluated as -D(Pe) / n_L, with n_L = D(n) / D(ln n) the logarithmic mean of
-    // n on the two nodes of the edge. This keeps two exact properties of the continuous term:
-    // - a uniform Pe gives no force, whatever n does;
-    // - a uniform Te gives -Te D(ln n), the discrete gradient of Te ln(n), whose discrete curl
-    //   vanishes, so the pressure term cannot create magnetic field from density noise (#1527).
-    // Dividing by the arithmetic mean of n, as before, breaks the second one.
-    // n must be > 0 on both nodes, as it already must be for the electron velocity.
-    template<auto component, typename Field, typename PressurePartials>
-    auto pressure_(Field const& n, PressurePartials const& D, MeshIndex<dimension> index) const
+    template<auto component, typename Field, typename GradPe>
+    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
     {
-        constexpr auto d = detail::vector_component_index<component>();
-
-        if constexpr (d < dimension)
+        if constexpr (component == Component::X)
         {
-            // equal densities on both nodes: n_L is their common value
-            auto const dn = D.n(index);
-            if (dn == 0.)
-                return -D.Pe(index) / detail::shifted<d>(n, index, 0);
+            auto const nOnEx = GridLayout::template project<Scalar::rho, Scalar::Ex>(n, index);
 
-            return -D.Pe(index) * D.lnN(index) / dn;
+            return -gradPe(index) / nOnEx;
         }
-        else
+
+        else if constexpr (component == Component::Y)
         {
-            return 0.;
+            if constexpr (Field::dimension >= 2)
+            {
+                auto const nOnEy = GridLayout::template project<Scalar::rho, Scalar::Ey>(n, index);
+
+                return -gradPe(index) / nOnEy;
+            }
+            else
+            {
+                return 0.;
+            }
+        }
+
+        else if constexpr (component == Component::Z)
+        {
+            if constexpr (Field::dimension >= 3)
+            {
+                auto const nOnEz = GridLayout::template project<Scalar::rho, Scalar::Ez>(n, index);
+
+                return -gradPe(index) / nOnEz;
+            }
+            else
+            {
+                return 0.;
+            }
         }
     }
 
@@ -241,19 +219,19 @@ private:
 
         if constexpr (component == Component::X)
         {
-            auto const jxOnEx = GridLayout::template project<Q::Jx, Q::Ex>(Jxyx, index);
+            auto const jxOnEx = GridLayout::template project<Scalar::Jx, Scalar::Ex>(Jxyx, index);
             return eta * jxOnEx;
         }
 
         if constexpr (component == Component::Y)
         {
-            auto const jyOnEy = GridLayout::template project<Q::Jy, Q::Ey>(Jxyx, index);
+            auto const jyOnEy = GridLayout::template project<Scalar::Jy, Scalar::Ey>(Jxyx, index);
             return eta * jyOnEy;
         }
 
         if constexpr (component == Component::Z)
         {
-            auto const jzOnEz = GridLayout::template project<Q::Jz, Q::Ez>(Jxyx, index);
+            auto const jzOnEz = GridLayout::template project<Scalar::Jz, Scalar::Ez>(Jxyx, index);
             return eta * jzOnEz;
         }
     }
@@ -285,25 +263,28 @@ private:
         auto const lvlCoeff        = 1. / std::pow(4, layout_.levelNumber());
         auto constexpr min_density = 0.1;
         auto computeHR             = [&]<auto dst>() {
-            auto const BxOnE = GridLayout::template project<Q::Bx, dst>(B(Component::X), index);
-            auto const ByOnE = GridLayout::template project<Q::By, dst>(B(Component::Y), index);
-            auto const BzOnE = GridLayout::template project<Q::Bz, dst>(B(Component::Z), index);
-            auto const nOnE  = GridLayout::template project<Q::rho, dst>(n, index);
+            auto const BxOnE
+                = GridLayout::template project<Scalar::Bx, dst>(B(Component::X), index);
+            auto const ByOnE
+                = GridLayout::template project<Scalar::By, dst>(B(Component::Y), index);
+            auto const BzOnE
+                = GridLayout::template project<Scalar::Bz, dst>(B(Component::Z), index);
+            auto const nOnE  = GridLayout::template project<Scalar::rho, dst>(n, index);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
                    * laplacian(layout_, J(component), index);
         };
         if constexpr (component == Component::X)
         {
-            return computeHR.template operator()<Q::Ex>();
+            return computeHR.template operator()<Scalar::Ex>();
         }
         if constexpr (component == Component::Y)
         {
-            return computeHR.template operator()<Q::Ey>();
+            return computeHR.template operator()<Scalar::Ey>();
         }
         if constexpr (component == Component::Z)
         {
-            return computeHR.template operator()<Q::Ez>();
+            return computeHR.template operator()<Scalar::Ez>();
         }
     }
 };

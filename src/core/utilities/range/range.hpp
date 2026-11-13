@@ -13,11 +13,11 @@ namespace core
     template<typename Iterator>
     struct Range
     {
-        using iterator_category = typename Iterator::iterator_category;
-        using value_type        = typename Iterator::value_type;
-        using difference_type   = typename Iterator::difference_type;
-        using reference         = typename Iterator::reference;
-        using pointer           = typename Iterator::pointer;
+        using iterator_category = Iterator::iterator_category;
+        using value_type        = Iterator::value_type;
+        using difference_type   = Iterator::difference_type;
+        using reference         = Iterator::reference;
+        using pointer           = Iterator::pointer;
 
         template<class Container>
         explicit Range(Container const& c)

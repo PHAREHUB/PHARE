@@ -7,6 +7,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "field_overlap.hpp"
+#include "amr/data/field/refine/coarse_cell_round_out.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include "SAMRAI/hier/IntVector.h"
@@ -20,12 +21,28 @@ namespace amr
 {
 
 
+    /**
+     * @brief Geometry interface for PHARE's fill patterns: the overlap of the boxes exactly as
+     * given, without the coarse-cell rounding of FieldGeometry::calculateOverlap.
+     */
+    class FillPatternGeometry : public SAMRAI::hier::BoxGeometry
+    {
+    public:
+        virtual std::shared_ptr<SAMRAI::hier::BoxOverlap>
+        calculateUnroundedOverlap(SAMRAI::hier::BoxGeometry const& sourceGeometry,
+                                  SAMRAI::hier::Box const& sourceMask,
+                                  SAMRAI::hier::Box const& fillBox, bool const overwriteInterior,
+                                  SAMRAI::hier::Transformation const& sourceOffset) const
+            = 0;
+    };
+
+
     // this class is needed because the FieldFillPattern needs to cast the
     // generic BoxGeometry into the specific geometry but cannot cast into
     // the FieldGeometry below because it does not have the GridLayoutT and
     // PhysicalQuantity for template arguments.
     template<std::size_t dimension>
-    class FieldGeometryBase : public SAMRAI::hier::BoxGeometry
+    class FieldGeometryBase : public FillPatternGeometry
     {
     public:
         virtual ~FieldGeometryBase() {}
@@ -91,6 +108,12 @@ namespace amr
          * to intersect it with the destination box (for example: when using periodics boundary,
          * the mask will be shifted).
          * Finally we can also add some restrictions on the boxes for the destination.
+         *
+         * PHARE's fill patterns call calculateUnroundedOverlap instead, so this is only reached
+         * through SAMRAI's default pattern: on coarse-interpolation temporaries, where SAMRAI
+         * imposes it, and for algorithms registered without a fill pattern. For the quantities of
+         * copiesWholeCoarseCells it rounds the fill box and source mask out to whole coarse cells
+         * (coarse_cell_round_out.hpp), so their refiners must always pass a PHARE fill pattern.
          */
         std::shared_ptr<SAMRAI::hier::BoxOverlap> calculateOverlap(
             SAMRAI::hier::BoxGeometry const& destinationGeometry,
@@ -102,8 +125,27 @@ namespace amr
         {
             auto& destinationCast = dynamic_cast<FieldGeometry const&>(destinationGeometry);
             auto& sourceCast      = dynamic_cast<FieldGeometry const&>(sourceGeometry);
+
+            if (copiesWholeCoarseCells(quantity_))
+                return doOverlap_(destinationCast, sourceCast,
+                                  roundMaskOutToCoarseCells_(sourceMask, sourceCast.patchBox),
+                                  roundCellBoxOutToCoarseCells<dimension>(fillBox),
+                                  overwriteInterior, sourceOffset, destinationRestrictBoxes);
+
             return doOverlap_(destinationCast, sourceCast, sourceMask, fillBox, overwriteInterior,
                               sourceOffset, destinationRestrictBoxes);
+        }
+
+
+        std::shared_ptr<SAMRAI::hier::BoxOverlap>
+        calculateUnroundedOverlap(SAMRAI::hier::BoxGeometry const& sourceGeometry,
+                                  SAMRAI::hier::Box const& sourceMask,
+                                  SAMRAI::hier::Box const& fillBox, bool const overwriteInterior,
+                                  SAMRAI::hier::Transformation const& sourceOffset) const override
+        {
+            return doOverlap_(*this, dynamic_cast<FieldGeometry const&>(sourceGeometry), sourceMask,
+                              fillBox, overwriteInterior, sourceOffset,
+                              SAMRAI::hier::BoxContainer{});
         }
 
 
@@ -213,6 +255,14 @@ namespace amr
     private:
         GridLayoutT layout_;
         PhysicalQuantity quantity_;
+
+
+        //! `mask` rounded out to whole coarse cells, but not past `sourcePatchBox`
+        static SAMRAI::hier::Box roundMaskOutToCoarseCells_(SAMRAI::hier::Box const& mask,
+                                                            SAMRAI::hier::Box const& sourcePatchBox)
+        {
+            return roundCellBoxOutToCoarseCells<dimension>(mask) * sourcePatchBox;
+        }
 
 
         /*** \brief Compute destination box representing the intersection of two geometry

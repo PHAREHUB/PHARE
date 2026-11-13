@@ -64,7 +64,7 @@ struct twoParticlesDataNDTouchingPeriodicBorders : public testing::Test
         std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
-    typename ParticleArray<dim>::Particle_t particle;
+    ParticleArray<dim>::Particle_t particle;
 
     twoParticlesDataNDTouchingPeriodicBorders()
     {

@@ -10,8 +10,11 @@
 
 
 #include "amr/data/field/field_data.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 
 #include <SAMRAI/hier/TimeInterpolateOperator.h>
 
@@ -31,11 +34,30 @@ void linear_time_interpolate(Dst& fieldDest, auto const& fieldSrcOld, auto const
     auto const lclDstBox                           = phare_box_from<Dst::dimension>(localDestBox);
     auto const lclSrcBox                           = phare_box_from<Dst::dimension>(localSrcBox);
 
-    auto src_it = lclSrcBox.begin();
-    auto dst_it = lclDstBox.begin();
+    core::for_each_point_zip(lclDstBox, lclSrcBox, [&](auto const& dst, auto const& src) {
+        fieldDest(dst) = (1. - alpha) * fieldSrcOld(src) + alpha * fieldSrcNew(src);
+    });
+}
 
-    for (; dst_it != lclDstBox.end(); ++src_it, ++dst_it)
-        fieldDest(*dst_it) = (1. - alpha) * fieldSrcOld(*src_it) + alpha * fieldSrcNew(*src_it);
+
+/**
+ * @brief Call `interpolate(localDestBox, localSrcBox)` over every destination box of `overlap`.
+ *
+ * The overlap is used rather than SAMRAI's `where` (the source mask), because a B overlap rounded
+ * out to whole coarse cells (FieldGeometry::calculateOverlap) extends past it. Under a periodic
+ * offset the destination data is a temporary located in source space, so the destination boxes
+ * are inverse-transformed, as in FieldData::packStream.
+ */
+void interpolateOverOverlap(FieldOverlap const& overlap, SAMRAI::hier::Box const& ghostBox,
+                            SAMRAI::hier::Box const& srcGhostBox, auto&& interpolate)
+{
+    for (auto box : overlap.getDestinationBoxContainer())
+    {
+        overlap.getTransformation().inverseTransform(box);
+        auto const finalBox = box * ghostBox * srcGhostBox;
+        if (!finalBox.empty())
+            interpolate(AMRToLocal(finalBox, ghostBox), AMRToLocal(finalBox, srcGhostBox));
+    }
 }
 
 
@@ -60,8 +82,8 @@ public:
     virtual ~FieldLinearTimeInterpolate() = default;
 
 
-    void timeInterpolate(SAMRAI::hier::PatchData& destData, SAMRAI::hier::Box const& where,
-                         SAMRAI::hier::BoxOverlap const& /*overlap*/,
+    void timeInterpolate(SAMRAI::hier::PatchData& destData, SAMRAI::hier::Box const& /*where*/,
+                         SAMRAI::hier::BoxOverlap const& overlap,
                          SAMRAI::hier::PatchData const& srcDataOld,
                          SAMRAI::hier::PatchData const& srcDataNew) const override
     {
@@ -80,26 +102,19 @@ public:
         auto& fieldDest         = fieldDataDest.field;
 
         auto const& layout = fieldDataDest.gridLayout;
-        auto const whereLayout
-            = FieldGeometry<GridLayoutT, PhysicalQuantity>::layoutFromBox(where, layout);
-
-        auto qty = fieldDest.physicalQuantity();
-        auto const interpolateBox
-            = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(where, qty, whereLayout);
+        auto qty           = fieldDest.physicalQuantity();
 
         auto const ghostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             fieldDataDest.getGhostBox(), qty, layout);
 
-        auto const finalBox = interpolateBox * ghostBox;
-
         auto srcGhostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             fieldDataSrcNew.getGhostBox(), qty, fieldDataSrcNew.gridLayout);
 
-        auto const localDestBox = AMRToLocal(finalBox, ghostBox);
-        auto const localSrcBox  = AMRToLocal(finalBox, srcGhostBox);
-
-        linear_time_interpolate( //
-            fieldDest, fieldSrcOld, fieldSrcNew, localDestBox, localSrcBox, alpha);
+        interpolateOverOverlap(dynamic_cast<FieldOverlap const&>(overlap), ghostBox, srcGhostBox,
+                               [&](auto const& localDestBox, auto const& localSrcBox) {
+                                   linear_time_interpolate(fieldDest, fieldSrcOld, fieldSrcNew,
+                                                           localDestBox, localSrcBox, alpha);
+                               });
     }
 };
 
@@ -114,7 +129,7 @@ class TensorFieldLinearTimeInterpolate : public SAMRAI::hier::TimeInterpolateOpe
     static constexpr std::size_t N = TensorFieldDataT::N;
 
 public:
-    using GridLayoutImpl = typename GridLayoutT::implT;
+    using GridLayoutImpl = GridLayoutT::implT;
 
     TensorFieldLinearTimeInterpolate()
         : SAMRAI::hier::TimeInterpolateOperator{"TensorFieldLinearTimeInterpolate"}
@@ -125,12 +140,13 @@ public:
     virtual ~TensorFieldLinearTimeInterpolate() = default;
 
 
-    void timeInterpolate(SAMRAI::hier::PatchData& destData, SAMRAI::hier::Box const& where,
-                         SAMRAI::hier::BoxOverlap const& /*overlap*/,
+    void timeInterpolate(SAMRAI::hier::PatchData& destData, SAMRAI::hier::Box const& /*where*/,
+                         SAMRAI::hier::BoxOverlap const& overlap,
                          SAMRAI::hier::PatchData const& srcDataOld,
                          SAMRAI::hier::PatchData const& srcDataNew) const override
     {
-        auto& fieldDataDest = dynamic_cast<TensorFieldDataT&>(destData);
+        auto& fieldDataDest       = dynamic_cast<TensorFieldDataT&>(destData);
+        auto const& tensorOverlap = dynamic_cast<TensorFieldOverlap<rank> const&>(overlap);
 
         auto const& fieldDataSrcOld = dynamic_cast<TensorFieldDataT const&>(srcDataOld);
         auto const& fieldDataSrcNew = dynamic_cast<TensorFieldDataT const&>(srcDataNew);
@@ -149,18 +165,17 @@ public:
             auto const& qty       = fieldDests[c].physicalQuantity();
             using FieldGeometry_t = FieldGeometry<GridLayoutT, std::decay_t<decltype(qty)>>;
 
-            auto const& whereLayout    = FieldGeometry_t::layoutFromBox(where, layout);
-            auto const& interpolateBox = FieldGeometry_t::toFieldBox(where, qty, whereLayout);
             auto const& ghostBox
                 = FieldGeometry_t::toFieldBox(fieldDataDest.getGhostBox(), qty, layout);
-            auto const& finalBox     = interpolateBox * ghostBox;
-            auto const& srcGhostBox  = FieldGeometry_t::toFieldBox(fieldDataSrcNew.getGhostBox(),
-                                                                   qty, fieldDataSrcNew.gridLayout);
-            auto const& localDestBox = AMRToLocal(finalBox, ghostBox);
-            auto const& localSrcBox  = AMRToLocal(finalBox, srcGhostBox);
+            auto const& srcGhostBox = FieldGeometry_t::toFieldBox(fieldDataSrcNew.getGhostBox(),
+                                                                  qty, fieldDataSrcNew.gridLayout);
 
-            linear_time_interpolate( //
-                fieldDests[c], fieldSrcOlds[c], fieldSrcNews[c], localDestBox, localSrcBox, alpha);
+            interpolateOverOverlap(*tensorOverlap[c], ghostBox, srcGhostBox,
+                                   [&](auto const& localDestBox, auto const& localSrcBox) {
+                                       linear_time_interpolate(fieldDests[c], fieldSrcOlds[c],
+                                                               fieldSrcNews[c], localDestBox,
+                                                               localSrcBox, alpha);
+                                   });
         }
     }
 };

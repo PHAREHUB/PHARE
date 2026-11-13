@@ -28,9 +28,10 @@ PHARE::core::Particle<dim> particle(ICell const& icell)
 template<typename ParticleArray_t, typename Box_t>
 void add_particles_in(ParticleArray_t& particles, Box_t const& box)
 {
-    for (auto const& amr_idx : box)
+    for_each_point(box, [&](auto const& amr_idx) {
         for (std::size_t i = 0; i < ppc; ++i)
             particles.emplace_back(particle<ParticleArray_t::dimension>(*amr_idx));
+    });
 }
 
 

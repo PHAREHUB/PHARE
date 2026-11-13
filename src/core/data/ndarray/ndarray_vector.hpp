@@ -67,8 +67,8 @@ class MaskedView
 {
 public:
     static auto constexpr dimension = Array::dimension;
-    using DataType                  = typename Array::type;
-    using data_type                 = typename Array::type;
+    using DataType                  = Array::type;
+    using data_type                 = Array::type;
 
     MaskedView(Array& array, Mask const& mask)
         : array_{array}
@@ -332,7 +332,7 @@ public:
     }
 
     template<typename Array>
-    void fill(Array& array, typename Array::type val) const
+    void fill(Array& array, Array::type val) const
     {
         if constexpr (Array::dimension == 1)
             fill1D(array, val);
@@ -345,7 +345,7 @@ public:
     }
 
     template<typename Array>
-    void fill1D(Array& array, typename Array::type val) const
+    void fill1D(Array& array, Array::type val) const
     {
         auto shape = array.shape();
 
@@ -357,7 +357,7 @@ public:
     }
 
     template<typename Array>
-    void fill2D(Array& array, typename Array::type val) const
+    void fill2D(Array& array, Array::type val) const
     {
         auto shape = array.shape();
 
@@ -385,7 +385,7 @@ public:
     }
 
     template<typename Array>
-    void fill3D(Array& array, typename Array::type val) const
+    void fill3D(Array& array, Array::type val) const
     {
         auto shape = array.shape();
 

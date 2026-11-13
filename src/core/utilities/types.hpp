@@ -256,13 +256,13 @@ namespace core
 
 namespace PHARE::core
 {
-template<typename Container, typename Multiplies = typename Container::value_type>
+template<typename Container, typename Multiplies = Container::value_type>
 NO_DISCARD Multiplies product(Container const& container, Multiplies mul = 1)
 {
     return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
 }
 
-template<typename Container, typename Return = typename Container::value_type>
+template<typename Container, typename Return = Container::value_type>
 NO_DISCARD Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
@@ -306,7 +306,7 @@ NO_DISCARD auto generate_from(F&& f, std::size_t count)
 template<typename F, typename Container>
 NO_DISCARD auto generate_from(F&& f, Container const& container)
 {
-    using T          = typename Container::value_type;
+    using T          = Container::value_type;
     using value_type = std::decay_t<std::invoke_result_t<F&, T&>>;
     std::vector<value_type> v1;
     if (container.size() > 0)
