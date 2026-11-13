@@ -393,15 +393,34 @@ class RestartsTest(SimulatorTest):
             diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
         )
 
-    @data(False, True)
-    def test_restarts_mhd(self, hall):
-        print(f"test_restarts_mhd hall:{hall}")
+    # excluded data is NaN after a restart (FieldData), so any read of it before it is
+    #  written shows in the exact comparison: every timestepper (number of extra states),
+    #  resistive terms (dissipative electric field), and a level both receiving and passing on
+    #  a flux sum
+    @data(
+        *[
+            dict(timestepper=ts, hall=hall)
+            for ts in ["Euler", "TVDRK2", "TVDRK3", "SSPRK4_5"]
+            for hall in [False, True]
+        ],
+        dict(timestepper="TVDRK3", hall=False, eta=0.01),
+        dict(timestepper="TVDRK3", hall=True, nu=0.01),
+        dict(timestepper="TVDRK2", hall=False, levels=3),
+    )
+    @unpack
+    def test_restarts_mhd(self, timestepper, hall, eta=0.0, nu=0.0, levels=2):
+        print(
+            f"test_restarts_mhd {timestepper} hall:{hall} eta:{eta} nu:{nu} levels:{levels}"
+        )
 
         ndim = 1
-        simput = dup(dict(**mhdArgs, hall=hall, max_mhd_level=2))
+        simput = dup(dict(**mhdArgs, hall=hall, max_mhd_level=levels))
+        simput.update(mhd_timestepper=timestepper, eta=eta, nu=nu)
         for key in ["cells", "dl"]:
             simput[key] = [simput[key]] * ndim
         simput["refinement_boxes"] = {"L0": {"B0": [[10] * ndim, [19] * ndim]}}
+        if levels == 3:
+            simput["refinement_boxes"]["L1"] = {"B0": [[24] * ndim, [35] * ndim]}
 
         time_step = simput["time_step"]
         restart_time = time_step * 4
@@ -428,7 +447,9 @@ class RestartsTest(SimulatorTest):
         Simulator(sim).run().reset()
         self.register_diag_dir_for_cleanup(diag_dir1)
 
-        self.check_diags(diag_dir0, diag_dir1, [], timestamps, expected_num_levels=2)
+        self.check_diags(
+            diag_dir0, diag_dir1, [], timestamps, expected_num_levels=levels
+        )
 
     def test_mode_conserve(self, ndim=1, interp=1, simput=dup(simArgs)):
         print(f"test_mode_conserve dim/interp:{ndim}/{interp}")

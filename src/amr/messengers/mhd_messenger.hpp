@@ -82,8 +82,7 @@ namespace amr
             resourcesManager_->registerResources(Bold_);
 
             // refreshed in prepareStep
-            resourcesManager_->excludeFromRestarts(rhoOld_, Vold_, Pold_, rhoVold_, EtotOld_,
-                                                   Bold_);
+            resourcesManager_->excludeFromRestarts(rhoOld_, rhoVold_, EtotOld_, Bold_);
 
             // also magnetic fluxes ? or should we use static refiners instead ?
         }

@@ -104,7 +104,8 @@ public:
             has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
             scalarQuantities, vectorQuantities, gamma_);
 
-        resourcesManager->excludeFromRestarts(tmpField_, tmpVec_); // temporaries
+        // temporaries, and the diagnostics recomputed whenever they are written
+        resourcesManager->excludeFromRestarts(tmpField_, tmpVec_, V_diag_, P_diag_);
     }
 
     ~MHDModel() override = default;
