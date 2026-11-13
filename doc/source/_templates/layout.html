@@ -7,7 +7,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".wy-menu-vertical p.caption").forEach(function (c) {
       var t = c.textContent.trim();
-      if (t.indexOf("Developer guide") === 0 || t.indexOf("Dev \u00b7") === 0) c.classList.add("phare-dev-caption");
+      if (t === "For developers" || t.indexOf("Developer guide") === 0 || t.indexOf("Dev \u00b7") === 0) c.classList.add("phare-dev-caption");
     });
   });
   </script>

@@ -35,3 +35,23 @@ body.phare-dev .rst-content h1 { border-bottom: 3px solid #d9730d; padding-botto
     padding-left: 0.6em; margin-top: 0.3em; margin-bottom: 0;
 }
 .wy-menu-vertical p.caption.phare-dev-caption + ul { border-left: 4px solid #d9730d; }
+
+/* the whole developer guide is ONE sidebar entry (dev/index): never show its sub-pages in the sidebar */
+.wy-menu-vertical p.caption.phare-dev-caption + ul li > ul { display: none !important; }
+.wy-menu-vertical p.caption.phare-dev-caption + ul li > a button.toctree-expand,
+.wy-menu-vertical p.caption.phare-dev-caption + ul li > a .toctree-expand { display: none; }
+
+/* ---- Developer dashboard: responsive card grid ---- */
+.dev-dashboard {
+    display: grid; grid-template-columns: 1fr; gap: 1em; margin: 1.2em 0 1.5em;
+}
+@media (min-width: 640px)  { .dev-dashboard { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1100px) { .dev-dashboard { grid-template-columns: repeat(3, 1fr); } }
+.dev-dashboard > .dev-card {
+    background: #fff9f0; border: 1px solid #f0cfa3; border-top: 5px solid #d9730d;
+    border-radius: 4px; padding: 0.7em 1em 0.4em; min-width: 0;
+}
+.dev-dashboard > .dev-card > p:first-child { margin-bottom: 0.4em; font-size: 110%; color: #8a4200; }
+.dev-dashboard > .dev-card ul, .dev-dashboard > .dev-card ol { margin-bottom: 0.6em; }
+.dev-dashboard > .dev-card li { margin-bottom: 0.15em; overflow-wrap: anywhere; }
+.dev-dashboard > .dev-card a { font-weight: 500; }
