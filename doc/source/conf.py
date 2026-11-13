@@ -58,8 +58,10 @@ extensions = [
 ]
 
 # diagrams are text (Mermaid), drawn by the browser: no images in the repository.
-# "loose" lets `click NODE href "page.html"` make diagram boxes links to other pages.
-mermaid_init_js = 'mermaid.initialize({startOnLoad: true, securityLevel: "loose"});'
+# natural size + horizontal scroll (see custom.css) instead of shrinking wide diagrams.
+# `click NODE href "page.html"` makes boxes links (works with the default Mermaid security level).
+mermaid_init_config = {"startOnLoad": False, "flowchart": {"useMaxWidth": False}}
+mermaid_height = "auto"
 
 # :src:`src/amr/.../file.hpp#L42` links to the code at the commit the docs were checked against.
 phare_doc_commit = "dc62fdd4e6c99d31b3f563678a1084267f5b5c10"

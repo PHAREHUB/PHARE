@@ -20,15 +20,10 @@ body.phare-dev .wy-nav-top { background: #d9730d; }
 body.phare-dev .wy-side-nav-search { background-color: #b85c08; }
 body.phare-dev .rst-content h1 { border-bottom: 3px solid #d9730d; padding-bottom: 0.2em; }
 
-/* ---- Mermaid: scroll instead of overflow on phones, readable text ---- */
-.mermaid, pre.mermaid, div.mermaid {
-    overflow-x: auto; max-width: 100%; text-align: center; background: transparent;
-}
-.mermaid svg { max-width: none; height: auto; font-size: 14px; }
-.mermaid .node, .mermaid .cluster { cursor: default; }
+/* ---- Mermaid: natural size, scroll sideways (the plugin forces 500px height and shrinks to column width) ---- */
+.rst-content pre.mermaid { overflow-x: auto; text-align: center; background: transparent; }
+.rst-content pre.mermaid > svg { width: auto !important; max-width: none !important; height: auto !important; }
 .mermaid a { cursor: pointer; }          /* clickable boxes */
-.mermaid .clickable rect, .mermaid .clickable polygon { stroke-width: 2px; }
-@media (max-width: 480px) { .mermaid svg { font-size: 12px; } }
 
 /* ---- "In preparation" boxes ---- */
 .rst-content .admonition.in-preparation { background: #f3f0ff; }
