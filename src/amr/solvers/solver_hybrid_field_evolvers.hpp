@@ -34,9 +34,7 @@ public:
             auto layout = amr::layoutFromPatch<GridLayout>(*patch);
             auto& n     = electrons.density();
             auto& Ve    = electrons.velocity();
-            electrons.computePressureTerm(layout);
-            auto& pressureTerm = electrons.pressureTerm();
-            (*this)(layout, n, Ve, pressureTerm, B, J, E);
+            (*this)(layout, n, Ve, electrons.pressureTerm(), B, J, E);
         }
     }
 

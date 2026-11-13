@@ -298,6 +298,7 @@ public:
         momentModel_.computeDensity();
         momentModel_.computeBulkVelocity(layout);
         momentModel_.computePressure(layout);
+        momentModel_.computePressureTerm(layout);
     }
 
 

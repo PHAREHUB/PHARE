@@ -524,7 +524,8 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 }
 
 
-// the isothermal closure gives Ohm -Te grad(ln n) of the ions' charge density, with its own Te
+// update() gives Ohm the isothermal closure's -Te grad(ln n) of the ions' charge density, with
+// its own Te
 TYPED_TEST(ElectronsTest, ThatIsothermalPressureTermIsMinusTeGradLnNe)
 {
     static constexpr auto dim = typename TypeParam::first_type{}();
@@ -536,7 +537,6 @@ TYPED_TEST(ElectronsTest, ThatIsothermalPressureTermIsMinusTeGradLnNe)
     electrons.update(layout);
 
     auto expected = UsableVecField<dim>{"expected", layout, HybridQuantity::Vector::E};
-    electrons.computePressureTerm(layout);
     IsothermalPressureTerm<GridYee>{Te}(layout, electrons.density(), expected);
     auto const& term = electrons.pressureTerm();
 
