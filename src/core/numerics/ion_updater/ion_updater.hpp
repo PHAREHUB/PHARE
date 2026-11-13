@@ -169,7 +169,7 @@ struct UpdaterSelectionBoxing
     Selector_t const inLevelGhostLayer
         = [ghostBox = ghostBox, nonLevelGhostBox = nonLevelGhostBox](auto& particleRange) {
               return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isIn(cell, ghostBox) and !isIn(Point{cell}, nonLevelGhostBox);
+                  return isIn(cell, ghostBox) and !isIn(cell, nonLevelGhostBox);
               });
           };
 

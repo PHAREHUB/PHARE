@@ -109,8 +109,8 @@ Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;
 
 
 
-template<template<typename, std::size_t> typename Point, typename Type, std::size_t SIZE>
-NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
+template<template<typename, std::size_t> typename Point_t, typename Type, std::size_t SIZE>
+NO_DISCARD bool isIn(Point_t<Type, SIZE> const& point, Box<Type, SIZE> const& box)
 {
     for (std::size_t iDim = 0; iDim < SIZE; ++iDim)
         if (point[iDim] < box.lower[iDim] || point[iDim] > box.upper[iDim])
