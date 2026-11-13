@@ -3,6 +3,7 @@
 #include "simulator/simulator_def.hpp"
 
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/pressure_term/pressure_term.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -72,19 +73,21 @@ struct OhmTest : public ::testing::Test
 
     GridYee layout = NDlayout<dim, interp>::create();
 
+    // electron temperature of the isothermal pressure term, as in test_ohm.py
+    static constexpr double Te = 0.09;
+
     Grid_t n;
-    Grid_t P;
-    UsableVecFieldND V, B, J, Enew;
+    UsableVecFieldND V, B, J, Enew, pressureTerm;
 
     OhmInfo ohm_info;
 
     OhmTest()
         : n{"n", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)}
-        , P{"P", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , V{"V", layout, HybridQuantity::Vector::V}
         , B{"B", layout, HybridQuantity::Vector::B}
         , J{"J", layout, HybridQuantity::Vector::J}
         , Enew{"Enew", layout, HybridQuantity::Vector::E}
+        , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
         , ohm_info{OhmInfo::FROM(createDict())}
     {
         auto const& [Bx, By, Bz]          = B();
@@ -108,7 +111,6 @@ struct OhmTest : public ::testing::Test
                 Vx(ix) = std::sinh(0.2 * point[0]);
                 Vy(ix) = std::sinh(0.3 * point[0]);
                 Vz(ix) = std::sinh(0.4 * point[0]);
-                P(ix)  = std::cosh(0.3 * point[0]);
                 Bx(ix) = std::cosh(0.2 * point[0]);
                 Jy(ix) = std::tanh(0.3 * point[0]);
                 Jz(ix) = std::tanh(0.4 * point[0]);
@@ -147,7 +149,6 @@ struct OhmTest : public ::testing::Test
                     Vx(ix, iy) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1]);
                     Vy(ix, iy) = std::sinh(0.3 * point[0]) * std::sinh(0.3 * point[1]);
                     Vz(ix, iy) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1]);
-                    P(ix, iy)  = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1]);
                     Jz(ix, iy) = std::tanh(0.4 * point[0]) * std::tanh(0.4 * point[1]);
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
@@ -211,8 +212,6 @@ struct OhmTest : public ::testing::Test
                                          * std::sinh(0.3 * point[2]);
                         Vz(ix, iy, iz) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1])
                                          * std::sinh(0.4 * point[2]);
-                        P(ix, iy, iz) = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1])
-                                        * std::cosh(0.3 * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
@@ -365,7 +364,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
     auto const layout = NDlayout<dim, interp>::create();
 
-    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
+    // the reference values (test_ohm.py) use the isothermal pressure term, so build it the same way
+    IsothermalPressureTerm<typename TestFixture::GridYee>{TestFixture::Te}(layout, this->n,
+                                                                           this->pressureTerm);
+    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
+                                  this->Enew);
 
 
     auto const& [Exnew, Eynew, Eznew] = this->Enew();
@@ -513,82 +516,9 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 }
 
 
-// with B = J = 0 and a uniform Te, Ohm's law reduces to E = -Te grad(n)/n = -grad(Te ln n),
-// which is curl free: the pressure term must not feed Faraday, even on a noisy density (#1527)
-TYPED_TEST(OhmTest, ThatIsothermalPressureTermIsCurlFree)
-{
-    using Ohm_t        = TestFixture::Ohm_t;
-    auto constexpr dim = TestFixture::dim;
-
-    if constexpr (dim > 1)
-    {
-        auto& layout    = this->layout;
-        auto const Te   = 0.09;
-        auto const zero = [&](auto& field) {
-            layout.evalOnGhostBox(field, [&](auto const&... ijk) { field(ijk...) = 0.; });
-        };
-        for (auto* vecfield : {&this->V, &this->B, &this->J})
-            for (auto const component : {Component::X, Component::Y, Component::Z})
-                zero((*vecfield)(component));
-
-        // particle-noise-like density: uncorrelated from node to node, in [1, 1.5)
-        auto k = 0;
-        layout.evalOnGhostBox(this->n, [&](auto const&... ijk) {
-            auto const hash = std::sin(12.9898 * ++k) * 43758.5453;
-            this->n(ijk...) = 1. + 0.5 * (hash - std::floor(hash));
-            this->P(ijk...) = Te * this->n(ijk...);
-        });
-
-        auto const dict = [] {
-            PHARE::initializer::PHAREDict dict;
-            dict["resistivity"]       = 0.0;
-            dict["hyper_resistivity"] = 0.0;
-            return dict;
-        }();
-        Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
-
-        // largest |value| on the physical box of `where`, NaN as soon as one value is not finite
-        auto const maxAbs = [&](auto& where, auto&& value) {
-            auto max = 0.;
-            layout.evalOnBox(where, [&](auto const&... ijk) {
-                auto const v = std::abs(value(ijk...));
-                max          = std::isfinite(v) and std::isfinite(max)
-                                   ? std::max(max, v)
-                                   : std::numeric_limits<double>::quiet_NaN();
-            });
-            return max;
-        };
-
-        auto maxE = 0.;
-        for (auto const c : {Component::X, Component::Y, Component::Z})
-        {
-            auto& Ec        = this->Enew(c);
-            auto const maxC = maxAbs(Ec, [&](auto... ijk) { return Ec(ijk...); });
-            maxE            = std::isnan(maxC) ? maxC : std::max(maxE, maxC); // keeps a NaN
-        }
-        EXPECT_GT(maxE, 0.1); // the density noise does drive a pressure field
-
-        // the curl Faraday applies to E, evaluated where B lives
-        auto const curlE     = curl(layout, this->Enew);
-        auto const tolerance = 1e-12 * maxE * layout.inverseMeshSize(Direction::X);
-
-        EXPECT_LT(maxAbs(this->B(Component::Z), [&](auto... ijk) { return curlE.z({ijk...}); }),
-                  tolerance);
-
-        if constexpr (dim == 3)
-        {
-            EXPECT_LT(maxAbs(this->B(Component::X), [&](auto... ijk) { return curlE.x({ijk...}); }),
-                      tolerance);
-            EXPECT_LT(maxAbs(this->B(Component::Y), [&](auto... ijk) { return curlE.y({ijk...}); }),
-                      tolerance);
-        }
-    }
-}
-
-
-// with V = B = J = 0 and a uniform Pe, Ohm's law gives E = -grad(Pe)/n = 0 whatever n does.
-// The density takes two values only, so that many edges also see equal densities on both nodes
-TYPED_TEST(OhmTest, ThatUniformPressureGivesNoElectricField)
+// Ohm adds the pressure term it is given, whatever the closure that computed it: with
+// V = B = J = 0 and no resistivity, E is the pressure term, value for value
+TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
 {
     using Ohm_t = TestFixture::Ohm_t;
 
@@ -601,11 +531,14 @@ TYPED_TEST(OhmTest, ThatUniformPressureGivesNoElectricField)
             zero((*vecfield)(component));
 
     auto k = 0;
-    layout.evalOnGhostBox(this->n, [&](auto const&... ijk) {
-        auto const hash = std::sin(12.9898 * ++k) * 43758.5453;
-        this->n(ijk...) = hash - std::floor(hash) < 0.5 ? 1. : 1.7;
-        this->P(ijk...) = 0.3;
-    });
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+    {
+        auto& term = this->pressureTerm(c);
+        layout.evalOnBox(term, [&](auto const&... ijk) {
+            auto const hash = std::sin(12.9898 * ++k) * 43758.5453;
+            term(ijk...)    = hash - std::floor(hash) - 0.5;
+        });
+    }
 
     auto const dict = [] {
         PHARE::initializer::PHAREDict dict;
@@ -613,12 +546,14 @@ TYPED_TEST(OhmTest, ThatUniformPressureGivesNoElectricField)
         dict["hyper_resistivity"] = 0.0;
         return dict;
     }();
-    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
+    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
+                                       this->Enew);
 
     for (auto const c : {Component::X, Component::Y, Component::Z})
     {
-        auto& Ec = this->Enew(c);
-        layout.evalOnBox(Ec, [&](auto const&... ijk) { EXPECT_EQ(Ec(ijk...), 0.); });
+        auto& Ec   = this->Enew(c);
+        auto& term = this->pressureTerm(c);
+        layout.evalOnBox(Ec, [&](auto const&... ijk) { EXPECT_EQ(Ec(ijk...), term(ijk...)); });
     }
 }
 

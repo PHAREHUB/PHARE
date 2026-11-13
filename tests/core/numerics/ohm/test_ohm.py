@@ -35,20 +35,19 @@ class TestVariables:
         self.domainSize = tuple(n * m for n, m in zip(self.nbrCells, self.meshSize))
 
 
-def pressure_term(n, P, axis, dl):
-    """-grad(P)/n on the edges between consecutive nodes along axis, written as
-    -D(P) / n_L with n_L the logarithmic mean of n on the two nodes, as in Ohm::pressure_"""
+# electron temperature of the isothermal pressure term, as in test_main.cpp
+Te = 0.09
+
+
+def pressure_term(n, axis, dl):
+    """-grad(Pe)/n for an isothermal Pe = Te n, on the edges between consecutive nodes along
+    axis: -Te D(ln n), as IsothermalPressureTerm computes it"""
     lo = [slice(None)] * n.ndim
     hi = [slice(None)] * n.ndim
     lo[axis] = slice(None, -1)
     hi[axis] = slice(1, None)
     lo, hi = tuple(lo), tuple(hi)
-    n0, n1 = n[lo], n[hi]
-    same = n1 == n0
-    nL = np.where(
-        same, n0, (n1 - n0) / np.where(same, 1.0, np.log(n1) - np.log(n0))
-    )
-    return -(P[hi] - P[lo]) / (dl * nL)
+    return -Te * (np.log(n[hi]) - np.log(n[lo])) / dl
 
 
 # ------------------------------------------------------------------------------
@@ -142,7 +141,6 @@ def test_ohm_yee1D(path):
     Vx = np.sinh(0.2 * x_primal)
     Vy = np.sinh(0.3 * x_primal)
     Vz = np.sinh(0.4 * x_primal)
-    P = np.cosh(0.3 * x_primal)
     Bx = np.cosh(0.2 * x_primal)
     By = np.cosh(0.3 * x_dual)
     Bz = np.cosh(0.4 * x_dual)
@@ -174,7 +172,7 @@ def test_ohm_yee1D(path):
     )
 
     # pressure term
-    pressx[psi_d_X : pei_d_X + 1] = pressure_term(n, P, 0, tv.meshSize[0])[
+    pressx[psi_d_X : pei_d_X + 1] = pressure_term(n, 0, tv.meshSize[0])[
         psi_p_X:pei_p_X
     ]
     pressy[psi_p_X : pei_p_X + 1] = 0
@@ -363,7 +361,6 @@ def test_ohm_yee2D(path):
     Vx = np.tensordot(np.sinh(0.2 * x_primal), np.sinh(0.2 * y_primal), axes=0)
     Vy = np.tensordot(np.sinh(0.3 * x_primal), np.sinh(0.3 * y_primal), axes=0)
     Vz = np.tensordot(np.sinh(0.4 * x_primal), np.sinh(0.4 * y_primal), axes=0)
-    P = np.tensordot(np.cosh(0.3 * x_primal), np.cosh(0.3 * y_primal), axes=0)
     Bx = np.tensordot(np.cosh(0.2 * x_primal), np.cosh(0.2 * y_dual), axes=0)
     By = np.tensordot(np.cosh(0.3 * x_dual), np.cosh(0.3 * y_primal), axes=0)
     Bz = np.tensordot(np.cosh(0.4 * x_dual), np.cosh(0.4 * y_dual), axes=0)
@@ -415,11 +412,11 @@ def test_ohm_yee2D(path):
 
     # pressure term
     pressx[psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1] = pressure_term(
-        n, P, 0, tv.meshSize[0]
+        n, 0, tv.meshSize[0]
     )[psi_p_X:pei_p_X, psi_p_Y : pei_p_Y + 1]
 
     pressy[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1] = pressure_term(
-        n, P, 1, tv.meshSize[1]
+        n, 1, tv.meshSize[1]
     )[psi_p_X : pei_p_X + 1, psi_p_Y:pei_p_Y]
 
     pressz[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1] = 0
@@ -663,11 +660,6 @@ def test_ohm_yee3D(path):
         np.tensordot(np.sinh(0.4 * y_primal), np.sinh(0.4 * z_primal), axes=0),
         axes=0,
     )
-    P = np.tensordot(
-        np.cosh(0.3 * x_primal),
-        np.tensordot(np.cosh(0.3 * y_primal), np.cosh(0.3 * z_primal), axes=0),
-        axes=0,
-    )
     Bx = np.tensordot(
         np.cosh(0.2 * x_primal),
         np.tensordot(np.cosh(0.2 * y_dual), np.cosh(0.2 * z_dual), axes=0),
@@ -750,19 +742,19 @@ def test_ohm_yee3D(path):
 
     # pressure term
     pressx[psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1] = (
-        pressure_term(n, P, 0, tv.meshSize[0])[
+        pressure_term(n, 0, tv.meshSize[0])[
             psi_p_X:pei_p_X, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1
         ]
     )
 
     pressy[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1, psi_p_Z : pei_p_Z + 1] = (
-        pressure_term(n, P, 1, tv.meshSize[1])[
+        pressure_term(n, 1, tv.meshSize[1])[
             psi_p_X : pei_p_X + 1, psi_p_Y:pei_p_Y, psi_p_Z : pei_p_Z + 1
         ]
     )
 
     pressz[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_d_Z : pei_d_Z + 1] = (
-        pressure_term(n, P, 2, tv.meshSize[2])[
+        pressure_term(n, 2, tv.meshSize[2])[
             psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z:pei_p_Z
         ]
     )

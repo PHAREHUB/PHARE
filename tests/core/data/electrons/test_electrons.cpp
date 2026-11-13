@@ -522,6 +522,33 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 }
 
 
+// the isothermal closure gives Ohm -Te grad(ln n) of the ions' charge density, with its own Te
+TYPED_TEST(ElectronsTest, ThatIsothermalPressureTermIsMinusTeGradLnNe)
+{
+    static constexpr auto dim = typename TypeParam::first_type{}();
+    using GridYee             = TestFixture::GridYee;
+
+    auto& electrons = this->electrons;
+    auto& layout    = this->layout;
+
+    electrons.update(layout);
+
+    auto term     = UsableVecField<dim>{"term", layout, HybridQuantity::Vector::E};
+    auto expected = UsableVecField<dim>{"expected", layout, HybridQuantity::Vector::E};
+    electrons.computePressureTerm(layout, term);
+    IsothermalPressureTerm<GridYee>{Te}(layout, electrons.density(), expected);
+
+    auto nonZero = 0;
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+        layout.evalOnBox(term(c), [&](auto const&... ijk) {
+            ASSERT_TRUE(std::isfinite(term(c)(ijk...)));
+            EXPECT_EQ(term(c)(ijk...), expected(c)(ijk...));
+            nonZero += term(c)(ijk...) != 0.;
+        });
+    EXPECT_GT(nonZero, 0);
+}
+
+
 
 
 // two populations with different q/m drifting relative to each other:
