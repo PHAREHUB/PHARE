@@ -407,8 +407,8 @@ class RestartsTest(SimulatorTest):
         setup_model(sim)
         return sim
 
-    def test_resources_hash_mismatch_raises(self, ndim=1, interp=1):
-        print(f"test_resources_hash_mismatch_raises dim/interp:{ndim}/{interp}")
+    def test_resource_names_mismatch_raises(self, ndim=1, interp=1):
+        print(f"test_resource_names_mismatch_raises dim/interp:{ndim}/{interp}")
         import h5py
 
         simput = dup(dict())
@@ -418,22 +418,40 @@ class RestartsTest(SimulatorTest):
 
         diag_dir0, restart_time, restart_file = self._dump_restart_and_get_file(simput)
 
+        # drop one resource, add one this build does not have
         with h5py.File(restart_file, "r+") as f:
-            f["/phare"].attrs["resources_hash"] = "corrupted_hash_value"
+            attrs = f["/phare"].attrs
+            names = [
+                n.decode() if isinstance(n, bytes) else n
+                for n in attrs["resource_names"]
+            ]
+            dropped = names[0]
+            del attrs["resource_names"]
+            attrs.create(
+                "resource_names",
+                names[1:] + ["not_a_resource"],
+                dtype=h5py.string_dtype(),
+            )
         cpp.mpi_barrier()
 
         sim = self._restarted_simulation(simput, diag_dir0, restart_time)
         simulator = Simulator(sim)
         try:
-            with self.assertRaises(RuntimeError) as ctx:
+            with self.assertRaises(
+                ValueError
+            ) as ctx:  # Simulator.setup() wraps the cause
                 simulator.setup()
-            self.assertIn("incompatible", str(ctx.exception))
+            cause = ctx.exception.__cause__
+            self.assertIsInstance(cause, RuntimeError)
+            self.assertIn("incompatible", str(cause))
+            self.assertIn("not_a_resource", str(cause))
+            self.assertIn(dropped, str(cause))
         finally:
             simulator.reset()
 
-    def test_resources_hash_missing_is_backward_compatible(self, ndim=1, interp=1):
+    def test_resource_names_missing_is_backward_compatible(self, ndim=1, interp=1):
         print(
-            f"test_resources_hash_missing_is_backward_compatible dim/interp:{ndim}/{interp}"
+            f"test_resource_names_missing_is_backward_compatible dim/interp:{ndim}/{interp}"
         )
         import h5py
 
@@ -445,7 +463,7 @@ class RestartsTest(SimulatorTest):
         diag_dir0, restart_time, restart_file = self._dump_restart_and_get_file(simput)
 
         with h5py.File(restart_file, "r+") as f:
-            del f["/phare"].attrs["resources_hash"]
+            del f["/phare"].attrs["resource_names"]
         cpp.mpi_barrier()
 
         sim = self._restarted_simulation(simput, diag_dir0, restart_time)
