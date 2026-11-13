@@ -28,7 +28,6 @@ ph.NO_GUI()
 cells = (40, 40)
 time_step = 0.001
 time_step_nbr = 2
-diag_dir = "phare_outputs/mhd_shared_faces"
 
 # level 1 spans level-1 cells [20, 59], level 2 one cell less on each side
 refinement_boxes = {"L0": {"B0": Box2D(10, 29)}, "L1": {"B0": Box2D(21, 58)}}
@@ -38,7 +37,7 @@ refinement_boxes = {"L0": {"B0": Box2D(10, 29)}, "L1": {"B0": Box2D(21, 58)}}
 y_boundaries = {"ylower": {"type": "reflective"}, "yupper": {"type": "open"}}
 
 
-def config(**kwargs):
+def config(diag_dir, **kwargs):
     sim = ph.Simulation(
         time_step=time_step,
         time_step_nbr=time_step_nbr,
@@ -106,8 +105,9 @@ class MHDSharedFacesTest(SimulatorTest):
 
     @data({}, {"domain_boundaries": y_boundaries})
     def test_shared_B_values_agree(self, kwargs):
+        diag_dir = f"phare_outputs/mhd_shared_faces/{self.ddt_test_id()}"
         self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(config(**kwargs)).run().reset()
+        Simulator(config(diag_dir, **kwargs)).run().reset()
         if cpp.mpi_rank() > 0:
             return
 
