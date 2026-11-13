@@ -332,7 +332,9 @@ namespace amr
             if (box.isPeriodicImage())
                 continue;
             auto const real = phare_box_from<dimension>(box);
-            for (std::size_t i = 0; i < nbrShifts; ++i) // -1, 0, +1 period along each direction
+            // -1, 0, +1 period along each direction; the all-zero shift adds the box itself, the
+            // periodic images among the level's boxes being skipped above
+            for (std::size_t i = 0; i < nbrShifts; ++i)
             {
                 core::Point<int, dimension> shift;
                 bool valid = true;
