@@ -113,49 +113,13 @@ def open_from_spec(spec):
     )
 
 
-class LevelData:
-    """One quantity (all components), one level, one time, as flat arrays in store order.
+class LevelDataBase:
+    """Reading, buffers and views of one LevelData: everything but its construction.
 
-    geom    : LevelGeometry (layout of the buffers)
-    time    : float, the dump time
-    names   : tuple of component names (e.g. ("x", "y", "z"))
-    dtype   : numpy dtype of the values
-    backend : the file backend (None for in-memory data)
-    budget  : MemoryBudget consulted before every read (default ``plan.default_budget()``)
-    file_ids: None, or int64 ``(npatch,)``: the backend's file-order patch id of each patch
-              of ``geom`` taken in ITS file order (``geom`` then describes a subset of the
-              level's patches, e.g. those touching a box)
-    derived : None, or the name of a derived quantity the backend computes while reading
-              (``backend.read_derived(derived, ...)`` is called instead of ``read_into``)
-
-    File-backed: buffers are reserved with ``lazy_empty`` on the first read; ``ensure`` reads
-    the (component, patch) pairs not yet loaded (one ``backend.read_into`` call), ``loaded``
-    says which patches hold every component; arrays returned by ``buffer`` and ``view`` are
-    read-only. In-memory (``from_arrays``): everything loaded, arrays writeable.
-    Thread-safe: concurrent ``ensure`` calls read every patch once.
+    Works on the state ``LevelData.__init__`` sets (geom, time, names, dtype, backend, budget,
+    file_ids, derived, _lock, _have, _buf) and has no ``__init__``: ``LevelData`` owns that
+    state, ``field.ComponentLevel`` (one component of a LevelData) delegates it to its parent.
     """
-
-    def __init__(self, geom, time, names, dtype, backend=None, budget=None, buffers=None,
-                 file_ids=None, derived=None):
-        if file_ids is not None:
-            file_ids = np.asarray(file_ids, dtype=np.int64)
-            if file_ids.shape != (geom.npatch,):
-                raise ValueError(f"file_ids must have one entry per patch ({geom.npatch})")
-        self.file_ids = file_ids
-        self.derived = derived
-        self.geom = geom
-        self.time = float(time)
-        self.names = tuple(names)
-        self.dtype = np.dtype(dtype)
-        self.backend = backend
-        self.budget = budget
-        self._lock = threading.Lock()
-        # one row per component (order of ``names``), one column per patch (store order)
-        self._have = np.zeros((len(self.names), geom.npatch), dtype=bool)
-        self._buf = None
-        if buffers is not None:
-            self._buf = dict(buffers)
-            self._have[:] = True
 
     @property
     def level(self):
@@ -164,42 +128,6 @@ class LevelData:
     @property
     def file_backed(self):
         return self.backend is not None
-
-    # ---- construction
-    @classmethod
-    def from_arrays(cls, geom, time, arrays):
-        """In-memory LevelData from ``{name: flat array (geom.nnodes,)}`` (store order).
-
-        The arrays are used as given (no copy) and stay writeable. Raises ValueError on a
-        length mismatch or mixed dtypes.
-        """
-        arrays = {k: np.asarray(v) for k, v in arrays.items()}
-        if not arrays:
-            raise ValueError("from_arrays needs at least one component")
-        for name, a in arrays.items():
-            if a.ndim != 1 or len(a) != geom.nnodes:
-                raise ValueError(
-                    f"component {name!r}: expected a flat array of {geom.nnodes} nodes, "
-                    f"got shape {a.shape}"
-                )
-        dtypes = {a.dtype for a in arrays.values()}
-        if len(dtypes) != 1:
-            raise ValueError(f"components have different dtypes {dtypes}")
-        return cls(geom, time, tuple(arrays), dtypes.pop(), buffers=arrays)
-
-    @classmethod
-    def from_backend(cls, backend, geom, time, names=None, dtype=None, budget=None,
-                     file_ids=None, derived=None):
-        """File-backed LevelData for level ``geom.level`` of ``backend`` at ``time``. No I/O.
-
-        ``file_ids`` and ``derived``: see the class docstring.
-        """
-        if names is None or dtype is None:
-            meta = backend.meta()
-            names = meta.names if names is None else names
-            dtype = meta.dtype if dtype is None else dtype
-        return cls(geom, time, names, dtype, backend=backend, budget=budget,
-                   file_ids=file_ids, derived=derived)
 
     # ---- state
     @property
@@ -445,6 +373,87 @@ class LevelData:
             f"LevelData(level={self.geom.level}, t={self.time:g}, names={self.names}, "
             f"dtype={self.dtype}, {kind}, loaded {int(self._loaded.sum())}/{self.geom.npatch})"
         )
+
+
+class LevelData(LevelDataBase):
+    """One quantity (all components), one level, one time, as flat arrays in store order.
+
+    geom    : LevelGeometry (layout of the buffers)
+    time    : float, the dump time
+    names   : tuple of component names (e.g. ("x", "y", "z"))
+    dtype   : numpy dtype of the values
+    backend : the file backend (None for in-memory data)
+    budget  : MemoryBudget consulted before every read (default ``plan.default_budget()``)
+    file_ids: None, or int64 ``(npatch,)``: the backend's file-order patch id of each patch
+              of ``geom`` taken in ITS file order (``geom`` then describes a subset of the
+              level's patches, e.g. those touching a box)
+    derived : None, or the name of a derived quantity the backend computes while reading
+              (``backend.read_derived(derived, ...)`` is called instead of ``read_into``)
+
+    File-backed: buffers are reserved with ``lazy_empty`` on the first read; ``ensure`` reads
+    the (component, patch) pairs not yet loaded (one ``backend.read_into`` call), ``loaded``
+    says which patches hold every component; arrays returned by ``buffer`` and ``view`` are
+    read-only. In-memory (``from_arrays``): everything loaded, arrays writeable.
+    Thread-safe: concurrent ``ensure`` calls read every patch once.
+    """
+
+    def __init__(self, geom, time, names, dtype, backend=None, budget=None, buffers=None,
+                 file_ids=None, derived=None):
+        if file_ids is not None:
+            file_ids = np.asarray(file_ids, dtype=np.int64)
+            if file_ids.shape != (geom.npatch,):
+                raise ValueError(f"file_ids must have one entry per patch ({geom.npatch})")
+        self.file_ids = file_ids
+        self.derived = derived
+        self.geom = geom
+        self.time = float(time)
+        self.names = tuple(names)
+        self.dtype = np.dtype(dtype)
+        self.backend = backend
+        self.budget = budget
+        self._lock = threading.Lock()
+        # one row per component (order of ``names``), one column per patch (store order)
+        self._have = np.zeros((len(self.names), geom.npatch), dtype=bool)
+        self._buf = None
+        if buffers is not None:
+            self._buf = dict(buffers)
+            self._have[:] = True
+
+    # ---- construction
+    @classmethod
+    def from_arrays(cls, geom, time, arrays):
+        """In-memory LevelData from ``{name: flat array (geom.nnodes,)}`` (store order).
+
+        The arrays are used as given (no copy) and stay writeable. Raises ValueError on a
+        length mismatch or mixed dtypes.
+        """
+        arrays = {k: np.asarray(v) for k, v in arrays.items()}
+        if not arrays:
+            raise ValueError("from_arrays needs at least one component")
+        for name, a in arrays.items():
+            if a.ndim != 1 or len(a) != geom.nnodes:
+                raise ValueError(
+                    f"component {name!r}: expected a flat array of {geom.nnodes} nodes, "
+                    f"got shape {a.shape}"
+                )
+        dtypes = {a.dtype for a in arrays.values()}
+        if len(dtypes) != 1:
+            raise ValueError(f"components have different dtypes {dtypes}")
+        return cls(geom, time, tuple(arrays), dtypes.pop(), buffers=arrays)
+
+    @classmethod
+    def from_backend(cls, backend, geom, time, names=None, dtype=None, budget=None,
+                     file_ids=None, derived=None):
+        """File-backed LevelData for level ``geom.level`` of ``backend`` at ``time``. No I/O.
+
+        ``file_ids`` and ``derived``: see the class docstring.
+        """
+        if names is None or dtype is None:
+            meta = backend.meta()
+            names = meta.names if names is None else names
+            dtype = meta.dtype if dtype is None else dtype
+        return cls(geom, time, names, dtype, backend=backend, budget=budget,
+                   file_ids=file_ids, derived=derived)
 
 
 class Snapshot(NamedTuple):

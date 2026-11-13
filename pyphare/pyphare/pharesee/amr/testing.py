@@ -22,7 +22,7 @@ import numpy as np
 from .boxes import PhysBox, concat_ranges, refine
 from .errors import PhareseeIOError, TimeNotFoundError
 from .geometry import HierGeometry, LevelGeometry
-from .io import FileMeta, LevelIndex
+from .io.meta import FileMeta, LevelIndex
 from .store import LevelData
 
 _DEFAULT_CELLS = {1: (64,), 2: (48, 40), 3: (16, 14, 12)}

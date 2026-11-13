@@ -100,6 +100,10 @@ def build(case, fmt, out_dir):
     diag = {"format": FORMATS[fmt], "options": {"dir": out_dir, "mode": "overwrite"}}
     common = dict(interp_order=1, diag_options=diag, strict=True, nesting_buffer=1)
 
+    def zero(*a):
+        return 0.0 * a[0] if hasattr(a[0], "shape") else 0.0
+
+    vx = zero  # bulk velocity along x: zero except in 2d_tagged
     if case == "2d_static":
         dt, nsteps = 0.001, 20
         sim = ph.Simulation(
@@ -132,7 +136,7 @@ def build(case, fmt, out_dir):
         def density(x, y):
             return density0(x, y) + 1.5 * blob(x, y)
 
-        def vxf(x, y):
+        def vx(x, y):
             return VD * blob(x, y)
 
         ppc = 10
@@ -192,13 +196,9 @@ def build(case, fmt, out_dir):
     else:
         raise ValueError(f"unknown case {case!r}; known: {CASES}")
 
-    def zero(*a):
-        return 0.0 * a[0] if hasattr(a[0], "shape") else 0.0
-
     def vth(*a):
         return np.sqrt(T(*a))
 
-    vx = vxf if case == "2d_tagged" else zero
     vvv = {"vbulkx": vx, "vbulky": zero, "vbulkz": zero,
            "vthx": vth, "vthy": vth, "vthz": vth}
     ph.MaxwellianFluidModel(

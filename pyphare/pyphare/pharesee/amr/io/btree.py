@@ -36,7 +36,6 @@ import numpy as np
 from . import rawio
 
 _SIGNATURE = b"\x89HDF\r\n\x1a\n"
-_MSG_NIL = 0x00
 _MSG_LAYOUT = 0x08
 _MSG_FILTERS = 0x0B
 _MSG_CONTINUATION = 0x10

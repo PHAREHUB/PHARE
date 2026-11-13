@@ -3,7 +3,7 @@
 
 Synthetic files come from h5_files.write_phareh5 (structure of real files,
 linear dyadic fields: node values must be exact). Real-data tests use
-build/sample_data (skipped when absent): h5 vs vtkhdf of the same run, and the
+build/sample_data (an error when absent; the 3-rank run: test_mpi3.py): h5 vs vtkhdf of the same run, and the
 new reader vs master's Run (``legacy=True``) on the same h5 files.
 """
 
@@ -31,10 +31,9 @@ from pyphare_tests.test_pharesee.amr.h5_files import (
     tiling,
     write_phareh5,
 )
-from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, SAMPLES_MPI3
+from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, require
 
-SAMPLE_RUNS = [Path(SAMPLES) / r for r in ("1d", "2d_static", "2d_tagged", "3d")] + [
-    Path(SAMPLES_MPI3) / "2d_tagged"]
+SAMPLE_CASES = ("1d", "2d_static", "2d_tagged", "3d")
 
 
 def layout_offsets(lower, upper):
@@ -686,12 +685,15 @@ def vtk_level(path, time, level):
         return out
 
 
-def available_runs():
-    return [r for r in SAMPLE_RUNS if (r / "h5").is_dir() and (r / "vtk").is_dir()]
-
-
-@unittest.skipUnless(available_runs(), "build/sample_data not found")
 class TestRealData(unittest.TestCase):
+    ROOT, CASES = SAMPLES, SAMPLE_CASES  # test_mpi3.py reruns these tests on the 3-rank run
+    MIN_COMPARED = 50  # (quantity, time, level) value checks in test_h5_equals_vtkhdf
+
+    @classmethod
+    def setUpClass(cls):
+        require(cls.ROOT, cls.CASES)
+        cls.runs = [Path(cls.ROOT) / c for c in cls.CASES]
+
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self._old = os.environ.get("PHARESEE_CACHE_DIR")
@@ -714,7 +716,7 @@ class TestRealData(unittest.TestCase):
         condition), boxes at every time.
         """
         compared = 0
-        for run in available_runs():
+        for run in self.runs:
             values_up_to = 0.0 if "mpi3" in str(run) else np.inf
             for h5 in sorted((run / "h5").glob("*.h5")):
                 vtk = run / "vtk" / (h5.stem + ".vtkhdf")
@@ -738,7 +740,7 @@ class TestRealData(unittest.TestCase):
                                 err = np.abs(out[name].astype(np.float64) - vals).max()
                                 self.assertLessEqual(err, 2e-7 * scale, f"{name}")
                             compared += 1
-        self.assertGreater(compared, 50)
+        self.assertGreater(compared, self.MIN_COMPARED)
 
     def _master_pairs(self, hier, t, li):
         """Master's patches of level li.level keyed by lower corner."""
@@ -750,7 +752,7 @@ class TestRealData(unittest.TestCase):
         from pyphare.pharesee.run import Run
         from pyphare.pharesee.run.utils import _compute_current
 
-        for run in available_runs():
+        for run in self.runs:
             b = H5Backend(str(run / "h5" / "EM_B.h5"))
             dim = b.meta().dim
             if dim == 3:
@@ -782,7 +784,7 @@ class TestRealData(unittest.TestCase):
                                 self.assertTrue(ulp_close(mine, ref).all(), f"J{n} patch {p}")
 
     def test_divB_yee_is_centred_node_divergence(self):
-        for run in available_runs():
+        for run in self.runs:
             b = H5Backend(str(run / "h5" / "EM_B.h5"))
             dim = b.meta().dim
             for t in b.times():

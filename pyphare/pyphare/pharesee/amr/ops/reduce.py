@@ -266,6 +266,7 @@ def _level_integral(ld, hier):
     totals = np.zeros(len(bufs))
     clean = np.zeros(geom.npatch, dtype=bool)
     by_group = len(geom.groups) <= GROUP_LOOP_MAX
+    inside = None  # full-weight patches, only computed (and used) when by_group
     if by_group:
         inside = _full_weight_patches(geom, tabs)
         clean = inside.copy()

@@ -15,7 +15,7 @@ from pyphare.pharesee.amr.field import (
     VectorField,
     make_field,
 )
-from pyphare.pharesee.amr.ops import arith, deriv
+from pyphare.pharesee.amr.ops import arith, deriv, reduce
 from pyphare.pharesee.amr.store import Snapshot
 from pyphare.pharesee.amr.testing import FakeBackend, fill, make_amr
 
@@ -309,10 +309,6 @@ class TestNumpyFunctions(unittest.TestCase):
         self.a, self.b = self.B.x, self.B.z
 
     def test_reductions(self):
-        try:
-            from pyphare.pharesee.amr.ops import reduce
-        except ImportError:
-            self.skipTest("ops/reduce.py not written yet")
         a, snap = self.a, self.a.snapshot()
         self.assertEqual(np.mean(a), reduce.mean(snap))
         self.assertEqual(np.mean(a), a.mean())

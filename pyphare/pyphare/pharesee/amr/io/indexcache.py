@@ -169,4 +169,5 @@ def trim(keep: str | None = None) -> None:
             os.unlink(path)
             total -= size
         except OSError:
+            # already deleted by a concurrent prune, or not deletable: keep pruning the rest
             pass

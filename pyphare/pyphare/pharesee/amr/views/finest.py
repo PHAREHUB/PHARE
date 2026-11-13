@@ -507,7 +507,7 @@ def finest(snap, box=None, max_level=None, fill="cubic", dtype=None, force=False
                 if nmap is not None:
                     upsample(wmap, nmap, f0, cubic, kernel=_up_axis_map)
                 timings["map"] += _time.perf_counter() - t
-            win, wmap = None, None  # free the coarser window before painting
+            del win, wmap  # free the coarser window before painting
             t = _time.perf_counter()
             p = paints.get(l)
             if p is not None and len(p.slots):

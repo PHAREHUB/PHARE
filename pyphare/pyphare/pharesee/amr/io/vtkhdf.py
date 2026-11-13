@@ -51,8 +51,9 @@ from ..errors import (
     PhareseeIOError,
     TimeNotFoundError,
 )
-from . import FileMeta, LevelIndex, btree, rawio
+from . import btree, rawio
 from .h5open import open_h5
+from .meta import FileMeta, LevelIndex
 
 #: S1 and S3 read windows (bytes); S1 keeps two windows in memory (double buffering)
 WINDOW_BYTES = 256 << 20

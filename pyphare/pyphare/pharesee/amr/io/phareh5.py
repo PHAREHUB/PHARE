@@ -44,8 +44,9 @@ from ..errors import (
     PhareseeIOError,
     TimeNotFoundError,
 )
-from . import FileMeta, LevelIndex, indexcache, rawio
+from . import indexcache, rawio
 from .h5open import open_h5
+from .meta import FileMeta, LevelIndex
 from .rawio import check_identity, file_identity
 
 # counters of this process; tests read STATS["walks"] (time-group walks done)

@@ -2,7 +2,7 @@
 
 One test per issue. Each docstring states what master does wrong, the test asserts what the
 new reader does. Synthetic fields (``testing.make_amr`` + ``FakeBackend``, which counts
-reads) unless a real file is needed (then skipped without ``build/sample_data``).
+reads) unless a real file is needed (``build/sample_data``, an error when absent).
 """
 
 import os
@@ -20,11 +20,9 @@ from pyphare.core.operators import cross, dot, grad, modulus, sqrt
 from pyphare.pharesee.amr.boxes import PhysBox
 from pyphare.pharesee.amr.field import AMRField, ScalarField, VectorField
 from pyphare.pharesee.amr.testing import FakeBackend, fill, make_amr
-from pyphare.pharesee.amr.views import plot as plotmod
-from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES
+from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, require
 
 os.environ.setdefault("PHARESEE_CACHE", "0")
-plotmod.install()
 
 
 def _field(f, dim=2, nlevels=3, seed=3, names=None, periodic=False, **kw):
@@ -100,14 +98,14 @@ class AcceptanceTest(unittest.TestCase):
         self.assertIsInstance(q, VectorField)
         for c in "xyz":
             np.testing.assert_allclose(_all_values(q, c), _all_values(V, c) / _all_values(N))
-        if os.path.isdir(os.path.join(SAMPLES, "2d_tagged", "vtk")):
-            from pyphare.pharesee.run import Run
+        from pyphare.pharesee.run import Run
 
-            r = Run(os.path.join(SAMPLES, "2d_tagged", "h5"), legacy=False)
-            ratio = r.GetVi(0.1) / r.GetNi(0.1)
-            self.assertIsInstance(ratio, VectorField)
-            ds = r.GetNi(0.1).levels()[0].patches[0].patch_datas["value"].dataset
-            self.assertIsInstance(ds, np.ndarray)
+        require()
+        r = Run(os.path.join(SAMPLES, "2d_tagged", "h5"), legacy=False)
+        ratio = r.GetVi(0.1) / r.GetNi(0.1)
+        self.assertIsInstance(ratio, VectorField)
+        ds = r.GetNi(0.1).levels()[0].patches[0].patch_datas["value"].dataset
+        self.assertIsInstance(ds, np.ndarray)
 
     def test_1450_colour_range_is_that_of_the_shown_data(self):
         """#1450: master's plot2d takes vmin/vmax from global_min/max over every level and

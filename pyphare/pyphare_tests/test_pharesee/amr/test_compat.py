@@ -2,9 +2,9 @@
 """Tests of pharesee.amr.compat: master's per-patch hierarchy API on the flat fields.
 
 Real-data tests compare against master's reader (``Run(path, legacy=True).GetB(t)`` ...) on the sample
-runs of ``build/sample_data`` and are skipped when those files are absent. The field used
-is ``amr.field.AMRField`` when it exists, else ``StandInField`` below (only the members
-``compat.MasterAPI`` may use, see FIELD_CONTRACT).
+runs of ``build/sample_data`` (``sample_data.require``: an error when absent; the 3-rank run is
+in test_mpi3.py). The field used is ``amr.field.AMRField``; ``StandInField`` below (only the
+members ``compat.MasterAPI`` may use, see FIELD_CONTRACT) checks that contract.
 """
 
 import gc
@@ -17,20 +17,16 @@ import weakref
 import numpy as np
 
 from pyphare.pharesee.amr import compat
+from pyphare.pharesee.amr import field as amr_field
 from pyphare.pharesee.amr.compat import LevelView, MasterAPI, PatchView
 from pyphare.pharesee.amr.errors import TimeNotFoundError
-from pyphare.pharesee.amr.geometry import HierGeometry, LevelGeometry
 from pyphare.pharesee.amr.io import open_backend
-from pyphare.pharesee.amr.store import LevelData, Snapshot
+from pyphare.pharesee.amr.store import Snapshot
 from pyphare.pharesee.amr.testing import FakeBackend, fill, make_amr, make_large_amr
-from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, SAMPLES_MPI3
+from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, require
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNS_1D_2D = ("1d", "2d_static", "2d_tagged")
-
-
-def _have(path):
-    return os.path.isdir(path)
 
 
 class StandInField(MasterAPI):
@@ -48,21 +44,6 @@ class StandInField(MasterAPI):
         self.dl = np.asarray(s0.hier.dl0, dtype=np.float64)
         self.domain = s0.hier.domain
 
-    @classmethod
-    def from_backend(cls, backend, times=None):
-        meta = backend.meta()
-        if times is None:
-            times = backend.times()
-        snaps = []
-        for t in np.atleast_1d(times):
-            index = backend.index(float(t))
-            geoms = [LevelGeometry.for_level(li.level, li.lower, li.upper, meta.dl0,
-                                             meta.domain_cells0, meta.periodic) for li in index]
-            t_file = float(backend.times()[np.argmin(np.abs(backend.times() - float(t)))])
-            lds = tuple(LevelData.from_backend(backend, g, t_file) for g in geoms)
-            snaps.append(Snapshot(HierGeometry(geoms), lds))
-        return cls(snaps, meta)
-
     def times(self):
         return np.array(sorted(self._snaps), dtype=np.float64)
 
@@ -78,21 +59,9 @@ class StandInField(MasterAPI):
         return self._snaps[float(t[i])]
 
 
-def _real_field_module():
-    try:
-        from pyphare.pharesee.amr import field
-    except ImportError:
-        return None
-    return field if hasattr(field, "AMRField") else None
-
-
 def open_field(path, times=None):
-    """A field over the file ``path``: the real AMRField if available, else the stand-in."""
-    field = _real_field_module()
-    backend = open_backend(path)
-    if field is not None:
-        return field.AMRField.from_backend(backend, times=times)
-    return StandInField.from_backend(backend, times)
+    """An AMRField over the file ``path``."""
+    return amr_field.AMRField.from_backend(open_backend(path), times=times)
 
 
 def _key(box):
@@ -114,12 +83,12 @@ def _ring_mask(shape, ng):
     return m
 
 
-@unittest.skipUnless(_have(SAMPLES), "needs build/sample_data")
 class TestAgainstMaster(unittest.TestCase):
     """(a) same shapes, coordinates and values as master's all_primal objects."""
 
     @classmethod
     def setUpClass(cls):
+        require(cases=RUNS_1D_2D)
         from pyphare.pharesee.run import Run
 
         cls.Run = Run
@@ -260,9 +229,12 @@ class TestApiSurface(unittest.TestCase):
             self.assertTrue(hasattr(MasterAPI, name))
 
 
-@unittest.skipUnless(_have(SAMPLES), "needs build/sample_data")
 class TestVtkhdfVsH5(unittest.TestCase):
     """(b) the views are the same on both formats: boxes by index, shapes, coords, values."""
+
+    @classmethod
+    def setUpClass(cls):
+        require(cases=RUNS_1D_2D + ("3d",))
 
     def _compare(self, root, fname, values=True):
         h5 = open_field(os.path.join(root, "h5", fname + ".h5"))
@@ -302,26 +274,13 @@ class TestVtkhdfVsH5(unittest.TestCase):
                 with self.subTest(run=run, q=fname):
                     self._compare(os.path.join(SAMPLES, run), fname)
 
-    @unittest.skipUnless(_have(SAMPLES_MPI3), "needs build/sample_data_mpi3")
-    def test_three_ranks(self):
-        # the two formats come from two runs on 3 ranks, which are not bitwise identical
-        # (issue #1526): compare boxes, shapes and coordinates, not values
-        self._compare(os.path.join(SAMPLES_MPI3, "2d_tagged"), "EM_B", values=False)
-        h5 = open_field(os.path.join(SAMPLES_MPI3, "2d_tagged", "h5", "EM_B.h5"))
-        t = h5.times()[-1]
-        ranks = {p.id.split("#")[0] for lvl in h5.levels(t).values() for p in lvl.patches}
-        self.assertGreater(len(ranks), 1)
-        ids = [p.id for p in h5.level(0, t).patches]
-        keys = [tuple(int(v) for v in s[1:].split("#")) for s in ids]
-        self.assertEqual(keys, sorted(keys), "h5 file order = (rank, localid)")
 
-
-@unittest.skipUnless(_have(SAMPLES), "needs build/sample_data")
 class TestMasterHelpers(unittest.TestCase):
     """(c) master's hierarchy helpers that only walk levels/patches work on the views."""
 
     @classmethod
     def setUpClass(cls):
+        require(cases=RUNS_1D_2D)
         from pyphare.pharesee.run import Run
 
         cls.path = os.path.join(SAMPLES, "2d_tagged", "h5")
@@ -475,21 +434,19 @@ class TestIsinstanceAndOperators(unittest.TestCase):
         self.assertNotIsInstance(FakeTensor(), VectorField)
 
     def test_real_field_registered(self):
-        field = _real_field_module()
-        if field is None:
-            self.skipTest("amr.field not written yet")
+        field = amr_field
         from pyphare.pharesee.hierarchy import PatchHierarchy, ScalarField, VectorField
 
         self.assertTrue(issubclass(field.AMRField, PatchHierarchy))
         self.assertTrue(issubclass(field.VectorField, VectorField))
         self.assertTrue(issubclass(field.ScalarField, ScalarField))
 
-    @unittest.skipUnless(_have(SAMPLES), "needs build/sample_data")
     def test_legacy_operators_give_way(self):
         from pyphare.pharesee.hierarchy import ScalarField, VectorField
         from pyphare.pharesee.hierarchy.tensorfield import is_amr_field
         from pyphare.pharesee.run import Run
 
+        require(cases=("1d",))
         path = os.path.join(SAMPLES, "1d", "h5")
         t = float(open_backend(os.path.join(path, "EM_B.h5")).times()[0])
         run = Run(path, legacy=True)
@@ -498,10 +455,8 @@ class TestIsinstanceAndOperators(unittest.TestCase):
         newN = open_field(os.path.join(path, "ions_charge_density.h5"), times=[t])
         self.assertTrue(is_amr_field(newB))
         self.assertFalse(is_amr_field(B))
-        field = _real_field_module()
-        if field is not None:
-            self.assertNotIsInstance(B, field.AMRField)
-            self.assertNotIsInstance(N, field.AMRField)
+        self.assertNotIsInstance(B, amr_field.AMRField)
+        self.assertNotIsInstance(N, amr_field.AMRField)
         for op in ("__add__", "__sub__", "__mul__", "__truediv__", "__radd__", "__rmul__",
                    "__rtruediv__"):
             self.assertIs(getattr(ScalarField, op)(N, newN), NotImplemented, op)
@@ -513,8 +468,6 @@ class TestIsinstanceAndOperators(unittest.TestCase):
                 a + b
             with self.assertRaises(TypeError):
                 a * b
-        if field is None:
-            return  # new + legacy needs field.py's operators
         for a, b in ((newN, N), (newB, B)):
             with self.assertRaises(TypeError):
                 a + b
@@ -525,10 +478,7 @@ def _fake_field(npatch, dim=2, width=8):
     data = fill(hier, lambda *c: sum((i + 1) * x for i, x in enumerate(c)),
                 dtype=np.float32)
     backend = FakeBackend(data)
-    field = _real_field_module()
-    if field is not None:
-        return field.AMRField.from_backend(backend), backend, data
-    return StandInField.from_backend(backend), backend, data
+    return amr_field.AMRField.from_backend(backend), backend, data
 
 
 class TestLaziness(unittest.TestCase):
@@ -708,10 +658,7 @@ class TestMasterKeysAndViews(unittest.TestCase):
     def _vector(self):
         hier = make_amr(2, nlevels=2, seed=4)
         lds = fill(hier, {"x": lambda x, y: x, "y": lambda x, y: y, "z": lambda x, y: x + y})
-        field = _real_field_module()
-        if field is None:
-            self.skipTest("needs amr.field")
-        return field.make_field([Snapshot(hier, tuple(lds))], quantity="EM_B")
+        return amr_field.make_field([Snapshot(hier, tuple(lds))], quantity="EM_B")
 
     def test_component_answers_parent_key(self):
         B = self._vector()
@@ -765,53 +712,6 @@ class TestMasterKeysAndViews(unittest.TestCase):
                 pickle.dumps(view)
         self.assertEqual(copy.copy(lvl).level_number, 0)
         self.assertGreater(len(pickle.dumps(B)), 0)
-
-
-@unittest.skipUnless(_have(SAMPLES_MPI3), "needs build/sample_data_mpi3")
-class TestRealIdsAndCompare(unittest.TestCase):
-    def test_vtkhdf_patch_id_is_not_a_rank(self):
-        from pyphare.pharesee.run import Run
-
-        root = os.path.join(SAMPLES_MPI3, "2d_tagged")
-        Ni = Run(os.path.join(root, "vtk")).GetNi(0.0)
-        ids = [p.id for lvl in Ni.levels().values() for p in lvl.patches]
-        self.assertEqual(ids[:3], ["vtk#0", "vtk#1", "vtk#2"])
-        # master's rank-from-id idiom (run/utils.py:418) must fail, not answer rank 0
-        with self.assertRaises(ValueError):
-            int(ids[0].split("#")[0][1:])
-        with self.assertRaises(ValueError):
-            int(ids[0].strip("p").split("#")[0])
-        # phareh5 keeps the file's group names (real ranks)
-        h5 = Run(os.path.join(root, "h5"), legacy=False).GetNi(0.0)
-        ranks = {int(p.id.split("#")[0][1:]) for lvl in h5.levels().values()
-                 for p in lvl.patches}
-        self.assertEqual(ranks, {0, 1, 2})
-
-    def test_hierarchy_compare_same_data_is_true(self):
-        from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
-        from pyphare.pharesee.run import Run
-
-        root = os.path.join(SAMPLES_MPI3, "2d_tagged")
-        for r in (Run(os.path.join(root, "h5"), legacy=False), Run(os.path.join(root, "vtk"))):
-            with self.subTest(r=repr(r)):
-                self.assertTrue(bool(hierarchy_compare(r.GetNi(0.2), r.GetNi(0.2))))
-                self.assertTrue(bool(hierarchy_compare(r.GetB(0.2), r.GetB(0.2))))
-                self.assertFalse(bool(hierarchy_compare(r.GetNi(0.2), r.GetNi(0.0))))
-
-    def test_component_keys_as_master_on_real_files(self):
-        from pyphare.pharesee.run import Run
-
-        root = os.path.join(SAMPLES_MPI3, "2d_tagged")
-        legacy = Run(os.path.join(root, "h5"), legacy=True).GetB(0.2)
-        ref = legacy.x.level(0).patches[0].patch_datas
-        for r in (Run(os.path.join(root, "h5"), legacy=False), Run(os.path.join(root, "vtk"))):
-            B = r.GetB(0.2)
-            pd = B.x.level(0).patches[0].patch_datas
-            self.assertEqual(list(pd.keys()), list(ref.keys()))
-            self.assertEqual(pd["x"].dataset.shape, ref["x"].dataset.shape)
-            self.assertEqual(B.x.quantities(), legacy.x.quantities())
-            self.assertAlmostEqual(float(B.x.global_max("x")), legacy.x.global_max("x"),
-                                   places=5)
 
 
 class TestTimes(unittest.TestCase):

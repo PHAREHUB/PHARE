@@ -2,7 +2,7 @@
 """Tests of pharesee.amr.field: lazy construction, times, components, load/copy/pickle, repr.
 
 Synthetic data: ``testing.make_amr`` layouts filled with analytic functions and served by
-``testing.FakeBackend`` (which counts every read). Real data (skipped when absent):
+``testing.FakeBackend`` (which counts every read). Real data (an error when absent):
 ``build/sample_data/*/{vtk,h5}``, the same runs in both formats.
 """
 
@@ -27,11 +27,9 @@ from pyphare.pharesee.amr.geometry import GeometryCache
 from pyphare.pharesee.amr.io import open_backend
 from pyphare.pharesee.amr.store import Snapshot
 from pyphare.pharesee.amr.testing import FakeBackend, fill, make_amr
-from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES
+from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, require
 
 SAMPLE = Path(SAMPLES)
-RUNS = [r for r in ("1d", "2d_static", "2d_tagged", "3d")
-        if (SAMPLE / r / "vtk").is_dir() and (SAMPLE / r / "h5").is_dir()]
 
 
 # --------------------------------------------------------------------------- helpers
@@ -411,10 +409,6 @@ class TestDelegations(unittest.TestCase):
         g = self.B.y.finest()
         X, Y = np.meshgrid(g.x, g.y, indexing="ij")
         np.testing.assert_allclose(g.data, vec_funcs()["y"](X, Y), atol=1e-12)
-        try:
-            from pyphare.pharesee.amr.ops import reduce  # noqa: F401
-        except ImportError:
-            self.skipTest("ops/reduce.py not written yet")
         one = self.B.x * 0.0 + 2.0
         area = float(np.prod(self.B.domain))
         self.assertAlmostEqual(one.integral(), 2.0 * area, places=9)
@@ -464,10 +458,13 @@ class TestDelegations(unittest.TestCase):
 # --------------------------------------------------------------------------- files
 
 
-@unittest.skipUnless(RUNS, "build/sample_data/*/{vtk,h5} not found")
 class TestRealSamples(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        require(cases=("2d_tagged",))
+
     def test_pickle_lazy_real_field(self):
-        run = "2d_tagged" if "2d_tagged" in RUNS else RUNS[0]
+        run = "2d_tagged"
         for fmt, ext in (("vtk", "vtkhdf"), ("h5", "h5")):
             with self.subTest(fmt=fmt):
                 backend = open_backend(str(SAMPLE / run / fmt / f"EM_B.{ext}"))
@@ -485,7 +482,7 @@ class TestRealSamples(unittest.TestCase):
                                               B.levels_data()[-1].buffer("z"))
 
     def test_real_extent_values(self):
-        run = "2d_tagged" if "2d_tagged" in RUNS else RUNS[0]
+        run = "2d_tagged"
         path = str(SAMPLE / run / "vtk" / "EM_B.vtkhdf")
         backend = open_backend(path)
         t = float(backend.times()[-1])

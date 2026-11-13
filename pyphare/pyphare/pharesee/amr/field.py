@@ -23,12 +23,10 @@ from .boxes import BinIndex, PhysBox, box_flat_indices, periodic_shifts
 from .compat import MasterAPI
 from .errors import TimeNotFoundError
 from .geometry import HierGeometry, default_cache
-from .store import LevelData, Snapshot, open_from_spec
+from .store import LevelData, LevelDataBase, Snapshot, open_from_spec
 
 SCALAR_NAMES = ("value",)
 VECTOR_NAMES = ("x", "y", "z")
-TENSOR6_NAMES = ("xx", "xy", "xz", "yy", "yz", "zz")
-TENSOR9_NAMES = ("xx", "xy", "xz", "yx", "yy", "yz", "zx", "zy", "zz")
 
 _MIN_TIME_TOLERANCE = 5e-11
 
@@ -103,7 +101,7 @@ def open_spec(spec):
 # --------------------------------------------------------------------------- component views
 
 
-class ComponentLevel(LevelData):
+class ComponentLevel(LevelDataBase):
     """One component of a LevelData seen as a scalar LevelData ``("value",)``, sharing buffers.
 
     Nothing is copied and nothing is read when it is made. Reading goes through the parent
@@ -113,8 +111,9 @@ class ComponentLevel(LevelData):
     """
 
     # DESIGN-NOTE: LevelData has no "one component, shared buffers, no read" form; this
-    # subclass gives it. unload() unloads the parent (the buffers are shared).
-    def __init__(self, parent, component):  # state lives in the parent: no super().__init__
+    # class gives it, with LevelData's reading and views (LevelDataBase) over state taken
+    # from the parent (properties below). unload() unloads the parent (the buffers are shared).
+    def __init__(self, parent, component):
         if component not in parent.names:
             raise KeyError(f"unknown component {component!r}; this data has {parent.names}")
         self.parent = parent

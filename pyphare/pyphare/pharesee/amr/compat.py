@@ -479,26 +479,12 @@ def _field_data_view_class():
                 0 if ctx.info.interp_order is None else int(ctx.info.interp_order),
                 [ng] * ndim,
             )
-            # the attributes of PatchData.__init__ and FieldData.__init__
-            self.quantity = "field"
-            self.box = layout.box
-            self.origin = layout.origin
-            self.layout = layout
-            self._x = None
-            self._y = None
-            self._z = None
-            self.dl = np.asarray(layout.dl)
-            label = ctx.info.label(name)  # "x" for B.x, as master's sub-hierarchy
-            self.field_name = label
-            self.name = label
-            self.ndim = ndim
-            self.centerings = ["primal"] * ndim
-            self.ghosts_nbr = ghosts
-            self.ghost_box = boxm.grow(layout.box, ghosts)
-            self.size = np.asarray(self.ghost_box.shape) + 1
-            self.offset = np.zeros(ndim)
-            self._src = (ctx.ld, int(ctx.geom.store_index[i]), name)
+            self._src = None  # FieldData.__init__ assigns dataset=None: no source yet
             self._data = None
+            # master's attributes, all primal; "x" names B.x, as master's sub-hierarchy
+            super().__init__(layout, ctx.info.label(name), None,
+                             centering=["primal"] * ndim, ghosts_nbr=ghosts)
+            self._src = (ctx.ld, int(ctx.geom.store_index[i]), name)
             type(self).created += 1
 
         @property
@@ -511,6 +497,8 @@ def _field_data_view_class():
 
         @dataset.setter
         def dataset(self, value):
+            if self._src is None and value is None:  # from FieldData.__init__
+                return
             raise AttributeError(
                 "the dataset of a file-backed patch view is read-only; use "
                 "copy.deepcopy(patch_data) or field.copy() for writeable data"

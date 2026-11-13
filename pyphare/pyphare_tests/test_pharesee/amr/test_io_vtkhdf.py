@@ -19,7 +19,7 @@ from pyphare.pharesee.amr.io import btree, open_backend, rawio
 from pyphare.pharesee.amr.io import vtkhdf as vtk
 from pyphare.pharesee.amr.io.vtkhdf import VtkhdfBackend
 from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES as SAMPLE_ROOT
-from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES_MPI3 as SAMPLE_ROOT_MPI3
+from pyphare_tests.test_pharesee.amr.sample_data import require
 
 try:
     from .vtkhdf_files import (
@@ -40,8 +40,7 @@ except ImportError:  # run as a script
         write_vtkhdf,
     )
 
-SAMPLES = sorted(glob.glob(os.path.join(SAMPLE_ROOT, "*", "vtk", "*.vtkhdf"))
-                 + glob.glob(os.path.join(SAMPLE_ROOT_MPI3, "*", "vtk", "*.vtkhdf")))
+SAMPLE_CASES = ("1d", "2d_static", "2d_tagged", "3d")
 
 
 def hierarchy(dim, nsteps=2):
@@ -781,13 +780,19 @@ class ReadsWholeLevelTest(TmpDirTest):
         self.assertFalse(VtkhdfBackend(pm).reads_whole_level(0.0, 0, np.arange(n)))
 
 
-@unittest.skipUnless(SAMPLES, "no sample data (sample_data.py)")
 class RealFilesTest(unittest.TestCase):
     """Real PHARE output: every quantity, time and level equals a naive h5py read."""
 
+    ROOT, CASES = SAMPLE_ROOT, SAMPLE_CASES  # test_mpi3.py reruns it on the 3-rank run
+
+    @classmethod
+    def setUpClass(cls):
+        require(cls.ROOT, cls.CASES)
+        cls.samples = sorted(glob.glob(os.path.join(cls.ROOT, "*", "vtk", "*.vtkhdf")))
+
     def test_samples(self):
         checked = 0
-        for path in SAMPLES:
+        for path in self.samples:
             with _h5py().File(path, "r") as f:
                 has_data = "Level0" in f["VTKHDF"]
                 values = f["VTKHDF/Steps/Values"][()]

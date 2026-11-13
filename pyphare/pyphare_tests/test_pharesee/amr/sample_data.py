@@ -6,7 +6,6 @@ Layout: ``<root>/{1d,2d_static,2d_tagged,3d}/{h5,vtk}`` and ``<root>_mpi3/2d_tag
 """
 
 import os
-import unittest
 
 ENV = "PHARESEE_SAMPLE_DATA"
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), *[os.pardir] * 4))
@@ -31,11 +30,27 @@ def run_dirs(case, root=SAMPLES):
     return os.path.join(root, case, "h5"), os.path.join(root, case, "vtk")
 
 
-def have(root=SAMPLES, cases=("2d_tagged",)):
-    """True when every case of ``root`` has both its h5 and vtk folders."""
-    return all(os.path.isdir(d) for c in cases for d in run_dirs(c, root))
+def require(root=SAMPLES, cases=("2d_tagged",)):
+    """Raise FileNotFoundError unless every case of ``root`` has its h5 and vtk folders.
 
+    Call it in ``setUpClass`` of the classes reading the sample runs.
 
-def needs_samples(root=SAMPLES, cases=("2d_tagged",)):
-    """Class/test decorator: skip unless ``have(root, cases)``."""
-    return unittest.skipUnless(have(root, cases), f"needs {root} ({', '.join(cases)})")
+    A missing sample run is an error, not a skip (CI must not pass silently without it).
+    """
+    missing = [d for c in cases for d in run_dirs(c, root) if not os.path.isdir(d)]
+    if not missing:
+        return
+    script = "pyphare/pyphare_tests/test_pharesee/amr/gen_sample_data.py"
+    base = root.rstrip(os.sep)
+    if base.endswith("_mpi3"):
+        base = base[: -len("_mpi3")]
+        cmd = f"mpirun -n 3 python3 {script} --root {base} --mpi3 FORMAT  (FORMAT: h5, then vtk)"
+        ctest = "ctest -R pharesee, with a build configured with -DtestMPI=ON"
+    else:
+        cmd = f"python3 {script} --root {base} all"
+        ctest = "ctest -R pharesee"
+    raise FileNotFoundError(
+        f"pharesee.amr sample runs not found: {', '.join(missing)} (sample root: {root}, "
+        f"from ${ENV} or the default). Generate them from the repository root with\n"
+        f"  {cmd}\nor from the build directory with {ctest}."
+    )

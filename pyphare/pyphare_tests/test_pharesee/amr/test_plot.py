@@ -2,7 +2,7 @@
 limits of what is shown, reads limited to the zoom, culled patch outlines.
 
 Synthetic fields on random AMR layouts behind ``testing.FakeBackend`` (which counts the
-patches read); one smoke test on the real sample run when ``build/sample_data`` exists.
+patches read); one smoke test on the real sample run (``build/sample_data``, an error when absent).
 matplotlib runs with the Agg backend.
 """
 
@@ -20,7 +20,6 @@ from matplotlib.colors import LogNorm
 
 from pyphare.pharesee.amr.field import AMRField
 from pyphare.pharesee.amr.testing import make_amr
-from pyphare.pharesee.amr.views import plot as plotmod
 from pyphare_tests.test_pharesee.amr._common import (
     PlotTestCase,
     fake_backend,
@@ -28,10 +27,9 @@ from pyphare_tests.test_pharesee.amr._common import (
     tmp_dir,
     vec,
 )
-from pyphare_tests.test_pharesee.amr.sample_data import needs_samples, run_dirs
+from pyphare_tests.test_pharesee.amr.sample_data import require, run_dirs
 
 os.environ.setdefault("PHARESEE_CACHE", "0")
-plotmod.install()
 
 
 def _scalar(dim=2, nlevels=3, seed=5, f=None, **kw):
@@ -98,9 +96,6 @@ class PlotBasicsTest(PlotTestCase):
         self.assertEqual(ax.get_title(), "mine")
         _, ax = J.z.plot(qty="z")
         self.assertEqual(ax.get_title(), "J_z (stencil: node)")
-
-    def test_install_makes_plot_a_method(self):
-        self.assertIs(AMRField.plot, plotmod.plot)
 
 
 class ColourLimitsTest(PlotTestCase):
@@ -234,8 +229,12 @@ class Plot1DTest(PlotTestCase):
         self.assertIsNotNone(ax.get_legend())
 
 
-@needs_samples()
 class RealDataPlotTest(PlotTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        require()
+
     def test_bz_of_the_sample_run(self):
         from pyphare.pharesee.run import Run
 

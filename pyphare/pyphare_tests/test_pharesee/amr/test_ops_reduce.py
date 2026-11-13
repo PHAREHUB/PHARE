@@ -274,7 +274,8 @@ class TestForkSafety(unittest.TestCase):
             except multiprocessing.TimeoutError:
                 pool.terminate()
                 self.fail("reduce.mean hung in a fork child (BLAS after fork?)")
-        self.assertEqual(child, parent)
+            else:
+                self.assertEqual(child, parent)
         _FORK_SNAPSHOT.clear()
 
 

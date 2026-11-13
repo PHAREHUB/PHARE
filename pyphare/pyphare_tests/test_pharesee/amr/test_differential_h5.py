@@ -22,7 +22,7 @@ import warnings
 import numpy as np
 
 from pyphare.pharesee.run import Run
-from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES
+from pyphare_tests.test_pharesee.amr.sample_data import SAMPLES, require
 
 os.environ.setdefault("PHARESEE_CACHE", "0")
 
@@ -324,10 +324,10 @@ def format_table(rows, meta):
     return "\n".join(lines)
 
 
-@unittest.skipUnless(os.path.isdir(H5), "needs build/sample_data")
 class DifferentialTableTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        require(cases=("2d_static",))
         cls._env = os.environ.pop("PHARESEE_LEGACY", None)
         cls.rows, cls.meta, cls.flux = build_table()
         cls.behaviour = build_behaviour()

@@ -296,12 +296,6 @@ def plot(field, **kwargs):
     return fig, ax
 
 
-def install():
-    """Make ``plot`` a method of every AMR field (``AMRField.plot = plot``)."""
-    from ..field import AMRField
-
-    AMRField.plot = plot
-
-
-__all__ = ["MASTER_KEYWORDS", "NEW_KEYWORDS", "default_title", "install",
-           "patch_outline_segments", "plot"]
+# ``AMRField.plot`` (field.py) calls ``plot`` below: fields need nothing installed.
+__all__ = ["MASTER_KEYWORDS", "NEW_KEYWORDS", "default_title", "patch_outline_segments",
+           "plot"]
