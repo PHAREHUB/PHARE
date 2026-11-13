@@ -103,6 +103,13 @@ public:
         return false;
     }
 
+    // closes diagnostic files left open by flush_every, the next dump reopens them
+    void flush_diagnostics() override
+    {
+        if (dMan)
+            dMan->flush();
+    }
+
 
 
 protected:

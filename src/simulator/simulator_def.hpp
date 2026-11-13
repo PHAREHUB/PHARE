@@ -41,6 +41,7 @@ public:
     {
         return false; // overriding optional
     }
+    virtual void flush_diagnostics() {} // overriding optional
 };
 
 constexpr std::size_t defaultNbrRefinedParts(std::size_t dim, std::size_t interp);
