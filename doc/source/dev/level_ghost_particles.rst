@@ -127,7 +127,7 @@ its own job (click a box to go deeper).
 
 .. mermaid::
 
-   flowchart LR
+   flowchart TD
      C["coarse level<br/>domain particles"] -->|split| O["levelGhostParticlesOld<br/>(coarse time t)"]
      C -->|"split, at the 1st fine substep"| N["levelGhostParticlesNew<br/>(coarse time t + Δt)"]
      O -->|copy| P["levelGhostParticles<br/>(pushable copy)"]
