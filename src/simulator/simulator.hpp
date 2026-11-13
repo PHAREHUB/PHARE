@@ -20,6 +20,7 @@
 #include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
 #include "amr/load_balancing/load_balancer_estimator_mhd.hpp"
+#include "amr/physical_models/model_stats.hpp"
 
 #include "diagnostic/diagnostics.hpp"
 
@@ -28,8 +29,11 @@
 
 #include <stdexcept>
 #include <vector>
+#include <filesystem>
 #include <string>
 #include <algorithm>
+
+#include <SAMRAI/tbox/PIO.h>
 
 
 namespace PHARE
@@ -103,6 +107,14 @@ public:
         return false;
     }
 
+    // closes diagnostic files left open by flush_every, the next dump reopens them
+    void flush_diagnostics() override
+    {
+        if (dMan)
+            dMan->flush();
+    }
+
+    std::vector<solver::LevelSummary> summary() const;
 
 
 protected:
@@ -259,6 +271,14 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
     auto lbm_          = std::make_unique<amr::LoadBalancerManager<opts.dimension>>(dict);
     auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
     loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
+    if constexpr (SUMMARY_MODE > 0)
+    {
+        // per rank load after each balance, collective, written to plog
+        loadBalancer_db->putBool("DEV_report_load_balance", true);
+        if (mpi::rank() == 0)
+            std::filesystem::create_directories(".phare");
+        SAMRAI::tbox::PIO::logOnlyNodeZero(".phare/samrai.log"); // truncates, one per simulator
+    }
     auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
         SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
 
@@ -492,6 +512,26 @@ std::string Simulator<opts>::to_str()
 }
 
 
+// one per level, MHD levels first, on rank 0, empty on other ranks
+// Collective: every rank must call it
+template<auto opts>
+std::vector<solver::LevelSummary> Simulator<opts>::summary() const
+{
+    std::vector<solver::LevelSummary> levels;
+    if constexpr (has_mhd_v<opts>)
+    {
+        if (mhd_.model_)
+            levels = mhd_.model_->summarize(*hierarchy_, 0, maxMHDLevel_ - 1);
+    }
+    if constexpr (has_hybrid_v<opts>)
+    {
+        if (hyb_.model_)
+            for (auto& level :
+                 hyb_.model_->summarize(*hierarchy_, maxMHDLevel_, maxLevelNumber_ - 1))
+                levels.emplace_back(std::move(level));
+    }
+    return levels;
+}
 
 
 template<auto opts>

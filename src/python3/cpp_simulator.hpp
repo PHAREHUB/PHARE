@@ -49,10 +49,12 @@ void declareSimulator(PyClass&& sim)
         .def("timeStep", &Simulator::timeStep)
         .def("to_str", &Simulator::to_str)
         .def("domain_box", &Simulator::domainBox)
+        .def("summary", &Simulator::summary)
         .def("cell_width", &Simulator::cellWidth)
         .def("dump_diagnostics", &Simulator::dump_diagnostics, py::arg("timestamp"),
              py::arg("timestep"))
-        .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"));
+        .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"))
+        .def("flush_diagnostics", &Simulator::flush_diagnostics);
 }
 
 template<auto opts>

@@ -7,6 +7,7 @@
 #include "core/models/mhd_state.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/model_stats.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
@@ -107,6 +108,9 @@ public:
 
     ~MHDModel() override = default;
 
+    std::vector<LevelSummary> summarize(auto& hierarchy, std::size_t const minlvl,
+                                        std::size_t const maxlvl);
+
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -137,6 +141,28 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
 
         state.initialize(layout);
     }
+}
+
+template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
+auto MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::summarize(auto& hierarchy,
+                                                                    std::size_t const minlvl,
+                                                                    std::size_t const maxlvl)
+    -> std::vector<LevelSummary>
+{
+    std::vector<LevelSummary> levels; // rank 0 only
+
+    auto on_level = [&](auto& lvl) mutable {
+        auto const level_stats = LevelStats<GridLayoutT, physical_quantity_type>::GET(
+                                     lvl, GridLayoutT::options.field_ghost_width)
+                                     .collect(lvl);
+
+        if (mpi::rank() == 0)
+            levels.emplace_back(level_stats.summary(lvl.getLevelNumber(), "mhd"));
+    };
+
+    amr::onLevels(hierarchy, on_level, minlvl, maxlvl);
+
+    return levels;
 }
 
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>

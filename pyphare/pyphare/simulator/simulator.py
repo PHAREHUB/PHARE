@@ -1,8 +1,10 @@
 import atexit
 import datetime
+import json
 import os
 import sys
 import time as timem
+import weakref
 from pathlib import Path
 
 import numpy as np
@@ -22,10 +24,10 @@ SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "False").lower() in ("true", "1",
 
 @atexit.register
 def simulator_shutdown():
-    from ._simulator import obj
+    from . import _simulator
 
-    if obj is not None:  # needs to be killed before MPI
-        obj.reset()
+    if (live := _simulator.live()) is not None:  # needs to be killed before MPI
+        live.reset()
     life_cycles.clear()
 
 
@@ -74,9 +76,11 @@ class Simulator:
         These arguments have good default, change them at your own risk.
 
         *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
-        *  **post_advance**: (``Function``),  default None. A python function called after diagnostics have
-           been dumped, letting the user analyze the just-written data before the simulation takes another
-           step
+        *  **post_advance**: (``Function``),  default None. A python function called with the current time
+           after each advance, once any diagnostics active at that time have been dumped. Diagnostics may not
+           exist for that time, in which case loading them raises
+           :class:`pyphare.pharesee.hierarchy.TimeNotFoundError`. With more than one MPI rank, an
+           exception it raises aborts the MPI job, as the other ranks may be waiting on this one
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
 
     """
@@ -95,15 +99,12 @@ class Simulator:
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
 
-        from pyphare.simulator import _simulator
-
-        _simulator.obj = self
-
     def __del__(self):
         self.reset()
 
     def setup(self):
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
+        self._replace_live_simulator()  # can raise - errors to user
         try:
             startMPI()
 
@@ -160,8 +161,9 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        if self.dump() and self.post_advance is not None:
-            self.post_advance(self.cpp_sim.currentTime())
+        self.dump()
+        if self.post_advance is not None:
+            self._call_post_advance()
         return self
 
     def times(self):
@@ -174,6 +176,8 @@ class Simulator:
     def run(self, plot_times=False, monitoring=None):
         """
         Run the simulation until the end time, calling :meth:`advance` in a loop.
+        The simulator stays alive afterwards (e.g. for :meth:`data_wrangler`), diagnostic files are
+        closed. It is released by :meth:`reset`, when another simulator is set up, or at exit.
 
         *  **plot_times**: (``bool``), default False. If True, plots (rank 0 only) the wall-clock time
            taken by each timestep once the run ends.
@@ -191,9 +195,9 @@ class Simulator:
 
         if self.simulation.dry_run:
             return self
+        mon.remove_stale_stats()  # also on ranks not monitoring
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -225,7 +229,8 @@ class Simulator:
             plot_timestep_time(perf)
 
         mon.monitoring_shutdown()
-        return self.reset()
+        self.cpp_sim.flush_diagnostics()  # files flush_every left open
+        return self
 
     def dump(self, *args):
         # do diagnostics/restarts dump if active at this time
@@ -254,8 +259,13 @@ class Simulator:
         self.cpp_sim = None
         self.cpp_hier = None
         self.initialized = False
-        if "samrai" in life_cycles:
-            type(life_cycles["samrai"]).reset()
+
+        from pyphare.simulator import _simulator
+
+        if _simulator.live() in (self, None):  # not under another live simulator
+            _simulator.obj = None
+            if "samrai" in life_cycles:
+                type(life_cycles["samrai"]).reset()
         return self
 
     def timeStep(self):
@@ -287,6 +297,43 @@ class Simulator:
         self.initialized = True
         return self
 
+    def print_summary(self):
+        summary = self.summary()  # collective, called on all ranks
+        if summary is not None:
+            print("SUMMARY:", json.dumps(summary, indent=1))
+
+    def summary(self):
+        """
+        Per level stats, {"levels": [{"level": 0, "model": "hybrid", ...}, ...]}, on rank 0,
+        None on other ranks. Collective: every rank must call it, in the same order.
+        Raises if not initialized.
+        """
+        if not self.initialized:
+            raise RuntimeError("Simulator.summary(): simulator is not initialized")
+        levels = self.cpp_sim.summary()  # list of dicts on rank 0, empty on other ranks
+        return dict(levels=levels) if cpp.mpi_rank() == 0 else None
+
+    def _replace_live_simulator(self):
+        # only one simulator per process (SAMRAI statics): the previous one stays alive after
+        # run(), for its data wrangler, until the next one is set up. One that has not reached
+        # its final time is still in use: raise rather than reset it underneath its owner.
+        from pyphare.simulator import _simulator
+
+        live = _simulator.live()
+        if live is not None and live is not self:
+            if not live._finished():
+                raise RuntimeError(
+                    f"Simulator.setup(): another Simulator is live at t={live.currentTime()}"
+                    f" < final time {live.cpp_sim.endTime()}, reset() it first"
+                )
+            live.reset()
+        _simulator.obj = weakref.ref(self)
+
+    def _finished(self):
+        if self.cpp_sim is None or self.simulation.dry_run:
+            return True
+        return self.cpp_sim.currentTime() >= self.cpp_sim.endTime()
+
     def _check_init(self):
         if not self.initialized:
             self.initialize()
@@ -317,3 +364,21 @@ class Simulator:
             sys.exit(1)
         # or reraise
         raise RuntimeError(e)
+
+    def _call_post_advance(self):
+        # what post_advance does is up to the user: if it raises on one rank, the others may be
+        # blocked in a collective (theirs or the next advance) and only an MPI abort ends them,
+        # sys.exit() and KeyboardInterrupt included
+        try:
+            self.post_advance(self.cpp_sim.currentTime())
+        except BaseException:
+            if cpp.mpi_size() == 1:
+                raise
+            import traceback
+
+            print(
+                f"rank {cpp.mpi_rank()}: exception in post_advance, aborting the MPI job"
+            )
+            traceback.print_exc()
+            sys.stdout.flush()
+            cpp.mpi_abort(1)
