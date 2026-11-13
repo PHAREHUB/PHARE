@@ -1067,14 +1067,12 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             EXPECT_EQ(count(pop.levelGhostParticles(), pastGhostBox), 0u);
     }
 
-    // One cell of level ghost between this patch and a same-level neighbour on the left, whose
-    // domain ends at the outer ghost cell (needs 2 particle ghost cells). Every patch holds its
-    // own copy of the level ghost particles: one entering the neighbour's domain is the
-    // neighbour's, this patch drops its copy and does not deposit it.
-    // A 1-cell gap between same-level patches does not occur at refinement ratio 2 (gaps are
-    // even): this is the smallest 1D geometry with a neighbour's domain inside the ghost box. The
-    // case that occurs, a patch corner on the coarse-fine edge, is covered by
-    // tests/simulator/test_patch_layout_independence.py.
+    // One level ghost cell between this patch and a same-level neighbour on the left, whose domain
+    // ends at the outer ghost cell. Every patch holds its own copy of the level ghost particles:
+    // one entering the neighbour's domain is the neighbour's, this patch drops its copy and does
+    // not deposit it. Ratio 2 never leaves a 1-cell gap; this is the smallest 1D geometry with a
+    // neighbour's domain inside the ghost box. The case that occurs, a patch corner on the
+    // coarse-fine edge, is covered by tests/simulator/test_patch_layout_independence.py.
     void checkLevelGhostEnteringNeighbourDomain(UpdaterMode const mode)
     {
         static_assert(ghosts >= 2,
