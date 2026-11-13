@@ -157,7 +157,7 @@ private:
 
     /** cell kernels for this sorted domain array? Below hyb::cellMinPpc particles per cell on
      * average the blocks of a cell are mostly partial and the kernels walking the rows are
-     * faster (-21 % at 8 particles per cell). The choice is kept in the array, made again every
+     * faster (-23 % at 8 particles per cell). The choice is kept in the array, made again every
      * hyb::cellChoiceEvery correctors and whenever the array is not sorted (new, restarted or
      * regridded array).
      */
@@ -172,7 +172,7 @@ private:
         if (choose)
         {
             double const ppc = static_cast<double>(domain.liveSize()) / domainCells_(layout);
-            choice.on        = ppc >= hyb::cellMinPpc ? 1 : 0;
+            choice.on        = ppc >= hyb::cellMinPpc<interp_order> ? 1 : 0;
         }
         return choice.on != 0;
     }

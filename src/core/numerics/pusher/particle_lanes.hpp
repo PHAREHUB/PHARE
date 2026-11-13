@@ -27,8 +27,11 @@ namespace PHARE::core::hyb
 {
 
 // cell kernels for a sorted domain array only from this mean number of particles per cell
-// (IonUpdater::cellKernels_), the choice made again every cellChoiceEvery correctors
-inline constexpr int cellMinPpc           = 12;
+// (IonUpdater::cellKernels_), the choice made again every cellChoiceEvery correctors.
+// Measured break-even of the cell kernels against the row kernels (EPYC 9654, 2D and 3D):
+// 12 particles per cell at interpolation order 2, 8 at order 3, at most 6 at order 1
+template<std::size_t interpOrder>
+inline constexpr int cellMinPpc           = interpOrder == 2 ? 12 : interpOrder == 3 ? 8 : 6;
 inline constexpr unsigned cellChoiceEvery = 20;
 
 // blocked deposit from this interpolation order on (order 1: per particle, faster for its
