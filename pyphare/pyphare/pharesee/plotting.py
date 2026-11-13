@@ -190,19 +190,17 @@ def dist_plot(particles, **kwargs):
         ax.set_ylim(kwargs["ylim"])
 
     if "bulk" in kwargs and kwargs["bulk"] is True:
+        bulk = new_particles if len(axis) == 1 else particles  # the plotted particles
+        weights = bulk.weights.reshape(-1)  # (N,) or (N, 1)
         if axis[0] in vaxis:
             ax.axvline(
-                np.average(
-                    new_particles.v[:, vaxis[axis[0]]], weights=new_particles.weights
-                ),
+                np.average(bulk.v[:, vaxis[axis[0]]], weights=weights),
                 color="w",
                 ls="--",
             )
-        if axis[1] in vaxis:
+        if len(axis) == 2 and axis[1] in vaxis:
             ax.axhline(
-                np.average(
-                    new_particles.v[:, vaxis[axis[1]]], weights=new_particles.weights
-                ),
+                np.average(bulk.v[:, vaxis[axis[1]]], weights=weights),
                 color="w",
                 ls="--",
             )
