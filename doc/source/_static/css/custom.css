@@ -33,3 +33,10 @@ body.phare-dev .rst-content h1 { border-bottom: 3px solid #d9730d; padding-botto
 /* ---- "In preparation" boxes ---- */
 .rst-content .admonition.in-preparation { background: #f3f0ff; }
 .rst-content .admonition.in-preparation .admonition-title { background: #7a5cc7; }
+
+/* sidebar captions of the Developer guide groups */
+.wy-menu-vertical p.caption.phare-dev-caption {
+    color: #fff; background: #d9730d; border-left: 4px solid #8a4200;
+    padding-left: 0.6em; margin-top: 0.3em; margin-bottom: 0;
+}
+.wy-menu-vertical p.caption.phare-dev-caption + ul { border-left: 4px solid #d9730d; }

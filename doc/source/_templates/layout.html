@@ -2,6 +2,15 @@
 {# Developer guide pages (docs under dev/) get a banner and a body class, so they look different from user pages. #}
 {% block extrahead %}
   {{ super() }}
+  <script>
+  /* sidebar: colour the captions of the Developer guide groups, on every page */
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".wy-menu-vertical p.caption").forEach(function (c) {
+      var t = c.textContent.trim();
+      if (t.indexOf("Developer guide") === 0 || t.indexOf("Dev \u00b7") === 0) c.classList.add("phare-dev-caption");
+    });
+  });
+  </script>
   {% if pagename.startswith('dev/') or pagename == 'dev' %}
   <script>document.addEventListener("DOMContentLoaded", function () { document.body.classList.add("phare-dev"); });</script>
   {% endif %}
