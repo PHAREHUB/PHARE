@@ -208,6 +208,7 @@ namespace amr
         void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
             // the level is new: drop the schedules of the level it replaces, rebuild same-level
+            ghostMoments_.erase(levelNumber);
             sameLevelBuiltOn_.erase(levelNumber);
             interLevelBuiltOn_.erase(levelNumber);
             removeInterLevelSchedules_(levelNumber);
@@ -257,6 +258,7 @@ namespace amr
             auto level        = hierarchy->getPatchLevel(levelNumber);
 
             bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
+            ghostMoments_.erase(levelNumber);
 
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -310,6 +312,7 @@ namespace amr
                        double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
+            ghostMoments_.erase(levelNumber);
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
@@ -459,37 +462,45 @@ namespace amr
         {
             PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonPopMomentGhosts");
 
-            auto alpha = timeInterpCoef_(afterPushTime, level.getLevelNumber());
-            if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
+            auto const levelNumber = level.getLevelNumber();
+            if (levelNumber == 0) // no levelGhost on root level
+                return;
+
+            auto alpha = timeInterpCoef_(afterPushTime, levelNumber);
+            if (alpha < 0 or alpha > 1)
             {
                 std::cout << std::setprecision(12) << alpha << "\n";
                 throw std::runtime_error("ion moment ghost time interp coef invalid : alpha: "
                                          + std::to_string(alpha) + " beforePushTime "
                                          + std::to_string(afterPushTime) + " on level "
-                                         + std::to_string(level.getLevelNumber()));
+                                         + std::to_string(levelNumber));
             }
             for (auto const& patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
                 auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+                auto& cached     = ghostMoments_[levelNumber][amr::to_string(patch->getGlobalId())];
+                cached.oldPops.resize(ions.size());
+                cached.newPops.resize(ions.size());
+                std::size_t iPop = 0;
 
                 for (auto& pop : ions)
                 {
                     auto& particleDensity = pop.particleDensity();
                     auto& flux            = pop.flux();
 
-                    if (level.getLevelNumber() > 0) // no levelGhost on root level
-                    {
-                        // grab levelGhostParticlesOld and levelGhostParticlesNew
-                        // and project them with alpha and (1-alpha) coefs, respectively
-                        auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, flux, layout,
-                                     1. - alpha);
-
-                        auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, flux, layout,
-                                     alpha);
-                    }
+                    // levelGhostParticlesOld and levelGhostParticlesNew projected with
+                    // (1-alpha) and alpha coefs; their deposits are kept while the arrays do not
+                    // change
+                    addGhostMoments_(depositGhostMoments_(cached.oldPops[iPop],
+                                                          pop.levelGhostParticlesOld(),
+                                                          particleDensity, flux, layout),
+                                     particleDensity, flux, 1. - alpha);
+                    addGhostMoments_(depositGhostMoments_(cached.newPops[iPop],
+                                                          pop.levelGhostParticlesNew(),
+                                                          particleDensity, flux, layout),
+                                     particleDensity, flux, alpha);
+                    ++iPop;
                 }
             }
         }
@@ -522,6 +533,8 @@ namespace amr
                 PHARE_LOG_START(3, "HybridHybridMessengerStrategy::firstStep.fill");
                 lvlGhostPartNewRefiners_.fill(levelNumber, currentTime);
                 PHARE_LOG_STOP(3, "HybridHybridMessengerStrategy::firstStep.fill");
+                for (auto& [id, cached] : ghostMoments_[levelNumber])
+                    cached.newPops.clear();
 
                 // during firstStep() coarser level and current level are at the same time
                 // so 'time' is also the beforePushCoarseTime_
@@ -545,6 +558,13 @@ namespace amr
                 return;
 
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
+
+            // the deposits follow the arrays: New becomes Old, New is refilled at firstStep
+            for (auto& [id, cached] : ghostMoments_[level.getLevelNumber()])
+            {
+                std::swap(cached.oldPops, cached.newPops);
+                cached.newPops.clear();
+            }
 
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -1020,6 +1040,61 @@ namespace amr
         std::unordered_map<std::size_t, double> afterPushCoarseTime_;
 
         core::Interpolator<dimension, interpOrder> interpolate_;
+
+        // deposit (coefficient 1) of a levelGhostParticlesOld or New array of a population on
+        // a patch: density, then x, y, z flux, node by node. The arrays change only at firstStep
+        // (New), lastStep (New becomes Old), regrid and initLevel, which update or drop these,
+        // while their moments are added at every fillIonPopMomentGhosts. Recomputed whenever
+        // the array's storage or size or the patch's node count differ.
+        struct GhostMoments
+        {
+            void const* storage = nullptr;
+            std::size_t size    = 0;
+            bool valid          = false;
+            std::vector<double> m;
+        };
+        struct PatchGhostMoments
+        {
+            std::vector<GhostMoments> oldPops, newPops;
+        };
+        // per level, per patch (global id)
+        std::unordered_map<int, std::unordered_map<std::string, PatchGhostMoments>> ghostMoments_;
+
+        template<typename Particles, typename Field, typename VecField>
+        GhostMoments const& depositGhostMoments_(GhostMoments& g, Particles const& particles,
+                                                 Field& density, VecField& flux,
+                                                 GridLayoutT const& layout)
+        {
+            std::size_t const nodes = density.size();
+            void const* storage     = particles.size() ? &particles[0] : nullptr;
+            if (g.valid and g.storage == storage and g.size == particles.size()
+                and g.m.size() == 4 * nodes)
+                return g;
+            g.m.assign(4 * nodes, 0.);
+            auto targets    = interpolate_.depositTargets(density, flux);
+            targets.density = g.m.data();
+            targets.xFlux   = g.m.data() + nodes;
+            targets.yFlux   = g.m.data() + 2 * nodes;
+            targets.zFlux   = g.m.data() + 3 * nodes;
+            for (std::size_t i = 0; i < particles.size(); ++i)
+                interpolate_.depositOn(particles[i], targets, layout);
+            g.storage = storage;
+            g.size    = particles.size();
+            g.valid   = true;
+            return g;
+        }
+
+        template<typename Field, typename VecField>
+        void addGhostMoments_(GhostMoments const& g, Field& density, VecField& flux,
+                              double const coef)
+        {
+            std::size_t const nodes = density.size();
+            auto const targets      = interpolate_.depositTargets(density, flux);
+            double* const dst[4] = {targets.density, targets.xFlux, targets.yFlux, targets.zFlux};
+            for (std::size_t c = 0; c < 4; ++c)
+                for (std::size_t i = 0; i < nodes; ++i)
+                    dst[c][i] += coef * g.m[c * nodes + i];
+        }
 
         using rm_t                    = ResourcesManagerT;
         using RefineOperator          = SAMRAI::hier::RefineOperator;
