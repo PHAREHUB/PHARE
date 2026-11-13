@@ -140,26 +140,68 @@ Where to start
    dev/big_map
    dev/one_time_step
    dev/python_to_cpp
+
+
+.. toctree::
+   :caption: Dev · Data structures
+   :maxdepth: 1
+   :hidden:
+
    dev/gridlayout
    dev/fields
    dev/resources_manager
    dev/particles_ions
+
+
+.. toctree::
+   :caption: Dev · Ghosts & AMR
+   :maxdepth: 1
+   :hidden:
+
    dev/ghost_cells
    dev/fill_patterns
    dev/field_refinement
    dev/coarsening
    dev/messengers
+   dev/tagging_regridding
+
+
+.. toctree::
+   :caption: Dev · Particles
+   :maxdepth: 1
+   :hidden:
+
    dev/level_ghost_particles
    dev/particle_splitting
    dev/grabbing_particles
    dev/moments
    dev/ppc_order
+
+
+.. toctree::
+   :caption: Dev · Solvers
+   :maxdepth: 1
+   :hidden:
+
    dev/electromagnetic
    dev/mhd_solver
-   dev/tagging_regridding
-   dev/load_balancing
+
+
+.. toctree::
+   :caption: Dev · I/O & HPC
+   :maxdepth: 1
+   :hidden:
+
    dev/diagnostics_restarts
+   dev/load_balancing
    dev/hpc_internals
+
+
+.. toctree::
+   :caption: Dev · Working on PHARE
+   :maxdepth: 1
+   :hidden:
+
    dev/working_on_phare
    dev/how_to_add
    dev/cpp_api
