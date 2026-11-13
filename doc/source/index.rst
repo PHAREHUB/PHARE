@@ -1,51 +1,87 @@
 :orphan:
 
-.. PHARE documentation master file, created by
-   sphinx-quickstart on Sat Oct 30 17:25:13 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-
 PHARE
------
+=====
+
+PHARE is a plasma simulation code with two models:
+
+- **hybrid particle-in-cell (PIC)**: ions are particles, electrons are a fluid.
+  It solves the Vlasov equation for any number of ion populations by following
+  macro-particles. The electron momentum equation gives the electric field,
+  assuming quasineutrality.
+- **magnetohydrodynamics (MHD)**: the whole plasma is one fluid.
+
+Using adaptive mesh refinement (AMR), provided by the SAMRAI library, PHARE
+refines the mesh only where the solution needs it. This lets one run cover
+both sub-ion scales and large "MHD" scales.
+
+.. note::
+
+   This documentation is a work in progress. It is not complete and may
+   contain errors.
+
+Where to start
+--------------
+
+- **New to PHARE?** :doc:`getting_started/what_is_phare`, then
+  :doc:`getting_started/install` and :doc:`getting_started/first_simulation`.
+- **Setting up a run?** The *User guide* in the menu lists every input block.
+- **Working on the code?** The :doc:`dev/index` is a separate part of this site,
+  for people who read and change the C++ and Python sources.
 
 
-
-PHARE is a Hybrid Particle-In-Cell (PIC) code.
-It solves the evolution of the Vlasov equation of an arbitrary number of
-ion populations in a Lagrangian way. Electrons are modeled as a single fluid.
-Their momentum equation is used to compute the electric field, assuming quasineutrality.
-
-Using Adaptive Mesh Refinement, provided by the library SAMRAI, PHARE aims at
-filling the gap between sub-ion scales and large "MHD" scales by increasing
-the mesh resolution wherever the solution needs it.
-
-Warning: This documentation is a work in progress. It is not complete and may contain errors.
-
-
-.. raw:: html
-
-   <style>
-   /* front page: hide chapter titles
-    * needed for consistent HTML-PDF-EPUB chapters*/
-   div#getting-and-building.section,
-   div#usage.section,
-   div#theory.section,
-   div#data-analysis.section,
-   div#development.section,
-   div#indices-and-tables
-   {
-       display:none;
-   }
-   </style>
-
-
-
-
-.. Theory
-.. ------
 .. toctree::
-   :caption: THEORY
+   :caption: Getting started
+   :maxdepth: 1
+   :hidden:
+
+   getting_started/what_is_phare
+   getting_started/install
+   getting_started/build
+   getting_started/first_simulation
+   getting_started/first_result
+
+
+.. toctree::
+   :caption: User guide
+   :maxdepth: 1
+   :hidden:
+
+   user_guide/simulation
+   user_guide/choosing_a_model
+   user_guide/hybrid_inputs
+   user_guide/electrons
+   user_guide/mhd_inputs
+   user_guide/boundary_conditions
+   user_guide/amr
+   user_guide/diagnostics
+   user_guide/running
+   user_guide/restarts
+   user_guide/load_balancing
+   user_guide/environment_variables
+
+
+.. toctree::
+   :caption: Data analysis
+   :maxdepth: 1
+   :hidden:
+
+   data_analysis/reading_data
+   data_analysis/patch_hierarchy
+   data_analysis/plotting_fields
+   data_analysis/distributions
+
+
+.. toctree::
+   :caption: Examples
+   :maxdepth: 1
+   :hidden:
+
+   examples/index
+
+
+.. toctree::
+   :caption: Theory
    :maxdepth: 1
    :hidden:
 
@@ -53,81 +89,84 @@ Warning: This documentation is a work in progress. It is not complete and may co
    theory/pic
    theory/mhd
    theory/normalization
-   theory/amr
 
 
-.. Numerics
-.. ------
 .. toctree::
-   :caption: NUMERICS
+   :caption: Numerics
    :maxdepth: 1
    :hidden:
 
+   numerics/grid
+   numerics/time_integration
+   numerics/particles
+   numerics/mhd_finite_volume
    numerics/domain_boundary_conditions
+   numerics/amr
 
 
-.. Validation
-.. ----------
 .. toctree::
-   :caption: VALIDATION
+   :caption: Performance & HPC
+   :maxdepth: 1
+   :hidden:
+
+   hpc/running_at_scale
+   hpc/memory
+   hpc/measuring_performance
+   hpc/scaling_results
+
+
+.. toctree::
+   :caption: Validation
    :maxdepth: 1
    :hidden:
 
    validation/hybrid_dispersion
 
 
-.. Getting and Building
-.. --------------------
 .. toctree::
-   :caption: BUILDING
+   :caption: Reference
    :maxdepth: 1
    :hidden:
 
-   getting
-   build
+   glossary
 
 
-
-.. Usage
-.. -----
 .. toctree::
-   :caption: USAGE
+   :caption: Developer guide
    :maxdepth: 1
    :hidden:
 
-   usage/run_from_python
-   usage/simulation
-   usage/models
-   usage/diagnostics
-   usage/load_balancing
-   usage/restarts
-   usage/examples
-   usage/environment_variables
-   usage/performance_analyses
-   usage/domain_boundaries
+   dev/index
+   dev/big_map
+   dev/one_time_step
+   dev/python_to_cpp
+   dev/gridlayout
+   dev/fields
+   dev/resources_manager
+   dev/particles_ions
+   dev/ghost_cells
+   dev/fill_patterns
+   dev/field_refinement
+   dev/coarsening
+   dev/messengers
+   dev/level_ghost_particles
+   dev/particle_splitting
+   dev/grabbing_particles
+   dev/moments
+   dev/ppc_order
+   dev/electromagnetic
+   dev/mhd_solver
+   dev/tagging_regridding
+   dev/load_balancing
+   dev/diagnostics_restarts
+   dev/hpc_internals
+   dev/working_on_phare
+   dev/how_to_add
+   dev/cpp_api
 
 
-
-.. Data analysis
-.. -------------
-.. toctree::
-   :caption: ANALYSIS
-   :maxdepth: 1
-   :hidden:
-
-   pharesee/get_data
-   pharesee/plotting_fields
-   pharesee/plotting_distributions
-
-
-
-
-
-.. Indices and tables
-.. ------------------
+Indices
+-------
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
-
-

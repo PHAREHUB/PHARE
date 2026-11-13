@@ -31,7 +31,7 @@ Writes one timing file per rank to ``.phare/timings/rank.<N>.txt``. Read indepen
 the C++ side (gated behind the ``phlop`` build option) and the Python side (which additionally
 triggers monitoring setup before the C++ simulator is constructed).
 
-See :doc:`performance_analyses` for details on configuring and analysing scope timings.
+See :doc:`/hpc/measuring_performance` for details on configuring and analysing scope timings.
 
 ``PHARE_VTKHDF_CHUNK_BYTES``
 ------------------------------

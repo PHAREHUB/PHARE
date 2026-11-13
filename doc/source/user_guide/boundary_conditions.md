@@ -44,7 +44,7 @@ The resulting periodicity of each direction is available as the list of booleans
 
 Each boundary type is implemented by imposing domain boundary conditions on the conservative
 variables, on the magnetic field and, for some types, on the tangential component of the electric
-field; see {doc}`../numerics/boundary_conditions` for how these conditions are discretized.
+field; see {doc}`../numerics/domain_boundary_conditions` for how these conditions are discretized.
 
 ### Open
 

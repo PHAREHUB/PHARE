@@ -48,7 +48,7 @@ first - every other block below depends on it.
 
     # ------------ END OF OPTIONAL BLOCKS
 
-See :doc:`models` for ``MaxwellianFluidModel``/``MHDModel``/``ElectronModel``,
+See :doc:`hybrid_inputs` for ``MaxwellianFluidModel``/``MHDModel``/``ElectronModel``,
 :doc:`diagnostics` for the diagnostics blocks, and :doc:`load_balancing` for
 ``LoadBalancer``. This page covers the ``Simulation`` block itself.
 

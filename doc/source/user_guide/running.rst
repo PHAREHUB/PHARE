@@ -44,7 +44,7 @@ Assuming PHARE source directory is in  `/path/to/PHARE`, and the build directory
 
      export PYTHONPATH=/path/to/PHARE/pyphare:/path/to/build:$PYTHONPATH
 
-Write a script declaring a :doc:`simulation` (see also :doc:`models`,
+Write a script declaring a :doc:`simulation` (see also :doc:`hybrid_inputs`,
 :doc:`diagnostics`) and run the following command:
 
 
@@ -57,7 +57,7 @@ Executable PHARE initialization script
 --------------------------------------
 
 Running PHARE from python basically consists in declaring the desired blocks
-(see :doc:`simulation`, :doc:`models`, :doc:`diagnostics`),
+(see :doc:`simulation`, :doc:`hybrid_inputs`, :doc:`diagnostics`),
 and adding a `main` function to run the simulation.
 
 If running the simulation from python, you need to define a `main` function that
