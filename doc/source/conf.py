@@ -53,7 +53,19 @@ extensions = [
     "sphinx_rtd_theme",
     "myst_parser",
     "matplotlib.sphinxext.plot_directive",
+    "sphinx.ext.extlinks",
+    "sphinxcontrib.mermaid",
 ]
+
+# diagrams are text (Mermaid), drawn by the browser: no images in the repository.
+# "loose" lets `click NODE href "page.html"` make diagram boxes links to other pages.
+mermaid_init_js = 'mermaid.initialize({startOnLoad: true, securityLevel: "loose"});'
+
+# :src:`src/amr/.../file.hpp#L42` links to the code at the commit the docs were checked against.
+phare_doc_commit = "dc62fdd4e6c99d31b3f563678a1084267f5b5c10"
+extlinks = {
+    "src": (f"https://github.com/PHAREHUB/PHARE/blob/{phare_doc_commit}/%s", "%s"),
+}
 
 autodoc_default_options = {
     "members": True,
@@ -117,7 +129,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

@@ -19,3 +19,4 @@ ipywidgets
 sphinx-codeautolink
 sphinxcontrib-apidoc
 myst-parser
+sphinxcontrib-mermaid

@@ -12,9 +12,6 @@ build:
 sphinx:
   configuration: doc/source/conf.py
 
-formats:
-  - epub
-  - pdf
 
 # Optionally declare the Python requirements required to build your docs
 python:
