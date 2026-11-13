@@ -107,7 +107,14 @@ public:
         auto const halfDtOverDl = halfDtOverDl_;
         auto& particles         = rangeOut.array();
         auto const end          = rangeOut.iend();
-        for (auto idx = rangeOut.ibegin(); idx < end; ++idx)
+        auto idx                = rangeOut.ibegin();
+#if PHARE_HYB_XSIMD
+        // the selected particles (all in the first selector's cells at mid step) by blocks, the
+        // loop below takes over from a block where a particle moves too far
+        if constexpr (requires { Interpolator::interp_order; })
+            idx = secondHalfBlocks_<Interpolator>(particles, idx, end, emFields, layout, coef1);
+#endif
+        for (; idx < end; ++idx)
         {
             auto& currPart = particles[idx];
 
@@ -1151,7 +1158,8 @@ private:
      * deltas and weights; returns true if it interpolated EB itself, else the row gather runs.
      * Without it (nullptr) the code is that of the other kernels.
      */
-    template<typename Interpolator_t, typename MidCell, typename UnionGather = std::nullptr_t>
+    template<typename Interpolator_t, bool fromMid = false, typename MidCell,
+             typename UnionGather = std::nullptr_t>
     [[gnu::always_inline]] inline bool coreXs_(hyb::xs::bd (&delta)[dim], hyb::xs::bi (&cell)[dim],
                                                hyb::xs::bd (&v)[3], MidCell& midCell,
                                                BlockFields const& f, double const coef1,
@@ -1164,7 +1172,8 @@ private:
 
         auto const halfDtOverDl = halfDtOverDl_;
 
-        bool tooFar = advanceXs_(halfDtOverDl, delta, cell, v);
+        // fromMid: the lanes are at mid step already (move(): advanced and selected)
+        bool tooFar = !fromMid and advanceXs_(halfDtOverDl, delta, cell, v);
 
         bi dS[dim], pS[dim];
         bd dW[dim][nbrPts], pW[dim][nbrPts];
@@ -1641,6 +1650,57 @@ private:
                 _mm_storeu_pd(p + 4, _mm512_extractf64x2_pd(y, 2));
             }
         }
+    }
+
+    /** second half of move() for the particles [begin, end), at mid step and in the cells of
+     * the first selector (the field gather stays in bounds), by blocks on the xsimd lanes: gather,
+     * acceleration and half-step advance with the arithmetic of move()'s per-particle loop, iCell
+     * changes through change_icell in index order. Returns end, or the first particle of a block
+     * where a particle moves too far, for move()'s loop to take over (and throw).
+     */
+    template<typename Interpolator_t, typename Particles>
+    [[gnu::noinline]] std::size_t
+    secondHalfBlocks_(Particles& particles, std::size_t const begin, std::size_t const end,
+                      Electromag const& emFields, GridLayout const& layout,
+                      double const coef1) const
+    {
+        using namespace hyb::xs;
+        auto const f = blockFields_<Interpolator_t>(emFields, layout);
+        alignas(64) int midCell[dim][blockSize];
+        alignas(64) int newCell[dim][blockSize];
+        alignas(64) double newDelta[dim][blockSize], newV[3][blockSize];
+        for (std::size_t idx = begin; idx < end; idx += blockSize)
+        {
+            auto const n = std::min(blockSize, end - idx);
+            bd delta[dim], v[3];
+            bi cell[dim];
+            loadLanesAoS_(particles, idx, n, delta, cell, v);
+            if (!coreXs_<Interpolator_t, /*fromMid=*/true>(delta, cell, v, midCell, f, coef1))
+                [[unlikely]]
+                return idx;
+            for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            {
+                st(&newDelta[iDim][0], delta[iDim]);
+                sti(&newCell[iDim][0], cell[iDim]);
+            }
+            for (std::size_t c = 0; c < 3; ++c)
+                st(&newV[c][0], v[c]);
+            for (std::size_t l = 0; l < n; ++l)
+            {
+                auto& part = particles[idx + l];
+                std::array<int, dim> cellAfter;
+                for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                {
+                    part.delta[iDim] = newDelta[iDim][l];
+                    cellAfter[iDim]  = newCell[iDim][l];
+                }
+                for (std::size_t c = 0; c < 3; ++c)
+                    part.v[c] = newV[c][l];
+                if (cellAfter != part.iCell)
+                    particles.change_icell(cellAfter, idx + l);
+            }
+        }
+        return end;
     }
 
 #endif // PHARE_HYB_XSIMD
