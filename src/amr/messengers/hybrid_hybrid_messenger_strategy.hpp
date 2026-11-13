@@ -616,10 +616,10 @@ namespace amr
             auto& B = hybridModel.state.electromag.B;
             fillMagneticGhosts(B, level, initDataTime);
 
-            // the faces on both sides of a periodic boundary are one face, initialised at two
-            // coordinates: make the patches holding them agree once, before anything reads B.
-            // Only after the refill: the max runs over whole ghost overlaps, and ghosts still
-            // holding the initializer's values would leak into the interior.
+            // A face on a periodic boundary is initialised twice, at x=0 and at x=L: make every
+            // patch holding it agree once, before anything reads B. This must follow the ghost
+            // fill: the max runs over whole ghost overlaps, so ghosts still holding initializer
+            // values would leak into the interior.
             magMaxRootRefiners_.fill(B, levelNumber, initDataTime);
 
             // at some point in the future levelGhostParticles could be filled with injected
