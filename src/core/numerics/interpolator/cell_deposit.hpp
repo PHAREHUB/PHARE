@@ -99,7 +99,85 @@ public:
         active_ = false;
     }
 
-    void end() { flush_(); }
+    void end()
+    {
+        flush_();
+        flushRow_();
+    }
+
+    /** predictor fast path: the lanes l of `in` (members as in block()) with on[l] != 0, all in
+     * the AMR cell `cell` and deposited (keep(cell)); the other lanes are ignored. Accumulated on
+     * the cell's stencil union as in a corrector row, in a row accumulator spanning rowSpan cells
+     * along the last dim (consecutive rows), added to the grid when a cell falls outside it or
+     * at end(); independent of the block() window
+     */
+    template<typename Lanes>
+    [[gnu::always_inline]] inline void rowBlock(Lanes const& in, int const* on,
+                                                std::array<int, dim> const& cell)
+    {
+        int const ol = rowOffset_(cell);
+        std::array<int, dim> lc;
+        for (std::size_t d = 0; d < dim; ++d)
+            lc[d] = cell[d] + a2l_[d];
+        alignas(64) double wgt[B], dl[dim][B], vl[3][B];
+        for (std::size_t l = 0; l < B; ++l)
+        {
+            wgt[l] = on[l] ? in.weight[l] : 0.;
+            for (std::size_t d = 0; d < dim; ++d)
+                dl[d][l] = in.delta[d][l];
+            for (std::size_t c = 0; c < 3; ++c)
+                vl[c][l] = in.v[c][l];
+        }
+        accBlock_<rowL>(rowAcc_, lc, wgt, dl, vl, ol);
+    }
+
+    /** lane l of `in` (members as in block()) deposited on the grid, depositOne_'s expressions */
+    template<typename Lanes>
+    void laneScalar(Lanes const& in, std::size_t const l)
+    {
+        int starts[dim][B];
+        double w[dim][nbrPts][B];
+        int mask[B] = {};
+        mask[l]     = 1;
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            double const dl = in.delta[d][l];
+            int const lc    = in.cell[d][l] + a2l_[d];
+            int const s
+                = lc
+                  - Interp::template computeStartLeftShift<QtyCentering, QtyCentering::primal>(dl);
+            std::array<double, nbrPts> wl;
+            Weighter<interpOrder>{}.computeWeight(lc + dl, s, wl);
+            starts[d][l] = s;
+            for (int k = 0; k < nbrPts; ++k)
+                w[d][k][l] = wl[k];
+        }
+        scalarLanes_(in, mask, starts, w);
+    }
+
+    /** offset of the AMR cell `cell` along the last dim in the row accumulator, flushed and
+     * re-anchored on `cell` when outside it */
+    [[gnu::always_inline]] inline int rowOffset_(std::array<int, dim> const& cell)
+    {
+        constexpr std::size_t last = dim - 1;
+        if (rowActive_)
+        {
+            bool same = cell[last] >= rowCell_[last] and cell[last] < rowCell_[last] + rowSpan;
+            for (std::size_t d = 0; d < last; ++d)
+                same = same and cell[d] == rowCell_[d];
+            if (!same)
+                flushRow_();
+        }
+        if (!rowActive_)
+        {
+            rowCell_   = cell;
+            rowHi_     = 0;
+            rowActive_ = true;
+        }
+        int const ol = cell[last] - rowCell_[last];
+        rowHi_       = std::max(rowHi_, ol);
+        return ol;
+    }
 
     /** deposit the lanes of `in` (members weight, cell (AMR), delta, v as [component][lane],
      * every lane holding valid data) with mask[l] != 0. key: AMR cell the block is sorted on
@@ -302,7 +380,7 @@ public:
 private:
     /** one CSR row [s, e): every particle in the same cell, so the block box is the cell's
      * stencil union (U nodes per dim from cell - maxShift, compile-time), lane-private sums in
-     * a local buffer, added to the grid once at the end of the row
+     * the row accumulator
      */
     template<typename Particles>
     void depositRun_(Particles const& particles, std::size_t const s, std::size_t const e)
@@ -337,28 +415,18 @@ private:
     }
 
     /** one cell's row of `count` particles: loadLanes(i0, n, wgt, dl, vl) fills the lanes of the
-     * block of particles [i0, i0 + n) (i0 from first, step B), padded lanes weight 0
+     * block of particles [i0, i0 + n) (i0 from first, step B), padded lanes weight 0. Summed in
+     * the row accumulator (rowOffset_), shared by rowSpan consecutive rows along the last dim
      */
     template<typename Cell, typename LoadLanes>
     [[gnu::always_inline]] inline void runCore_(Cell const& cell0, std::size_t const count,
                                                 LoadLanes&& loadLanes, std::size_t const first)
     {
         auto const s = first, e = first + count;
-        constexpr std::size_t NN            = dim == 1 ? U : dim == 2 ? U * U : U * U * U;
-        alignas(64) double accMem[4][NN][B] = {};
-#if defined(__clang__)
-        // clang promotes the fully unrolled accumulator to registers and, when it exceeds them
-        // (2D orders 2 and 3: 64 zmm for 32 registers), shuffles the spilled values between stack slots
-        // every block (~3x GCC's zmm stores); an opaque pointer keeps it in memory, as GCC does
-        double (*acc)[NN][B] = accMem;
-        if constexpr (4 * NN > 16)
-            asm("" : "+r"(acc));
-#else
-        auto& acc = accMem;
-#endif
-        std::array<int, dim> lo;
+        std::array<int, dim> cell;
         for (std::size_t d = 0; d < dim; ++d)
-            lo[d] = cell0[d] + a2l_[d] - maxShift;
+            cell[d] = cell0[d];
+        int const ol = rowOffset_(cell);
 
         std::array<int, dim> lc; // local cell of the row, shared by all its particles
         for (std::size_t d = 0; d < dim; ++d)
@@ -368,6 +436,21 @@ private:
             std::size_t const n = std::min(B, e - i0);
             alignas(64) double wgt[B], dl[dim][B], vl[3][B];
             loadLanes(i0, n, wgt, dl, vl);
+            accBlock_<rowL>(rowAcc_, lc, wgt, dl, vl, ol);
+        }
+    }
+
+    static constexpr std::size_t NN_ = dim == 1 ? U : dim == 2 ? U * U : U * U * U;
+
+    /** one block of lanes in the local cell lc (every lane): weights on the cell's union rows,
+     * lane-private fma into acc[4][nodes][B], nodes with a stride Wl along the last dim and an
+     * offset ol there */
+    template<int Wl = U, typename Acc>
+    [[gnu::always_inline]] inline void accBlock_(Acc&& acc, std::array<int, dim> const& lc,
+                                                 double const (&wgt)[B], double const (&dl)[dim][B],
+                                                 double const (&vl)[3][B], int const ol = 0)
+    {
+        {
             // per dim and union row r: lane weight w[r - (start - lo)] or 0
             alignas(64) double ws[dim][U][B];
             for (std::size_t d = 0; d < dim; ++d)
@@ -404,7 +487,7 @@ private:
             {
                 for (int rx = 0; rx < U; ++rx)
                     for (std::size_t m = 0; m < 4; ++m)
-                        fmaLanes_(acc[m][rx], ld_(dM[m]), ld_(ws[0][rx]));
+                        fmaLanes_(acc[m][rx + ol], ld_(dM[m]), ld_(ws[0][rx]));
             }
             else if constexpr (dim == 2)
             {
@@ -413,7 +496,7 @@ private:
                     {
                         bd const px = ld_(dM[m]) * ld_(ws[0][rx]);
                         for (int ry = 0; ry < U; ++ry)
-                            fmaLanes_(acc[m][rx * U + ry], px, ld_(ws[1][ry]));
+                            fmaLanes_(acc[m][rx * Wl + ry + ol], px, ld_(ws[1][ry]));
                     }
             }
             else
@@ -424,32 +507,10 @@ private:
                         {
                             bd const pxy = ld_(dM[m]) * ld_(ws[0][rx]) * ld_(ws[1][ry]);
                             for (int rz = 0; rz < U; ++rz)
-                                fmaLanes_(acc[m][(rx * U + ry) * U + rz], pxy, ld_(ws[2][rz]));
+                                fmaLanes_(acc[m][(rx * U + ry) * Wl + rz + ol], pxy,
+                                          ld_(ws[2][rz]));
                         }
             }
-        }
-
-        double* const fields[4] = {nd_, fx_, fy_, fz_};
-        auto lane_sum           = [](double const* a) {
-            return ((a[0] + a[1]) + (a[2] + a[3])) + ((a[4] + a[5]) + (a[6] + a[7]));
-        };
-        for (std::size_t node = 0; node < NN; ++node)
-        {
-            std::size_t gi;
-            if constexpr (dim == 1)
-                gi = static_cast<std::size_t>(lo[0]) + node;
-            else if constexpr (dim == 2)
-                gi = static_cast<std::size_t>(lo[0] + static_cast<int>(node / U))
-                         * static_cast<std::size_t>(shape_[1])
-                     + static_cast<std::size_t>(lo[1] + static_cast<int>(node % U));
-            else
-                gi = (static_cast<std::size_t>(lo[0] + static_cast<int>(node / (U * U)))
-                          * static_cast<std::size_t>(shape_[1])
-                      + static_cast<std::size_t>(lo[1] + static_cast<int>((node / U) % U)))
-                         * static_cast<std::size_t>(shape_[2])
-                     + static_cast<std::size_t>(lo[2] + static_cast<int>(node % U));
-            for (std::size_t m = 0; m < 4; ++m)
-                fields[m][gi] += lane_sum(acc[m][node]);
         }
     }
 
@@ -477,6 +538,49 @@ private:
             for (std::size_t d = 0; d < dim; ++d)
                 key[d] = blk_.cell[d][0];
             block(blk_, mask, key);
+        }
+    }
+
+    void flushRow_()
+    {
+        if (!rowActive_)
+            return;
+        rowActive_ = false;
+        std::array<std::size_t, dim> lo;
+        for (std::size_t d = 0; d < dim; ++d)
+            lo[d] = static_cast<std::size_t>(rowCell_[d] + a2l_[d] - maxShift);
+        double* const fields[4] = {nd_, fx_, fy_, fz_};
+        auto addNode            = [&](std::size_t const node, std::size_t const gi) {
+            for (std::size_t m = 0; m < 4; ++m)
+            {
+                double* const a = rowAcc_[m][node];
+                fields[m][gi] += ((a[0] + a[1]) + (a[2] + a[3])) + ((a[4] + a[5]) + (a[6] + a[7]));
+                for (std::size_t l = 0; l < B; ++l)
+                    a[l] = 0.;
+            }
+        };
+        auto const nl = static_cast<std::size_t>(rowHi_ + U); // touched nodes, last dim
+        if constexpr (dim == 1)
+        {
+            for (std::size_t z = 0; z < nl; ++z)
+                addNode(z, lo[0] + z);
+        }
+        else if constexpr (dim == 2)
+        {
+            auto const ny = static_cast<std::size_t>(shape_[1]);
+            for (std::size_t x = 0; x < U; ++x)
+                for (std::size_t y = 0; y < nl; ++y)
+                    addNode(x * rowL + y, (lo[0] + x) * ny + lo[1] + y);
+        }
+        else
+        {
+            auto const ny = static_cast<std::size_t>(shape_[1]);
+            auto const nz = static_cast<std::size_t>(shape_[2]);
+            for (std::size_t x = 0; x < U; ++x)
+                for (std::size_t y = 0; y < U; ++y)
+                    for (std::size_t z = 0; z < nl; ++z)
+                        addNode((x * U + y) * rowL + z,
+                                ((lo[0] + x) * ny + lo[1] + y) * nz + lo[2] + z);
         }
     }
 
@@ -603,6 +707,16 @@ private:
     std::array<int, dim> a2l_{}, shape_{}, W_{}, shift_{}, base_{}, tlo_{}, thi_{};
     int nNodes_ = 0;
     bool active_ = false;
+    // rowBlock's accumulator: lane-private sums over the unions of the cells rowCell_ to
+    // rowCell_ + rowSpan - 1 along the last dim (zero when inactive); rowHi_: last cell offset used.
+    // The flush cost per row falls with the span (Zen4, 3D: 2 -> 8 -> 16 cells, -5 %, -4 %)
+    static constexpr int rowSpan            = 16;
+    static constexpr std::size_t rowL       = U + rowSpan - 1;
+    static constexpr std::size_t rowNN      = NN_ / U * rowL;
+    alignas(64) double rowAcc_[4][rowNN][B] = {};
+    std::array<int, dim> rowCell_{};
+    int rowHi_      = 0;
+    bool rowActive_ = false;
 };
 
 } // namespace PHARE::core

@@ -434,6 +434,8 @@ public:
         lanes.weight = weight;
 
         cellDep.begin(targets, fields.amrToLocal, /*withMargin=*/true);
+        std::array<int, dim> keptKey; // keep(keptKey), evaluated once per row
+        bool keptKeyOn = false, keptKeyValid = false;
         // blocks per cell row (runs = true): the window is flushed once per cell, and the
         // block's first particle (pre-push) gives the row's cell
         pushBlocks_<Interpolator, Backend>(
@@ -453,6 +455,39 @@ public:
                 std::array<int, dim> key;
                 for (std::size_t iDim = 0; iDim < dim; ++iDim)
                     key[iDim] = particles[idx].iCell[iDim];
+                if (!keptKeyValid or key != keptKey)
+                {
+                    keptKey      = key;
+                    keptKeyOn    = keep(key);
+                    keptKeyValid = true;
+                }
+                // lanes still in the row's cell (kept): the row path of the deposit, the lanes
+                // that crossed into another cell one by one
+                int inCell[blockSize], nIn = 0;
+                for (std::size_t l = 0; l < blockSize; ++l)
+                {
+                    int same = static_cast<int>(l < n);
+                    for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                        same &= static_cast<int>(block.cell[iDim][l] == key[iDim]);
+                    inCell[l] = same;
+                    nIn += same;
+                }
+                if (keptKeyOn and 2 * static_cast<std::size_t>(nIn) >= n)
+                {
+                    for (std::size_t l = 0; l < blockSize; ++l)
+                        weight[l] = particles[idx + std::min(l, n - 1)].weight;
+                    cellDep.rowBlock(lanes, inCell, key);
+                    if (static_cast<std::size_t>(nIn) < n)
+                        for (std::size_t l = 0; l < n; ++l)
+                        {
+                            std::array<int, dim> cell;
+                            for (std::size_t iDim = 0; iDim < dim; ++iDim)
+                                cell[iDim] = block.cell[iDim][l];
+                            if (!inCell[l] and keep(cell))
+                                cellDep.laneScalar(lanes, l);
+                        }
+                    return;
+                }
                 for (std::size_t l = 0; l < blockSize; ++l)
                 {
                     weight[l] = particles[idx + std::min(l, n - 1)].weight;
