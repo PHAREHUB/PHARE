@@ -524,8 +524,8 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 }
 
 
-// update() gives Ohm the isothermal closure's -Te grad(ln n) of the ions' charge density, with
-// its own Te
+// update() fills the pressure term with -Te grad(ln n), from the ion charge density and the
+// closure's own Te
 TYPED_TEST(ElectronsTest, ThatIsothermalPressureTermIsMinusTeGradLnNe)
 {
     static constexpr auto dim = typename TypeParam::first_type{}();

@@ -23,7 +23,7 @@ namespace PHARE::core
 
 // Isothermal closure, Pe = Te n with a uniform Te: the pressure term is -Te grad(ln n), the
 // discrete gradient of the node quantity Te ln(n).
-// n is primal, so grad(ln n) lands on the E edges; it must be > 0 on the domain nodes.
+// n is primal, so grad(ln n) lands on the E edges. n must be > 0 on the domain nodes.
 template<typename GridLayout>
 class IsothermalPressureTerm
 {
@@ -38,8 +38,8 @@ public:
     {
         using NodeField = Field<GridLayout::dimension, typename Density::physical_quantity_type>;
 
-        // E's domain box reads n only on its domain nodes: ln(n) is computed there only, and its
-        // ghost nodes are left as the previous patch wrote them
+        // The gradient on E's domain box reads n on domain nodes only, so ln(n) is computed there
+        // only. Its ghost nodes keep the values the previous patch wrote.
         lnNData_.resize(n.size());
         auto lnN = NodeField{"lnN", n.physicalQuantity(), lnNData_.data(), n.shape()};
         layout.evalOnBox(n, [&](auto const&... ijk) { lnN(ijk...) = std::log(n(ijk...)); });
@@ -48,8 +48,8 @@ public:
         auto const fill    = [&](auto& component, auto const& partial) {
             if (layout.centering(component) != partial.centering())
                 throw std::runtime_error(
-                    "isothermal pressure term: grad(ln n) does not land on "
-                       "the pressure term (n must be primal, the term E-centred)");
+                    "isothermal pressure term: grad(ln n) is not centred like the pressure "
+                       "term (n must be primal, the term E-centred)");
             layout.evalOnBox(component, [&](auto const&... ijk) {
                 component(ijk...) = -Te_ * partial({ijk...});
             });

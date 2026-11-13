@@ -69,7 +69,8 @@ def config():
 
 
 def max_abs(h5_path, prefix):
-    """largest |value| of each dataset whose name starts with prefix, over all patches"""
+    """largest |value| of each dataset whose name starts with prefix, over all patches;
+    raises on any non-finite value, which max() would otherwise hide"""
     import h5py
 
     out = {}
@@ -77,7 +78,10 @@ def max_abs(h5_path, prefix):
     def visit(name, item):
         key = name.split("/")[-1]
         if isinstance(item, h5py.Dataset) and key.startswith(prefix):
-            out[key] = max(out.get(key, 0.0), float(np.abs(item[()]).max()))
+            values = np.abs(item[()])
+            if not np.isfinite(values).all():
+                raise ValueError(f"{name}: non-finite values")
+            out[key] = max(out.get(key, 0.0), float(values.max()))
 
     with h5py.File(h5_path, "r") as f:
         f.visititems(visit)
@@ -93,6 +97,7 @@ class IsothermalNoSpuriousB(SimulatorTest):
         self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(config()).run().reset()
 
+        cpp.mpi_barrier()  # before the assertions, so a failure on rank 0 cannot skip it
         if cpp.mpi_rank() == 0:
             E = max_abs(f"{diag_dir}/EM_E.h5", "EM_E")
             B = max_abs(f"{diag_dir}/EM_B.h5", "EM_B")
@@ -100,7 +105,6 @@ class IsothermalNoSpuriousB(SimulatorTest):
             self.assertGreater(maxE, 0.05)  # the density drives a pressure term
             # B = 0 up to round-off of E: anything above is field created by the pressure term
             self.assertLess(max(B.values()), 1e-12 * maxE, msg=f"B {B}, E {E}")
-        cpp.mpi_barrier()
 
 
 if __name__ == "__main__":

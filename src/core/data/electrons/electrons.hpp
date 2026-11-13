@@ -183,7 +183,9 @@ public:
                        [this](auto n) { return n * Te_; });
     }
 
-    // Ohm's electron pressure term on the E edges of this patch (see pressure_term.hpp)
+    // Ohm's electron pressure term on the E edges of this patch (see pressure_term.hpp).
+    // Electrons::update calls it after computePressure; code that runs the electron steps one by
+    // one must call it too.
     void computePressureTerm(GridLayout const& layout)
     {
         isothermalPressureTerm_(layout, ions_.chargeDensity(), pressureTerm_);
