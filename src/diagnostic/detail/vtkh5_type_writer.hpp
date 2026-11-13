@@ -169,6 +169,8 @@ public:
     void writeFileAttributes(DiagnosticProperties const&, Attributes const&);
 
     //------ valid for all h5type writers -------------------------------------
+    void flush() { fileData_.clear(); }
+
     void finalize(DiagnosticProperties& diagnostic)
     {
         // we close the file by removing the associated file

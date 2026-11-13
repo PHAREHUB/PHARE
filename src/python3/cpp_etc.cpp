@@ -130,7 +130,7 @@ PYBIND11_MODULE(cpp_etc, m)
 
     m.def("phare_build_config", []() { return PHARE::build_config(); });
 
-    m.def("patch_data_ids", [&](std::string const& path) -> std::vector<int> {
+    m.def("patch_data_ids", [=](std::string const& path) -> std::vector<int> {
         _PHARE_WITH_HIGHFIVE({
             auto const& restart_file = samrai_restart_file(path);
             PHARE::hdf5::h5::HighFiveFile h5File{restart_file, HighFive::File::ReadOnly,
@@ -140,12 +140,24 @@ PYBIND11_MODULE(cpp_etc, m)
 
         throw std::runtime_error("PHARE not built with highfive support");
     });
-    m.def("serialized_simulation_string", [&](std::string const& path) -> std::string {
+    m.def("serialized_simulation_string", [=](std::string const& path) -> std::string {
         _PHARE_WITH_HIGHFIVE({
             auto const& restart_file = samrai_restart_file(path);
             PHARE::hdf5::h5::HighFiveFile h5File{restart_file, HighFive::File::ReadOnly,
                                                  /*para=*/false};
             return h5File.read_attribute("/phare", "serialized_simulation");
+        });
+
+        throw std::runtime_error("PHARE not built with highfive support");
+    });
+    m.def("restart_resource_names", [=](std::string const& path) -> std::vector<std::string> {
+        _PHARE_WITH_HIGHFIVE({
+            auto const& restart_file = samrai_restart_file(path);
+            PHARE::hdf5::h5::HighFiveFile h5File{restart_file, HighFive::File::ReadOnly,
+                                                 /*para=*/false};
+            if (!h5File.file().getGroup("/phare").hasAttribute("resource_names"))
+                return std::vector<std::string>{}; // old restart file predates this check
+            return h5File.read_attribute<std::vector<std::string>>("/phare", "resource_names");
         });
 
         throw std::runtime_error("PHARE not built with highfive support");
