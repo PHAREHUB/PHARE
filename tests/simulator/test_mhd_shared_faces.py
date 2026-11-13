@@ -37,8 +37,8 @@ refinement_boxes = {"L0": {"B0": Box2D(10, 29)}, "L1": {"B0": Box2D(21, 58)}}
 y_boundaries = {"ylower": {"type": "reflective"}, "yupper": {"type": "open"}}
 
 
-def config(diag_dir, **kwargs):
-    sim = ph.Simulation(
+def config(simulation, **kwargs):
+    sim = simulation(
         time_step=time_step,
         time_step_nbr=time_step_nbr,
         cells=cells,
@@ -61,7 +61,7 @@ def config(diag_dir, **kwargs):
         max_mhd_level=3,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
+            "options": {"dir": "phare_outputs/mhd_shared_faces", "mode": "overwrite"},
         },
         **kwargs,
     )
@@ -105,9 +105,9 @@ class MHDSharedFacesTest(SimulatorTest):
 
     @data({}, {"domain_boundaries": y_boundaries})
     def test_shared_B_values_agree(self, kwargs):
-        diag_dir = f"phare_outputs/mhd_shared_faces/{self.ddt_test_id()}"
-        self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(config(diag_dir, **kwargs)).run().reset()
+        sim = config(self.simulation, **kwargs)
+        diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
         if cpp.mpi_rank() > 0:
             return
 
