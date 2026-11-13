@@ -74,9 +74,11 @@ class Simulator:
         These arguments have good default, change them at your own risk.
 
         *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
-        *  **post_advance**: (``Function``),  default None. A python function called after diagnostics have
-           been dumped, letting the user analyze the just-written data before the simulation takes another
-           step
+        *  **post_advance**: (``Function``),  default None. A python function called with the current time
+           after each advance, once any diagnostics active at that time have been dumped. Diagnostics may not
+           exist for that time, in which case loading them raises
+           :class:`pyphare.pharesee.hierarchy.TimeNotFoundError`. With more than one MPI rank, an
+           exception it raises aborts the MPI job, as the other ranks may be waiting on this one
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
 
     """
@@ -160,8 +162,9 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        if self.dump() and self.post_advance is not None:
-            self.post_advance(self.cpp_sim.currentTime())
+        self.dump()
+        if self.post_advance is not None:
+            self._call_post_advance()
         return self
 
     def times(self):
@@ -317,3 +320,21 @@ class Simulator:
             sys.exit(1)
         # or reraise
         raise RuntimeError(e)
+
+    def _call_post_advance(self):
+        # what post_advance does is up to the user: if it raises on one rank, the others may be
+        # blocked in a collective (theirs or the next advance) and only an MPI abort ends them,
+        # sys.exit() and KeyboardInterrupt included
+        try:
+            self.post_advance(self.cpp_sim.currentTime())
+        except BaseException:
+            if cpp.mpi_size() == 1:
+                raise
+            import traceback
+
+            print(
+                f"rank {cpp.mpi_rank()}: exception in post_advance, aborting the MPI job"
+            )
+            traceback.print_exc()
+            sys.stdout.flush()
+            cpp.mpi_abort(1)

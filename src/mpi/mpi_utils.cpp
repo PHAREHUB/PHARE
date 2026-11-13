@@ -4,6 +4,7 @@
 
 #include "mpi_utils.hpp"
 
+#include <cstdlib>
 #include <iostream>
 #include <algorithm>
 
@@ -75,6 +76,12 @@ void log_error(std::string const key, std::string const val)
 void barrier()
 {
     MPI_Barrier(MPI_COMM_WORLD);
+}
+
+void abort(int const code)
+{
+    MPI_Abort(MPI_COMM_WORLD, code);
+    std::abort(); // MPI_Abort may return
 }
 
 
