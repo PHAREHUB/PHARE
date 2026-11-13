@@ -525,14 +525,15 @@ public:
             lanes.v[c] = block.v[c];
         lanes.weight = weight;
 
+        // idx: the block's first particle, or its lanes' particles (pushLiveBlock_)
         pushBlocks_<Interpolator, Backend>(
             particles, 0, end, fields, coef1, block,
-            [&](std::size_t const idx, std::size_t const n, bool const ok) {
+            [&](auto const idx, std::size_t const n, bool const ok) {
                 if (!ok) [[unlikely]]
                 {
-                    for (auto i = idx; i < idx + n; ++i)
+                    for (std::size_t l = 0; l < n; ++l)
                     {
-                        Particle_t pushed = particles[i];
+                        Particle_t pushed = particles[laneIndex_(idx, l)];
                         push(pushed, emFields, interpolator, layout, coef1);
                         if (keep(pushed.iCell))
                             interpolator.depositOn(pushed, targets, layout);
@@ -540,7 +541,7 @@ public:
                     return;
                 }
                 for (std::size_t l = 0; l < blockSize; ++l)
-                    weight[l] = particles[idx + std::min(l, n - 1)].weight;
+                    weight[l] = particles[laneIndex_(idx, std::min(l, n - 1))].weight;
                 Interpolator::template depositLanesOOL<Backend>(lanes, n, fields.amrToLocal,
                                                                 targets, 1., keep);
             });
@@ -1763,6 +1764,18 @@ private:
 #endif
             assert(!particles.bagged()
                    or (begin == 0 and end == particles.size() and particles.csrValid()));
+            if (!cellGather and !runs and particles.bagged())
+            {
+                // row kernels on a bag layout: blocks of blockSize live particles that go on
+                // across the holes between the rows, only the last block partial
+                hyb::LiveBlocks live{particles.csr().data(), particles.rowEnds(),
+                                     particles.nbrCells(), particles.csrPrefix(), end};
+                std::size_t lane[blockSize];
+                for (std::size_t n; (n = live.next(lane)) > 0;)
+                    pushLiveBlock_<Interpolator_t, Backend>(particles, lane, n, f, coef1, block,
+                                                            after);
+                return;
+            }
             if ((cellGather or runs or particles.bagged()) and begin == 0
                 and end == particles.size() and particles.csrValid())
             {
@@ -1815,6 +1828,62 @@ private:
         }
     }
 
+
+    // particles[lane[l]] (pushBlock_ on the lanes of a block of a bag layout)
+    template<typename Particles>
+    struct LaneGather_
+    {
+        Particles const& particles;
+        std::size_t const* lane;
+        auto const& operator[](std::size_t const l) const { return particles[lane[l]]; }
+    };
+
+    // particle of lane l of a block given by its first particle or by its lanes' particles
+    static std::size_t laneIndex_(std::size_t const first, std::size_t const l) { return first + l; }
+    static std::size_t laneIndex_(std::size_t const* lane, std::size_t const l) { return lane[l]; }
+
+    /** push the block of particles lane[0, n) (ascending indices, see pushBlocks_), then
+     * after(lane, n, ok) if after takes the lanes' particles, else after(idx, m, ok) for each
+     * run of consecutive indices, the run's lanes moved to the front of block first
+     */
+    template<typename Interpolator_t, typename Backend, typename Particles, typename After>
+    [[gnu::always_inline]] void pushLiveBlock_(Particles const& particles,
+                                               std::size_t const (&lane)[blockSize],
+                                               std::size_t const n, BlockFields const& f,
+                                               double const coef1, PushBlock& block, After& after)
+    {
+        bool const ok = pushBlock_<Interpolator_t, Backend>(
+            LaneGather_<Particles>{particles, lane}, 0, n, f, coef1, block);
+        if constexpr (std::is_invocable_v<After&, std::size_t const*, std::size_t, bool>)
+            after(static_cast<std::size_t const*>(lane), n, ok);
+        else
+            for (std::size_t s = 0, m = 0; s < n; s += m)
+            {
+                if (s > 0)
+                    shiftLanes_(block, m);
+                m = 1;
+                while (s + m < n and lane[s + m] == lane[s] + m)
+                    ++m;
+                after(lane[s], m, ok);
+            }
+    }
+
+    // lanes [d, blockSize) of b to [0, blockSize - d)
+    static void shiftLanes_(PushBlock& b, std::size_t const d)
+    {
+        auto const shift = [d](auto& row) {
+            for (std::size_t l = 0; l + d < blockSize; ++l)
+                row[l] = row[l + d];
+        };
+        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            shift(b.delta[iDim]);
+            shift(b.midCell[iDim]);
+            shift(b.cell[iDim]);
+        }
+        for (std::size_t c = 0; c < 3; ++c)
+            shift(b.v[c]);
+    }
 
     std::array<double, dim> halfDtOverDl_;
     double dt_;

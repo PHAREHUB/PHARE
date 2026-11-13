@@ -102,6 +102,75 @@ struct AoSLanes
 };
 
 
+/** the live particles of a bag layout (rows [starts[k], ends[k]) for k < nRows, then the
+ * appends [tailBegin, tailEnd)) as consecutive blocks of laneCount, in storage order: a block
+ * goes on across the holes between the rows, so that only the last block is partial
+ */
+struct LiveBlocks
+{
+    int const* starts;
+    int const* ends;
+    int nRows;
+    std::size_t tailBegin, tailEnd;
+
+    int k         = 0; // next row (nRows: the appends)
+    std::size_t i = 0, e = 0;
+
+    // storage indices of the next block into lane; returns their count (0: no particle left)
+    std::size_t next(std::size_t (&lane)[laneCount])
+    {
+        std::size_t n = 0;
+        while (n < laneCount)
+        {
+            if (i == e)
+            {
+                if (k > nRows)
+                    break;
+                i = k < nRows ? static_cast<std::size_t>(starts[k]) : tailBegin;
+                e = k < nRows ? static_cast<std::size_t>(ends[k]) : tailEnd;
+                ++k;
+                continue;
+            }
+            lane[n++] = i++;
+        }
+        return n;
+    }
+};
+
+
+/** AoSLanes over the live particles of a bag layout: block i0 (taken in ascending order) is the
+ * next block of blocks
+ */
+template<std::size_t dim, typename Particles>
+struct LiveLanes
+{
+    using Block = LaneBlock<dim>;
+
+    Particles const& particles;
+    std::size_t size; // live particles
+    LiveBlocks& blocks;
+
+    Block const& depositLanes(std::size_t const /*i0*/, Block& blk) const
+    {
+        std::size_t lane[laneCount];
+        auto const n = blocks.next(lane);
+        for (std::size_t l = 0; l < laneCount; ++l)
+        {
+            auto const& part = particles[lane[std::min(l, n - 1)]];
+            blk.weight[l]    = part.weight;
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                blk.cell[d][l]  = part.iCell[d];
+                blk.delta[d][l] = part.delta[d];
+            }
+            for (std::size_t c = 0; c < 3; ++c)
+                blk.v[c][l] = part.v[c];
+        }
+        return blk;
+    }
+};
+
+
 } // namespace PHARE::core::hyb
 
 #endif

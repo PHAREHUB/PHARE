@@ -123,6 +123,16 @@ private:
         };
         if (!particles.bagged())
             return deposit(particles);
+        if constexpr (hyb::blockedDeposit<interp_order>)
+        {
+            // blocks across the holes: partial only at the end
+            hyb::LiveBlocks blocks{particles.csr().data(), particles.rowEnds(),
+                                   particles.nbrCells(), particles.csrPrefix(), particles.size()};
+            hyb::LiveLanes<dimension, ParticleArray> lanes{particles, particles.liveSize(), blocks};
+            Interpolator::template depositRangeBlocked<hyb::Backend>(
+                lanes, interpolator_.depositTargets(density, flux), layout);
+            return;
+        }
         particles.forEachLiveRun([&](std::size_t const first, std::size_t const last) {
             deposit(std::span<Particle_t const>{&particles[first], last - first});
         });
