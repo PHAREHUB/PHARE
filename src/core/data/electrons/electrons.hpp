@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/pressure_term/pressure_term.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -122,6 +123,8 @@ public:
         : ions_{ions}
         , Te_{dict["Te"].template to<double>()}
         , Pe_{"Pe", HybridQuantity::Scalar::P}
+        , pressureTerm_{"pressureTerm", HybridQuantity::Vector::E}
+        , isothermalPressureTerm_{Te_}
     {
     }
 
@@ -131,9 +134,12 @@ public:
     //-------------------------------------------------------------------------
 
 
-    NO_DISCARD bool isUsable() const { return Pe_.isUsable() and ions_.isUsable(); }
+    NO_DISCARD bool isUsable() const
+    {
+        return Pe_.isUsable() and pressureTerm_.isUsable() and ions_.isUsable();
+    }
 
-    NO_DISCARD bool isSettable() const { return Pe_.isSettable(); }
+    NO_DISCARD bool isSettable() const { return Pe_.isSettable() and pressureTerm_.isSettable(); }
 
     struct PressureProperty
     {
@@ -145,10 +151,13 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(ions_, Pe_);
+        return std::forward_as_tuple(ions_, Pe_, pressureTerm_);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(ions_, Pe_); }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(ions_, Pe_, pressureTerm_);
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -156,6 +165,9 @@ public:
 
 
 
+    // Ohm does not read Pe: its pressure term comes from computePressureTerm, which only needs n
+    // and Te here. Pe is kept for now for further internal use by non-isothermal pressure laws, and
+    // for the upcoming electron pressure diagnostics (#1548).
     NO_DISCARD Field& pressure() { return Pe_; }
     NO_DISCARD Field const& pressure() const { return Pe_; }
 
@@ -171,10 +183,22 @@ public:
                        [this](auto n) { return n * Te_; });
     }
 
+    // Ohm's electron pressure term on the E edges of this patch (see pressure_term.hpp).
+    // Electrons::update calls it after computePressure; code that runs the electron steps one by
+    // one must call it too.
+    void computePressureTerm(GridLayout const& layout)
+    {
+        isothermalPressureTerm_(layout, ions_.chargeDensity(), pressureTerm_);
+    }
+
+    NO_DISCARD VecField const& pressureTerm() const { return pressureTerm_; }
+
 private:
     Ions ions_;
     double const Te_ = 0;
     Field Pe_;
+    VecField pressureTerm_;
+    IsothermalPressureTerm<GridLayout> isothermalPressureTerm_;
 };
 
 
@@ -240,6 +264,13 @@ public:
     void computeBulkVelocity(GridLayout const& layout) { fluxComput_.computeBulkVelocity(layout); }
     void computePressure(GridLayout const& layout) { pressureClosure_.computePressure(layout); }
 
+    void computePressureTerm(GridLayout const& layout)
+    {
+        pressureClosure_.computePressureTerm(layout);
+    }
+
+    NO_DISCARD VecField const& pressureTerm() const { return pressureClosure_.pressureTerm(); }
+
 private:
     FluxComputer fluxComput_;
     IsothermalElectronPressureClosure<Ions> pressureClosure_;
@@ -269,6 +300,7 @@ public:
         momentModel_.computeDensity();
         momentModel_.computeBulkVelocity(layout);
         momentModel_.computePressure(layout);
+        momentModel_.computePressureTerm(layout);
     }
 
 
@@ -307,6 +339,9 @@ public:
     NO_DISCARD Field& density() { return momentModel_.density(); }
     NO_DISCARD VecField& velocity() { return momentModel_.velocity(); }
     NO_DISCARD Field& pressure() { return momentModel_.pressure(); }
+
+    void computePressureTerm(GridLayout const& layout) { momentModel_.computePressureTerm(layout); }
+    NO_DISCARD VecField const& pressureTerm() const { return momentModel_.pressureTerm(); }
 
 private:
     ElectronMomentModel<Ions> momentModel_;
