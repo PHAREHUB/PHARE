@@ -5,6 +5,7 @@
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
 
+#include <span>
 #include <vector>
 #include <cstddef>
 #include <type_traits>
@@ -55,9 +56,12 @@ public:
 
 
     template<typename Operator>
-    void set_from(std::vector<value_type> const& vec, std::size_t seek = 0);
+    void set_from(std::span<value_type const> vec, std::size_t seek = 0);
 
     void append_to(std::vector<value_type>& vec);
+
+    // copies the box into vec from vec[seek], vec holding at least seek + lcl_box.size() values
+    void copy_to(std::span<value_type> vec, std::size_t seek = 0);
 };
 
 
@@ -98,7 +102,7 @@ void operate_on_fields(auto& dst, auto const& src)
 
 template<typename Field_t>
 template<typename Operator>
-void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t seek)
+void FieldBox<Field_t>::set_from(std::span<value_type const> vec, std::size_t seek)
 {
     for_each_span(lcl_box, [&](auto const& start, auto const size) {
         operate_on_span<Operator>(detail::span_data(field, start), vec.data() + seek, size);
@@ -111,9 +115,15 @@ void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t
 template<typename Field_t>
 void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
 {
-    std::size_t seek = vec.size();
+    std::size_t const seek = vec.size();
     vec.resize(seek + lcl_box.size());
+    copy_to(vec, seek);
+}
 
+
+template<typename Field_t>
+void FieldBox<Field_t>::copy_to(std::span<value_type> vec, std::size_t seek)
+{
     for_each_span(lcl_box, [&](auto const& start, auto const size) {
         operate_on_span<SetEqual<value_type>>(vec.data() + seek, detail::span_data(field, start),
                                               size);

@@ -15,6 +15,7 @@
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
+#include <span>
 #include <limits>
 #include <utility>
 
@@ -216,16 +217,29 @@ namespace amr
         {
             PHARE_LOG_SCOPE(3, "packStream");
 
+            auto const buffer_size = getDataStreamSize_(overlap) / sizeof(value_type);
+            core::ScratchWrite scratch;
+            auto& buffer = scratch.get().get_no_copy(buffer_size)();
+
+            packTo(buffer, overlap);
+
+            // Once we have fill the buffer, we send it on the stream
+            stream.pack(buffer.data(), buffer.size());
+        }
+
+
+        /*** \brief Writes into `buffer` what packStream puts on the stream for `overlap`;
+         * `buffer` holds getDataStreamSize(overlap) / sizeof(value_type) values.
+         */
+        void packTo(std::span<value_type> buffer, SAMRAI::hier::BoxOverlap const& overlap) const
+        {
             auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
             SAMRAI::hier::Transformation const& transformation = fieldOverlap.getTransformation();
             if (transformation.getRotation() != NO_ROTATE)
                 throw std::runtime_error("Rotations are not supported in PHARE");
 
-            auto const buffer_size = getDataStreamSize_(overlap) / sizeof(value_type);
-            core::ScratchWrite scratch;
-            auto& buffer = scratch.get().reserve_and_clear(buffer_size)();
-
+            std::size_t seek = 0;
             for (auto const& box : fieldOverlap.getDestinationBoxContainer())
             {
                 SAMRAI::hier::Box packBox{box};
@@ -238,11 +252,9 @@ namespace amr
 
                 core::FieldBox<Grid_t const> src{field, gridLayout,
                                                  phare_box_from<dimension>(packBox)};
-                src.append_to(buffer);
+                src.copy_to(buffer, seek);
+                seek += src.lcl_box.size();
             }
-
-            // Once we have fill the buffer, we send it on the stream
-            stream.pack(buffer.data(), buffer.size());
         }
 
 
@@ -262,11 +274,6 @@ namespace amr
         {
             PHARE_LOG_SCOPE(3, "unpackStream");
 
-            auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
-
-            if (fieldOverlap.getTransformation().getRotation() != NO_ROTATE)
-                throw std::runtime_error("Rotations are not supported in PHARE");
-
             // For unpacking we need to know how much element we will need to extract
             core::ScratchWrite scratch;
             auto& buffer
@@ -274,6 +281,28 @@ namespace amr
 
             // We flush a portion of the stream on the buffer.
             stream.unpack(buffer.data(), buffer.size());
+
+            unpackFrom<Operator>(buffer, overlap, dst_grid);
+        }
+
+
+        /*** \brief Applies Operator to `dst_grid` (this patch data's field by default) and
+         * `buffer`, laid out as packStream puts it on the stream, over the overlap boxes.
+         */
+        template<typename Operator>
+        void unpackFrom(std::span<value_type const> buffer, SAMRAI::hier::BoxOverlap const& overlap)
+        {
+            unpackFrom<Operator>(buffer, overlap, field);
+        }
+
+        template<typename Operator>
+        void unpackFrom(std::span<value_type const> buffer, SAMRAI::hier::BoxOverlap const& overlap,
+                        Grid_t& dst_grid)
+        {
+            auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
+
+            if (fieldOverlap.getTransformation().getRotation() != NO_ROTATE)
+                throw std::runtime_error("Rotations are not supported in PHARE");
 
             // Here the seek counter will be used to index buffer
             std::size_t seek = 0;

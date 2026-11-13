@@ -17,6 +17,7 @@
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
+#include <span>
 #include <limits>
 #include <type_traits>
 
@@ -234,7 +235,20 @@ public:
 
         std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(value_type);
         core::ScratchWrite scratch;
-        auto& buffer        = scratch.get().reserve_and_clear(expectedSize)();
+        auto& buffer = scratch.get().get_no_copy(expectedSize)();
+
+        packTo(buffer, overlap);
+
+        // Once we have fill the buffer, we send it on the stream
+        stream.pack(buffer.data(), buffer.size());
+    }
+
+
+    /*** \brief Writes into `buffer` what packStream puts on the stream for `overlap`;
+     * `buffer` holds getDataStreamSize(overlap) / sizeof(value_type) values.
+     */
+    void packTo(std::span<value_type> buffer, SAMRAI::hier::BoxOverlap const& overlap) const
+    {
         auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
         SAMRAI::hier::Transformation const& transformation = tFieldOverlap.getTransformation();
@@ -243,6 +257,7 @@ public:
             throw std::runtime_error(
                 "Rotations are not supported in PHARE (TensorFieldData::packStream)");
 
+        std::size_t seek = 0;
         for (std::size_t c = 0; c < N; ++c)
             for (auto const& box : tFieldOverlap[c]->getDestinationBoxContainer())
             {
@@ -257,11 +272,9 @@ public:
 
                 auto const finalBox = phare_box_from<dimension>(packBox);
                 core::FieldBox<Grid_t const> src{source, gridLayout, finalBox};
-                src.append_to(buffer);
+                src.copy_to(buffer, seek);
+                seek += src.lcl_box.size();
             }
-
-        // Once we have fill the buffer, we send it on the stream
-        stream.pack(buffer.data(), buffer.size());
     }
 
 
@@ -282,17 +295,34 @@ public:
     {
         PHARE_LOG_SCOPE(3, "TensorFieldData::unpackStream");
 
-        auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
-
-        if (tFieldOverlap.getTransformation().getRotation() != NO_ROTATE)
-            throw std::runtime_error("Rotations are not supported in PHARE");
-
         // For unpacking we need to know how much element we will need to extract
         core::ScratchWrite scratch;
         auto& buffer = scratch.get().get_no_copy(getDataStreamSize(overlap) / sizeof(value_type))();
 
         // We flush a portion of the stream on the buffer.
         stream.unpack(buffer.data(), buffer.size());
+
+        unpackFrom<Operator>(buffer, overlap, dst_grids);
+    }
+
+
+    /*** \brief Applies Operator to `dst_grids` (this patch data's grids by default) and
+     * `buffer`, laid out as packStream puts it on the stream, over the overlap boxes.
+     */
+    template<typename Operator>
+    void unpackFrom(std::span<value_type const> buffer, SAMRAI::hier::BoxOverlap const& overlap)
+    {
+        unpackFrom<Operator>(buffer, overlap, grids);
+    }
+
+    template<typename Operator>
+    void unpackFrom(std::span<value_type const> buffer, SAMRAI::hier::BoxOverlap const& overlap,
+                    auto& dst_grids)
+    {
+        auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
+
+        if (tFieldOverlap.getTransformation().getRotation() != NO_ROTATE)
+            throw std::runtime_error("Rotations are not supported in PHARE");
 
         // Here the seek counter will be used to index buffer
         std::size_t seek = 0;
