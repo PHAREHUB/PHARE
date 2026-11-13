@@ -2,11 +2,25 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(phare_python3)
 
+file(WRITE "${CMAKE_BINARY_DIR}/pybindlibs/__init__.py" "")
+
 if(NOT PHARE_PERMUTATIONS)
   set(PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/res/sim/all.txt")
 endif()
 
-file(STRINGS ${PHARE_PERMUTATIONS} THIS_FILE)
+if(NOT IS_ABSOLUTE "${PHARE_PERMUTATIONS}")
+  set(PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/${PHARE_PERMUTATIONS}")
+endif()
+
+if(NOT EXISTS "${PHARE_PERMUTATIONS}")
+  message(FATAL_ERROR "PHARE_PERMUTATIONS file not found: ${PHARE_PERMUTATIONS}")
+endif()
+
+file(STRINGS "${PHARE_PERMUTATIONS}" THIS_FILE)
+
+if(DEFINED SKBUILD)
+  unset(PHARE_PERMUTATIONS CACHE)
+endif()
 
 while(THIS_FILE)
     list(POP_FRONT THIS_FILE LINE)
@@ -57,6 +71,8 @@ while(THIS_FILE)
     # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
     set_property(TARGET ${MOD_STR} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
     set_property(TARGET ${MOD_STR} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
+    set_property(GLOBAL APPEND PROPERTY PHARE_PYTHON_MODULES ${MOD_STR})
+    phare_limit_module_compile(${MOD_STR})
 endwhile()
 
 # cpp_etc == everything not simulator related!
@@ -70,3 +86,5 @@ set_target_properties(cpp_etc
 # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
 set_property(TARGET cpp_etc PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_property(TARGET cpp_etc APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
+set_property(GLOBAL APPEND PROPERTY PHARE_PYTHON_MODULES cpp_etc)
+phare_limit_module_compile(cpp_etc)
