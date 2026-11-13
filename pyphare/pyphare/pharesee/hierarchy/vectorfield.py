@@ -25,14 +25,20 @@ class VectorField(tensorfield.AnyTensorField):
         return super().FROM(cls, renamed_hier)
 
     def __mul__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         assert isinstance(other, (int, float))
         h = compute_hier_from(_compute_mul, self, names=["x", "y", "z"], other=other)
         return VectorField.FROM(h)
 
     def __rmul__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         return self.__mul__(other)
 
     def __add__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         names_self_kept = self.quantities()
         names_other_kept = other.quantities()
 
@@ -56,6 +62,8 @@ class VectorField(tensorfield.AnyTensorField):
         return VectorField.FROM(h)
 
     def __sub__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         names_self_kept = self.quantities()
         names_other_kept = other.quantities()
 
@@ -79,6 +87,8 @@ class VectorField(tensorfield.AnyTensorField):
         return VectorField.FROM(h)
 
     def __truediv__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         if not isinstance(other, (ScalarField, int, float)):
             raise TypeError("type of operand not considered")
 

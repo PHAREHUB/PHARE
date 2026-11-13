@@ -1,3 +1,5 @@
+import abc
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,7 +16,9 @@ def format_timestamp(timestamp):
     return f"{timestamp:.10f}"
 
 
-class PatchHierarchy:
+# ABCMeta only so that pyphare.pharesee.amr fields can be registered as virtual
+# subclasses (isinstance(field, PatchHierarchy) is True); no abstract method is added
+class PatchHierarchy(metaclass=abc.ABCMeta):  # noqa: B024
     """is a collection of patch levels"""
 
     def __init__(

@@ -12,6 +12,8 @@ class ScalarField(tensorfield.AnyTensorField):
         return super().FROM(cls, renamed_hier)
 
     def __add__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         assert isinstance(other, (ScalarField, int, float))
         h_self = rename(self, ["self_value"])
 
@@ -29,9 +31,13 @@ class ScalarField(tensorfield.AnyTensorField):
         return ScalarField.FROM(h)
 
     def __radd__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         return self.__add__(other)
 
     def __sub__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         assert isinstance(other, (ScalarField, int, float))
         h_self = rename(self, ["self_value"])
 
@@ -49,6 +55,8 @@ class ScalarField(tensorfield.AnyTensorField):
         return ScalarField.FROM(h)
 
     def __mul__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         assert isinstance(other, (ScalarField, int, float))
         h_self = rename(self, ["self_value"])
 
@@ -63,9 +71,13 @@ class ScalarField(tensorfield.AnyTensorField):
         return ScalarField.FROM(h)
 
     def __rmul__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         return self.__mul__(other)
 
     def __truediv__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         assert isinstance(other, (ScalarField, int, float))
         h_self = rename(self, ["self_value"])
 
@@ -80,6 +92,8 @@ class ScalarField(tensorfield.AnyTensorField):
         return ScalarField.FROM(h)
 
     def __rtruediv__(self, other):
+        if tensorfield.is_amr_field(other):  # new-path field: let it raise TypeError
+            return NotImplemented
         assert isinstance(other, (int, float))
         h_self = rename(self, ["self_value"])
 
