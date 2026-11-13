@@ -463,7 +463,7 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
     }
 
     auto mutated_dict = restarts::inject_simulation_information(
-        dict, amr::ResourcesManagerGlobals::registeredResourcesHash());
+        dict, amr::ResourcesManagerGlobals::registeredResourceNames());
 
     if (mutated_dict["simulation"].contains("restarts"))
     {

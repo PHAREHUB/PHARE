@@ -57,8 +57,8 @@ public:
             properties.fileAttributes["serialized_simulation"].template to<std::string>());
 
         h5File.write_attribute(
-            "/phare", "resources_hash",
-            properties.fileAttributes["resources_hash"].template to<std::string>());
+            "/phare", "resource_names",
+            properties.fileAttributes["resource_names"].template to<std::vector<std::string>>());
 
         mpi::barrier();
     }

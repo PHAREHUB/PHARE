@@ -14,35 +14,62 @@
 #endif
 
 #include <memory>
+#include <string>
+#include <vector>
+#include <iterator>
+#include <algorithm>
 
 namespace PHARE::restarts
 {
-// returns a copy of dict with this build's current resources hash injected under
-// simulation/restarts/resources_hash, so it flows through addRestartDict ->
-// RestartsProperties::fileAttributes -> the restart file. If dict already carries a
-// "file_resources_hash" (the hash read back from an old restart file being loaded),
-// compares it against the current hash and throws if they differ, so an incompatible
-// restart fails clearly instead of corrupting/segfaulting later.
+namespace detail
+{
+    // what `a` has that `b` has not, both sorted
+    inline std::string only_in(std::vector<std::string> const& a, std::vector<std::string> const& b)
+    {
+        std::vector<std::string> diff;
+        std::set_difference(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(diff));
+        std::string out;
+        for (auto const& name : diff)
+            out += "\n    " + name;
+        return out.empty() ? "\n    (none)" : out;
+    }
+
+    // empty file_names: the restart file predates this check
+    inline void check_resource_names(std::vector<std::string> file_names,
+                                     std::vector<std::string> const& names)
+    {
+        std::sort(file_names.begin(), file_names.end());
+        if (file_names.empty() or file_names == names)
+            return;
+
+        throw std::runtime_error(
+            "Restart file is incompatible with this PHARE build, the registered resources differ"
+            "\n  only in the restart file:"
+            + only_in(file_names, names) + "\n  only in this build:" + only_in(names, file_names));
+    }
+} // namespace detail
+
+
+// returns a copy of dict with this build's registered resource names under
+// simulation/restarts/resource_names, so they flow through addRestartDict ->
+// RestartsProperties::fileAttributes -> the restart file. If dict carries the names read back
+// from a restart file being loaded ("file_resource_names"), throws if they differ, naming what
+// each side has that the other has not, so an incompatible restart fails clearly instead of
+// corrupting/segfaulting later.
 NO_DISCARD inline initializer::PHAREDict
-inject_simulation_information(initializer::PHAREDict const& dict, std::string const& resources_hash)
+inject_simulation_information(initializer::PHAREDict const& dict,
+                              std::vector<std::string> const& resource_names)
 {
     auto injected = dict;
     if (injected["simulation"].contains("restarts"))
     {
         auto& restarts_dict             = injected["simulation"]["restarts"];
-        restarts_dict["resources_hash"] = resources_hash;
+        restarts_dict["resource_names"] = resource_names;
 
-        if (restarts_dict.contains("file_resources_hash"))
-        {
-            std::string const file_hash = restarts_dict["file_resources_hash"];
-            if (!file_hash.empty() && file_hash != resources_hash)
-                throw std::runtime_error(
-                    "Restart file is incompatible with this PHARE build: the set of "
-                    "registered resources differs (a field or particle population was "
-                    "likely added, removed, or renamed since the restart file was "
-                    "written). file hash="
-                    + file_hash + " current hash=" + resources_hash);
-        }
+        if (restarts_dict.contains("file_resource_names"))
+            detail::check_resource_names(
+                restarts_dict["file_resource_names"].to<std::vector<std::string>>(),
+                resource_names);
     }
     return injected;
 }
