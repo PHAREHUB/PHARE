@@ -217,7 +217,9 @@ void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel_t& mode
     hmodel.resourcesManager->registerResources(Bold_);
     hmodel.resourcesManager->registerResources(fluxSumE_);
 
-    hmodel.resourcesManager->excludeFromRestarts(Bold_); // refreshed in prepareStep
+    // Bold_ refreshed in prepareStep, the predictor and average rewritten every step,
+    // fluxSumE_ reset at a level's first substep and used up by synchronization
+    hmodel.resourcesManager->excludeFromRestarts(Bold_, electromagPred_, electromagAvg_, fluxSumE_);
 }
 
 
