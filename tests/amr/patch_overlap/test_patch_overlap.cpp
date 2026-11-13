@@ -13,6 +13,8 @@
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
 
+#include "tests/amr/test_level_fixtures.hpp"
+
 #include <SAMRAI/pdat/CellGeometry.h>
 #include <SAMRAI/pdat/CellOverlap.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -426,6 +428,54 @@ TEST(PatchOverlapOwnership, smallerIdOwnsIdenticalBoxes)
     auto const nonOwned = amr::makeNonOwnedBoxes(box, 2, smaller);
     ASSERT_EQ(nonOwned.size(), 1u);
     EXPECT_EQ(nonOwned[0], box);
+}
+
+
+
+// ---------------------------------------------------------------------------------------------
+// patch ghost region: every cell of a patch's particle ghost box inside another patch of the
+// level is a patch ghost cell, wherever that patch sits, including only at a corner
+
+template<std::size_t dim, std::size_t interp>
+void checkNonLevelGhostBoxesCoverNeighbours(Box_t<dim> const& domain,
+                                            std::vector<Box_t<dim>> const& boxes)
+{
+    using GridLayout     = GridLayout_t<dim, interp>;
+    auto const hierarchy = test::hierarchyWithLevel0(domain, boxes);
+    auto const neighbors = amr::makeSameLevelNeighbors<GridLayout>(*hierarchy, 0);
+
+    for (auto const& patch : *hierarchy->getPatchLevel(0))
+    {
+        auto const patchBox           = amr::phare_box_from<dim>(patch->getBox());
+        auto const ghostBox           = grow(patchBox, GridLayout::options.particle_ghost_width);
+        auto const nonLevelGhostBoxes = amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors);
+
+        for (auto const& other : boxes)
+            if (!(other == patchBox))
+                if (auto const overlap = ghostBox * other)
+                    for_each_point(*overlap, [&](auto const& cell) {
+                        EXPECT_TRUE(isIn(cell, nonLevelGhostBoxes))
+                            << "cell " << cell << " of " << other << " in the ghost box of "
+                            << patchBox << " is not a patch ghost cell";
+                    });
+    }
+}
+
+// C touches A only at A's upper right corner, D (right of A) is one cell taller than A:
+//   B [0..9]x[10..20]   C [10..19]x[11..20]
+//   A [0..9]x[0..9]     D [10..19]x[0..10]
+// with a particle ghost width of 2, cell (10,11) of C is in A's ghost box
+std::vector<Box_t<2>> const cornerNeighbours{
+    {{0, 0}, {9, 9}}, {{0, 10}, {9, 20}}, {{10, 0}, {19, 10}}, {{10, 11}, {19, 20}}};
+Box_t<2> const cornerDomain{{0, 0}, {19, 20}};
+
+TEST(PatchOverlapPatchGhosts, includeCornerNeighbourParticleGhostWidth1)
+{
+    checkNonLevelGhostBoxesCoverNeighbours<2, 1>(cornerDomain, cornerNeighbours);
+}
+TEST(PatchOverlapPatchGhosts, includeCornerNeighbourParticleGhostWidth2)
+{
+    checkNonLevelGhostBoxesCoverNeighbours<2, 2>(cornerDomain, cornerNeighbours);
 }
 
 

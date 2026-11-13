@@ -212,11 +212,16 @@ namespace amr
 
 
 
-    // same-level neighbour boxes of all local patches of level `ilvl`, including periodic images
-    NO_DISCARD auto inline makeSameLevelNeighbors(SAMRAI::hier::PatchHierarchy const& hierarchy,
-                                                  int const ilvl)
+    // same-level neighbour boxes of all local patches of level `ilvl`, including periodic images:
+    // all those overlapping the particle ghost box of a patch, even only at a corner, which
+    // SAMRAI's default neighbour width of 1 misses for a particle ghost width > 1
+    template<typename GridLayoutT>
+    NO_DISCARD auto makeSameLevelNeighbors(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                           int const ilvl)
     {
-        return SAMRAI::hier::HierarchyNeighbors{hierarchy, ilvl, ilvl};
+        bool constexpr do_same_level_nbrs = true;
+        return SAMRAI::hier::HierarchyNeighbors{hierarchy, ilvl, ilvl, do_same_level_nbrs,
+                                                GridLayoutT::options.particle_ghost_width};
     }
 
 

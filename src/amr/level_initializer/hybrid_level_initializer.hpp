@@ -89,7 +89,8 @@ namespace solver
 
             // overlapping patches were each filled over their whole domain,
             // keep particles only on the patch owning their cell
-            auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
+            auto const neighbors
+                = amr::makeSameLevelNeighbors<GridLayoutT>(*hierarchy, levelNumber);
             for (auto& patch : rm.enumerate(level, ions))
                 ions.eraseDomainParticlesIn(
                     amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
