@@ -113,31 +113,13 @@ namespace detail
 template<typename FieldData_t>
 class BorderSums
 {
+    auto constexpr static dimension = FieldData_t::dimension;
+    using Box_t                     = core::Box<int, dimension>;
+
 public:
     using value_type = FieldData_t::value_type;
     using Overlap_t  = detail::OverlapOf<FieldData_t>::type;
 
-private:
-    auto constexpr static dimension = FieldData_t::dimension;
-    using Box_t                     = core::Box<int, dimension>;
-
-    struct Contribution
-    {
-        Box_t source; // contributing patch box, in the destination index space
-        std::shared_ptr<Overlap_t const> overlap;
-        std::size_t offset; // of its values in the store
-        std::size_t size;
-    };
-
-    struct Destination
-    {
-        SAMRAI::hier::GlobalId patch;
-        int dataId;
-        std::vector<std::size_t> contributions; // indices in contributions_, in sum order
-        std::size_t own;                        // index of the patch's own contribution
-    };
-
-public:
     // called for each transaction delivering data to a local patch, while the schedule is built;
     // returns the handle the transaction stores its contribution with
     std::size_t add(SAMRAI::hier::Box const& dst_node, SAMRAI::hier::Box const& src_node,
@@ -224,6 +206,22 @@ public:
     }
 
 private:
+    struct Contribution
+    {
+        Box_t source; // contributing patch box, in the destination index space
+        std::shared_ptr<Overlap_t const> overlap;
+        std::size_t offset; // of its values in the store
+        std::size_t size;
+    };
+
+    struct Destination
+    {
+        SAMRAI::hier::GlobalId patch;
+        int dataId;
+        std::vector<std::size_t> contributions; // indices in contributions_, in sum order
+        std::size_t own;                        // index of the patch's own contribution
+    };
+
     Destination& destinationOf_(SAMRAI::hier::Box const& dst_node, int const dataId)
     {
         auto const key = std::make_pair(dst_node.getGlobalId(), dataId);
