@@ -20,10 +20,9 @@ enum class RefinerType {
     LevelBorderField,
     LevelBorderParticles,
     PatchGhostField,
-    PatchFieldBorderSum,
-    PatchVecFieldBorderSum,
+    PatchIonPopBorderSum,
+    PatchIonPopBorderMax,
     PatchTensorFieldBorderSum,
-    PatchFieldBorderMax,
     PatchVecFieldBorderMax,
     ExteriorGhostParticles
 };
@@ -95,13 +94,15 @@ private:
         }
 
 
-        // schedule used to += density and flux for populations
-        // on incomplete overlaped ghost box nodes
-        else if constexpr (Type == RefinerType::PatchFieldBorderSum)
+        // schedule used to += flux and density for populations on incomplete overlapped
+        // ghost box nodes. Flux (VecFieldData_t) and density (FieldData_t) items share one
+        // algorithm; the transaction factory resolves each item's PatchData type at runtime.
+        else if constexpr (Type == RefinerType::PatchIonPopBorderSum)
         {
             return algo->createSchedule(
                 level, patchStrat_.get(),
-                std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>());
+                std::make_shared<MultiFieldBorderOpTransactionFactory<PlusEqualsOp, FieldData_t,
+                                                                      VecFieldData_t>>());
         }
 
 
@@ -114,21 +115,15 @@ private:
         }
 
 
-        else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
+        // schedule used to == max of charge density and charge flux on complete overlapped
+        // ghost box nodes. Density (FieldData_t) and flux (VecFieldData_t) items share one
+        // algorithm; the transaction factory resolves each item's PatchData type at runtime.
+        else if constexpr (Type == RefinerType::PatchIonPopBorderMax)
         {
             return algo->createSchedule(
                 level, patchStrat_.get(),
-                std::make_shared<FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>());
-        }
-
-
-        // schedule used to == max of density and flux for populations
-        // on complete overlaped ghost box nodes
-        else if constexpr (Type == RefinerType::PatchFieldBorderMax)
-        {
-            return algo->createSchedule(
-                level, patchStrat_.get(),
-                std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>());
+                std::make_shared<
+                    MultiFieldBorderOpTransactionFactory<SetMaxOp, FieldData_t, VecFieldData_t>>());
         }
 
 
