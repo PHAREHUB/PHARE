@@ -167,8 +167,8 @@ predicts; your curves follow it, with small wiggles on top.
        ax.axvline(t, color="0.7", lw=0.8, ls=":")
    ax.annotate("", xy=(50, 0.108), xytext=(0, 0.108),
                arrowprops=dict(arrowstyle="->", color="0.3"))
-   ax.text(25, 0.112, "crest moves at speed 1", ha="center", fontsize=11)
-   ax.set_ylim(-0.17, 0.13)
+   ax.text(25, 0.111, "crest moves at speed 1", ha="center", va="bottom", fontsize=11)
+   ax.set_ylim(-0.17, 0.135)
    ax.set_xlabel("x")
    ax.set_ylabel("By")
    ax.legend(loc="lower center", ncol=3, fontsize=11, frameon=False)

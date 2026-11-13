@@ -24,15 +24,16 @@ The picture
 
    flowchart TD
      PY["Python<br/>Simulator.advance()"] --> CPP["C++ Simulator::advance()<br/>chooses dt"]
-     CPP --> INT["amr::Integrator::advance(dt)"]
-     INT --> TRI["SAMRAI TimeRefinementIntegrator<br/>steps the levels, coarsest first"]
-     TRI -->|"each step of each level"| AL["MultiPhysicsIntegrator::advanceLevel<br/>(see the next diagram)"]
-     AL --> MSG["Messenger with the coarser level<br/>ghost cells, level ghost particles"]
-     AL -->|"hybrid level"| PPC["Hybrid solver (SolverPPC)<br/>predictor-corrector"]
-     AL -->|"or MHD level"| MHD["MHD solver (SolverMHD)"]
-     TRI -->|"levels reach the same time"| SYNC["Synchronization<br/>coarsen fine data, reflux"]
-     TRI -->|"every 2 steps of a level"| RG["Regrid the finer levels"]
-     PY -->|"after advance returns"| DIAG["Diagnostics and restarts<br/>written if due at this time"]
+     PY -->|"then"| DIAG["dump(): diagnostics<br/>and restarts"]
+     CPP --> INT["amr::Integrator::advance"]
+     INT --> TRI["SAMRAI<br/>TimeRefinementIntegrator"]
+     TRI -->|"each level step"| AL["MultiPhysicsIntegrator<br/>::advanceLevel"]
+     TRI -->|"levels meet"| SYNC["Synchronization"]
+     TRI -->|"every 2 steps"| RG["Regrid<br/>finer levels"]
+     AL -->|"hybrid level"| PPC["SolverPPC"]
+     AL -->|"or MHD level"| MHD["SolverMHD"]
+     PPC --> MSG["Messenger"]
+     MHD --> MSG
      click PY href "python_to_cpp.html" "From Python script to C++"
      click MSG href "messengers.html" "Messengers and schedules"
      click PPC href "ppc_order.html" "Push and deposition order in the PPC solver"
