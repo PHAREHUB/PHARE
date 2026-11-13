@@ -93,6 +93,8 @@ public:
     {
         model.resourcesManager->registerResources(ct_);
         model.resourcesManager->registerResources(dissipative_electric_state_);
+        // rewritten at every stage
+        model.resourcesManager->excludeFromRestarts(ct_, dissipative_electric_state_);
     }
 
     void allocate(MHDModel& model, auto& patch, double const allocateTime) const

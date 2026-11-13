@@ -60,6 +60,8 @@ public:
     virtual void registerResources(MHDModel& model)
     {
         model.resourcesManager->registerResources(*this);
+        // butcher fluxes zeroed every step, extra states written by the first stage
+        model.resourcesManager->excludeFromRestarts(*this);
     }
 
     virtual void allocate(MHDModel& model, MHDModel::patch_t& patch,

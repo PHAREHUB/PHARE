@@ -196,6 +196,9 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::registerResources(
     mhdmodel.resourcesManager->registerResources(fluxSumE_);
 
     mhdmodel.resourcesManager->registerResources(stateOld_);
+    // stateOld_ refreshed in prepareStep, fluxes_ rewritten every step, the flux sums reset at a
+    // level's first substep and used up by synchronization
+    mhdmodel.resourcesManager->excludeFromRestarts(stateOld_, fluxes_, fluxSum_, fluxSumE_);
 
     evolve_.registerResources(mhdmodel);
 }

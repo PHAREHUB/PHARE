@@ -103,6 +103,9 @@ public:
         boundaryManager    = std::make_shared<boundary_manager_type>(
             has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
             scalarQuantities, vectorQuantities, gamma_);
+
+        // temporaries, and the diagnostics recomputed whenever they are written
+        resourcesManager->excludeFromRestarts(tmpField_, tmpVec_, V_diag_, P_diag_);
     }
 
     ~MHDModel() override = default;
