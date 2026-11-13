@@ -1,7 +1,43 @@
 import numpy as np
 
-from pyphare.pharesee.hierarchy import ScalarField, VectorField
+from pyphare.pharesee.hierarchy import PatchHierarchy, ScalarField, VectorField
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from, rename
+
+# ---------------------------------------------------------------------------- new fields
+# Fields of pyphare.pharesee.amr (new reader) are handled by amr.ops at the top of each
+# function below; the code after that dispatch is master's, for legacy hierarchies.
+# The test is done first because amr fields are registered as virtual subclasses of
+# ScalarField / VectorField (isinstance would send them to the legacy code).
+
+
+def _is_amr(obj):
+    """True for a field of pyphare.pharesee.amr (detected by module, nothing imported)."""
+    return any(
+        getattr(c, "__module__", "").startswith("pyphare.pharesee.amr")
+        for c in type(obj).__mro__
+    )
+
+
+def _amr_apply(what, kernel, operands, expected):
+    """``kernel`` (an amr.ops function on Snapshots) time by time -> new field.
+
+    expected: required component names of every operand (("x","y","z") or ("value",)).
+    TypeError when an operand is a legacy hierarchy (with advice) or of the wrong kind.
+    """
+    from pyphare.pharesee.amr import _protocol
+
+    for op in operands:
+        if not _is_amr(op):
+            if isinstance(op, PatchHierarchy):
+                raise TypeError(_protocol._LEGACY_MSG.format(what=what))
+            raise TypeError(f"{what}: type of hierarchy not yet considered ({type(op).__name__})")
+        if tuple(op.names) != expected:
+            kind = "VectorField" if expected == ("x", "y", "z") else "ScalarField"
+            raise TypeError(
+                f"{what}: type of hierarchy not yet considered (expected {kind} "
+                f"operands, got components {tuple(op.names)})"
+            )
+    return _protocol._map(kernel, list(operands), what)
 
 
 def _compute_dot_product(patch_datas, **kwargs):
@@ -80,6 +116,11 @@ def _compute_grad(patch_data, **kwargs):
 
 
 def dot(hier_left, hier_right, **kwargs):
+    """Scalar product of two VectorFields -> ScalarField (new fields: amr.ops.arith.dot)."""
+    if _is_amr(hier_left) or _is_amr(hier_right):
+        from pyphare.pharesee.amr.ops import arith
+
+        return _amr_apply("dot", arith.dot, (hier_left, hier_right), ("x", "y", "z"))
     if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
         names_left = ["left_x", "left_y", "left_z"]
         names_right = ["right_x", "right_y", "right_z"]
@@ -99,6 +140,11 @@ def dot(hier_left, hier_right, **kwargs):
 
 
 def cross(hier_left, hier_right, **kwargs):
+    """Vector product of two VectorFields -> VectorField (new fields: amr.ops.arith.cross)."""
+    if _is_amr(hier_left) or _is_amr(hier_right):
+        from pyphare.pharesee.amr.ops import arith
+
+        return _amr_apply("cross", arith.cross, (hier_left, hier_right), ("x", "y", "z"))
     if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
         names_left = ["left_x", "left_y", "left_z"]
         names_right = ["right_x", "right_y", "right_z"]
@@ -118,6 +164,11 @@ def cross(hier_left, hier_right, **kwargs):
 
 
 def sqrt(hier, **kwargs):
+    """Square root of a ScalarField -> ScalarField (new fields: np.sqrt, elementwise)."""
+    if _is_amr(hier):
+        from pyphare.pharesee.amr.ops import arith
+
+        return _amr_apply("sqrt", lambda s: arith.unary(np.sqrt, s), (hier,), ("value",))
     h = compute_hier_from(
         _compute_sqrt,
         hier,
@@ -127,12 +178,26 @@ def sqrt(hier, **kwargs):
 
 
 def modulus(hier):
+    """Norm of a VectorField -> ScalarField (new fields: amr.ops.arith.modulus)."""
+    if _is_amr(hier):
+        from pyphare.pharesee.amr.ops import arith
+
+        return _amr_apply("modulus", arith.modulus, (hier,), ("x", "y", "z"))
     assert isinstance(hier, VectorField)
 
     return sqrt(dot(hier, hier))
 
 
 def grad(hier, **kwargs):
+    """Gradient of a ScalarField -> VectorField.
+
+    New fields: amr.ops.deriv.grad, level-aware, divided by the mesh size (master's legacy
+    code below divides by nothing, issue #1446), in 1D, 2D and 3D.
+    """
+    if _is_amr(hier):
+        from pyphare.pharesee.amr.ops import deriv
+
+        return _amr_apply("grad", deriv.grad, (hier,), ("value",))
     assert isinstance(hier, ScalarField)
     nb_ghosts = next(iter(hier.level(0).patches[0].patch_datas.values())).ghosts_nbr[0]
     h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)

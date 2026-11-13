@@ -11,6 +11,19 @@ __all__ = [
 ]
 
 
+def _register_amr_fields():
+    """make the fields of pyphare.pharesee.amr virtual subclasses of the classes above,
+    so that isinstance(B, PatchHierarchy / ScalarField / VectorField) holds for them"""
+    from pyphare.pharesee.amr import field as amr_field
+
+    from .tensorfield import AnyTensorField
+
+    PatchHierarchy.register(amr_field.AMRField)
+    ScalarField.register(amr_field.ScalarField)
+    VectorField.register(amr_field.VectorField)
+    AnyTensorField.register(amr_field.TensorField)
+
+
 def hierarchy_from(
     simulator=None,
     qty=None,
@@ -52,3 +65,7 @@ def hierarchy_from(
         return hierarchy_from_func(func, hier, **kwargs)
 
     raise ValueError("can't make hierarchy")
+
+
+# last, so that the whole package is defined if amr.field imports from it
+_register_amr_fields()
