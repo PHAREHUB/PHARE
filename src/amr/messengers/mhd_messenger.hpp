@@ -275,8 +275,6 @@ namespace amr
             auto& mhdModel = static_cast<MHDModel&>(model);
             auto level     = hierarchy->getPatchLevel(levelNumber);
 
-            bool isRegriddingL0 = levelNumber == 0 and oldLevel;
-
             stateInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
             fillGhostsAtInitTime_(mhdModel, *level, initDataTime);
@@ -297,14 +295,10 @@ namespace amr
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model, level_t& level,
+        void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& /*model*/, level_t& level,
                        double const initDataTime) override
         {
-            auto levelNumber = level.getLevelNumber();
-
-            auto& mhdModel = static_cast<MHDModel&>(model);
-
-            auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
+            auto const levelPtr = hierarchy->getPatchLevel(level.getLevelNumber());
 
             // init-only schedules are used once, so they are built at fill time, not stored
             stateInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);

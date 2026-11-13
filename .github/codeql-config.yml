@@ -1,9 +1,25 @@
-# only for python/non-compiled languages
-
 name: "CodeQL config"
+
+# paths/paths-ignore only apply to python/non-compiled languages
+#  for cpp, everything the build compiles is analysed
 paths:
   - pyphare
   - src
 paths-ignore:
   - subprojects/
   - tests/
+
+# rules that are mostly noise for this codebase
+query-filters:
+  - exclude:
+      id: cpp/commented-out-code
+  - exclude:
+      id: py/commented-out-code
+  - exclude:
+      id: cpp/poorly-documented-function
+  # false positives on structured bindings, if constexpr branches, constexpr template args
+  - exclude:
+      id: cpp/unused-local-variable
+  # false positives on templates, lambdas and variadic functions
+  - exclude:
+      id: cpp/unused-static-variable
