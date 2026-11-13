@@ -4,3 +4,32 @@
 .eqno {
     float: right;
 }
+
+/* ---- Developer guide: visibly different from the user docs ---- */
+.phare-dev-banner {
+    display: flex; flex-wrap: wrap; gap: 0.6em; align-items: center;
+    background: #fff4e0; border-left: 6px solid #d9730d;
+    padding: 0.5em 0.9em; margin-bottom: 1.2em; font-size: 90%; color: #5a3200;
+}
+.phare-dev-banner a { color: #8a4200; text-decoration: underline; }
+.phare-dev-badge {
+    background: #d9730d; color: #fff; font-weight: bold; text-transform: uppercase;
+    letter-spacing: 0.05em; font-size: 80%; padding: 0.15em 0.6em; border-radius: 3px;
+}
+body.phare-dev .wy-nav-top { background: #d9730d; }
+body.phare-dev .wy-side-nav-search { background-color: #b85c08; }
+body.phare-dev .rst-content h1 { border-bottom: 3px solid #d9730d; padding-bottom: 0.2em; }
+
+/* ---- Mermaid: scroll instead of overflow on phones, readable text ---- */
+.mermaid, pre.mermaid, div.mermaid {
+    overflow-x: auto; max-width: 100%; text-align: center; background: transparent;
+}
+.mermaid svg { max-width: none; height: auto; font-size: 14px; }
+.mermaid .node, .mermaid .cluster { cursor: default; }
+.mermaid a { cursor: pointer; }          /* clickable boxes */
+.mermaid .clickable rect, .mermaid .clickable polygon { stroke-width: 2px; }
+@media (max-width: 480px) { .mermaid svg { font-size: 12px; } }
+
+/* ---- "In preparation" boxes ---- */
+.rst-content .admonition.in-preparation { background: #f3f0ff; }
+.rst-content .admonition.in-preparation .admonition-title { background: #7a5cc7; }

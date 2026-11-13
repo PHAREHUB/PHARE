@@ -1,0 +1,18 @@
+{% extends "!layout.html" %}
+{# Developer guide pages (docs under dev/) get a banner and a body class, so they look different from user pages. #}
+{% block extrahead %}
+  {{ super() }}
+  {% if pagename.startswith('dev/') or pagename == 'dev' %}
+  <script>document.addEventListener("DOMContentLoaded", function () { document.body.classList.add("phare-dev"); });</script>
+  {% endif %}
+{% endblock %}
+{% block document %}
+  {% if pagename.startswith('dev/') or pagename == 'dev' %}
+  <div class="phare-dev-banner">
+    <span class="phare-dev-badge">Developer guide</span>
+    <span>How PHARE works inside. Looking to run simulations? Go to the <a href="{{ pathto('index') }}">user documentation</a>.
+    Lost? <a href="{{ pathto('dev/index') }}">Developer map</a>.</span>
+  </div>
+  {% endif %}
+  {{ super() }}
+{% endblock %}
