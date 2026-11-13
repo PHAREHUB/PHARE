@@ -141,7 +141,8 @@ SAMRAI calls its ``refine`` method with a coarse source patch, a fine destinatio
 patch and the list of destination boxes to fill.
 
 #. **Source particles.** Only the coarse *domain* particles are split (L166).
-   When the coarse patch is on another MPI rank, SAMRAI first streams the coarse
+   When the coarse patch is on another MPI rank (parallel process), SAMRAI
+   first streams the coarse
    particles of the region of interest into a temporary patch, and they arrive
    in its domain array (comment L159-L165). The region SAMRAI gathers around
    the destination is set by ``getStencilWidth``: the particle ghost width, in
