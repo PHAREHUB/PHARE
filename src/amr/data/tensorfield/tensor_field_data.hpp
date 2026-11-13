@@ -238,7 +238,6 @@ public:
 
         packTo(buffer, overlap);
 
-        // Once we have fill the buffer, we send it on the stream
         stream.pack(buffer.data(), buffer.size());
     }
 
