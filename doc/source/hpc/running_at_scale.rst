@@ -2,7 +2,7 @@
 Running at scale
 ================
 
-How to run PHARE on many cores: MPI ranks and threads.
+How to run PHARE on many cores with MPI.
 
 .. admonition:: In preparation
    :class: in-preparation
