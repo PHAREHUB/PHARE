@@ -43,11 +43,11 @@ Writing and reading the output:
 .. mermaid::
 
    flowchart TD
-     SIM2["src/simulator"] --> IO["src/diagnostic, src/restarts<br/>(through src/hdf5)"]
-     IO --> FILES[("HDF5 files")]
-     FILES -->|"read by"| SEE["pyphare.pharesee<br/>read and plot"]
-     click IO href "diagnostics_restarts.html" "Diagnostics and restarts internals"
-     click SEE href "../data_analysis/reading_data.html" "Reading data"
+     OSIM["src/simulator"] --> OIO["src/diagnostic, src/restarts<br/>(through src/hdf5)"]
+     OIO --> OFILES["HDF5 files"]
+     OFILES -->|"read by"| OSEE["pyphare.pharesee<br/>read and plot"]
+     click OIO href "diagnostics_restarts.html" "Diagnostics and restarts internals"
+     click OSEE href "../data_analysis/reading_data.html" "Reading data"
 
 An arrow means "uses" or "calls". Nothing in a lower box calls a box above
 it: ``src/core`` is used by ``src/amr`` and uses nothing else of PHARE except
