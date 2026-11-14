@@ -147,10 +147,11 @@ Mesh and adaptive mesh refinement
       :doc:`/dev/field_refinement`.
 
    coarsening
-      Replacing coarse-level values by an average of the fine-level values
-      where a finer level exists. In the hybrid solver the magnetic field is
-      not averaged: it is recomputed by :term:`reflux`. See
-      :doc:`/dev/coarsening`.
+      Replacing coarse-level values by values taken from the finer level, where
+      a finer level exists. In the hybrid solver the electric field is averaged
+      along each edge from the fine edges, the ion moments are copied from the
+      fine node that sits on the coarse node, and the magnetic field is not
+      coarsened: it is recomputed by :term:`reflux`. See :doc:`/dev/coarsening`.
 
    tagging
       Marking the cells that need a finer mesh, from a criterion on the
