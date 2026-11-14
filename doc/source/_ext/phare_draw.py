@@ -272,29 +272,61 @@ def frame(ax, pad=0.3):
     ax.set_ylim(y0 - pad, y1 + pad)
 
 
-def finish(fig, axes, max_h=3.4, min_h=0.9, pad=0.25, title_h=0.38, gap=0.18):
+def finish(fig, axes, max_h=3.4, min_h=0.9, pad=0.25, title_h=0.38, gap=0.18, align=True):
     """Always call last. Fits each panel's view to what is drawn, then sets each panel's height from its
     data aspect (equal aspect) so there is no empty margin: panel height = width * (data height / data width),
-    clamped to [min_h, max_h] inches. Panels with a title get room for it."""
+    clamped to [min_h, max_h] inches. Panels with a title get room for it.
+    align=True: when the panels show the same kind of drawing (their x extents differ by less than 1.5x, as in a
+    step strip), they all get the SAME x limits (hence the same scale), so the same x is at the same place in every
+    panel and readers can compare steps. Set align=False for panels of unrelated sizes."""
     W = fig.get_size_inches()[0]
     inner_w = W * 0.96
     hs = []
     for ax in axes:
         frame(ax, pad)
+    lims = [(ax.get_xlim(), ax.get_ylim()) for ax in axes]
+    widths = [xl[1] - xl[0] for xl, _ in lims]
+    if align and len(axes) > 1 and max(widths) <= 1.5 * min(widths):
+        ux = (min(xl[0] for xl, _ in lims), max(xl[1] for xl, _ in lims))
+        for ax in axes:
+            ax.set_xlim(*ux)  # same x range (hence same scale) in every panel; y stays per panel: no empty bands
+    for ax in axes:
         x0, x1 = ax.get_xlim()
         y0, y1 = ax.get_ylim()
         h = inner_w * (y1 - y0) / max(x1 - x0, 1e-9)
         hs.append(min(max(h, min_h), max_h))
     titled = [bool(getattr(ax, "_phare_title", "")) for ax in axes]
-    total = sum(hs) + sum(title_h if t else 0 for t in titled) + gap * (len(axes) - 1) + 0.1
-    fig.set_size_inches(W, total)
-    y = total - 0.05
-    for ax, h, t in zip(axes, hs, titled):
-        if t:
-            fig.text(0.02, (y - 0.03) / total, ax._phare_title, ha="left", va="top", fontsize=11, fontweight="bold")
-        y -= (title_h if t else 0)
-        ax.set_position([0.02, (y - h) / total, 0.96, h / total])
-        y -= h + gap
+
+    def layout(top_extra, bot_extra):
+        total = (sum(hs) + sum(title_h if t else 0 for t in titled) + gap * (len(axes) - 1)
+                 + sum(top_extra) + sum(bot_extra) + 0.1)
+        fig.set_size_inches(W, total)
+        for t in list(fig.texts):
+            t.remove()
+        y = total - 0.05
+        pos = []
+        for ax, h, t, te, be in zip(axes, hs, titled, top_extra, bot_extra):
+            if t:
+                fig.text(0.02, (y - 0.03) / total, ax._phare_title, ha="left", va="top", fontsize=11, fontweight="bold")
+            y -= (title_h if t else 0) + te
+            ax.set_position([0.02, (y - h) / total, 0.96, h / total])
+            pos.append((y - h, y))
+            y -= h + be + gap
+        return pos
+
+    # pass 1: nominal layout; then measure labels that stick out of each panel (axis labels, texts outside the
+    # data limits) and give them room, so a panel's labels never run into the next panel's title
+    layout([0] * len(axes), [0] * len(axes))
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    top_extra, bot_extra = [], []
+    for ax, (ybot, ytop) in zip(axes, [(0, 0)] * len(axes)):
+        bb = ax.get_tightbbox(r)
+        box = ax.get_position()
+        H = fig.get_size_inches()[1]
+        top_extra.append(max(0.0, bb.y1 / fig.dpi - box.y1 * H))
+        bot_extra.append(max(0.0, box.y0 * H - bb.y0 / fig.dpi))
+    layout(top_extra, bot_extra)
     return fig
 
 
