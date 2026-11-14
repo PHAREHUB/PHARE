@@ -32,25 +32,21 @@ boundary values from.
    :include-source: false
    :alt: A 2D hierarchy: level 0 made of four patches, level 1 made of two patches inside it.
 
-   import matplotlib.pyplot as plt
+   from phare_draw import *
    from matplotlib.patches import Rectangle
 
-   fig, ax = plt.subplots(figsize=(5.4, 3.4))
+   fig, (ax,) = strip(1, ["a two-level hierarchy"], phone=True)
    for (x, y) in [(0, 0), (16, 0), (0, 8), (16, 8)]:
-       ax.add_patch(Rectangle((x, y), 16, 8, fill=False, lw=2, color="#2a7ab9"))
+       ax.add_patch(Rectangle((x, y), 16, 8, fc="none", lw=2, ec=C["L0"]))
    for (x, y, w, h) in [(6, 4, 10, 6), (16, 4, 8, 8)]:
-       ax.add_patch(Rectangle((x, y), w, h, color="#f4a259", alpha=0.7))
-       ax.add_patch(Rectangle((x, y), w, h, fill=False, lw=2, color="#b35806"))
-   ax.text(2, 14.6, "level 0: 4 patches", fontsize=13, color="#2a7ab9")
-   ax.text(7, 6.5, "level 1:\n2 patches", fontsize=13)
-   ax.set_xlim(-0.5, 32.5)
-   ax.set_ylim(-0.5, 16.5)
-   ax.set_aspect("equal")
-   ax.axis("off")
-   fig.tight_layout()
+       ax.add_patch(Rectangle((x, y), w, h, fc=C["patch"], ec=C["L1"], lw=2, alpha=0.9))
+   text(ax, 8, 12, "level 0", color=C["L0"])
+   text(ax, 15, 7.2, "level 1:\n2 patches", color=C["L1"])
+   ax.plot([-1, 33], [-1, 17], alpha=0)
+   finish(fig, [ax])
 
-*Schematic of a two-level hierarchy. Level 1 (orange) lies inside level 0
-(blue), away from the domain edge.*
+*Schematic of a two-level hierarchy. Level 1 (blue) lies inside level 0
+(grey), away from the domain edge.*
 
 
 Recursive time integration
@@ -58,7 +54,7 @@ Recursive time integration
 
 The hybrid equations carry whistler waves, whose stable time step scales like
 :math:`\Delta x^2`. A level twice finer therefore uses a time step four times
-smaller, and takes 4 sub-steps for each step of the level below.
+smaller, and takes 4 sub-steps for each step of the level below, as long as the level-0 step does not change, which is always the case in hybrid. With an adaptive step (MHD only) the number can differ (:doc:`/dev/subcycling`).
 
 Levels are advanced coarsest first, recursively: a level makes one step, then
 every finer level makes its sub-steps to reach the same time, then the levels
@@ -68,39 +64,31 @@ are synchronized.
    :include-source: false
    :alt: Order in which three levels are advanced during one coarse time step.
 
-   import matplotlib.pyplot as plt
+   from phare_draw import *
    from matplotlib.patches import Rectangle
 
-   n_levels, nsub = 3, 4
    order = []
-
    def recurse(level, t0, t1):
        order.append((level, t0, t1))
-       if level + 1 < n_levels:
-           dt = (t1 - t0) / nsub
-           for k in range(nsub):
+       if level < 2:
+           dt = (t1 - t0) / 4
+           for k in range(4):
                recurse(level + 1, t0 + k * dt, t0 + (k + 1) * dt)
+   recurse(0, 0.0, 16.0)
 
-   recurse(0, 0.0, 1.0)
-   colors = ["#4C72B0", "#55A868", "#C44E52"]
-   fig, ax = plt.subplots(figsize=(5.4, 3.2))
+   fig, (ax,) = strip(1, ["one coarse step, three levels"])
+   col = [C["L0"], C["L1"], C["L2"]]
    for i, (lvl, t0, t1) in enumerate(order, start=1):
-       y = n_levels - 1 - lvl
-       ax.add_patch(Rectangle((t0, y + 0.15), t1 - t0, 0.7,
-                              facecolor=colors[lvl], edgecolor="white", lw=1.5))
-       ax.text((t0 + t1) / 2, y + 0.5, str(i), ha="center", va="center",
-               color="white", fontsize=14 if lvl < 2 else 11, fontweight="bold")
-   ax.set_xlim(-0.02, 1.02)
-   ax.set_ylim(0, n_levels)
-   ax.set_yticks([n_levels - 1 - l + 0.5 for l in range(n_levels)])
-   ax.set_yticklabels([f"level {l}" for l in range(n_levels)])
-   ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
-   ax.set_xticklabels(["t", "t+dt/4", "t+dt/2", "t+3dt/4", "t+dt"])
-   ax.tick_params(labelsize=13)
-   for s in ("top", "right", "left"):
-       ax.spines[s].set_visible(False)
-   ax.tick_params(axis="y", length=0)
-   fig.tight_layout()
+       y = 2 - lvl
+       ax.add_patch(Rectangle((t0, y * 1.5), t1 - t0, 1.1, fc=col[lvl], ec="white", lw=1.5))
+       text(ax, (t0 + t1) / 2, y * 1.5 + 0.55, str(i), color="white", bold=True,
+            fs=13 if lvl < 2 else 11, halo=False)
+   for lvl in range(3):
+       text(ax, -0.4, (2 - lvl) * 1.5 + 0.55, f"level {lvl}", ha="right")
+   for k, lab in enumerate([r"$t$", r"$t+\Delta t/4$", r"$t+\Delta t/2$", r"$t+3\Delta t/4$", r"$t+\Delta t$"]):
+       text(ax, 4 * k, -0.45, lab)
+   ax.plot([-3.2, 16.5], [-0.8, 4.2], alpha=0)
+   finish(fig, [ax])
 
 *One coarse step with three levels: numbers give the order of the 21 level
 advances.*
@@ -109,7 +97,7 @@ Because the coarse level goes first, a fine level always has the coarse
 solution at the beginning and at the end of its sub-steps. The values it
 needs at its border during a sub-step are interpolated in time between these
 two coarse states (see "Fields at level boundaries" below). How the code
-implements this is described in :doc:`/dev/one_time_step`.
+implements this is described in :doc:`/dev/subcycling`.
 
 
 Regridding
@@ -158,6 +146,12 @@ prolongation strategies for divergence-preserving vector fields*, Commun.
 Appl. Math. Comput., `doi:10.1007/s42967-021-00182-x
 <https://doi.org/10.1007/s42967-021-00182-x>`_.
 
+The same rules serve hybrid and MHD. MHD refines its conservative variables
+(density, momentum, total energy), which sit at cell centres, with the cell-centre
+rule (the third one): its two children average back to the coarse value, so a
+refined coarse cell keeps its mass, momentum and energy. How the code does it is on
+:doc:`/dev/field_refinement`.
+
 
 Particle refinement
 -------------------
@@ -175,16 +169,17 @@ Field coarsening
 ----------------
 
 Coarsening, also sometimes called "restriction", is the process of projecting
-the solution existing on a given level onto the region it overlaps on the next
-coarser level. Coarsening is used so that the solution on the coarse level
+some quantities of a given level onto the region it overlaps on the next
+coarser level (which ones depends on the model, see below). Coarsening is used so that the solution on the coarse level
 "feels" the fine solution in the overlapped region, which is assumed to be of
 better quality.
 
-PHARE coarsens when a fine level has caught up in time with its coarser
-level:
+When a fine level has caught up in time with its coarser level, **hybrid**
+coarsens:
 
-* the electric field: each coarse edge gets the average of the fine edges
-  along it;
+* the electric field: each coarse edge gets the average of the 2 fine edges
+  along it or, for components that sit on nodes, the value of the fine node on
+  top of it;
 * the ion charge density and charge flux, which live on the grid nodes: each
   coarse node takes the value of the fine node on top of it;
 * the magnetic field is not averaged. The coarse level redoes its Faraday
@@ -192,6 +187,11 @@ level:
   over the fine sub-steps, where the fine level exists (this is called
   :term:`refluxing <reflux>`). The magnetic flux through a coarse face then
   changes by the sum of the changes through the fine faces it contains.
+
+**MHD** does not coarsen its state. At the same moment, the fine fluxes and electric field
+summed over the sub-steps replace the coarse fluxes on the coarse faces they cover,
+and the coarse level redoes its step with them (again refluxing). Details:
+:doc:`/dev/refluxing` and :doc:`/dev/coarsening`.
 
 
 Fields at level boundaries
@@ -204,6 +204,8 @@ from it (:term:`patch ghosts <patch ghost>`). Where they lie outside the
 level, there is no data of the same level: values are refined from the
 coarser level and interpolated linearly in time between the two coarse
 states that bracket the fine sub-step (:term:`level ghosts <level ghost>`).
+Each field is filled at its own time within the sub-step, so its time weight
+differs; see :doc:`/dev/time_interpolation`.
 
 
 Particles at level boundaries
