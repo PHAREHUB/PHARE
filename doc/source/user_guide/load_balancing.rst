@@ -129,7 +129,7 @@ Two separate mechanisms move patches between ranks.
            mark(ax, "primal", st * s, 0, color=C["bad"] if kind == "re" else C["ok"], size=12)
        ax.plot([0, 13], [-0.9, 0.6], alpha=0)
    for (a, b) in zip(auto[:-1], auto[1:]):
-       text(axes[0], (a[0] + b[0]) / 2 * s, 0.3, str(b[0] - a[0]), color=C["ink"], fs=11)
+       text(axes[0], (a[0] + b[0]) / 2 * s, 0.45, str(b[0] - a[0]), color=C["ink"], fs=11)
    text(axes[0], 9.0, -0.75, "redistributed: wait back to 200", color=C["bad"], fs=11)
    text(axes[0], 2.2, -0.75, "balanced: wait doubles", color=C["ok"], fs=11)
    finish(fig, axes)
