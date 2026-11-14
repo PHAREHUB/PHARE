@@ -5,8 +5,8 @@ Developer guide
 How PHARE works inside, for people who read and change its C++ and Python
 sources. Every page of this guide is linked from this one.
 
-If you want to *run* simulations, you are in the wrong place: go back to the
-:doc:`user documentation </index>`.
+To *run* simulations, start from the :doc:`user documentation </index>`
+instead.
 
 How to use this guide
 =====================
