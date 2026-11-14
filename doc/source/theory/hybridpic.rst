@@ -211,17 +211,37 @@ PHARE solves the ion equations with the Particle-In-Cell method (:doc:`pic`) and
 field equations on a staggered grid (:doc:`/numerics/grid`). One time step closes the loop
 between them:
 
-.. mermaid::
+.. plot::
+   :include-source: False
+   :caption: The loop of one step, in 1D. 1 · each particle adds to the moments (density,
+      flux) of its nearest nodes. 2 · Ohm's and Faraday's laws give E and B on the grid (here
+      the transverse components: Ey, Ez on nodes, By, Bz at cell centres). 3 · E and B, read
+      at each particle, move it.
 
-   flowchart TD
-     P["ion macro-particles<br/>(Vlasov equation)"] -->|"deposit"| M["ion moments<br/>n, charge flux"]
-     M --> O["Ohm's law<br/>→ E"]
-     O --> F["Faraday's law<br/>→ B"]
-     F --> O
-     O -->|"push"| P
-     F -->|"push"| P
-     click M href "../numerics/particles.html" "Particles"
-     click O href "../numerics/time_integration.html" "Time integration"
+   from phare_draw import *
+
+   T = ["Deposit → moments", "Ohm, Faraday → fields", "Push"]
+   fig, ax = strip(3, titles=T, phone=True, aspect=False, height=1.3)
+   parts = [1.3, 2.55, 3.35]
+   for k, a in enumerate(ax):
+       a.plot([0, 4], [0, 0], color=C["light"], lw=1)
+       for x in range(5):
+           mark(a, "primal", x, 0, color=C["ion"] if k == 0 else C["E"], size=8)
+       if k == 1:
+           for x in range(4):
+               mark(a, "dual", x + 0.5, 0, color=C["B"], size=7)
+           text(a, 0, 0.42, "Ey, Ez", color=C["E"], bold=True, ha="left"); text(a, 0.5, -0.42, "By, Bz", color=C["B"], bold=True, ha="left")
+       if k != 1:
+           particles(a, [(p, 0.35) for p in parts], size=40)
+       if k == 0:
+           for p in parts:
+               for x in (int(p), int(p) + 1):
+                   arrow(a, (p, 0.3), (x, 0.08), color=C["grey"], lw=1, ms=8)
+       if k == 2:
+           for p, d in zip(parts, (0.35, -0.25, 0.3)):
+               arrow(a, (p, 0.55), (p + d, 0.55), color=C["ion"], lw=1.8, ms=10)
+       a.set_xlim(-0.3, 4.3); a.set_ylim(-0.6, 0.75)
+   finish(fig, ax)
 
 The order of these operations within a step (a :term:`predictor-predictor-corrector <PPC>` scheme) is on
 :doc:`/numerics/time_integration`; the particle push and the deposit are on

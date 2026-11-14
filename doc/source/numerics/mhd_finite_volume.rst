@@ -42,30 +42,41 @@ PHARE's MHD solver is a :term:`Godunov method` (a :term:`finite volume` scheme).
 on the cell faces, one component per face, and the electric field on the cell edges
 (:doc:`grid`). One stage of the scheme does:
 
-.. mermaid::
+#. **Reconstruction**: from the cell averages, two values at each face, one from each side.
+#. :term:`Riemann solver`: from that jump, the flux of mass, momentum, energy and B through
+   the face.
+#. **Finite-volume update**: :math:`U_i \mathrel{-}= \frac{\Delta t}{\Delta x}(F_{i+1/2} - F_{i-1/2})`
+   in each direction.
+#. :term:`Constrained transport <constrained transport>`: E on the cell edges from the
+   Riemann solvers of the faces meeting there (an *upwind* average), then
+   :math:`\partial_t\mathbf{B} = -\nabla\times\mathbf{E}` on the faces.
 
-   flowchart TD
-     A["cell averages ρ, ρv, Etot<br/>(+ B on faces)"] --> R["reconstruct left/right values<br/>at every face"]
-     R --> F["Riemann solver<br/>flux through every face"]
-     F --> U["update the cell averages<br/>with the flux differences"]
-     F --> CT["constrained transport<br/>E on every edge"]
-     CT --> B["Faraday: update B on faces<br/>with the curl of E"]
+.. plot::
+   :include-source: False
+   :caption: Why constrained transport keeps ∇·B. In 2D, Ez sits on the four corners of a
+      cell; each corner value changes the two faces that meet there, with opposite signs in
+      the cell's balance, so the net flux of B out of the cell does not change.
 
-1. **Reconstruction.** Inside each cell, the solution is rebuilt from the averages of the
-   cell and its neighbours, which gives two values at each face: one from the left cell,
-   one from the right cell.
-2. :term:`Riemann solver`. At each face, the jump between the two values is treated as a small
-   Riemann problem; its approximate solution gives the flux of mass, momentum, energy and
-   magnetic field through the face.
-3. **Finite-volume update.** Each cell average changes by what flows in minus what flows
-   out: :math:`U_i^{new} = U_i - \frac{\Delta t}{\Delta x}(F_{i+1/2} - F_{i-1/2})`, in each
-   direction.
-4. :term:`Constrained transport <constrained transport>`. B is not updated with its own face fluxes. Instead, the
-   electric field is built on the cell edges from the information of the Riemann
-   solvers of the faces that meet at that edge (an *upwind* average), and B is advanced
-   with Faraday's law, :math:`\partial_t\mathbf{B} = -\nabla\times\mathbf{E}`. Since the
-   discrete divergence of a discrete curl is exactly zero on this grid (to round-off), the update never
-   changes :math:`\nabla\cdot\mathbf{B}`: no divergence cleaning is needed.
+   from phare_draw import *
+
+   fig, ax = strip(1, phone=True)
+   a = ax[0]
+   grid(a, (0, 0, 1, 1), color=C["grey"], lw=1.2)
+   for (x, y) in [(0, 0), (1, 0), (0, 1), (1, 1)]:
+       mark(a, "primal", x, y, color=C["E"])
+   text(a, -0.12, 1.1, "Ez", color=C["E"], bold=True)
+   for x in (0, 1):
+       arrow(a, (x - 0.15, 0.5), (x + 0.15, 0.5), color=C["B"], lw=2.2, ms=12)
+       arrow(a, (x, 0.08), (x, 0.35), color=C["grey"], lw=1.2, ms=9)
+       arrow(a, (x, 0.92), (x, 0.65), color=C["grey"], lw=1.2, ms=9)
+   for y in (0, 1):
+       arrow(a, (0.5, y - 0.15), (0.5, y + 0.15), color=C["B"], lw=2.2, ms=12)
+       arrow(a, (0.08, y), (0.35, y), color=C["grey"], lw=1.2, ms=9)
+       arrow(a, (0.92, y), (0.65, y), color=C["grey"], lw=1.2, ms=9)
+   text(a, 1.2, 0.5, "Bx", color=C["B"]); text(a, 0.5, 1.25, "By", color=C["B"])
+   text(a, 0.5, 0.5, "∇·B\nunchanged", color=C["grey"], fs=11)
+   a.update_datalim([(-0.4, -0.2), (1.45, 1.4)])
+   finish(fig, ax)
 
 .. plot::
    :include-source: False
@@ -81,7 +92,7 @@ on the cell faces, one component per face, and the electric field on the cell ed
    u = np.array([1.0, 1.0, 0.95, 0.8, 0.55, 0.3, 0.15, 0.1, 0.1, 0.1])
    u[6:] = [0.9, 0.9, 0.9, 0.9]  # a jump
    n = len(u)
-   fig, axes = plt.subplots(2, 1, figsize=(5, 5), sharex=True)
+   fig, axes = plt.subplots(2, 1, figsize=(3.4, 4.2), sharex=True)
    for ax, title in zip(axes, ["Constant", "Linear + van Leer limiter"]):
        for i in range(n):
            if title == "Constant":
@@ -94,10 +105,10 @@ on the cell faces, one component per face, and the electric field on the cell ed
            ax.plot(i + 0.5, u[i], "o", color="0.3", ms=5)
        for i in range(n + 1):
            ax.axvline(i, color="0.85", lw=0.8, zorder=0)
-       ax.set_title(title, fontsize=15)
+       ax.set_title(title, fontsize=12)
        ax.set_yticks([])
-       ax.tick_params(labelsize=14)
-   axes[1].set_xlabel("cell faces", fontsize=15)
+       ax.tick_params(labelsize=11)
+   axes[1].set_xlabel("cell faces", fontsize=12)
    fig.tight_layout()
 
 Options

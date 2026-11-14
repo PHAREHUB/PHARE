@@ -45,17 +45,38 @@ particles move in that same field. PHARE solves this with two predictions and on
 correction. Starting from :math:`\mathbf{B}^n`, :math:`\mathbf{E}^n` and the ion moments
 at time :math:`n`:
 
-.. mermaid::
+.. plot::
+   :include-source: False
+   :caption: Red: fields; green: particles and ion moments. Each stage starts again from Bⁿ and
+      advances with a mid-step (averaged) field; only the second push is kept.
 
-   flowchart TD
-     P1["Predictor 1<br/>B* = Bⁿ − Δt curl Eⁿ<br/>E* from Ohm (B*, moments n)"]
-     A1["Average<br/>B, E at mid-step"]
-     M1["Trial push of a copy of the particles<br/>→ predicted moments n+1"]
-     P2["Predictor 2<br/>B** = Bⁿ − Δt curl E_avg<br/>E** from Ohm (B**, predicted moments)"]
-     A2["Average again"]
-     M2["Real push of the particles<br/>→ moments n+1"]
-     C["Corrector<br/>Bⁿ⁺¹ = Bⁿ − Δt curl E_avg<br/>Eⁿ⁺¹ from Ohm (Bⁿ⁺¹, moments n+1)"]
-     P1 --> A1 --> M1 --> P2 --> A2 --> M2 --> C
+   from phare_draw import *
+
+   T = ["Predictor 1, then a trial push",
+        "Predictor 2, then the real push",
+        "Corrector"]
+   rows = [("B*, E*  (Ohm with nⁿ)", "ñⁿ⁺¹: predicted, particles discarded", "Faraday with Eⁿ"),
+           ("B**, E**  (Ohm with ñⁿ⁺¹)", "nⁿ⁺¹: particles kept", "Faraday with average 1"),
+           ("Bⁿ⁺¹, Eⁿ⁺¹  (Ohm with nⁿ⁺¹)", None, "Faraday with average 2")]
+   fig, ax = strip(3, titles=T, aspect=False, height=1.6)
+   for k, (a, (flab, push, far)) in enumerate(zip(ax, rows)):
+       for x, lab in [(0, "tⁿ"), (5, "tⁿ+½"), (10, "tⁿ⁺¹")]:
+           a.plot([x, x], [-0.95, -0.8], color=C["grey"], lw=1)
+           text(a, x, -1.2, lab, color=C["grey"])
+       a.plot([0, 10], [-0.875, -0.875], color=C["light"], lw=1)
+       mark(a, "primal", 0, 1, color=C["grey"]); text(a, 0, 0.65, "Bⁿ", color=C["grey"])
+       arrow(a, (0.3, 1), (9.6, 1), color=C["B"], lw=2.2)
+       mark(a, "primal", 10, 1, color=C["B"]); text(a, 10, 1.45, flab, color=C["B"], bold=True, ha="right")
+       text(a, 0.3, 1.25, far, color=C["B"], ha="left", va="bottom", fs=10)
+       if push:
+           mark(a, "dual", 5, 1, color=C["E"]); text(a, 5, 0.6, f"average {k + 1} of tⁿ and tⁿ⁺¹ fields", color=C["E"])
+           mark(a, "primal", 0, 0, color=C["ion"])
+           arrow(a, (0.3, 0), (9.6, 0), color=C["ion"], lw=2.2)
+           mark(a, "primal", 10, 0, color=C["ion"])
+           text(a, 10, -0.4, push, color=C["ion"], ha="right")
+           text(a, 0.3, -0.4, "push with the average", color=C["ion"], ha="left")
+       a.set_xlim(-0.6, 10.6); a.set_ylim(-1.45, 1.8)
+   finish(fig, ax)
 
 In equations, with :math:`\mathcal{O}(\mathbf{B}, \text{moments})` the electric field from
 Ohm's law (:doc:`/theory/hybridpic`):
