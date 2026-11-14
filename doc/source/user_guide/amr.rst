@@ -161,7 +161,7 @@ box ``(3,), (6,)`` on level 0.
    import matplotlib.pyplot as plt
    from matplotlib.patches import Rectangle
 
-   n0, lo, hi = 12, 3, 6                  # level-0 cells, box = cells lo..hi
+   n0, lo, hi = 9, 3, 6                   # level-0 cells, box = cells lo..hi
    fig, ax = plt.subplots(figsize=(5.4, 2.4))
    for i in range(n0):
        inbox = lo <= i <= hi
@@ -170,7 +170,7 @@ box ``(3,), (6,)`` on level 0.
        ax.text(i + 0.5, 1.4, str(i), ha="center", va="center", fontsize=13)
    for j in range(2 * lo, 2 * hi + 2):
        ax.add_patch(Rectangle((j / 2, 0.0), 0.5, 0.8, fc="#f6d6a8", ec="0.3"))
-       ax.text(j / 2 + 0.25, 0.4, str(j), ha="center", va="center", fontsize=13)
+       ax.text(j / 2 + 0.25, 0.4, str(j), ha="center", va="center", fontsize=11)
    ax.text(-0.15, 1.4, "level 0", ha="right", va="center", fontsize=13)
    ax.text(-0.15, 0.4, "level 1", ha="right", va="center", fontsize=13)
    ax.text((lo + hi + 1) / 2, 2.05, "box (3,), (6,)", ha="center", fontsize=13)

@@ -25,12 +25,11 @@ Running a simulation, from the script down to the physics:
 
    flowchart TD
      IN["pyphare.pharein<br/>input script"] -->|"fills"| INI["src/initializer<br/>PHAREDict"]
-     SIMPY["pyphare.simulator<br/>Simulator.run / advance"] -->|"calls"| PB["src/python3<br/>pybind modules"]
+     INI -->|"then"| SIMPY["pyphare.simulator<br/>Simulator.run / advance"]
+     SIMPY -->|"calls"| PB["src/python3<br/>pybind modules"]
      PB --> SIM["src/simulator<br/>Simulator&lt;options&gt;"]
-     INI -.->|"read by"| SIM
-     SIM --> AMR["src/amr<br/>messengers, solvers,<br/>integrator, tagging"]
+     SIM --> AMR["src/amr, on top of SAMRAI<br/>messengers, solvers,<br/>integrator, tagging"]
      AMR --> CORE["src/core<br/>fields, particles,<br/>numerical schemes"]
-     AMR --> LIB["SAMRAI library<br/>patches, levels, schedules"]
      click IN href "python_to_cpp.html" "From Python script to C++"
      click INI href "python_to_cpp.html" "From Python script to C++"
      click PB href "python_to_cpp.html" "From Python script to C++"
@@ -38,7 +37,6 @@ Running a simulation, from the script down to the physics:
      click SIM href "one_time_step.html" "One time step"
      click AMR href "messengers.html" "Messengers and schedules"
      click CORE href "gridlayout.html" "GridLayout"
-     click LIB href "resources_manager.html" "Resources manager and patch data"
 
 Writing and reading the output:
 
@@ -47,7 +45,7 @@ Writing and reading the output:
    flowchart TD
      SIM2["src/simulator"] --> IO["src/diagnostic, src/restarts<br/>(through src/hdf5)"]
      IO --> FILES[("HDF5 files")]
-     SEE["pyphare.pharesee<br/>read and plot"] -->|"reads"| FILES
+     FILES -->|"read by"| SEE["pyphare.pharesee<br/>read and plot"]
      click IO href "diagnostics_restarts.html" "Diagnostics and restarts internals"
      click SEE href "../data_analysis/reading_data.html" "Reading data"
 
