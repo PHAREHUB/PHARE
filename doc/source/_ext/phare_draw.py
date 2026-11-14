@@ -28,7 +28,7 @@ from matplotlib.patches import FancyArrowPatch, Rectangle, FancyBboxPatch  # noq
 
 __all__ = [
     "C", "strip", "grid", "patch", "level", "yee", "mark", "arrow", "particles", "text",
-    "brace", "boxes", "frame", "finish", "WIDTH", "legend", "ruler", "yee_pair",
+    "brace", "amr_clock", "boxes", "frame", "finish", "WIDTH", "legend", "ruler", "yee_pair",
 ]
 
 WIDTH = 6.5  # inches, maximum
@@ -328,6 +328,59 @@ def finish(fig, axes, max_h=3.4, min_h=0.9, pad=0.25, title_h=0.38, gap=0.18, al
         bot_extra.append(max(0.0, box.y0 * H - bb.y0 / fig.dpi))
     layout(top_extra, bot_extra)
     return fig
+
+
+def amr_clock(ax, nsub=4, shade=(), marks=(), numbers=True, coarse_label="coarse step",
+              fine_label="fine sub-steps", side_labels=False, coarse_dots=(), times=False):
+    """'Where are we' strip: one coarse step (time 0..1) over nsub equal fine sub-steps.
+
+    shade: 1-based sub-step numbers drawn highlighted.
+    marks: [(time, label) or (time, label, 'sync'), ...], time in coarse-step units (0 = t, 1 = t+dt):
+      a dashed vertical line through both bars, label above; 'sync' marks use another colour, solid line.
+    coarse_dots: [(time, label), ...] dots on the coarse bar with a label above (e.g. the two saved times).
+    side_labels: True puts "level 0" / "level 1" on the left (narrower figure) instead of the right-hand texts.
+    times: True labels the sub-step boundaries t, t+dt/4, ... under the fine bar.
+    The nsub value and all times are the caller's claims (ledger); the helper only draws.
+    """
+    h, y0 = 0.45, 0.65
+    ax.add_patch(Rectangle((0, y0), 1, h, fc=C["faint"], ec=C["L0"], lw=1.8, zorder=2))
+    ctxt = "level 0" if side_labels else coarse_label
+    if side_labels:
+        ax.text(-0.03, y0 + h / 2, "level 0", ha="right", va="center", color=C["L0"], fontsize=11)
+        ax.text(-0.03, h / 2, "level 1", ha="right", va="center", color=C["L1"], fontsize=11)
+    else:
+        ax.text(0.98, y0 + h / 2, coarse_label, ha="right", va="center", color=C["ink"], fontsize=11, zorder=3)
+        ax.text(1.03, h / 2, fine_label, ha="left", va="center", color=C["L1"], fontsize=11)
+    for k in range(nsub):
+        on = (k + 1) in shade
+        ax.add_patch(Rectangle((k / nsub, 0), 1 / nsub, h, fc=C["hi"] if on else C["patch"],
+                               ec=C["L1"], lw=1.8, zorder=2))
+        if numbers:
+            ax.text((k + 0.5) / nsub, h / 2, str(k + 1), ha="center", va="center", color=C["ink"],
+                    fontsize=11, fontweight="bold" if on else "normal", zorder=8,
+                    bbox=dict(fc=C["hi"] if on else C["patch"], ec="none", pad=1.5))
+    if times:
+        for k in range(nsub + 1):
+            lab = "t" if k == 0 else "t+dt" if k == nsub else (f"t+dt/{nsub}" if k == 1 else f"t+{k}dt/{nsub}") if k * 2 != nsub else "t+dt/2"
+            ax.text(k / nsub, -0.12, lab, ha="center", va="top", color=C["ink"], fontsize=11)
+    else:
+        ax.text(0, -0.12, "t", ha="center", va="top", color=C["ink"], fontsize=11)
+        ax.text(1, -0.12, "t+dt", ha="center", va="top", color=C["ink"], fontsize=11)
+    for tm, lab in coarse_dots:
+        ax.plot([tm], [y0 + h / 2], "o", color=C["ink"], ms=9, zorder=7)
+        ax.text(tm, y0 + h + 0.12, lab, ha="left" if tm <= 0 else "right" if tm >= 1 else "center",
+                va="bottom", color=C["ink"], fontsize=11, zorder=8)
+    for m in marks:
+        tm, lab = m[0], m[1]
+        sync = len(m) > 2 and m[2] == "sync"
+        col = C["ok"] if sync else C["ghost_edge"]
+        ax.plot([tm, tm], [-0.05, y0 + h + 0.05], color=col, lw=2.4 if sync else 2,
+                ls="-" if sync else "--", zorder=6)
+        ax.plot([tm], [0], "o", color=col, ms=8, zorder=7)
+        ax.text(tm, y0 + h + (0.5 if coarse_dots else 0.12), lab, ha="right" if sync and tm >= 1 else "center",
+                va="bottom", color=col, fontsize=11, bbox=HALO, zorder=8)
+    ax.set_xlim(-0.3 if side_labels else -0.05, 1.08 if side_labels else 1.5)
+    ax.set_ylim(-0.4 if not times else -0.45, y0 + h + (1.0 if coarse_dots else 0.5))
 
 
 def boxes(ax, items, arrows=(), w=2.6, h=0.9, gap=0.7, color=None, cols=1, fs=11):

@@ -61,3 +61,28 @@ Dense figures keep the default 6.5 in width and scroll sideways on a phone.
    grid(b, (-1, -1, 5, 4)); patch(b, (0, 0, 4, 3), ghosts=1)
    grid(c, (0, 0, 4, 3)); level(c, (1, 1, 3, 2), ratio=2)
    finish(fig, [a, b, c])
+
+Time strip (AMR)
+----------------
+
+``amr_clock`` draws one coarse step over its fine sub-steps, with the sub-steps to shade and the times to mark
+(time 0 = t, 1 = t+dt). It only draws: the number of sub-steps and the marked times are the caller's claims.
+
+.. plot::
+   :include-source: True
+   :caption: Sub-step 2 shaded, and a time marked inside it.
+
+   from phare_draw import *
+   fig, (a,) = strip(1, aspect=False, height=2.2)
+   amr_clock(a, shade=[2], marks=[(0.375, "mid sub-step 2")])
+   finish(fig, [a], align=False)
+
+.. plot::
+   :include-source: True
+   :caption: Left labels, saved coarse times, all sub-step times, and a synchronisation mark.
+
+   from phare_draw import *
+   fig, (a,) = strip(1, aspect=False, height=2.8)
+   amr_clock(a, side_labels=True, times=True, coarse_dots=[(0, "saved at t"), (1, "already at t+dt")],
+             marks=[(0.375, "mid sub-step 2"), (1, "meeting time", "sync")])
+   finish(fig, [a], align=False)
