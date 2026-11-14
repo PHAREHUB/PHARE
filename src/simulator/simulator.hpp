@@ -29,6 +29,8 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include <algorithm>
 
 
@@ -72,7 +74,7 @@ public:
     }
 
 
-    NO_DISCARD double startTime() override { return startTime_; }
+    NO_DISCARD double restartTime() override { return restartTime_; }
     NO_DISCARD double endTime() override { return finalTime_; }
     NO_DISCARD double timeStep() override { return dt_; }
     NO_DISCARD double currentTime() override { return currentTime_; }
@@ -159,10 +161,8 @@ private:
     int maxMHDLevel_                 = 0;
     double dt_                       = 0;
     core::TimeStepType timeStepType_ = core::TimeStepType::constant;
-    double cflWave_                  = 0;
-    double cflDiffusive_             = 0;
     int timeStepNbr_                 = 0;
-    double startTime_                = 0;
+    double restartTime_              = 0;
     double finalTime_                = 0;
     double currentTime_              = 0;
     std::size_t fineDumpLvlMax       = 0;
@@ -189,7 +189,6 @@ private:
 
 
 
-    double restart_time(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&, auto&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
@@ -218,14 +217,6 @@ namespace
 //-----------------------------------------------------------------------------
 //                           Definitions
 //-----------------------------------------------------------------------------
-
-template<auto opts>
-double Simulator<opts>::restart_time(initializer::PHAREDict const& dict)
-{
-    return cppdict::get_value(dict, "simulation/restarts/restart_time", 0.);
-}
-
-
 
 template<auto opts>
 void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto& model)
@@ -297,11 +288,13 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
     auto const lbm_id = lbm_->getId(); // moved on next line
     multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
 
-    startTime_ = restart_time(dict);
-    integrator_
-        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
-                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
+    integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
+                                               loadBalancer, finalTime_, lb_info, lbm_id);
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
+
+    restartTime_ = integrator_->currentTime();
+    currentTime_ = restartTime_;
+    multiphysInteg_->setRestartTime(restartTime_);
 }
 
 
@@ -396,17 +389,10 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
     dt_               = cppdict::get_value(dict, "simulation/time_step/value", 0.);
     timeStepType_
         = cppdict::get_value(dict, "simulation/time_step/mode", core::TimeStepType::constant);
-    cflWave_        = cppdict::get_value(dict, "simulation/time_step/cfl_wave", 0.);
-    cflDiffusive_   = cppdict::get_value(dict, "simulation/time_step/cfl_diffusive", 0.);
     timeStepNbr_    = cppdict::get_value(dict, "simulation/time_step_nbr", 0);
     finalTime_      = dict["simulation"]["final_time"].template to<double>();
     functors_       = functors_setup(dict);
     multiphysInteg_ = std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_);
-
-    currentTime_ = restart_time(dict);
-    // finalTime_ is computed in Python as start_time + time_step_nbr * time_step
-    // (start_time == restart_time), so it already accounts for the restart offset.
-
 
     // we would need a different restart manager for mhd and hybrid if both models are used
 
@@ -517,9 +503,8 @@ void Simulator<opts>::initialize()
         // First dt_ for the init dump
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
-            double const dt = multiphysInteg_->computeStableDt(
-                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            double const dt = multiphysInteg_->initialStableDt(*hierarchy_, currentTime_);
+            dt_             = std::min(dt, finalTime_ - currentTime_);
         }
     }
     catch (core::DictionaryException const& ex)
@@ -566,15 +551,26 @@ double Simulator<opts>::advance()
         if (!integrator_)
             throw std::runtime_error("Error - no valid integrator in the simulator");
 
-        if (timeStepType_ == core::TimeStepType::adaptive)
+        if (!(currentTime_ < finalTime_))
         {
-            double const dt = multiphysInteg_->computeStableDt(
-                *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            std::ostringstream oss;
+            oss << std::setprecision(17)
+                << "Simulator::advance: the simulation is already at its final time " << finalTime_;
+            throw std::runtime_error(oss.str());
         }
 
-        integrator_->advance(dt_);
-        currentTime_ = startTime_ + ((*timeStamper) += dt_);
+        if (timeStepType_ == core::TimeStepType::adaptive)
+        {
+            double const dt = multiphysInteg_->computeStableDt(*hierarchy_, currentTime_);
+            dt_             = std::min(dt, finalTime_ - currentTime_);
+        }
+
+        auto next = restartTime_ + ((*timeStamper) += dt_);
+        if (next > finalTime_ or finalTime_ - next < 1e-6 * dt_)
+            next = finalTime_;
+
+        integrator_->advanceTo(next);
+        currentTime_ = integrator_->currentTime();
     }
     catch (core::DictionaryException const& ex)
     {

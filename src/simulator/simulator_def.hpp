@@ -17,7 +17,7 @@ namespace PHARE
 class ISimulator
 {
 public:
-    virtual double startTime()   = 0;
+    virtual double restartTime() = 0;
     virtual double endTime()     = 0;
     virtual double currentTime() = 0;
     virtual double timeStep()    = 0;

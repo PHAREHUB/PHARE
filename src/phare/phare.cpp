@@ -103,7 +103,7 @@ int main(int argc, char** argv)
     dictHandler.stop();
     provider.reset();
 
-    [[maybe_unused]] auto time = simulator->startTime();
+    [[maybe_unused]] auto time = simulator->restartTime();
 
     auto const dump = [&]() {
         simulator->dump_diagnostics(simulator->currentTime(), simulator->timeStep());
