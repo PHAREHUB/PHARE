@@ -188,25 +188,21 @@ particles per cell means less noise and a longer run.
 What just happened
 ------------------
 
-The script declared four blocks, then handed them to the ``Simulator``, which
-runs the compiled code and writes the output files. The analysis package,
-``pharesee``, reads those files back. Click a box to read more.
+The script declares four blocks, in this order, then hands them to the
+``Simulator``, which runs the compiled code and writes the output files.
+``pharesee`` reads them back. Each box links to its page.
 
-.. mermaid::
+.. flow::
+   :horizontal:
 
-   flowchart LR
-     S["Simulation<br/>grid, time, output"] --> R
-     M["MaxwellianFluidModel<br/>B field + protons"] --> R
-     E["ElectronModel<br/>electron fluid"] --> R
-     D["ElectromagDiagnostics<br/>what to write"] --> R
-     R["Simulator(sim).run()"] --> F[("first_run/EM_B.h5")]
-     F --> P["Run('first_run')<br/>pharesee"] --> G["plot"]
-     click S href "../user_guide/simulation.html"
-     click M href "../user_guide/hybrid_inputs.html"
-     click E href "../user_guide/electrons.html"
-     click D href "../user_guide/diagnostics.html"
-     click R href "../user_guide/running.html"
-     click P href "../data_analysis/reading_data.html"
+   Simulation | grid, time, output | /user_guide/simulation
+   MaxwellianFluidModel | B field + protons | /user_guide/hybrid_inputs
+   ElectronModel | electron fluid | /user_guide/electrons
+   ElectromagDiagnostics | what to write | /user_guide/diagnostics
+   Simulator(sim).run() | the time loop | /user_guide/running
+   first_run/EM_B.h5 | output file
+   Run | pharesee reads first_run/ | /data_analysis/reading_data
+   plot | first_simulation.png
 
 **Hybrid model.** PHARE's default model is *hybrid*: ions are particles,
 electrons are a fluid. That is why you gave a population of protons (with
