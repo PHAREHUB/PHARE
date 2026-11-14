@@ -55,3 +55,9 @@ body.phare-dev .rst-content h1 { border-bottom: 3px solid #d9730d; padding-botto
 .dev-dashboard > .dev-card ul, .dev-dashboard > .dev-card ol { margin-bottom: 0.6em; }
 .dev-dashboard > .dev-card li { margin-bottom: 0.15em; overflow-wrap: anywhere; }
 .dev-dashboard > .dev-card a { font-weight: 500; }
+
+/* ---- plot figures on phones: keep text readable, scroll sideways (natural size, at most 900 px wide) ---- */
+@media (max-width: 700px) {
+    .rst-content figure:has(> img.plot-directive) { overflow-x: auto; }
+    .rst-content img.plot-directive { width: auto; max-width: 900px; }
+}
