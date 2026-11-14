@@ -44,7 +44,7 @@ The resulting periodicity of each direction is available as the list of booleans
 
 Each boundary type is implemented by imposing domain boundary conditions on the conservative
 variables, on the magnetic field and, for some types, on the tangential component of the electric
-field; see {doc}`../numerics/domain_boundary_conditions` for how these conditions are discretized.
+field; see {doc}`/numerics/domain_boundary_conditions` for how these conditions are discretized.
 
 ### Open
 
@@ -152,3 +152,73 @@ ph.MHDModel(
 Here the fast magnetosonic speed of the inflow state is about 1.7 (with `gamma=5/3`), so the inflow
 speed of 2.0 is super-magnetofast. The initial `bx` equals `B[0]` on the inflow boundary, as
 required for the normal component of the magnetic field.
+
+## Common mistakes
+
+- **Hybrid run with boundaries** (the default model is hybrid):
+
+  ```text
+  ValueError: non-periodic domain boundaries are only supported by the MHDModel; got model_options=['HybridModel']
+  ```
+
+  Fix: add `model_options=["MHDModel"]` (see {doc}`/user_guide/mhd_inputs`), or remove `domain_boundaries`.
+
+- **Only one side of a direction given**:
+
+  ```text
+  ValueError: Direction 'x' is physical since one of its boundaries is given in 'domain_boundaries', but xupper is missing
+  ```
+
+- **Wrong location name**, or a direction beyond the simulation dimension (here `ylower` in 1D):
+
+  ```text
+  ValueError: Wrong boundary name ylower: should belong to ['xlower', 'xupper']
+  ```
+
+- **Unknown type**, for example `"wall"`:
+
+  ```text
+  ValueError: Boundary type wall is not valid: it should belong to ('open', 'reflective', 'super-magnetofast-inflow')
+  ```
+
+- **No `type` key**:
+
+  ```text
+  KeyError: "No key 'type' found in the domain_boundaries dict passed to xlower"
+  ```
+
+- **A parameter the type does not take**, e.g. `density` on an `open` boundary:
+
+  ```text
+  ValueError: Boundary type 'open' at 'xlower' does not take ['density']; expected keys: []
+  ```
+
+- **A missing inflow parameter** (here `B`):
+
+  ```text
+  KeyError: "Boundary type 'super-magnetofast-inflow' at 'xlower' requires 'B'"
+  ```
+
+- **Inflow velocity pointing out of the domain** (here `velocity=-2.0` at `xlower`):
+
+  ```text
+  ValueError: 'velocity' at inflow boundary 'xlower' must point into the domain, i.e. have a positive x component (or be a positive scalar), got -2.0
+  ```
+
+- **Negative inflow pressure** (or density):
+
+  ```text
+  ValueError: 'pressure' at inflow boundary 'xlower' must be a finite positive scalar, got -1.0
+  ```
+
+- **Initial `bx` different from the inflow `B[0]`** (here `bx=0.5` with `B[0]=0.75`):
+
+  ```text
+  ValueError: the initial x magnetic field on the inflow boundary 'xlower' must equal the boundary value B[0]=0.75, since the normal magnetic field stays at its initial value on an inflow face; max deviation 0.25
+  ```
+
+- **`domain_boundaries` not a dict**:
+
+  ```text
+  TypeError: A dict should be passed to argument 'domain_boundaries'
+  ```
