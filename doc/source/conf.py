@@ -67,6 +67,9 @@ mermaid_height = "auto"
 phare_doc_commit = "dc62fdd4e6c99d31b3f563678a1084267f5b5c10"
 extlinks = {
     "src": (f"https://github.com/PHAREHUB/PHARE/blob/{phare_doc_commit}/%s", "%s"),
+    # :pr:`1278` and :issue:`604` render as "#1278" / "#604", linked to GitHub
+    "pr": ("https://github.com/PHAREHUB/PHARE/pull/%s", "#%s"),
+    "issue": ("https://github.com/PHAREHUB/PHARE/issues/%s", "#%s"),
 }
 
 autodoc_default_options = {
