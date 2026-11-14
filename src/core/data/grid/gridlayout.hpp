@@ -995,6 +995,20 @@ namespace core
         {
             evalOnAnyBox(ghostBoxFor(field), fn);
         }
+        // evalOnBox / evalOnGhostBox for fn that writes only at its own index (pointwise
+        // updates): the innermost loop is marked free of cross-iteration aliasing
+        template<typename Field, typename Fn>
+        void evalOnBoxIndependent(Field& field, Fn&& fn) const
+        {
+            evalOnAnyBox</*independent*/ true>(domainBoxFor(field), fn);
+        }
+
+        template<typename Field, typename Fn>
+        void evalOnGhostBoxIndependent(Field& field, Fn&& fn) const
+        {
+            evalOnAnyBox</*independent*/ true>(ghostBoxFor(field), fn);
+        }
+
         auto levelNumber() const { return levelNumber_; }
 
 
@@ -1015,17 +1029,33 @@ namespace core
 
     private:
         // calls fn(ix[, iy[, iz]]) once per point of box, walking it span by span
-        // (see for_each_point in core/utilities/box/box_spans.hpp)
+        // (see for_each_point in core/utilities/box/box_spans.hpp). `independent` promises the
+        // compiler that iterations do not alias each other's writes (see evalOnBoxIndependent)
+        template<bool independent = false>
         void evalOnAnyBox(auto const& box, auto& fn) const
         {
-            for_each_point(box, [&](auto& point) {
+            auto call = [&](auto& point) PHARE_LAMBDA_ALWAYS_INLINE {
                 if constexpr (dimension == 1)
                     fn(point[0]);
                 else if constexpr (dimension == 2)
                     fn(point[0], point[1]);
                 else
                     fn(point[0], point[1], point[2]);
-            });
+            };
+
+            if constexpr (independent)
+                for_each_span(box, [&](auto const& start,
+                                       std::uint32_t const size) PHARE_LAMBDA_ALWAYS_INLINE {
+                    auto point = start;
+                    PHARE_IVDEP
+                    for (auto i = start[dimension - 1], end = i + size; i < end; ++i)
+                    {
+                        point[dimension - 1] = i;
+                        call(point);
+                    }
+                });
+            else
+                for_each_point(box, call);
         }
 
 
