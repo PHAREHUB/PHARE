@@ -15,8 +15,8 @@ How to use this guide
   to the page.
 - **Newcomer:** read the pages of the *Start* box in order, then follow the
   links at the bottom of each page.
-- Boxes in diagrams are clickable: they open the page that explains them.
-  Every page links back up to the page above it.
+- Each page links down to finer pages (*Go deeper*) and back up to the page
+  above it (the line at the top).
 - Code links point to the exact lines at the commit the pages were checked
   against.
 
