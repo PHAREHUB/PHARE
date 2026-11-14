@@ -9,130 +9,59 @@ Grabbing particles from neighbours; patch ghost particles
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` ›
    :doc:`/dev/ppc_order` › Grabbing particles from neighbours
 
-**In one sentence:** a particle that leaves its patch for a neighbour patch of
-the same level is first kept by the patch it left, as a *patch ghost particle*,
-so that this patch can deposit it; then the neighbour *grabs* it into its own
-domain.
+**In one sentence:** a particle that leaves its :term:`patch` for a same-level
+neighbour is first kept by the patch it left, as a :term:`patch ghost particle`,
+so that this patch deposits it; then the neighbour *grabs* it into its domain.
 
-Why it works this way
----------------------
-
-A :term:`level` is cut into :term:`patches <patch>`, often on different
-:term:`MPI` :term:`ranks <rank>`. Each patch pushes only its own particles. After a push,
-some particles sit in a cell that belongs to a neighbour. Two things must
-happen:
-
-* the particle must **change owner**: from the next step on, the neighbour
-  pushes it;
-* its **density and flux** at the new time must still be counted, once.
-
-PHARE does both in a fixed order: the patch the particle left deposits it, then
-the particle is handed over. The neighbour does not deposit it in this step: the
-nodes they share are completed later by a sum over patch borders
-(:doc:`/dev/moments`).
-
-The picture
------------
+The mechanism
+-------------
 
 .. plot::
    :include-source: False
-   :caption: Two patches of the same level. A particle of patch A (black dot)
-      is pushed into patch B. It lands in A's particle ghost box, in the part
-      covered by B (blue): A keeps it as a patch ghost particle and deposits it.
-      Then B grabs it: B takes from A's patch ghost array every particle in
-      A's box grown by the particle ghost width, intersected with B's domain.
-      Width 2 cells here (interpolation orders 2 and 3; 1 cell at order 1).
+   :caption: Patches A and B of one level, 2 ghost cells (orders 2-3). Follow
+      the particle that crosses from A to B: kept and deposited by A, then
+      grabbed by B.
 
-   import matplotlib.pyplot as plt
-   from matplotlib.patches import Rectangle, FancyArrowPatch
+   from phare_draw import *
+   from matplotlib.patches import Rectangle
+   A, B = (0, 0, 6, 4), (6, 0, 12, 4)
+   def base(a):
+       grid(a, (-2, -2, 13, 6.5), color=C["light"])
+       patch(a, A, ghosts=2, label="patch A"); patch(a, B, label="patch B")
+       a.add_patch(Rectangle((6, 0), 2, 4, fc=C["E"], alpha=0.3, ec="none", zorder=1))
+   fig, (a1, a2, a3) = strip(3, [
+       "Push (in A): leavers sorted out of A's domain",
+       "A deposits it; moments summed on shared nodes",
+       "Grab: B copies it into its domain; A empties the array"], height=2.6)
+   base(a1)
+   arrow(a1, (4.8, 2.0), (6.7, 2.4), color=C["grey"], lw=1.3, ms=10)
+   particles(a1, [(4.8, 2.0)], color=C["ion"], alpha=0.35); particles(a1, [(6.7, 2.4)], color=C["L2"])
+   text(a1, 9.6, 2.6, "→ A's patch ghost array", color=C["L2"])
+   arrow(a1, (1.0, 3.3), (0.4, 4.7), color=C["grey"], lw=1.3, ms=10)
+   text(a1, 0.4, 4.75, "✕", color=C["bad"], bold=True)
+   text(a1, 2.2, 5.6, "into the level ghost layer: erased", color=C["bad"], ha="left")
+   base(a2)
+   particles(a2, [(6.7, 2.4)], color=C["L2"])
+   for (x, y) in [(i, j) for i in (6, 7, 8) for j in (1, 2, 3)]:
+       mark(a2, "primal", x, y, color=C["rho"], size=7)
+   text(a2, 10.4, 2.0, "order 2: 3×3 nodes\non A's grid", color=C["rho"])
+   base(a3)
+   particles(a3, [(6.7, 2.4)], color=C["L1"])
+   text(a3, 9.6, 2.6, "now in B's domain", color=C["L1"])
+   text(a3, 3, -1.2, "A's patch ghost array: emptied", color=C["L2"])
+   finish(fig, [a1, a2, a3])
 
-   fig, ax = plt.subplots(figsize=(5.5, 3.8))
-   g = 2
-   A = (2, 2, 8, 8)
-   B = (10, 2, 8, 8)
-   for P, name in ((A, "patch A"), (B, "patch B")):
-       x0, y0, w, h = P
-       for x in range(x0, x0 + w + 1):
-           ax.plot([x, x], [y0, y0 + h], color="0.8", lw=0.6)
-       for y in range(y0, y0 + h + 1):
-           ax.plot([x0, x0 + w], [y, y], color="0.8", lw=0.6)
-       ax.add_patch(Rectangle(P[:2], w, h, fill=False, lw=2, color="k"))
-       ax.text(x0 + w / 2, y0 + h + 0.4, name, ha="center", fontsize=14)
-   ax.add_patch(Rectangle((B[0], B[1]), g, B[3], color="#7fb7e6", alpha=0.8))
-   ax.add_patch(Rectangle((A[0] - g, A[1] - g), A[2] + 2 * g, A[3] + 2 * g,
-                          fill=False, ls="--", lw=1.5, color="#333333"))
-   ax.plot([8.6], [6.3], "o", color="k", ms=9, alpha=0.35)
-   ax.plot([10.7], [6.8], "o", color="k", ms=9)
-   ax.add_patch(FancyArrowPatch((8.6, 6.3), (10.6, 6.75), arrowstyle="->",
-                                mutation_scale=15, color="k"))
-   ax.text(12.3, 7.0, "after the push:\npatch ghost\nof A", fontsize=13, bbox=dict(fc="white", ec="none", alpha=0.9))
-   ax.text(0, -1.4, "A's particle ghost box (dashed)", fontsize=13)
-   ax.set_xlim(-0.8, 18.5); ax.set_ylim(-1.8, 12.6)
-   ax.set_aspect("equal"); ax.axis("off")
-   fig.tight_layout()
-
-The order of operations in the second, real push of a time step
-(the first push only predicts moments and exchanges nothing, see
-:doc:`/dev/ppc_order`):
-
-.. mermaid::
-
-   sequenceDiagram
-     participant A as patch A
-     participant B as patch B
-     A->>A: push domain particles
-     A->>A: leavers in a neighbour's cells → A's patch ghost array
-     A->>A: leavers in the level ghost layer → erased
-     A->>A: deposit domain + patch ghost particles
-     A-->>B: sum density and flux on shared nodes
-     B->>A: grab: copy A's patch ghosts that are in B's domain
-     A->>A: clear patch ghost array
-     B->>B: drop particles in cells B does not own
-
-How it works
-------------
-
-#. **Push and sort.** ``IonUpdater::updateAndDepositAll_`` pushes the domain
-   particles. A *selector* is a test on the particle's cell used to sort the
-   array; here ``inOwnedDomain`` puts at the end of the array the particles that
-   left the cells owned by the patch
-   (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L258-L265`).
-#. **Keep the leavers that went to a neighbour.** Among the leavers, those in
-   the patch's *non-level-ghost box* (its domain plus the parts of its particle
-   ghost box covered by same-level neighbours, i.e. everything except the level
-   ghost layer;
-   ``makeNonLevelGhostBoxFor``,
-   :src:`src/amr/resources_manager/amr_utils.hpp#L224-L243`) are appended to the
-   patch ghost array (L265-L271). All leavers are then removed from the domain
-   array (L289). Leavers that went into the level ghost layer are lost on
-   purpose: the coarse level represents that region
-   (:doc:`/dev/level_ghost_particles`).
-#. **Deposit.** Domain particles *and* patch ghost particles are deposited on
-   the patch's grid (L306-L309). A leaver thus adds its share to the nodes it
-   touches, including ghost nodes that this patch shares with the neighbour.
-#. **Sum moments over patch borders.** The solver sums density and flux on the
-   nodes shared by neighbour patches (``fillFluxBorders``,
-   ``fillDensityBorders``, :src:`src/amr/solvers/solver_ppc.hpp#L620-L627`;
-   :doc:`/dev/moments`).
-#. **Grab.** ``HybridHybridMessengerStrategy::fillIonGhostParticles``
-   (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L375-L385`)
-   runs a :term:`SAMRAI` :term:`schedule` over the level (``RefinerType::ExteriorGhostParticles``,
-   :src:`src/amr/messengers/refiner.hpp#L196-L199`). For each pair of
-   neighbours, the :term:`fill pattern` ``ParticleDomainFromGhostFillPattern`` defines
-   the region to move: the source patch box grown by the particle ghost width,
-   intersected with the destination domain
-   (:src:`src/amr/data/particles/particles_variable_fill_pattern.hpp#L80-L90`).
-   ``ParticlesData`` then copies the source's *patch ghost* particles in that
-   region into the destination's *domain* array: ``copy_from_ghost`` on the same
-   rank, ``pack_from_ghost`` / ``unpack_from_ghost`` across ranks
-   (:src:`src/amr/data/particles/particles_data.hpp#L709-L793`).
-#. **Clear.** Right after the schedule, every patch ghost array is emptied
-   (L381-L383). Patch ghost particles live only between a push and the next
-   exchange.
-#. **Single owner.** Each patch drops the domain particles that landed in cells
-   it does not own (``Ions::eraseDomainParticlesIn``,
-   :src:`src/amr/solvers/solver_ppc.hpp#L651-L656`). This only matters when
-   patches overlap (next section).
+* **Push 2 only** (the real push): leavers in a neighbour's cells go to the
+  patch ghost array, all leavers leave the domain array
+  (``IonUpdater::updateAndDepositAll_``,
+  :src:`src/core/numerics/ion_updater/ion_updater.hpp#L258-L289`).
+* Domain and patch ghost particles are deposited (L306-L309); density and flux
+  are then summed over patch borders (:doc:`/dev/moments`).
+* ``fillIonGhostParticles`` runs the grab schedule, then clears every patch
+  ghost array (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L375-L383`).
+* Push 1 also exchanges moments (border sums, level ghosts) but **no particles**
+  (:src:`src/amr/solvers/solver_ppc.hpp#L620-L664`).
+* The receiving patch does not deposit the particle in this step: A already did.
 
 The tricks
 ----------
@@ -140,103 +69,62 @@ The tricks
 Deposit before handing over
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** If the neighbour deposited the particle after receiving it, the
-patch it left would also need its contribution on its own ghost and border
-nodes, and the order between deposit, exchange and sum would get tangled.
+**Problem.** A crossing particle must be counted once, though it changes owner.
+**Fix.** A deposits it from its patch ghost array; the border sum adds that to
+B's copy of the shared nodes (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L306-L309`).
 
-**Fix.** The patch the particle left deposits it, from its patch ghost array,
-in the same call as its domain particles
-(:src:`src/core/numerics/ion_updater/ion_updater.hpp#L306-L309`). The border
-sum then adds that contribution to the neighbour's copy of the shared nodes.
-The particle is counted once, by one patch.
+The exchange region
+^^^^^^^^^^^^^^^^^^^
 
-The exchange region is the source box grown by the ghost width
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Problem.** B must take every leaver of A that lands in its domain, and only those.
+**Fix.** Region = A's box grown by the particle ghost width ∩ B's domain
+(``ParticleDomainFromGhostFillPattern``,
+:src:`src/amr/data/particles/particles_variable_fill_pattern.hpp#L80-L90`);
+copy (same rank) or pack/unpack (other rank) from A's patch ghosts into B's domain
+(:src:`src/amr/data/particles/particles_data.hpp#L709-L793`). :pr:`1334`.
 
-**Problem.** A patch ghost particle is at most a particle ghost width away from
-the patch it left. The neighbour must take all of those, and only those, that
-fall in its domain, also when patches overlap.
+One owner per cell
+^^^^^^^^^^^^^^^^^^
 
-**Fix.** The region is ``grow(source box, particle_ghost_width) ∩ destination
-domain`` (:src:`src/amr/data/particles/particles_variable_fill_pattern.hpp#L84-L90`).
-A ``static_assert`` checks that SAMRAI's particle data ghost width covers that
-distance, since SAMRAI only builds a transfer between patches that close
-(L60-L63).
-
-**History.** :pr:`1334` (overlap single owner).
-
-Overlapping patches: one owner per cell
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** SAMRAI can produce patches of the same level that overlap. A
-particle in the overlap would be held by both patches, pushed and deposited
-twice.
-
-**Fix.** Each cell has one owner: the patch with the smallest global id among
-those that cover it (``makeNonOwnedBoxes``,
-:src:`src/amr/resources_manager/amr_utils.hpp#L246-L280`). Each patch computes,
-without communication, the boxes it does not own; the push treats them like a
-neighbour's cells (``isOwned``,
-:src:`src/core/numerics/ion_updater/ion_updater.hpp#L135-L143`), and after the
-grab the particles that arrived there are dropped
-(:src:`src/amr/solvers/solver_ppc.hpp#L651-L656`). Without overlap the
-non-owned set is empty and nothing changes.
-
-**History.** :pr:`1334` (overlap single owner).
+**Problem.** SAMRAI can make same-level patches overlap: particles would be pushed
+and deposited twice.
+**Fix.** A cell belongs to the covering patch with the smallest global id
+(``makeNonOwnedBoxes``, :src:`src/amr/resources_manager/amr_utils.hpp#L246-L280`);
+after the grab each patch drops particles in cells it does not own
+(:src:`src/amr/solvers/solver_ppc.hpp#L651-L656`). :pr:`1334`.
 
 Periodic neighbours
 ^^^^^^^^^^^^^^^^^^^
 
-With periodic boundaries, a patch on one side of the domain is a neighbour of a
-patch on the other side. SAMRAI gives the exchange a *transformation* (a shift
-by the domain size); ``copy_from_ghost`` and ``pack_from_ghost`` shift the cell
-index of each particle by that offset
-(:src:`src/amr/data/particles/particles_data.hpp#L713-L730`).
+SAMRAI gives the exchange a shift by the domain size; the particle cell index is
+shifted by it (:src:`src/amr/data/particles/particles_data.hpp#L713-L730`).
 
-How far a particle can move in one half push
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+How far a particle can move
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** All of the above assumes leavers stay close to the patch they
-left.
-
-**Fix.** The Boris pusher moves positions in two half steps. In each, it
-computes the new offset from the start of the particle's current cell,
-``delta + v Δt / (2 Δx)`` (``delta`` in [0, 1)), and stops the run with an error
-if its size exceeds 2 (``MoveTwoCellException``,
-:src:`src/core/numerics/pusher/boris.hpp#L157-L172`). So a particle moves at
-most 2 − ``delta`` cells forward and 2 + ``delta`` cells backward (up to about
-3) in one half step. When this happens the run aborts; the terminal only shows
-``MPI_ABORT was invoked``, and the message ``PrePush`` (or ``PostPush``)
-``Particle moved 2 cells`` is written in ``.log/<rank>.out``. The particle arrays
-index particles by cell over a margin wide enough for any allowed move
-(``particleMapMargin``, :src:`src/core/data/grid/gridlayout.hpp#L59-L68`).
-
-**History.** :pr:`1592` (selectors missed far particles).
+**Problem.** Everything above assumes leavers stay near the patch they left.
+**Fix.** Boris stops the run if the new offset ``delta + v Δt/(2Δx)`` exceeds 2
+in a half push (:src:`src/core/numerics/pusher/boris.hpp#L157-L172`): at most
+about 2 cells forward, 3 backward. The message is only in ``.log/<rank>.out``.
+Cell maps cover that margin (``particleMapMargin``,
+:src:`src/core/data/grid/gridlayout.hpp#L59-L68`). :pr:`1592`.
 
 .. admonition:: Known issue
    :class: note
 
-   The list of same-level neighbours of a patch is built with SAMRAI's default
-   search width of 1 cell (``makeSameLevelNeighbors``,
-   :src:`src/amr/resources_manager/amr_utils.hpp#L216-L220`), while the
-   particle ghost width is 2 cells at interpolation orders 2 and 3. In 2D and
-   3D, a neighbour that touches a patch's ghost box only near a corner can be
-   missed; a particle pushed more than one cell into that corner is then
-   treated as a level ghost and erased. A fix is proposed in
-   `#1593 <https://github.com/PHAREHUB/PHARE/pull/1593>`_ (corner neighbour
-   search).
+   Same-level neighbours are searched with a width of 1 cell
+   (:src:`src/amr/resources_manager/amr_utils.hpp#L216-L220`) while the particle
+   ghost width is 2 at orders 2-3: a neighbour touching the ghost box only at a
+   corner can be missed, and a particle pushed there is erased. Fix proposed in
+   :pr:`1593` (corner neighbour search).
 
 Go deeper
 ---------
 
-* :doc:`/dev/moments` — the sum over patch borders that completes the shared
-  nodes.
+* :doc:`/dev/moments` — the border sum that completes the shared nodes.
 
 Related
 -------
 
-* :doc:`/dev/level_ghost_particles` — the coarse-fine counterpart: particles
-  entering a refined level from the coarser one.
-* :doc:`/dev/ppc_order` — where the grab sits in a time step.
-* :doc:`/dev/particles_ions` — the particle arrays of a patch.
-* :doc:`/dev/ghost_cells` — patch ghosts and level ghosts for fields.
+* :doc:`/dev/level_ghost_particles` · :doc:`/dev/ppc_order` ·
+  :doc:`/dev/particles_ions` · :doc:`/dev/ghost_cells`

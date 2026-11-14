@@ -9,205 +9,119 @@ Moments: deposition and sum borders
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` ›
    :doc:`/dev/ppc_order` › Moments
 
-**In one sentence:** the ion *moments* (density and flux of each population,
-then the total charge density, bulk velocity and charge flux) are computed on
-the grid nodes by :term:`depositing <deposition>` the particles of each :term:`patch`, and are completed
-near patch borders by summing the contributions of neighbour patches.
+**In one sentence:** the ion :term:`moments` (density and flux of each
+:term:`population`, then the totals) are made by :term:`depositing <deposition>`
+each patch's particles on the grid nodes, then completed near patch borders by
+adding the neighbours' parts.
 
-Why it is not trivial
----------------------
-
-Each particle is a small cloud (its *shape*, one to a few cells wide depending on
-the :term:`interpolation order`). It adds a share of its weight to every node it covers.
-A node near a patch border is covered by clouds of particles held by *two or
-more* patches. After each patch has deposited its own particles, every copy of
-that node holds only part of the total. Patches must exchange and add up these
-parts. Near the border of a refined level, the plasma outside the level is also
-missing; it comes from level ghost particles (:doc:`/dev/level_ghost_particles`).
-
-This happens twice per time step, once after each of the two particle pushes of
-the hybrid solver (:doc:`/dev/ppc_order`).
-
-The picture
------------
+Deposit, then sum over patch borders
+------------------------------------
 
 .. plot::
    :include-source: False
-   :caption: 1D, two patches sharing the node at x = 5. After deposition, patch
-      A holds only the blue parts, patch B only the orange parts, on the nodes
-      both of them store (A's ghost nodes on the right, B's on the left, and the
-      shared border node). The border sum gives each patch the full bar.
+   :caption: 1D, patches A (nodes 0-5) and B (nodes 5-10), 2 ghost nodes each.
+      Each patch only holds its own particles' share on the nodes both store;
+      the border sum gives every copy the full value.
 
-   import numpy as np
-   import matplotlib.pyplot as plt
+   from phare_draw import *
+   from matplotlib.patches import Rectangle
+   a_part = {0: 1, 1: 1, 2: 1, 3: 1.0, 4: 0.75, 5: 0.5, 6: 0.15, 7: 0.0}
+   b_part = {3: 0.0, 4: 0.25, 5: 0.5, 6: 0.85, 7: 1, 8: 1, 9: 1, 10: 1}
+   H = 2.4
+   def axis(a):
+       a.plot([-0.5, 10.5], [0, 0], color=C["grey"], lw=1)
+       for n in range(11):
+           mark(a, "primal", n, 0, color=C["grey"], size=5)
+           text(a, n, -0.35, str(n), fs=11)
+   def band(a, dom, gh, y, name, color):
+       a.add_patch(Rectangle((dom[0] - 0.3, y), dom[1] - dom[0] + 0.6, 0.3, fc=color, alpha=0.5, ec="none"))
+       a.add_patch(Rectangle((gh[0] - 0.3, y), gh[1] - gh[0] + 0.6, 0.3, fc="none", ec=color, hatch="///", lw=0.8))
+       text(a, dom[0] - 0.4, y + 0.15, name, color=color, bold=True, ha="right")
+   def bars(a, d, color, bottom=None):
+       for n, v in d.items():
+           b = (bottom or {}).get(n, 0)
+           a.add_patch(Rectangle((n - 0.3, b * H), 0.6, v * H, fc=color, ec="white", lw=0.5))
+   fig, (a1, a2, a3) = strip(3, [
+       "A deposits its particles (ghost nodes 6-7 hatched)",
+       "B deposits its particles (ghost nodes 3-4 hatched)",
+       "Border sum: on nodes 3-7 each patch adds the other's part"], height=2.2)
+   for a in (a1, a2, a3):
+       axis(a)
+   band(a1, (0, 5), (6, 7), -0.9, "A", C["L1"]); bars(a1, a_part, C["L1"])
+   band(a2, (5, 10), (3, 4), -0.9, "B", C["L2"]); bars(a2, b_part, C["L2"])
+   band(a3, (0, 5), (6, 7), -0.9, "A", C["L1"]); band(a3, (5, 10), (3, 4), -1.3, "B", C["L2"])
+   bars(a3, {n: a_part.get(n, 0) for n in range(0, 11)}, C["L1"])
+   bars(a3, {n: b_part.get(n, 0) for n in range(0, 11)}, C["L2"], bottom=a_part)
+   brace(a3, 2.6, 7.4, 2.75, "A and B both hold these sums", color=C["ink"])
+   finish(fig, [a1, a2, a3])
 
-   fig, ax = plt.subplots(figsize=(5.5, 3.6))
-   nodes = np.arange(2, 9)
-   a = np.array([1.0, 1.0, 0.9, 0.55, 0.15, 0.0, 0.0])
-   b = np.array([0.0, 0.0, 0.1, 0.45, 0.85, 1.0, 1.0])
-   ax.bar(nodes, a, width=0.5, color="#2a7ab9", label="deposited by patch A")
-   ax.bar(nodes, b, width=0.5, bottom=a, color="#f4a259", label="deposited by patch B")
-   ax.axvline(5, color="k", lw=2)
-   ax.text(3.3, 1.42, "patch A", ha="center", fontsize=13)
-   ax.text(6.7, 1.42, "patch B", ha="center", fontsize=13)
-   ax.set_ylim(0, 1.6)
-   ax.set_xticks(nodes)
-   ax.set_xlabel("grid nodes", fontsize=13)
-   ax.set_ylabel("density", fontsize=13)
-   ax.tick_params(labelsize=12)
-   ax.legend(fontsize=12, frameon=False, loc="lower left", bbox_to_anchor=(0, 1.02), ncol=1)
-   for s in ("top", "right"):
-       ax.spines[s].set_visible(False)
-   fig.tight_layout()
+* **Reset** density and flux of each population before a push
+  (``resetMoments``, :src:`src/core/numerics/moments/moments.hpp#L15-L22`).
+* **Deposit** domain and patch ghost particles on :term:`primal` nodes:
+  density += w·S, flux += w·v·S, S the particle shape
+  (``ParticleToMesh``, :src:`src/core/numerics/interpolator/interpolator.hpp#L290-L351`).
+* **Sum** over patch borders, per population: copy to a scratch field, add the
+  neighbours' values on the overlap of the two ghost boxes, copy back
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L388-L434`).
+* **Level ghosts**: add Old × (1−α) and New × α near a refined level's border
+  (:doc:`/dev/level_ghost_particles`).
+* **Totals**: ρ = Σ q·n, V = Σ m·F / Σ m·n, charge flux Σ q·F
+  (:src:`src/core/data/ions/ions.hpp#L85-L197`); then, on nodes shared by two
+  ghost boxes, each patch keeps the larger value of ρ and of the charge flux
+  (``fillIonBorders``, ``SetMax``,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L437-L446`).
 
-The full chain, run after each of the two pushes of a time step
-(``SolverPPC::moveIons_``, :src:`src/amr/solvers/solver_ppc.hpp#L590-L666`):
-
-.. mermaid::
-
-   flowchart TD
-     R["reset density and flux<br/>of each population"] --> D["deposit the patch's particles<br/>(domain + patch ghost)"]
-     D --> S["sum over patch borders<br/>density and flux, per population"]
-     S --> L["add level ghost particles<br/>Old and New, time-interpolated"]
-     L --> T["totals: charge density,<br/>bulk velocity, charge flux"]
-     T --> M["shared ghost nodes:<br/>keep the larger value"]
-     click D href "grabbing_particles.html" "Patch ghost particles"
-     click L href "level_ghost_particles.html" "Level ghost particles"
-     click S href "fill_patterns.html" "Fill patterns: which nodes a schedule touches"
-     click M href "fill_patterns.html" "Fill patterns: which nodes a schedule touches"
-
-How it works
-------------
-
-Deposition
-^^^^^^^^^^
-
-#. At the start of a push, the density and flux of every population are set to
-   zero (``resetMoments``, :src:`src/core/numerics/moments/moments.hpp#L15-L22`,
-   called in ``IonUpdater::updatePopulations``,
-   :src:`src/core/numerics/ion_updater/ion_updater.hpp#L96`).
-#. For each particle, the ``Interpolator`` finds the first node of its cloud
-   and the weights of the cloud on the nodes it covers (2, 3 or 4 nodes per
-   direction at orders 1, 2, 3; weight formulas at
-   :src:`src/core/numerics/interpolator/interpolator.hpp#L56-L125`).
-#. It adds, on each of those nodes, ``weight × coef × w_node`` to the density
-   and ``weight × coef × v × w_node`` to the three flux components
-   (:src:`src/core/numerics/interpolator/interpolator.hpp#L616-L637`). ``coef``
-   is 1, except for level ghost particles, which use the time weights
-   :math:`1-\alpha` and :math:`\alpha`. Moments live on :term:`primal` nodes, the cell
-   corners (:doc:`/dev/gridlayout`).
-
-Which particles are deposited depends on the push: see
-:doc:`/dev/ppc_order`. In the real push, a patch deposits its domain particles
-and its patch ghost particles, the ones that just left it for a neighbour
-(:src:`src/core/numerics/ion_updater/ion_updater.hpp#L306-L309`).
-
-Sum over patch borders
-^^^^^^^^^^^^^^^^^^^^^^
-
-#. For each population, ``fillDensityBorders`` and ``fillFluxBorders``
-   (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L388-L434`)
-   first copy the patch's density (or flux) into a scratch field,
-   ``sumField_`` (or ``sumVec_``).
-#. A :term:`SAMRAI` :term:`schedule` over the :term:`level` then *adds* (``PlusEqualsOp``) the
-   neighbours' original values into the scratch field
-   (:src:`src/amr/messengers/refiner.hpp#L100-L121`). The nodes concerned are
-   the overlap of the two patches' *ghost boxes* (each patch box grown by its
-   ghost cells, :doc:`/dev/ghost_cells`)
-   (``FieldGhostInterpOverlapFillPattern``,
-   :src:`src/amr/data/field/field_variable_fill_pattern.hpp#L327-L348`); a
-   patch does not add itself (L319-L320).
-#. The scratch field is copied back into the population's density (or flux).
-
-Totals
-^^^^^^
-
-After the level ghost contribution (:doc:`/dev/level_ghost_particles`), the
-solver computes the totals on every node, ghosts included
-(``IonUpdater::updateIons``,
-:src:`src/core/numerics/ion_updater/ion_updater.hpp#L111-L117`; ``Ions``,
-:src:`src/core/data/ions/ions.hpp#L85-L178`):
-
-* charge density :math:`\rho = \sum_s q_s n_s`;
-* bulk velocity :math:`\mathbf{V} = \sum_s m_s \mathbf{F}_s / \sum_s m_s n_s`
-  (:math:`\mathbf{F}_s` the flux of population :math:`s`, :math:`m_s` its mass);
-* charge flux :math:`\sum_s q_s \mathbf{F}_s`, used for the electron velocity.
-
-Finally, ``fillIonBorders``
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L437-L446`)
-runs one more schedule on the charge density and on the charge flux: on the
-nodes where two patches' ghost boxes overlap, each patch keeps the larger of its
-value and its neighbour's (``SetMaxOp``, :src:`src/amr/messengers/refiner.hpp#L125-L142`;
-``SetMax``, :src:`src/core/utilities/types.hpp#L546-L550`). After it, every
-copy of such a node holds the same value.
-
-Why can two copies differ at this point? One case follows from the order
-above: each patch adds the level ghost particles of its *own* ghost layer, after
-the border sum. Near the border of a refined level, a ghost node of patch A can
-be covered by level ghost particles that only the neighbour B holds; A's copy
-then misses their share, B's does not. The code does not document why the
-maximum was chosen (it came with :pr:`1146`).
+This runs after each of the two pushes of a step (:doc:`/dev/ppc_order`).
 
 The tricks
 ----------
 
-Sum into a scratch copy, not in place
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Sum into a scratch copy
+^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** If the schedule added the neighbours' values directly into the
-density arrays, the order of the additions would matter: once patch A has added
-B's part to its node, B then adds A's value, which already contains B's part,
-and counts its own part twice.
-
-**Fix.** The sum writes into a scratch field (``sumField_``, ``sumVec_``) and
-reads the neighbours' untouched density arrays; the result is copied back afterwards
-(comment at :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L394-L397`).
+**Problem.** Adding in place, B would add A's value that already holds B's part.
+**Fix.** Write into ``sumField_`` / ``sumVec_``, read the neighbours' untouched
+arrays, copy back (comment at :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L394-L397`).
+Overlap = the two ghost boxes' intersection: ``FieldGhostInterpOverlapFillPattern``
+for density, ``TensorFieldGhostInterpOverlapFillPattern`` for flux
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L880-L908`).
 
 Leavers are deposited by the patch they leave
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** A particle that crossed into a neighbour must be counted exactly
-once, although it changes owner during the step.
+**Problem.** A particle changing patch must be counted once.
+**Fix.** The patch it left deposits it from its patch ghost array; the receiver
+grabs it after the sum (:doc:`/dev/grabbing_particles`).
 
-**Fix.** The patch it left deposits it from its patch ghost array before the
-exchange; the receiving patch only gets it into its domain after the border
-sum, and does not deposit it in this step (:doc:`/dev/grabbing_particles`).
+One patch per particle
+^^^^^^^^^^^^^^^^^^^^^^
 
-Each particle is held by one patch
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Problem.** Overlapping same-level patches would deposit the overlap twice
+(density about ×2).
+**Fix.** Each cell has one owner patch; the ``+=`` sum is unchanged. :pr:`1334`.
 
-**Problem.** The ``+=`` border sum is only right if no particle is deposited by
-two patches. When SAMRAI makes same-level patches overlap, both would hold the
-particles of the overlap, and the density there came out about twice too
-large.
+Time weights only for Old and New
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Fix.** Each cell has a single owner patch, and particles are only kept where
-the patch owns the cell (:doc:`/dev/grabbing_particles`). The border sum itself
-did not change.
-
-**History.** :pr:`1334` (overlap single owner).
-
-Level border nodes from Old and New
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** Near the border of a refined level, part of each node's density
-comes from plasma outside the level, which no fine patch holds.
-
-**Fix.** Level ghost particles at the start and end of the coarse step are
-deposited with time weights (``fillIonPopMomentGhosts``,
+Only the Old and New level ghost arrays are deposited with 1−α and α
+(``fillIonPopMomentGhosts``,
 :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L457-L495`);
-see :doc:`/dev/level_ghost_particles`.
+every other deposit uses weight 1, including pushable level ghosts that enter
+the domain in push 1.
+
+Why two copies of a node can differ before the max
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Each patch adds the level ghosts of its own layer after the border sum: near a
+level border, A's ghost node can miss particles only B holds. Why the maximum
+was chosen is not documented (it came with :pr:`1146`).
 
 Go deeper
 ---------
 
-* :doc:`/dev/level_ghost_particles` — the moments near a refined level's border.
-* :doc:`/dev/grabbing_particles` — patch ghost particles.
+* :doc:`/dev/level_ghost_particles` · :doc:`/dev/grabbing_particles`
 
 Related
 -------
 
-* :doc:`/dev/ppc_order` — which particles are deposited in which push.
-* :doc:`/dev/fill_patterns` — how fill patterns choose the nodes a schedule
-  touches.
-* :doc:`/numerics/particles` — particle shapes and interpolation orders.
+* :doc:`/dev/ppc_order` · :doc:`/dev/fill_patterns` · :doc:`/numerics/particles`

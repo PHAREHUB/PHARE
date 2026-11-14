@@ -9,247 +9,143 @@ Particle splitting
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` ›
    :doc:`/dev/level_ghost_particles` › Particle splitting
 
-**In one sentence:** to move plasma from a coarse :term:`level` to a finer one, PHARE
-replaces each coarse particle by a few smaller particles placed around it, with
-the same velocity, so that they deposit almost the same density on the fine grid.
+**In one sentence:** to move plasma from a coarse :term:`level` to a finer one,
+PHARE replaces each coarse particle by N smaller particles placed around it,
+with the same velocity, so that they deposit almost the same density on the
+fine grid.
 
-Why splitting
--------------
+Why: a particle's shape is measured in cells of its own grid. Moved unchanged
+to the fine grid, its cloud would shrink to half its width and the density would
+get lumpy. N children spread around it rebuild nearly the same wide cloud.
 
-In PHARE, a particle's shape (the small cloud it deposits on the grid) is
-measured in cells of the grid it lives on. A coarse particle moved to a fine level,
-even with its weight rescaled to carry the same plasma (see the weight trick
-below), would see its cloud shrink to fine-cell size, half as wide in each
-direction. The density would become lumpy, and the
-fine level would have :math:`2^d` times fewer particles per cell than the coarse
-one (:math:`d` the dimension). Splitting it into :math:`N` children, spread
-around the parent's position, rebuilds almost the same wide cloud out of
-fine-grid clouds. With :math:`N = 2^d` children the fine level keeps the
-coarse number of particles per cell (the defaults, 2 in 1D and 4 in 2D); the
-3D default, 6, gives 6/8 of it; larger :math:`N` give more.
-
-Splitting is used every time fine particles must be made from coarse ones:
-
-* to fill a **new or rebuilt refined level** (its domain particles);
-* to fill the **level ghost layer** around a refined level: Old when a level
-  is created or rebuilt, New at the first fine substep of each coarse step
-  (:doc:`/dev/level_ghost_particles`).
-
-The picture
------------
-
-One coarse particle (thick line) and its children (dashed) on the fine grid,
-in 1D. The grey curve is the sum of the children: it is close to the parent.
-Distances are in fine cells.
+The children rebuild the parent's cloud
+---------------------------------------
 
 .. plot::
    :include-source: False
-   :caption: The density deposited by one coarse particle (black) and by its
-      split children (grey: their sum). Order 1 and 2 are the particle shapes
-      used for interpolation orders 1 and 2. Values from split_1d.hpp.
+   :caption: Density deposited by one coarse particle (black) and by its
+      children (dashed; grey: their sum), in fine cells. Order 1 with N = 3 is
+      exact. Values from split_1d.hpp.
 
    import numpy as np
-   import matplotlib.pyplot as plt
-
-   def B(k, u):
+   from phare_draw import *
+   def S(k, u):
        u = np.abs(u)
        if k == 1:
            return np.clip(1 - u, 0, None)
-       if k == 2:
-           return np.where(u < 0.5, 0.75 - u**2,
-                           np.where(u < 1.5, 0.5 * (1.5 - u)**2, 0.0))
-       return np.where(u < 1, 2/3 - u**2 + u**3 / 2,
-                       np.where(u < 2, (2 - u)**3 / 6, 0.0))
-
-   # (order, label, [(weight, delta), ...]) from split_1d.hpp
-   cases = [
-       (1, "order 1, N = 2", [(0.5, 0.551569), (0.5, -0.551569)]),
-       (1, "order 1, N = 3", [(0.5, 0.0), (0.25, 1.0), (0.25, -1.0)]),
-       (2, "order 2, N = 2", [(0.5, 0.663959), (0.5, -0.663959)]),
-   ]
+       return np.where(u < 0.5, 0.75 - u**2, np.where(u < 1.5, 0.5 * (1.5 - u)**2, 0.0))
+   cases = [(1, "Order 1, N = 2", [(0.5, 0.551569), (0.5, -0.551569)]),
+            (1, "Order 1, N = 3", [(0.5, 0.0), (0.25, 1.0), (0.25, -1.0)]),
+            (2, "Order 2, N = 2", [(0.5, 0.663959), (0.5, -0.663959)])]
+   fig, axes = strip(3, [c[1] for c in cases], height=1.6, aspect=False)
    x = np.linspace(-4, 4, 801)
-   fig, axes = plt.subplots(3, 1, figsize=(6, 8), sharex=True)
-   for ax, (k, title, children) in zip(axes, cases):
-       ax.plot(x, B(k, x / 2) / 2, color="k", lw=2.5, label="coarse particle")
-       total = np.zeros_like(x)
-       for w, d in children:
-           c = w * B(k, x - d)
-           total += c
-           ax.plot(x, c, ls="--", color="#2a7ab9", lw=1.2)
-           ax.plot([d], [0], marker="^", color="#2a7ab9", ms=8, clip_on=False)
-       ax.plot(x, total, color="0.55", lw=1.5, label="sum of children")
-       ax.set_title(title, fontsize=12)
-       ax.set_xticks(range(-4, 5))
-       ax.tick_params(labelsize=11)
-       ax.grid(axis="x", color="0.9")
-       for s in ("top", "right"):
-           ax.spines[s].set_visible(False)
-   axes[0].legend(fontsize=11, frameon=False, loc="upper left")
-   axes[-1].set_xlabel("fine cells", fontsize=12)
-   fig.tight_layout()
+   for a, (k, _, kids) in zip(axes, cases):
+       a.plot(x, 4 * S(k, x / 2) / 2, color=C["ink"], lw=2.5)
+       tot = np.zeros_like(x)
+       for w, d in kids:
+           c = 4 * w * S(k, x - d); tot += c
+           a.plot(x, c, ls="--", color=C["L1"], lw=1.2)
+           a.plot([d], [0], marker="^", color=C["L1"], ms=8)
+       a.plot(x, tot, color=C["grey"], lw=1.5)
+       for v in range(-4, 5):
+           text(a, v, -0.35, str(v), color=C["grey"])
+   finish(fig, axes)
 
-Where the children go in 2D and 3D with the default number of children
-(blue: children, black: parent). In 2D they sit on the diagonals, in 3D on the
-axes.
+* Weight of a child = parent weight × its pattern weight × 2^d; the children's
+  weights sum to the parent's × 2^d (pattern weights sum to 1, to float
+  precision) (:src:`src/amr/data/particles/refine/splitter.hpp#L99-L117`).
+* 2D default: 4 children on the diagonals at ±0.572; 3D default: 6 on the axes
+  at ±0.966 fine cells (order 1; ``split_2d.hpp``, ``split_3d.hpp``).
+
+Inside the refine operator
+--------------------------
 
 .. plot::
    :include-source: False
-   :caption: Default split patterns, interpolation order 1. 2D: 4 children at
-      (±0.572, ±0.572) fine cells, weight 1/4 each. 3D: 6 children at ±0.966
-      fine cells along each axis, weight 1/6 each (drawn in the x-y plane, the
-      two along z are on top of the parent). Values from split_2d.hpp and
-      split_3d.hpp.
+   :caption: Making fine particles for a destination box (blue) from one coarse
+      particle, order 1, N = 4. Thin grid: fine cells; thick: coarse cells.
+      δ: position inside the cell, from 0 to 1 in each direction.
 
-   import matplotlib.pyplot as plt
+   from phare_draw import *
+   from matplotlib.patches import Rectangle
+   dest = (6, 0, 12, 6)
+   p = (5.6, 2.8)
+   d = 0.571783
+   kids = [(p[0] + sx * d, p[1] + sy * d) for sx in (-1, 1) for sy in (-1, 1)]
+   def base(a, grown=False):
+       grid(a, (2, -1, 13, 7), color=C["light"])
+       for v in range(2, 14, 2):
+           a.plot([v, v], [-1, 7], color=C["grey"], lw=1.2, zorder=1)
+       for v in range(0, 7, 2):
+           a.plot([2, 13], [v, v], color=C["grey"], lw=1.2, zorder=1)
+       a.add_patch(Rectangle(dest[:2], 6, 6, fc=C["patch"], ec=C["patch_edge"], lw=2, zorder=0.5))
+       if grown:
+           a.add_patch(Rectangle((5, -1), 8, 8, fc="none", ec=C["patch_edge"], lw=1.5, ls="--", zorder=2))
+   fig, (a1, a2, a3) = strip(3, [
+       "Coarse particle in fine index space (toFineGrid)",
+       "Inside the box grown by splitBoxGrowth: split",
+       "Keep only the children inside the destination box"], height=2.4)
+   base(a1); particles(a1, [p], color=C["ink"], size=60)
+   text(a1, 3.6, 5.6, "coarse cell (2,1)\nδ = (0.8, 0.4)", color=C["ink"])
+   base(a2, grown=True); particles(a2, [p], color=C["ink"], size=60)
+   text(a2, 11.0, 7.4, "grown by 1 fine cell", color=C["patch_edge"])
+   particles(a2, kids, color=C["L1"], size=45)
+   base(a3); particles(a3, [p], color=C["ink"], size=60, alpha=0.25)
+   particles(a3, [k for k in kids if k[0] >= 6], color=C["ok"], size=45)
+   for k in kids:
+       if k[0] < 6:
+           text(a3, k[0], k[1], "✕", color=C["bad"], bold=True)
+   text(a3, 9, 3, "kept", color=C["ok"], bold=True); text(a3, 3.4, 3, "dropped", color=C["bad"], bold=True)
+   finish(fig, [a1, a2, a3])
 
-   fig, axes = plt.subplots(1, 2, figsize=(6, 3.4))
-   d2, d3 = 0.571783, 0.966431
-   pts2 = [(-d2, -d2), (-d2, d2), (d2, -d2), (d2, d2)]
-   pts3 = [(d3, 0), (-d3, 0), (0, d3), (0, -d3)]
-   for ax, pts, title in ((axes[0], pts2, "2D, N = 4"), (axes[1], pts3, "3D, N = 6")):
-       for v in range(-2, 3):
-           ax.axvline(v, color="0.85", lw=0.8)
-           ax.axhline(v, color="0.85", lw=0.8)
-       ax.plot([0], [0], "o", color="k", ms=10)
-       ax.plot([p[0] for p in pts], [p[1] for p in pts], "o", color="#2a7ab9", ms=8)
-       ax.set_xlim(-2, 2); ax.set_ylim(-2, 2); ax.set_aspect("equal")
-       ax.set_title(title, fontsize=12)
-       ax.set_xticks(range(-2, 3)); ax.set_yticks(range(-2, 3))
-       ax.tick_params(labelsize=11)
-       ax.set_xlabel("fine cells", fontsize=12)
-   fig.tight_layout()
-
-The flow inside the refine operator:
-
-.. mermaid::
-
-   flowchart TD
-     S["coarse domain particles<br/>(local, or streamed from another rank)"] --> F["move to fine index space<br/>toFineGrid"]
-     F --> Q{"inside the destination box<br/>grown by splitBoxGrowth?"}
-     Q -- no --> X["skipped"]
-     Q -- yes --> P["split into N children<br/>Splitter / PatternDispatcher"]
-     P --> K{"child inside the<br/>destination box?"}
-     K -- no --> Y["dropped"]
-     K -- yes --> A["append to the destination array:<br/>domain, or level ghost Old / New"]
-     click A href "level_ghost_particles.html" "Level ghost particles"
-
-How it works
-------------
-
-The work is done by ``ParticlesRefineOperator``, the :term:`SAMRAI` refine operator
-PHARE provides for particles
-(:src:`src/amr/data/particles/refine/particles_data_split.hpp#L54-L281`).
-SAMRAI calls its ``refine`` method with a coarse source patch, a fine destination
-patch and the list of destination boxes to fill.
-
-#. **Source particles.** Only the coarse *domain* particles are split (L166).
-   When the coarse :term:`patch` is on another :term:`MPI` :term:`rank`, SAMRAI
-   first streams the coarse
-   particles of the region of interest into a temporary patch, and they arrive
-   in its domain array (comment L159-L165). The region SAMRAI gathers around
-   the destination is set by ``getStencilWidth``: the particle ghost width, in
-   coarse cells (L80-L84).
-#. **To fine index space.** ``toFineGrid`` rewrites the particle position
-   (cell index ``iCell`` plus offset ``delta`` in [0, 1)) in fine cells:
-   ``iCell * 2 + floor(delta * 2)``, and the remainder as the new ``delta``
-   (L33-L48).
-#. **Candidates.** A particle is split only if this fine position is inside the
-   destination box grown by ``splitBoxGrowth`` fine cells (``getSplitBox``,
-   L267-L280, test at L215). Parents just outside the box can still put a child
-   inside it.
-#. **Split.** The ``Splitter`` makes the :math:`N` children
-   (``PatternDispatcher::dispatch``,
-   :src:`src/amr/data/particles/refine/splitter.hpp#L85-L119`). Each child gets
-   the parent's velocity, the parent's position plus an offset ``δ`` (in fine
-   cells), and a weight (next section).
-#. **Keep.** Children inside the destination box are appended to the array
-   chosen at compile time by the operator's split type (L225-L259):
-
-   .. list-table::
-      :header-rows: 1
-
-      * - Split type
-        - Destination array
-        - Used when
-      * - ``interior``
-        - ``domainParticles``
-        - a refined level is created or rebuilt
-      * - ``coarseBoundaryOld``
-        - ``levelGhostParticlesOld``
-        - level created or rebuilt
-      * - ``coarseBoundaryNew``
-        - ``levelGhostParticlesNew``
-        - first fine substep of each coarse step
-
-   The enum (L25-L30) has a fourth value, ``coarseBoundary``, which writes into
-   ``levelGhostParticles``; no refiner uses it at this commit (the three
-   operators actually built are listed in ``RefinementParams``, L287-L302).
+* Only coarse *domain* particles are split; on another rank SAMRAI first streams
+  them into a temporary patch (``ParticlesRefineOperator::refine_``,
+  :src:`src/amr/data/particles/refine/particles_data_split.hpp#L155-L166`).
+* ``toFineGrid``: ``iCell × 2 + floor(delta × 2)``, remainder as new delta
+  (:src:`src/amr/data/particles/refine/particles_data_split.hpp#L33-L48`).
+* Split if the fine position is in the destination box grown by
+  ``splitBoxGrowth`` (L203-L215, ``getSplitBox`` L267-L280).
+* Children inside the destination box go to the array of the operator's type:
+  ``interior`` → domain (new or rebuilt level), ``coarseBoundaryOld`` /
+  ``coarseBoundaryNew`` → level ghost Old / New (L225-L259; ``RefinementParams``
+  L287-L302; a fourth type, ``coarseBoundary``, is unused).
 
 The tricks
 ----------
 
-Weights are multiplied by :math:`2^d`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Weights are multiplied by 2^d
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** A particle weight in PHARE is a density per particle, not an
-amount of plasma: at initialization, ``weight = n / nppc`` (density over
-particles per cell, ``cellWeight`` in
-:src:`src/core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp#L219`).
-A fine cell has :math:`2^d` times less volume than a coarse cell (:math:`d` the
-dimension). The same amount of plasma in a smaller cell is a larger density.
-
-**Fix.** A child's weight is the parent weight × its pattern weight ×
-:math:`2^d` (``fineParticle.weight``,
-:src:`src/amr/data/particles/refine/splitter.hpp#L104`). The pattern weights
-of each splitter sum to 1, so the children carry exactly the parent's plasma.
+**Problem.** A weight is a density per particle (``n / nppc`` at init,
+:src:`src/core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp#L219`);
+a fine cell has 2^d times less volume.
+**Fix.** ``fineParticle.weight = weight × pattern weight × 2^d``
+(:src:`src/amr/data/particles/refine/splitter.hpp#L104`).
 
 The split box is grown by the largest child offset
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** Children are placed up to ``δ`` fine cells away from their parent.
-If the code only looked at parents inside the destination box, children of
-parents just outside it would be missing, and the density at the box edge would
-be too low.
+**Problem.** Parents just outside the box put children inside it (2D order 1
+N = 8 reaches 1.058 fine cells).
+**Fix.** ``splitBoxGrowth`` = max(half the particle size, ceil(max δ))
+(:src:`src/amr/data/particles/refine/splitter.hpp#L182-L190`). :pr:`1369`.
 
-**Fix.** ``splitBoxGrowth`` grows the box by the larger of half the particle
-size and the largest offset rounded up (``PatternDispatcher::maxDelta``)
-(:src:`src/amr/data/particles/refine/splitter.hpp#L182-L190`). It matters for
-the 2D, order 1, 8-children pattern, whose diagonal children reach 1.058 fine
-cells.
+Patterns come from published tables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**History.** :pr:`1369` (splitters checked against reference tables).
+Offsets and weights follow `arXiv:2104.10675 <https://arxiv.org/abs/2104.10675>`_
+(CPC 261, 107666, 2021), checked by a unit test. :pr:`1369` (splitters checked
+against tables); before it, some non-default splitters lost plasma (:issue:`1340`).
 
-Patterns and weights come from published tables
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+N is fixed at compile time
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** The children's offsets and weights decide how well the fine density
-matches the coarse one. They are not obvious to derive.
+``refined_particle_nbr`` picks a compiled simulator; the default build compiles
+:src:`res/sim/all.txt#L1-L33` (``PHARE_PERMUTATIONS`` can point elsewhere,
+:src:`src/python3/CMakeLists.txt#L5-L9`). Default = first value of each row
+(:src:`pyphare/pyphare/pharein/simulation.py#L206-L215`, taken at L237).
 
-**Fix.** Each ``Splitter`` specialization combines a few *patterns* (one child
-in the centre, children on the axes, on the diagonals...), each with one weight
-and one offset (``SplitPattern``,
-:src:`src/amr/data/particles/refine/splitter.hpp#L35-L45`). The values in
-``split_1d.hpp``, ``split_2d.hpp`` and ``split_3d.hpp`` follow the tables of
-`arXiv:2104.10675 <https://arxiv.org/abs/2104.10675>`_ (Computer Physics
-Communications 261, 107666, 2021). A unit test checks the weights and offsets
-against those tables.
-
-**History.** :pr:`1369` (splitters checked against reference tables); before it,
-some non-default splitters did not conserve the plasma (:issue:`1340`).
-
-The number of children is fixed at compile time
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The number of children :math:`N` is a template parameter: each
-(dimension, interpolation order, :math:`N`) combination is a separately
-compiled simulator. Users choose :math:`N` with ``refined_particle_nbr`` in the
-simulation block. The Python modules built by default are those listed in
-:src:`res/sim/all.txt#L1-L33` (read by :src:`src/python3/CMakeLists.txt#L5-L9`;
-a build can point ``PHARE_PERMUTATIONS`` to another list). The default
-:math:`N` (bold) is the first value of each row of ``valid_refined_particle_nbr``
-(:src:`pyphare/pyphare/pharein/simulation.py#L206-L215`, used at L236-L237).
-
-.. list-table:: Combinations built by default (``res/sim/all.txt``)
+.. list-table:: N built by default (bold: default)
    :header-rows: 1
 
    * - Dimension
@@ -269,22 +165,17 @@ a build can point ``PHARE_PERMUTATIONS`` to another list). The default
      - **6**, 12, 27
      - **6**, 12, 27
 
-.. note::
-
-   In 3D, the Python check ``valid_refined_particle_nbr`` accepts more values
-   than the default build provides (for example 8 or 64); with those, no
-   compiled simulator exists.
+N = 2^d keeps the coarse number of particles per cell (defaults in 1D, 2D); the
+3D default gives 6/8 of it. In 3D the Python check accepts values that are not
+built (e.g. 8, 64).
 
 Go deeper
 ---------
 
-This is the bottom of this branch. The unit tests for the splitters are in
-``tests/amr/data/particles/refine/``.
+Bottom of this branch. Unit tests: ``tests/amr/data/particles/refine/``.
 
 Related
 -------
 
-* :doc:`/dev/level_ghost_particles` — the main user of splitting during a run.
-* :doc:`/dev/field_refinement` — the field counterpart: refinement operators for
-  E and B.
-* :doc:`/numerics/particles` — particle shapes and interpolation orders.
+* :doc:`/dev/level_ghost_particles` · :doc:`/dev/field_refinement` ·
+  :doc:`/numerics/particles`

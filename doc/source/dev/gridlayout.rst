@@ -1,211 +1,131 @@
 .. _dev-gridlayout:
 
-==========================================
+=======================================
 GridLayout: centerings and index spaces
-==========================================
+=======================================
 
 .. container:: breadcrumb
 
    You are here: :doc:`/dev/index` › GridLayout
 
-**In one sentence:** a ``GridLayout`` describes one :term:`patch`'s grid: where each physical
-quantity sits in a cell (its *centering*), how many :term:`ghost <ghost cell>` nodes surround the patch,
-and how an array index turns into an AMR index and a position in space.
-
-Why it exists
--------------
-
-PHARE stores each field component in its own array, on a staggered grid (the :term:`Yee layout`): B components sit on cell faces, E and J on cell edges, and the hybrid ion
-moments on cell corners (*nodes*). Every numerical operator needs to know, for every
-array it reads, where its values are. Writing that by hand in every loop is how index
-bugs are born. ``GridLayout`` answers these questions in one place, and most answers are
-computed by the compiler, so they cost nothing when the code runs.
-
-The user-side description of the grid (pictures of the cell, what lives where) is on
-:doc:`/numerics/grid`.
+**In one sentence:** a ``GridLayout`` describes one :term:`patch`'s grid: where each
+quantity sits in a cell (:term:`primal` or :term:`dual` per direction, the
+:term:`Yee layout`), how many :term:`ghost <ghost cell>` values surround the patch, and
+how an array index maps to an AMR index and to a position. User view: :doc:`/numerics/grid`.
 
 The picture
 -----------
 
-One direction, one patch of 4 cells, interpolation order 1 (so 2 ghost nodes on each
-side). Each centering has its own array:
-
 .. plot::
    :include-source: False
-   :caption: Primal values (circles) sit on cell boundaries (nodes), dual values (squares) at cell
-      centres. Both arrays start with the same number of ghost nodes (grey band), so
-      their first domain value has the same *local* index, 2. The primal array has one
-      more value than the dual one. The numbers on the primal and dual rows are *local*
-      indices (positions in the patch's arrays); the bottom row gives the *AMR* cell index
-      of the same places on the level, here with the patch starting at AMR cell 8.
+   :caption: 1 · One direction, a patch of 4 cells starting at AMR cell 8, 2 ghosts
+      (interpolation order 1). Numbers above the markers: local array index; bottom row: AMR
+      cell index. 2 · ``project<Bz, Ex>`` in 2D: the Ex value at the circled edge is the
+      average of the two Bz around it.
 
-   import matplotlib.pyplot as plt
+   from phare_draw import *
 
-   fig, ax = plt.subplots(figsize=(5.2, 3.6))
-   lo, hi = 8, 12            # domain cells 8..11 (AMR index)
-   g = 2                     # ghost width
-   ax.axvspan(lo - g, lo, color="0.85", lw=0)
-   ax.axvspan(hi, hi + g, color="0.85", lw=0)
-   for x in range(lo - g, hi + g + 1):
-       ax.plot([x, x], [-0.15, 0.15], color="0.5", lw=1)
-   ax.plot([lo - g, hi + g], [0, 0], color="0.3", lw=1)
-   # primal: local 0..8 at x = 6..14
+   fig, ax = strip(2, titles=["Local and AMR indices, primal and dual",
+                              "project<Bz, Ex>(Bz, i, j) in 2D"])
+   a = ax[0]
+   lo, hi, g = 8, 12, 2
+   for x0 in (lo - g, hi):
+       a.add_patch(__import__("matplotlib").patches.Rectangle((x0, -1.5), g, 3.0, fc=C["ghost"], ec="none", zorder=0))
+   a.plot([lo - g, hi + g], [0, 0], color=C["grey"], lw=1)
    for k, x in enumerate(range(lo - g, hi + g + 1)):
        ghost = x < lo or x > hi
-       ax.plot(x, 0.55, "o", ms=10, color="0.6" if ghost else "#2a7ab9")
-       ax.text(x, 0.85, str(k), ha="center", fontsize=14)
-   # dual: local 0..7 at x = 6.5..13.5
+       mark(a, "primal", x, 0.6, color=C["grey"] if ghost else C["E"])
+       text(a, x, 1.05, str(k), fs=12)
    for k in range(hi - lo + 2 * g):
        x = lo - g + k + 0.5
        ghost = x < lo or x > hi
-       ax.plot(x, -0.55, "s", ms=9, color="0.6" if ghost else "#e07a1f")
-       ax.text(x, -0.95, str(k), ha="center", fontsize=14)
+       mark(a, "dual", x, -0.5, color=C["grey"] if ghost else C["B"])
+       text(a, x, -0.95, str(k), fs=12)
    for c in range(lo - g, hi + g):
-       ax.text(c + 0.5, -1.45, str(c), ha="center", fontsize=14, color="0.25")
-   ax.text(lo - g - 0.3, 0.85, "primal", ha="right", fontsize=14)
-   ax.text(lo - g - 0.3, -0.95, "dual", ha="right", fontsize=14)
-   ax.text(lo - g - 0.3, -1.45, "AMR", ha="right", fontsize=14, color="0.25")
-   ax.text((lo + hi) / 2, 1.25, "domain", ha="center", fontsize=14)
-   ax.text(lo - g / 2, 1.25, "ghosts", ha="center", fontsize=14)
-   ax.text(hi + g / 2, 1.25, "ghosts", ha="center", fontsize=14)
-   ax.set_xlim(3.6, hi + g + 0.4)
-   ax.set_ylim(-1.7, 1.5)
-   ax.axis("off")
-   fig.tight_layout()
+       text(a, c + 0.5, -1.35, str(c), fs=12, color=C["grey"])
+   text(a, lo - g - 0.2, 0.6, "primal", ha="right", color=C["E"])
+   text(a, lo - g - 0.2, -0.5, "dual", ha="right", color=C["B"])
+   text(a, lo - g - 0.2, -1.35, "AMR cell", ha="right", color=C["grey"])
+   text(a, (lo + hi) / 2, 1.45, "domain", bold=True)
+   text(a, lo - g / 2, 1.45, "ghosts", color=C["ghost_edge"])
+   text(a, hi + g / 2, 1.45, "ghosts", color=C["ghost_edge"])
+   a.update_datalim([(lo - g - 2.6, 0)])
 
-How it works
-------------
+   a = ax[1]
+   grid(a, (0, 0, 2, 2))
+   for y in (0.5, 1.5):
+       mark(a, "dual", 0.5, y, color=C["B"])
+       arrow(a, (0.5, y), (0.5, 1 + (y - 1) * 0.35), color=C["grey"], lw=1.4, ms=10)
+       text(a, 0.82, y, "Bz", color=C["B"])
+   a.add_patch(__import__("matplotlib").patches.Circle((0.5, 1), 0.13, fc=C["hi"], ec=C["E"], lw=2, zorder=4))
+   text(a, 0.12, 1.0, "Ex", color=C["E"], bold=True, ha="right")
+   finish(fig, ax)
 
-#. **One layout per patch, built on demand.** ``layoutFromPatch`` reads the SAMRAI
-   patch box (its AMR cells), the mesh size and the origin, and builds a ``GridLayout``
-   (:src:`src/amr/resources_manager/amr_utils.hpp#L169-L200`). It is a small value object;
-   solvers build one per patch inside their loops.
-#. **A centering table per model.** For each physical quantity and direction, the table
-   says primal or dual. The hybrid table (``initLayoutCentering_``,
-   :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L52-L98`) puts B on faces,
-   E and J on edges, and every ion moment on nodes. The MHD table
-   (:src:`src/core/data/grid/impl/yee/gridlayout_mhd_yee.hpp`) differs: density,
-   momentum, pressure and total energy are at cell centres (dual in every direction).
-#. **Index tables.** From the ghost width and the number of cells, the layout fills, per
-   centering and direction, the first and last *physical* (domain) index and the last
-   *ghost* index (``initPhysicalStart_``, ``initPhysicalEnd_``, ``initGhostEnd_``,
-   :src:`src/core/data/grid/gridlayout.hpp#L1131-L1238`). The first ghost index is always 0.
-#. **Boxes to loop on.** Operators do not write loops by hand. They ask for a box and a
-   function: ``evalOnBox`` (domain values), ``evalOnGhostBox`` (all values),
-   ``evalOnShrinkedGhostBox`` and ``evalOnBiggerBox`` (in between)
-   (:src:`src/core/data/grid/gridlayout.hpp#L973-L997`). The box depends on the field's
-   centering, so a primal field loops over one more value than a dual one.
-#. **Two index spaces.** The *local* index is the position in the patch's array; it starts
-   at 0 on the first ghost. The *AMR* index is the cell index on the whole :term:`level`, shared by
-   all patches of that level. ``localToAMR`` and ``AMRToLocal`` convert between them
-   (:src:`src/core/data/grid/gridlayout.hpp#L582-L660`). Data exchange between patches
-   (ghost filling, copies) speaks AMR indices; numerical loops speak local indices.
+* **One layout per patch**, built on demand by ``layoutFromPatch`` from the SAMRAI patch
+  box, mesh size and origin (dl = 1, origin = 0 for SAMRAI's temporary patches that have no
+  geometry) (:src:`src/amr/resources_manager/amr_utils.hpp#L169-L209`).
+* **Centering table per model**, a compile-time array indexed by the quantity's enum
+  (``initLayoutCentering_``, :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L52-L98`).
+  MHD differs: ρ, ρv, P, Etot at cell centres
+  (:src:`src/core/data/grid/impl/yee/gridlayout_mhd_yee.hpp#L60-L80`).
+* **Index tables** per centering and direction: first/last domain index, last ghost index;
+  the first ghost index is 0 (:src:`src/core/data/grid/gridlayout.hpp#L1131-L1238`).
+* **Loop boxes**: ``evalOnBox`` (domain), ``evalOnGhostBox``, ``evalOnShrinkedGhostBox``,
+  ``evalOnBiggerBox`` (:src:`src/core/data/grid/gridlayout.hpp#L973-L997`).
+* **Two index spaces**: local (array position, 0 = first ghost) and AMR (cell index on the
+  level, shared by all its patches), ``localToAMR`` / ``AMRToLocal``
+  (:src:`src/core/data/grid/gridlayout.hpp#L582-L660`). Patch exchanges speak AMR,
+  numerical loops speak local.
 
 The tricks
 ----------
 
-Primal and dual get the same number of ghosts
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Same number of ghosts for primal and dual
+   **Problem.** Primal has one more value than dual; different ghost counts would need
+   offsets in every loop.
+   **Fix.** Both get ``field_ghost_width`` ghosts, so they start at the same local index; only
+   the end differs, ``start + N`` vs ``start + N − 1``
+   (``nDNbrGhosts``, :src:`src/core/data/grid/gridlayout.hpp#L533-L537`; ``dualOffset_``,
+   :src:`src/core/data/grid/gridlayout.hpp#L1087`).
 
-**Problem.** A primal array has one more value than a dual one over the same cells. If
-the ghost counts also differed, every loop would need per-centering offsets.
+Dual index i is half a cell after primal index i
+   **Problem.** Derivatives and averages need a fixed neighbour convention.
+   **Fix.** Position :math:`i\,\Delta x` (primal), :math:`(i+\tfrac12)\Delta x` (dual), from
+   the AMR index (``fieldNodeCoordinates``, :src:`src/core/data/grid/gridlayout.hpp#L450-L476`).
+   So primal → dual uses :math:`i, i+1`; dual → primal uses :math:`i-1, i`
+   (``Partial``, :src:`src/core/numerics/differential_operators.hpp#L47-L82`).
 
-**Fix.** Both centerings get ``field_ghost_width`` ghosts (``nDNbrGhosts``,
-:src:`src/core/data/grid/gridlayout.hpp#L533-L537`; ``initPhysicalStart_``,
-:src:`src/core/data/grid/gridlayout.hpp#L1131-L1153`). So the first domain value has the
-same local index for both, and only the *end* differs: with :math:`N` cells, primal
-domain values run from ``start`` to ``start + N``, dual ones from ``start`` to
-``start + N - 1`` (``dualOffset_``, :src:`src/core/data/grid/gridlayout.hpp#L1087`).
+Averaging stencils derived from centerings
+   **Problem.** 58 hand-written averaging tables, one per pair of quantities.
+   **Fix.** ``GridLayout::project<Source, Destination>`` builds the stencil at compile time:
+   two-point average in each direction where the centerings differ, product across
+   directions (default order 2; the machinery also has orders 4 and 6)
+   (``recenteringStencil``, :src:`src/core/data/grid/gridlayoutdefs.hpp#L259-L275`).
+   Debug builds check the field's centering
+   (:src:`src/core/data/grid/gridlayout.hpp#L662-L672`). :pr:`1499` (stencils derived from
+   centerings), :pr:`1495` (centering lookup table).
 
-Dual index :math:`i` is half a cell *after* primal index :math:`i`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Ghost width from the numerics
+   **Problem.** Ghosts must cover the widest stencil and whole coarse cells (ratio 2).
+   **Fix.** Hybrid: 2, 4, 4 for interpolation order 1, 2, 3
+   (:src:`src/core/models/options/hybrid_options.hpp#L24-L25`). MHD: reconstruction width
+   + 1, rounded up to even, i.e. 2 (``Constant``) or 4
+   (:src:`src/core/utilities/ghost_width_calculator.hpp#L47-L68`).
 
-**Problem.** A derivative or an average between a primal and a dual array needs a fixed
-convention for which neighbours to take.
-
-**Fix.** The value of index :math:`i` is at :math:`i\,\Delta x` if primal and at
-:math:`(i + \tfrac12)\,\Delta x` if dual (``fieldNodeCoordinates``,
-:src:`src/core/data/grid/gridlayout.hpp#L450-L476`, computed from the AMR index). Hence:
-
-* a derivative of a primal field at dual index :math:`i` uses primal :math:`i` and
-  :math:`i+1`; a derivative of a dual field at primal index :math:`i` uses dual
-  :math:`i-1` and :math:`i` (``Partial``,
-  :src:`src/core/numerics/differential_operators.hpp#L47-L82`);
-* averaging to the other centering uses the same pairs.
-
-Projections are derived from the centerings
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** Ohm's law needs, for example, :math:`B_z` on the :math:`E_x` edges, where
-:math:`B_z` does not live. Each such pair used to have its own hand-written averaging
-table.
-
-**Fix.** ``GridLayout::project<Source, Destination>(field, index)`` builds the averaging
-stencil at compile time from the two centerings (``recenteringStencil``,
-:src:`src/core/data/grid/gridlayoutdefs.hpp#L259-L275`). In every direction where they
-differ, it averages the two neighbours; across several directions it takes the product.
-In 1D, a primal velocity read at a dual :math:`E_x` point is
-:math:`\tfrac12\big(V(i) + V(i+1)\big)`. In 2D, :math:`B_z` is dual–dual and :math:`E_x` is dual–primal, so
-
-.. math::
-
-   B_z \text{ on } E_x(i, j) = \tfrac12\big(B_z(i, j-1) + B_z(i, j)\big).
-
-Debug builds check that the field passed really has the source centering
-(:src:`src/core/data/grid/gridlayout.hpp#L662-L672`).
-
-**History.** :pr:`1499` (stencils derived from centerings).
-
-Centerings are a compile-time table
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** The centering of a quantity is asked inside hot loops.
-
-**Fix.** It is a ``constexpr`` array (filled by the compiler) indexed by the quantity's enum value
-(``centering``, :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L127-L144`):
-no switch, no runtime cost, and a missing or duplicate entry fails to compile.
-
-**History.** :pr:`1495` (centering lookup table).
-
-The ghost width comes from the numerics
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** Ghosts must be wide enough for the widest stencil that reads them, and a
-ghost layer must cover whole coarse cells so that refinement from the coarser level
-(ratio 2) fills it cleanly.
-
-**Fix.** The ghost width is a compile-time option of the model:
-
-* hybrid: 2, 4, 4 for interpolation orders 1, 2, 3
-  (:src:`src/core/models/options/hybrid_options.hpp#L24-L25`), set by the particle
-  shape;
-* MHD: the reconstruction stencil width plus one, rounded up to an even number
-  (``nbrGhostsFromReconstruction``,
-  :src:`src/core/utilities/ghost_width_calculator.hpp#L47-L68`): 2 for ``Constant``, 4 for
-  the others. The extra one is there because J is computed on the ghost box minus one
-  layer and the reconstruction still reads it.
-
-Reading a field at another centering, outside the solver
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** Diagnostics and tagging want every field at one place (for example cell
-centres), without allocating a copy.
-
-**Fix.** ``RecenteredField`` is a read-only view that averages on the fly
-(:src:`src/core/data/field/recentered_field.hpp`). It checks centerings at run time, so it
-is meant for whole-field reads, not for solver loops, which use ``project``.
-
-**History.** :pr:`1486` (read at another centering).
+Reading a field at another centering, outside solvers
+   **Problem.** Diagnostics and tagging want every field at one place, without a copy.
+   **Fix.** ``RecenteredField``: a read-only view that averages when read; it compares
+   source and destination centerings on every read, so it is not for solver loops
+   (:src:`src/core/data/field/recentered_field.hpp#L1-L98`). :pr:`1486` (read at another
+   centering).
 
 Go deeper
 ---------
 
-* :doc:`/dev/fields`: the arrays the layout describes.
-* :doc:`/dev/ghost_cells`: how ghost values are filled.
+* :doc:`/dev/fields` — the arrays the layout describes.
+* :doc:`/dev/ghost_cells` — how ghost values are filled.
 
 Related
 -------
 
-* :doc:`/dev/electromagnetic`: the main users of ``project`` and the derivatives.
-* :doc:`/dev/mhd_solver`: the MHD layout in use.
-* :doc:`/numerics/grid`: the same grid from the user's side.
+* :doc:`/dev/electromagnetic` · :doc:`/dev/mhd_solver` · :doc:`/numerics/grid`
