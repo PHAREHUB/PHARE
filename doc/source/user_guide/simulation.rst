@@ -209,7 +209,10 @@ Time
      - Meaning
      - Default
    * - ``time_step``
-     - Time step :math:`dt`. A number, or a dictionary (see below).
+     - Time step :math:`dt`. A number, or a dictionary (see below). In a hybrid
+       run the stable time step shrinks like the square of the cell size
+       (whistler waves): see
+       :ref:`numerics/time_integration:Choosing a stable time step`.
      - none
    * - ``time_step_nbr``
      - Number of time steps.
@@ -490,7 +493,4 @@ Common mistakes
    :doc:`/user_guide/diagnostics`, :doc:`/getting_started/first_simulation`.
 
 
-Reference
----------
 
-.. autoclass:: pyphare.pharein.Simulation

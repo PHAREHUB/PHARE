@@ -78,4 +78,4 @@ Runtime
 -------
 
 2D: about 1 hour (estimated from a 10-minute partial run on 4 processes, machine shared). 3D: long run, not timed here; it was started on 4 processes and had not
-reached the end of its 1000 steps after 180 s, at about 1 s per step).
+reached the end of its 1000 steps after 180 s, at about 1 s per step.

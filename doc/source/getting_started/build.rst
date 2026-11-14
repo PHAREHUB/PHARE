@@ -10,7 +10,8 @@ You need the tools and the source from :doc:`install`.
 Minimal build
 -------------
 
-From the folder that contains ``PHARE``:
+From the folder that contains ``PHARE`` (if you are still inside ``PHARE``
+after :doc:`install`, first ``cd ..``):
 
 .. code-block:: bash
 

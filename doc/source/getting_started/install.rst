@@ -59,6 +59,7 @@ On a laptop, "development files" means a package often called
 .. code-block:: bash
 
    git clone https://github.com/PHAREHUB/PHARE
+   cd PHARE
 
 This creates a ``PHARE`` folder. The libraries PHARE depends on (SAMRAI for
 the adaptive mesh, HighFive for HDF5 files, cppdict for the input dictionary,
@@ -73,6 +74,8 @@ build, so the machine needs internet access at that step.
 The Python packages PHARE needs are listed in ``pyproject.toml`` and
 ``requirements.txt`` (``numpy``, ``scipy``, ``h5py``, ``matplotlib`` and a few
 others). Choose one of these three ways, from inside the ``PHARE`` folder.
+They install only the packages PHARE needs, not PHARE itself: after
+:doc:`build`, you still tell Python where PHARE is with ``PYTHONPATH``.
 
 With `uv <https://docs.astral.sh/uv/>`_ (creates a virtual environment in
 ``.venv``):

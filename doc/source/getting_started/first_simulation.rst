@@ -167,7 +167,7 @@ predicts; your curves follow it, with small wiggles on top.
        ax.axvline(t, color="0.7", lw=0.8, ls=":")
    ax.annotate("", xy=(50, 0.108), xytext=(0, 0.108),
                arrowprops=dict(arrowstyle="->", color="0.3"))
-   ax.text(25, 0.111, "crest moves at speed 1", ha="center", va="bottom", fontsize=11)
+   ax.text(25, 0.111, "speed 1 (theory)", ha="center", va="bottom", fontsize=11)
    ax.set_ylim(-0.17, 0.135)
    ax.set_xlabel("x")
    ax.set_ylabel("By")
@@ -221,13 +221,19 @@ electron model. A macro-particle stands for many real ions.
 * lengths are in proton inertial lengths :math:`\delta_0` (also written
   :math:`d_i`), so the box is 100 :math:`d_i` long;
 * times are in inverse proton gyrofrequencies :math:`1/\omega_0`;
-* speeds are in Alfvén speeds :math:`v_0 = B_0/\sqrt{\mu_0 m_p n_0}`.
+* speeds are in Alfvén speeds :math:`v_0 = B_0/\sqrt{\mu_0 m_p n_0}`;
+* temperatures (``Te`` here) are in :math:`m_p v_0^2`: the proton temperature
+  is :math:`m_p v_{th}^2 = 0.01`, the same as ``Te``.
 
 Here B = 1 and n = 1, so the Alfvén speed is exactly 1. The wavelength (100
 :math:`d_i`) is much longer than :math:`d_i`, so the wave is very nearly a
 plain Alfvén wave and moves at very nearly that speed (theory gives a few
 percent less at this wavelength). For shorter wavelengths, a hybrid code shows the
 dispersive behavior of the waves (see :doc:`/validation/hybrid_dispersion`).
+
+**Hidden default.** PHARE adds a small hyper-resistivity (1e-4) by default. It
+damps noise at the scale of one cell and leaves this long wave untouched; see
+:doc:`/user_guide/electrons`.
 
 **Why** ``vy = -by`` **and** ``vz = -bz``? An Alfvén wave going in the
 :math:`+x` direction, along :math:`\mathbf{B}_0`, has its velocity perturbation

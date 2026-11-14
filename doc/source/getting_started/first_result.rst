@@ -77,7 +77,8 @@ PHARE does not store a field as one big array. The domain is cut into
 rectangular pieces of grid called **patches**; with mesh refinement, finer
 patches sit on top of coarser ones, in *levels*. A getter such as
 ``run.GetB(t)`` returns this collection of patches (more in
-:doc:`/data_analysis/patch_hierarchy`).
+:doc:`/data_analysis/patch_hierarchy`). The picture below shows an example
+domain cut into four patches; your first run has a single one.
 
 .. raw:: html
 
