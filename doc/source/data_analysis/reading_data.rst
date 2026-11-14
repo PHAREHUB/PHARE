@@ -78,18 +78,10 @@ exist)``). Use ``run.times("B")`` to list the available times of a quantity.
 What it does
 ------------
 
-A getter opens the one file that holds the quantity, reads the requested time,
-and returns a Python object. Click a box to go to the related page.
-
-.. mermaid::
-
-   flowchart TD
-     D["FluidDiagnostics(quantity=...)<br/>in your input script"] --> F[("one .h5 file<br/>per quantity")]
-     F --> G["run.GetXXX(time)"]
-     G --> H["patch hierarchy<br/>(default)"]
-     G --> M["interpolator + grid<br/>(merged=True)"]
-     click D href "../user_guide/diagnostics.html"
-     click H href "patch_hierarchy.html"
+A getter opens the one file that holds the quantity (written by a
+:doc:`diagnostics </user_guide/diagnostics>` block), reads the requested time,
+and returns a Python object: a :doc:`patch hierarchy <patch_hierarchy>` by
+default, or an interpolator and its grid with ``merged=True``.
 
 Which getter reads which file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

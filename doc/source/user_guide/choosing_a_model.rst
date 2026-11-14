@@ -27,17 +27,11 @@ PHARE runs one of two models. You choose with ``Simulation(model_options=...)``:
 Which one?
 ----------
 
-.. mermaid::
-
-   flowchart TD
-     Q1{"Do ion kinetic effects matter?<br/>beams, non-Maxwellian ions,<br/>cyclotron or Landau damping,<br/>ion-scale structure"}
-     Q1 -- yes --> H["hybrid"]
-     Q1 -- no --> Q2{"Are the scales of interest<br/>near the ion inertial length?"}
-     Q2 -- yes --> HM["MHD with the Hall term<br/>(hall=True), or hybrid"]
-     Q2 -- no --> M["MHD"]
-     click H href "hybrid_inputs.html"
-     click HM href "mhd_inputs.html"
-     click M href "mhd_inputs.html"
+* Ion kinetic effects matter (beams, non-Maxwellian ions, cyclotron or Landau
+  damping, ion-scale structure): :doc:`hybrid <hybrid_inputs>`.
+* Scales near the ion inertial length, without ion kinetics: MHD with the Hall
+  term (``hall=True``, :doc:`mhd_inputs`), or hybrid.
+* Larger scales only: :doc:`MHD <mhd_inputs>`.
 
 .. list-table::
    :header-rows: 1

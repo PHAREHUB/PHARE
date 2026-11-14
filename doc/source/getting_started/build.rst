@@ -61,21 +61,29 @@ and, for hybrid runs, the interpolation order and the number of particles a
 particle is split into when it enters a finer mesh level; for :term:`MHD`
 runs, the numerical scheme (reconstruction, slope limiter, Riemann solver,
 Hall term).
-Each combination is one Python module in ``build/pybindlibs``. When you run a
-script, PHARE reads your ``Simulation`` settings and loads the matching module.
+Each combination is one line of ``PHARE/res/sim/all.txt`` and one Python
+module in ``build/pybindlibs``. When you run a script, PHARE reads your
+``Simulation`` settings and loads the matching module:
 
-.. mermaid::
+.. list-table::
+   :header-rows: 1
+   :widths: 34 30 36
 
-   flowchart TD
-     F["res/sim/all.txt<br/>one line per combination<br/>e.g. 1,1,2"] --> B["build"]
-     B --> M["build/pybindlibs/<br/>cpp_1_1_2, cpp_2_1_4, ...<br/>one module per line"]
-     S["your script<br/>Simulation(cells=200, interp_order=1, ...)"] --> P["pick module<br/>cpp_1_1_2"]
-     M --> P
+   * - Line in ``all.txt``
+     - Module built
+     - Loaded by a run with
+   * - ``1,1,2``
+     - ``cpp_1_1_2``
+     - 1D hybrid, ``interp_order=1``, ``refined_particle_nbr=2``
+   * - ``2,1,4``
+     - ``cpp_2_1_4``
+     - 2D hybrid, ``interp_order=1``, ``refined_particle_nbr=4``
+   * - ``1,Linear,VanLeer,Rusanov,false``
+     - ``cpp_1_Linear_VanLeer_Rusanov_false``
+     - 1D MHD with that scheme, no Hall term
 
-The list of combinations is the file ``PHARE/res/sim/all.txt``. Its lines are
-``dim,interp_order,refined_particle_nbr`` for hybrid runs and
-``dim,reconstruction,limiter,riemann,hall`` for MHD runs. The default list
-covers 1D, 2D and 3D, and every combination used by PHARE's tests.
+The default list covers 1D, 2D and 3D, and every combination used by PHARE's
+tests.
 
 To build faster, or to add a combination, give your own file:
 

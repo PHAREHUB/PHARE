@@ -10,15 +10,6 @@ a Python package, ``pyphare``, with which you write input scripts and read the
 results. You install the tools for both here, then compile the core on the
 :doc:`build` page.
 
-.. mermaid::
-
-   flowchart TD
-     A["1. system tools<br/>compiler, CMake, MPI, HDF5, Python"] --> B["2. get the source<br/>git clone"]
-     B --> C["3. Python packages<br/>uv sync or pip"]
-     C --> D["4. build the C++ core"]
-     click D href "build.html"
-
-
 1. System tools
 ---------------
 

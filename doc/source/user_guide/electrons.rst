@@ -41,19 +41,6 @@ At every step, PHARE builds the electron fluid from the ions and the magnetic
 field, then gets :math:`\mathbf{E}` from Ohm's law (in
 :doc:`normalized units </theory/normalization>`):
 
-.. mermaid::
-
-   flowchart TD
-     I["ion particles"] --> M["ion moments<br/>densities and fluxes"]
-     M --> N["electron density<br/>n_e = sum of q_s n_s"]
-     B["magnetic field B"] --> J["current J = curl B"]
-     M --> V["electron velocity<br/>V_e = (sum of q_s n_s V_s - J) / n_e"]
-     J --> V
-     N --> P["electron pressure<br/>P_e = n_e T_e"]
-     V --> E["Ohm's law gives E"]
-     P --> E
-     J --> E
-
 * **Density:** the plasma is quasineutral, so the electron density is the ion
   charge density, :math:`n_e = \sum_s q_s n_s` over all ion populations.
 * **Velocity:** electrons carry the part of the current the ions do not,

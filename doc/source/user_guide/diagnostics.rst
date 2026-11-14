@@ -45,14 +45,6 @@ appends that quantity (all patches, all refinement levels) to **one file per
 quantity**. The file name is the quantity path with ``/`` replaced by ``_``.
 You read the files back with ``pharesee`` (see :doc:`/data_analysis/reading_data`).
 
-.. mermaid::
-
-   flowchart TD
-     D["Diagnostics blocks<br/>quantity + times"] --> W["At each write time<br/>PHARE dumps the quantity"]
-     W --> F[("One .h5 file per quantity<br/>in the diagnostics directory")]
-     F --> R["Run('diag_run')<br/>pharesee reads the files"]
-     click R href "../data_analysis/reading_data.html"
-
 Declaring the same quantity (and, for per-population diagnostics, the same
 population) twice does not create a duplicate: it just extends the existing
 one's list of output times (only ``write_timestamps`` are merged). Each block can be declared as many times as you
@@ -269,13 +261,9 @@ the simulation actually reaches. The rules:
 
 In this example E and B are written every 10 time steps.
 
-``elapsed_timestamps`` is the wall-clock counterpart: instead of simulation
-times, it is a list of wall-clock durations (in seconds, or as
-``datetime.timedelta``) elapsed since the simulation started. It is handy
-when you don't know in advance which simulation time a run will reach within
-a given wall-clock budget (e.g. on a cluster with a time limit), or when a
-diagnostic should be dumped on a wall-clock cadence rather than a
-simulation-time one:
+``elapsed_timestamps`` is the wall-clock counterpart: durations since the run
+started (seconds or ``datetime.timedelta``). Use it on a cluster, when you do
+not know which simulation time the job will reach:
 
 .. code-block:: python
 
@@ -286,14 +274,9 @@ simulation-time one:
         elapsed_timestamps=[datetime.timedelta(minutes=10 * i) for i in range(6)],
     )
 
-This writes ``E`` roughly every 10 minutes of wall-clock time, for the first
-hour of the run. Unlike ``write_timestamps``, each dump is triggered by
-comparing against the actual wall-clock time as the run progresses, so the
-simulation time (and time step) at which it happens depends on how fast the
-run goes - it is not reproducible across runs at different speeds or on
-different machines. ``write_timestamps`` and ``elapsed_timestamps`` can be
-combined on the same diagnostics block; PHARE writes whenever either
-condition is met.
+This writes ``E`` about every 10 minutes for the first hour. The simulation
+time of each dump depends on the speed of the run, so it is not reproducible.
+Both lists can be given on one block: PHARE writes when either is due.
 
 Where and how files are written: ``diag_options``
 -------------------------------------------------
