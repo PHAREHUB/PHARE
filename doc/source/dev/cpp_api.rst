@@ -22,13 +22,12 @@ Doxygen reads the C++ headers and sources and writes one page per class, file an
 Inside a page you can click from a class to its members and to its base classes.
 The settings are in ``doc/Doxyfile.in`` (:src:`doc/Doxyfile.in`). The front page text is ``doc/doxypages/main.md``.
 
-.. mermaid::
+.. flow::
 
-   flowchart TD
-     A["src/ (headers and sources)"] --> D["Doxygen"]
-     B["doc/Doxyfile.in<br/>(settings)"] --> D
-     D --> H["html/index.html<br/>open it in a browser"]
-     D --> L["latex/<br/>(also produced, not needed)"]
+   src/ | headers and sources
+   doc/Doxyfile.in | settings
+   Doxygen
+   html/index.html | open it in a browser
 
 Build it locally
 ----------------

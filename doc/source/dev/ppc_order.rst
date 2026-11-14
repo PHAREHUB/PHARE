@@ -37,7 +37,7 @@ One step, four stages
            text(a, x, -0.6, lab, color=C["grey"])
        for y in rows.values():
            mark(a, "primal", 0, y, color=C["ink"], size=8)
-       a.plot([-1.6, 5.6], [0, 4.2], alpha=0)
+       a.plot([-1.6, 5.6], [0, 0], alpha=0)
    fig, (a1, a2, a3, a4) = strip(4, [
        "Predictor 1: Faraday, Ampère, Ohm with moments at n",
        "Push 1, on a copy: predicted moments at n+1",
@@ -47,8 +47,6 @@ One step, four stages
    mark(a1, "dual", 4, 3, color=C["B"]); mark(a1, "dual", 4, 2, color=C["E"])
    mark(a1, "dual", 2, 3, color=C["B"]); mark(a1, "dual", 2, 2, color=C["E"])
    text(a1, 2, 3.4, "average", color=C["grey"])
-   mark(a1, "primal", 0.2, 4.2, color=C["ink"], size=8); text(a1, 0.45, 4.2, "final", ha="left")
-   mark(a1, "dual", 1.5, 4.2, color=C["ink"], size=8); text(a1, 1.75, 4.2, "predicted / temporary", ha="left")
    base(a2)
    mark(a2, "dual", 2, 3, color=C["B"]); mark(a2, "dual", 2, 2, color=C["E"])
    mark(a2, "dual", 4, 3, color=C["B"]); mark(a2, "dual", 4, 2, color=C["E"])
@@ -63,6 +61,8 @@ One step, four stages
    base(a4)
    mark(a4, "primal", 4, 3, color=C["B"]); mark(a4, "primal", 4, 2, color=C["E"])
    mark(a4, "primal", 4, 1, color=C["rho"]); mark(a4, "primal", 4, 0, color=C["ion"])
+   mark(a4, "primal", 0.2, -1.2, color=C["ink"], size=8); text(a4, 0.45, -1.2, "final", ha="left")
+   mark(a4, "dual", 1.5, -1.2, color=C["ink"], size=8); text(a4, 1.75, -1.2, "predicted / temporary", ha="left")
    finish(fig, [a1, a2, a3, a4], gap=0.5)
 
 * Predictor 1: B^p from B^n, E^n; J from B^p; E^p from Ohm with moments at n

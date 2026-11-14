@@ -16,18 +16,18 @@ simulator from the dictionary.
 The picture
 -----------
 
-.. mermaid::
+.. flow::
 
-   flowchart TD
-     S["input script<br/>ph.Simulation(...), models,<br/>diagnostics"] --> SET["Python Simulator.setup()"]
-     SET -->|"1"| POP["populateDict()<br/>pharein"]
-     POP -->|"typed add_* calls"| DICT[("PHAREDict<br/>(C++ singleton)")]
-     DICT -->|"2"| LIB["cpp_lib(sim)<br/>import pybindlibs.cpp_&lt;options&gt;"]
-     LIB -->|"3"| HIER["cpp_etc.make_hierarchy()<br/>SAMRAI hierarchy, reads PHAREDict"]
-     HIER -->|"4"| MK["make_simulator(hier)<br/>Simulator&lt;options&gt;, reads PHAREDict"]
-     MK --> RUN["initialize(), then advance() in a loop"]
-     click RUN href "one_time_step.html" "One time step"
-     click HIER href "resources_manager.html" "Resources manager and patch data"
+   Input script | ph.Simulation(...), models, diagnostics
+   Simulator.setup()
+   1 · populateDict() | pyphare.pharein
+   typed add_* calls
+   PHAREDict | C++ singleton, filled by Python
+   2 · cpp_lib(sim) | imports pybindlibs.cpp_<options>
+   3 · make_hierarchy() | cpp_etc: SAMRAI hierarchy, reads PHAREDict | /dev/resources_manager
+   4 · make_simulator(hier) | Simulator<options>, reads PHAREDict
+   then
+   initialize(), advance() in a loop | | /dev/one_time_step
 
 Steps 1 to 4 happen in that order inside ``Simulator.setup()``
 (:src:`pyphare/pyphare/simulator/simulator.py#L105-L121`).

@@ -8,162 +8,123 @@ Messengers and schedules
 
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` › Messengers
 
-**In one sentence:** a :term:`messenger` is the object that moves data between
-the patches of a level and between a level and the next coarser one; it hides
-SAMRAI's machinery (algorithms, :term:`schedules <schedule>`,
-:term:`fill patterns <fill pattern>`) behind calls such as
-``fillMagneticGhosts(B, level, time)``.
-
-The solver never talks to SAMRAI directly. When it needs ghost values, or
-moments summed across patch borders, it asks the messenger of its level.
+**In one sentence:** a :term:`messenger` moves data between the patches of a
+level and between a level and the coarser one; it hides SAMRAI's algorithms,
+:term:`schedules <schedule>` and :term:`fill patterns <fill pattern>` behind
+calls such as ``fillMagneticGhosts(B, level, time)``.
 
 
-The picture
------------
+Which messenger
+---------------
 
-.. mermaid::
+.. list-table::
+   :header-rows: 1
+   :widths: 22 22 56
 
-   flowchart TD
-     MI["MultiPhysicsIntegrator<br/>one messenger per model pair"] --> IM["IMessenger"]
-     IM --> HM["HybridMessenger"]
-     IM --> MM["MHDMessenger<br/>MHD fine level, MHD coarse level"]
-     HM --> HH["HybridHybridMessengerStrategy<br/>hybrid fine level, hybrid coarse level"]
-     HM --> MH["MHDHybridMessengerStrategy<br/>hybrid fine level, MHD coarse level"]
-     HH --> RP["refiners and synchronizers<br/>(what to move)"]
-     RP --> SC["SAMRAI schedules, one per level<br/>(who sends what to whom)"]
-     click HH href "messengers.html#the-hybrid-messenger" "The hybrid messenger"
-     click SC href "messengers.html#when-schedules-are-built" "When schedules are built"
+   * - Coarser level
+     - Level
+     - Messenger
+   * - hybrid
+     - hybrid
+     - ``HybridMessenger`` with ``HybridHybridMessengerStrategy``
+   * - MHD
+     - MHD
+     - ``MHDMessenger``
+   * - MHD
+     - hybrid
+     - ``HybridMessenger`` with ``MHDHybridMessengerStrategy``: all methods
+       empty at this commit (:src:`src/amr/messengers/mhd_hybrid_messenger_strategy.hpp`)
 
-The messenger used for level ``L`` is chosen by the models of levels ``L-1``
-and ``L``: its name is ``"HybridModel-HybridModel"``, ``"MHDModel-MHDModel"``
-or ``"MHDModel-HybridModel"``. There is one messenger object per pair of
-models, shared by all the levels that use that pair; level 0 uses the pair
-(its model, its model) (``MultiPhysicsIntegrator::registerMessengers_``,
-:src:`src/amr/multiphysics_integrator.hpp#L778-L819`). The C++ ``Simulator``
-creates them once, at setup, through a ``MessengerFactory``
-(``registerAndSetupMessengers``, called at
-:src:`src/simulator/simulator.hpp#L324`).
+* One object per model pair, shared by all levels using it; level 0 uses
+  (its model, its model) (``registerMessengers_``,
+  :src:`src/amr/multiphysics_integrator.hpp#L778-L819`).
+* Created once at setup by the ``Simulator`` (``registerAndSetupMessengers``,
+  :src:`src/simulator/simulator.hpp#L324`).
 
 
-How it works
-------------
+What a schedule is
+------------------
 
-SAMRAI moves data in two layers. PHARE wraps both.
+.. plot::
+   :include-source: false
+   :alt: Two level-1 patches over level 0; arrows show the transfers a ghost-fill schedule does for patch A.
 
-.. mermaid::
+   from phare_draw import *
 
-   flowchart TD
-     A["algorithm: what to move<br/>built once, at setup"] --> S["schedule: who sends what to whom<br/>built per level, kept while levels last"]
-     S --> F["fill: do the transfers<br/>every time the solver asks"]
+   fig, (ax,) = strip(1, ["the transfers of one ghost fill, for patch A"])
+   grid(ax, (0, 0, 16, 7), color=C["light"])
+   patch(ax, (4, 2, 8, 5), ghosts=1, label="patch A")
+   patch(ax, (8, 2, 12, 5), label="patch B")
+   text(ax, 14.2, 6.4, "level 0", color=C["L0"])
+   arrow(ax, (9.6, 3.5), (8.5, 3.5), color=C["E"], lw=2.2)
+   text(ax, 12.6, 1.0, "copy from patch B (same level,\nmaybe another rank)", color=C["E"])
+   arrow(ax, (11.0, 1.6), (9.2, 3.2), color=C["E"], lw=1.2)
+   arrow(ax, (2.0, 6.4), (3.6, 4.6), color=C["L2"], lw=2.2)
+   text(ax, 1.6, 6.75, "refine from level 0", color=C["L2"])
+   ax.plot([-0.3, 16.6], [0.2, 7.4], alpha=0)
+   finish(fig, [ax])
 
-#. **Algorithm: what to move.** A SAMRAI ``RefineAlgorithm`` (or
-   ``CoarsenAlgorithm``) lists the quantities to move, with the operator that
-   computes fine values from coarse ones and the fill pattern
-   (:doc:`/dev/fill_patterns`). It does not depend on the patches. PHARE builds
-   its algorithms once, at setup (``registerQuantities``,
-   :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L159-L203`).
+Look at patch A's ghost layer: where patch B is, values are copied; elsewhere
+they are refined from level 0. A schedule is this list of transfers, for these
+patches, on every MPI :term:`rank`.
 
-#. **Schedule: who sends what to whom.** A ``RefineSchedule`` applies an
-   algorithm to a given level: it knows every pair of patches that exchange
-   data, on every MPI :term:`rank`. Building one is expensive and is
-   *collective*: all ranks must build it together. It stays valid as long as the levels it
-   was built from do not change.
-
-#. **Fill.** ``schedule->fillData(time)`` does the transfers. This is what
-   the messenger runs during the time step.
-
-PHARE groups these in small classes (:src:`src/amr/messengers/refiner.hpp`,
-:src:`src/amr/messengers/synchronizer.hpp`): a ``Refiner`` holds the
-algorithms of one kind of transfer and one schedule per level; a
-``RefinerPool`` holds the refiners of related quantities. Synchronizers are
-the same for coarsening (fine to coarse, see :doc:`/dev/coarsening`).
+* **Algorithm** (what to move): quantities, refine operator, fill pattern;
+  built once at setup (``registerQuantities``,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L159-L203`).
+* **Schedule** (who sends what to whom): an algorithm applied to a level;
+  costly and collective to build; valid while its levels exist.
+* **Fill**: ``schedule->fillData(time)``, run by the messenger at each call.
+* PHARE wraps them in ``Refiner`` / ``RefinerPool`` (and ``Synchronizer`` for
+  coarsening) (:src:`src/amr/messengers/refiner.hpp`,
+  :src:`src/amr/messengers/synchronizer.hpp`).
 
 
 The kinds of transfer
 ---------------------
 
-Each ``Refiner`` has a type, ``RefinerType``
-(:src:`src/amr/messengers/refiner.hpp#L16-L29`), which decides how its
-schedule is built (``Refiner::makeSchedule_``,
-:src:`src/amr/messengers/refiner.hpp#L60-L205`):
+``RefinerType`` (:src:`src/amr/messengers/refiner.hpp#L16-L29`) decides how a
+schedule is built (``makeSchedule_``, :src:`src/amr/messengers/refiner.hpp#L60-L205`):
 
 .. list-table::
    :header-rows: 1
-   :widths: 26 44 30
+   :widths: 30 40 30
 
    * - Type
-     - What the schedule does
-     - Used by (hybrid messenger)
+     - Schedule
+     - Hybrid refiners
    * - ``GhostField``
-     - fills all ghosts: copies from the same level, refines from the coarser
-       level where no same-level patch is (:doc:`/dev/ghost_cells`)
-     - ``magGhostsRefiners_``, ``elecGhostsRefiners_`` (B, E)
+     - copy from the level, refine elsewhere (:doc:`/dev/ghost_cells`)
+     - ``magGhostsRefiners_``, ``elecGhostsRefiners_``
    * - ``PatchGhostField``
-     - copies from the same level only
+     - copy from the level only
      - ``chargeDensityPatchGhostsRefiners_``
    * - ``InitField``
-     - fills a new level (cells and ghosts) by refining the coarser level
-       everywhere, without reading the same level, which has no data yet
-     - ``electricInitRefiners_`` (E on a new level)
+     - refine everything from the coarser level
+     - ``electricInitRefiners_``
    * - ``InitInteriorPart``
-     - puts split coarse particles into the cells of a new level (not in its
-       ghosts)
+     - split coarse particles into the new level's cells
      - ``domainParticlesRefiners_``
    * - ``LevelBorderParticles``
-     - puts split coarse particles in the layer just outside the level:
-       level ghost particles (:doc:`/dev/level_ghost_particles`)
+     - split coarse particles just outside the level
+       (:doc:`/dev/level_ghost_particles`)
      - ``lvlGhostPartOldRefiners_``, ``lvlGhostPartNewRefiners_``
    * - ``ExteriorGhostParticles``
      - same-level particle exchange (:doc:`/dev/grabbing_particles`)
      - ``domainGhostPartRefiners_``
-   * - ``PatchFieldBorderSum`` (and ``Vec``, ``Tensor``)
-     - adds the neighbours' values on nodes in both patches' ghost boxes
-       (:doc:`/dev/moments`)
+   * - ``PatchFieldBorderSum`` (``Vec``, ``Tensor``)
+     - add neighbours' values on shared ghost-box nodes (:doc:`/dev/moments`)
      - ``popDensityBorderSumRefiners_``, ``popFluxBorderSumRefiners_``
-   * - ``PatchFieldBorderMax`` (and ``Vec``)
-     - same nodes, keeps the larger value
+   * - ``PatchFieldBorderMax`` (``Vec``)
+     - same nodes, keep the larger value
      - ``ionDensityBorderMaxRefiners_``, ``ionFluxBorderMaxRefiners_``
    * - ``LevelBorderField``
-     - fills level ghosts only; not used at this commit
+     - level ghosts only; unused
      - (none)
 
-
-The hybrid messenger
---------------------
-
-``HybridHybridMessengerStrategy``
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp`) is used
-between two hybrid levels. Its calls during a time step:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 32 68
-
-   * - Call
-     - What it moves
-   * - ``prepareStep``
-     - nothing: saves B and E at the start of the step, for the finer level's
-       time interpolation
-   * - ``firstStep``
-     - new level ghost particles, split from the coarser level
-   * - ``fillMagneticGhosts``, ``fillElectricGhosts``
-     - B and E ghosts (patch and level ghosts, interpolated in time)
-   * - ``fillFluxBorders``, ``fillDensityBorders``
-     - per-population moments summed across patch borders
-   * - ``fillIonPopMomentGhosts``
-     - no transfer: adds the level ghost particles' moments, old and new
-       weighted by time
-   * - ``fillIonGhostParticles``
-     - particles that crossed into a neighbour patch
-   * - ``fillIonBorders``
-     - total charge density and flux made equal on shared border nodes
-   * - ``lastStep``
-     - no transfer: new level ghost particles become the old ones
-   * - ``synchronize``, ``reflux``, ``postSynchronize``
-     - fine to coarse at synchronization
-       (:ref:`dev-one-time-step-sync`)
-
-When each one is called is on :doc:`/dev/one_time_step`.
+The hybrid messenger's calls during a step (``prepareStep``, ``firstStep``,
+``fill...``, ``lastStep``, ``synchronize``, ``reflux``, ``postSynchronize``)
+are listed in order on :doc:`/dev/one_time_step` and
+:ref:`dev-one-time-step-sync`.
 
 
 .. _dev-messengers-schedules:
@@ -171,120 +132,77 @@ When each one is called is on :doc:`/dev/one_time_step`.
 When schedules are built
 ------------------------
 
-.. mermaid::
+.. list-table::
+   :header-rows: 1
+   :widths: 22 38 40
 
-   flowchart TD
-     N["SAMRAI creates or replaces level L<br/>(init, regrid, rebalance)"] --> RL["messenger.registerLevel(L)<br/>same-level schedules of L"]
-     RL --> INIT["level initializer fills L<br/>with init schedules, built and dropped"]
-     INIT --> RH["SAMRAI: resetHierarchyConfiguration"]
-     RH --> OH["messenger.onHierarchyChanged(L)<br/>for every level"]
-     OH --> Q{"schedules of L built<br/>on the current levels?"}
-     Q -->|yes| K["keep them"]
-     Q -->|no| B["rebuild them"]
+   * - Kind
+     - Examples
+     - Built
+   * - same-level
+     - patch ghosts, moment sums, particle exchange
+     - when level L is created; rebuilt if L was replaced
+       (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L667-L700`)
+   * - inter-level
+     - B and E ghosts, level ghost particles, coarsening, reflux
+     - in ``onHierarchyChanged``; rebuilt if any level 0..L was replaced
+       (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L703-L722`)
+   * - init-only
+     - filling a new level
+     - at fill time, then dropped (``fillTransient``,
+       :src:`src/amr/messengers/refiner.hpp#L219-L229`)
 
-There are three lifetimes (``registerLevel`` and ``onHierarchyChanged``,
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L208-L243`):
-
-* **Same-level schedules** (patch ghosts, moment sums, particle exchange)
-  read only level ``L``. They are built when ``L`` is created
-  (``buildSameLevelSchedules_``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L667-L700`).
-* **Inter-level schedules** (B and E ghosts, level ghost particles,
-  coarsening, refluxing) read ``L`` and the coarser levels. They are built in
-  ``onHierarchyChanged``, after SAMRAI has finished replacing levels, and
-  rebuilt only if one of the levels 0 to ``L`` is a different object from the
-  one they were built on (``buildInterLevelSchedules_``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L703-L722`).
-* **Init-only schedules** (filling a new level) are used once: they are built
-  at fill time and dropped (``Refiner::fillTransient``,
-  :src:`src/amr/messengers/refiner.hpp#L219-L229`).
-
-The calls come from ``MultiPhysicsIntegrator::initializeLevelData``
-(:src:`src/amr/multiphysics_integrator.hpp#L327-L330`) and
-``resetHierarchyConfiguration``
-(:src:`src/amr/multiphysics_integrator.hpp#L347-L378`).
+Calls: ``registerLevel`` / ``onHierarchyChanged``
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L208-L243`),
+from ``initializeLevelData`` (:src:`src/amr/multiphysics_integrator.hpp#L327-L330`)
+and ``resetHierarchyConfiguration`` (:src:`src/amr/multiphysics_integrator.hpp#L347-L378`).
 
 
 The tricks
 ----------
 
-Schedules are rebuilt exactly when their levels change
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Rebuilt exactly when their levels change
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** An inter-level schedule of level ``L`` points at the coarser
-levels it was built on. When level 0 is load-balanced, SAMRAI replaces level
-0 and calls ``resetHierarchyConfiguration`` for level 0 only. A schedule of
-level 2 that reads level 0 (through level 1, by recursive coarse
-interpolation) would then point to a level that no longer exists. Rebuilding
-everything at every regrid would be safe but costly.
+**Problem.** After a level-0 rebalance SAMRAI only reports level 0, but level
+2 schedules also read level 0; rebuilding everything every regrid is costly.
 
-**Fix.** Each messenger records, for each schedule set, the level objects it
-was built from (``levelsOf_``, as weak pointers). ``onHierarchyChanged`` is
-called for every level, whatever range SAMRAI passes, and rebuilds only the
-schedules whose recorded levels are stale (``builtOnCurrentLevels_``,
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L725-L744`; the
-loop over all levels is at
-:src:`src/amr/multiphysics_integrator.hpp#L372-L378`).
+**Fix.** Each schedule set records the levels it was built on (weak
+pointers); ``onHierarchyChanged`` runs for every level and rebuilds only stale
+sets (``builtOnCurrentLevels_``,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L725-L744`;
+:src:`src/amr/multiphysics_integrator.hpp#L372-L378`). :pr:`1419`
 
-**History.** :pr:`1419` (inter-level schedules once per regrid; fixed a crash on
-level-0 rebalance with 3 or more hybrid levels).
+Level 0 ghost refiners are same-level
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Level 0 has no coarser level, so its "ghost" refiners are same-level
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Problem.** B and E ghost refiners are inter-level, but level 0 has no
+coarser level.
 
-**Problem.** The B and E ghost refiners are inter-level by nature, but level
-0 also needs patch ghosts.
+**Fix.** On the root level they are registered as same-level schedules: copy
+plus boundary conditions
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L680-L684`).
 
-**Fix.** On the root level they are registered with the same-level schedules
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L680-L684`):
-their schedule then only copies from the same level and applies the boundary
-conditions.
-
-Init schedules read the coarser level only
+Init schedules read only the coarser level
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** A new level has no data. A schedule that copies from the same
-level first would copy garbage from the neighbour patches into the ghosts.
+**Problem.** A new level has no data to copy from its neighbours.
 
-**Fix.** ``InitField`` schedules are built with no same-level source
-(``nullptr``), so every value is refined from the coarser level
-(:src:`src/amr/messengers/refiner.hpp#L144-L153`). Particles inside a new
-level use ``PatchLevelInteriorFillPattern``, so that particle ghosts are never
-filled by splitting: split particles placed independently in two patches'
-ghost layers would not be exact copies of each other
+**Fix.** ``InitField`` uses no same-level source (``nullptr``)
+(:src:`src/amr/messengers/refiner.hpp#L144-L153`); new particles go in cells
+only, never in ghosts, so ghosts stay exact copies of neighbours
 (:src:`src/amr/messengers/refiner.hpp#L157-L170`).
 
-After init and regrid: ghost times
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Ghosts after init and regrid
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** Init and regrid schedules interpolate in space only, and read
-the coarser levels at their latest time. A level created partway through a
-coarser step gets ghost values from coarser data that is ahead of its own
-time. For example: level 1 is at :math:`t + \Delta t/2`, level 0 already at
-:math:`t + \Delta t`; a level 2 created now from level 1 may read level-0
-values from :math:`t + \Delta t` in its ghosts.
+**Problem.** Init/regrid schedules read coarser levels at their latest time,
+which can be ahead of a level created mid-step.
 
-**Fix (MHD).** The MHD messenger refills the ghosts of such a level with time
-interpolation, as in a normal step, once its schedules are built
-(``fillGhostsAtInitTime_`` and ``refillGhostsAtInitTime_``,
-:src:`src/amr/messengers/mhd_messenger.hpp#L467-L494`). The hybrid messenger
-has no such refill at this commit; its B and E ghosts are next filled by the
-solver during the first sub-step.
-
-**History.** :pr:`1494` (MHD ghost consistency).
-
-
-Model pairs not yet coupled
----------------------------
-
-``MHDHybridMessengerStrategy`` (a hybrid fine level over an MHD coarse level) exists so
-that a hierarchy can mix models, but at this commit all its transfer methods
-are empty (:src:`src/amr/messengers/mhd_hybrid_messenger_strategy.hpp`).
-
-.. admonition:: In preparation
-   :class: in-preparation
-
-   Coupling a hybrid fine level to an MHD coarse level.
+**Fix (MHD only).** ``fillGhostsAtInitTime_`` / ``refillGhostsAtInitTime_``
+refill them with time interpolation
+(:src:`src/amr/messengers/mhd_messenger.hpp#L467-L494`). The hybrid messenger
+has no such refill; its ghosts are next filled in the first sub-step. :pr:`1494`
 
 
 Go deeper

@@ -19,38 +19,34 @@ Each box below opens the page that explains that part.
 The picture
 -----------
 
-Running a simulation, from the script down to the physics:
+Running a simulation, from the script down to the physics (click a box):
 
-.. mermaid::
+.. flow::
 
-   flowchart TD
-     IN["pyphare.pharein<br/>input script"] -->|"fills"| INI["src/initializer<br/>PHAREDict"]
-     INI -->|"then"| SIMPY["pyphare.simulator<br/>Simulator.run / advance"]
-     SIMPY -->|"calls"| PB["src/python3<br/>pybind modules"]
-     PB --> SIM["src/simulator<br/>Simulator&lt;options&gt;"]
-     SIM --> AMR["src/amr, on top of SAMRAI<br/>messengers, solvers,<br/>integrator, tagging"]
-     AMR --> CORE["src/core<br/>fields, particles,<br/>numerical schemes"]
-     click IN href "python_to_cpp.html" "From Python script to C++"
-     click INI href "python_to_cpp.html" "From Python script to C++"
-     click PB href "python_to_cpp.html" "From Python script to C++"
-     click SIMPY href "one_time_step.html" "One time step"
-     click SIM href "one_time_step.html" "One time step"
-     click AMR href "messengers.html" "Messengers and schedules"
-     click CORE href "gridlayout.html" "GridLayout"
+   Input script | pyphare.pharein | /dev/python_to_cpp
+   fills
+   PHAREDict | src/initializer, filled through the pybind module dictator | /dev/python_to_cpp
+   then
+   Python Simulator | pyphare.simulator: setup, advance | /dev/one_time_step
+   calls, through pybind modules
+   C++ Simulator<options> | src/python3, src/simulator | /dev/one_time_step
+   uses
+   AMR layer | src/amr, on top of SAMRAI: messengers, solvers, integrator, tagging | /dev/messengers
+   uses
+   Core layer | src/core: fields, particles, numerical schemes | /dev/gridlayout
 
 Writing and reading the output:
 
-.. mermaid::
+.. flow::
 
-   flowchart TD
-     OSIM["src/simulator"] --> OIO["src/diagnostic, src/restarts<br/>(through src/hdf5)"]
-     OIO --> OFILES["HDF5 files"]
-     OFILES -->|"read by"| OSEE["pyphare.pharesee<br/>read and plot"]
-     click OIO href "diagnostics_restarts.html" "Diagnostics and restarts internals"
-     click OSEE href "../data_analysis/reading_data.html" "Reading data"
+   C++ Simulator | src/simulator
+   writes
+   Diagnostics, restarts | src/diagnostic, src/restarts, src/hdf5 | /dev/diagnostics_restarts
+   HDF5 files |
+   read by
+   pharesee | pyphare.pharesee: read and plot | /data_analysis/reading_data
 
-Unlabelled arrows mean "calls"; labelled arrows say what happens. Nothing in
-a lower box calls a box above it: ``src/core`` is used by ``src/amr`` and uses nothing else of PHARE except
+Nothing in a lower box calls a box above it: ``src/core`` is used by ``src/amr`` and uses nothing else of PHARE except
 the dictionary.
 
 
@@ -99,7 +95,8 @@ Where the code is
        (``cpp_<options>``), plus ``cpp_etc`` for everything not tied to the
        options.
    * - ``src/initializer``
-     - The ``PHAREDict`` and the code that fills it from Python.
+     - The ``PHAREDict`` and the code that fills it from Python: the pybind module ``dictator``
+       (:src:`src/initializer/dictator.cpp`), through which Python writes the dictionary.
    * - ``src/simulator``
      - ``Simulator<options>``, the C++ object behind ``advance()``.
    * - ``src/amr``
