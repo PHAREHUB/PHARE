@@ -157,6 +157,25 @@ Mesh and adaptive mesh refinement
       Marking the cells that need a finer mesh, from a criterion on the
       solution. See :doc:`/dev/tagging_regridding`.
 
+   sub-cycling
+      A finer level advancing with several smaller time steps for one step of
+      the level below. PHARE asks SAMRAI for fine steps no larger than the
+      coarse step divided by 4 (refinement ratio 2, squared); with a fixed
+      coarse step, always the case in hybrid, this gives exactly 4 sub-steps.
+      See :doc:`/dev/subcycling`.
+
+   time interpolation
+      Setting a fine-level ghost value at a time between two coarse-level
+      times, as a linear mix :math:`(1-\alpha)\,\text{old} + \alpha\,\text{new}`:
+      *old* is saved by the coarse level at the start of its step, *new* is
+      the coarse value at the end of it. See :doc:`/dev/time_interpolation`.
+
+   synchronization
+      The moment a finer level has caught up in time with the level below,
+      which then takes the finer level's result. Hybrid coarsens E and the ion
+      moments and recomputes B by :term:`reflux`; MHD redoes its coarse step
+      with the fine fluxes. See :doc:`/dev/refluxing` and :doc:`/dev/coarsening`.
+
    regridding
       Rebuilding the finer levels from the tagged cells, so that refined
       regions follow the solution.

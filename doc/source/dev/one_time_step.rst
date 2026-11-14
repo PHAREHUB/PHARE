@@ -87,9 +87,11 @@ Levels are stepped coarsest first
 Look at the numbers: level 0 first, then each level-1 step is followed by four
 level-2 steps.
 
-* A level twice finer takes 4 sub-steps: ``getMaxFinerLevelDt`` returns
-  :math:`\Delta t / \text{ratio}^2` (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`),
-  for hybrid and MHD levels alike (ratio fixed at 2, :src:`src/amr/amr_constants.hpp#L9`).
+* A level twice finer takes 4 sub-steps when the level-0 time step does not
+  change, which is always the case in hybrid: ``getMaxFinerLevelDt`` asks for
+  :math:`\Delta t / \text{ratio}^2` (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`,
+  ratio fixed at 2, :src:`src/amr/amr_constants.hpp#L9`). MHD with an adaptive
+  time step can take another number: see :doc:`/dev/subcycling`.
 * So when a fine level steps, its coarser level is **already at its new
   time**: fine ghosts are interpolated in time (next section).
 
@@ -200,6 +202,9 @@ writes the optional fine dumps (``fine_dump_lvl_max``).
 Go deeper
 ---------
 
+* :doc:`/dev/subcycling`: how many sub-steps each level takes, and in which order.
+* :doc:`/dev/time_interpolation`: ghost values at times between two coarse steps.
+* :doc:`/dev/refluxing`: how the coarse level takes the fine fluxes.
 * :doc:`/dev/messengers`: what each messenger fills, and when its schedules are built.
 * :doc:`/dev/ghost_cells`: patch ghost cells versus level ghost cells.
 * :doc:`/dev/level_ghost_particles`: old and new level ghost particles.
