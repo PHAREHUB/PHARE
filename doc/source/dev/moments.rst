@@ -146,7 +146,7 @@ above: each patch adds the level ghost particles of its *own* ghost layer, after
 the border sum. Near the border of a refined level, a ghost node of patch A can
 be covered by level ghost particles that only the neighbour B holds; A's copy
 then misses their share, B's does not. The code does not document why the
-maximum was chosen (it came with #1146).
+maximum was chosen (it came with :pr:`1146`).
 
 The tricks
 ----------
@@ -185,7 +185,7 @@ large.
 the patch owns the cell (:doc:`/dev/grabbing_particles`). The border sum itself
 did not change.
 
-**History.** #1334 (overlap single owner).
+**History.** :pr:`1334` (overlap single owner).
 
 Level border nodes from Old and New
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

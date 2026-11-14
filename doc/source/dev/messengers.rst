@@ -226,7 +226,7 @@ schedules whose recorded levels are stale (``builtOnCurrentLevels_``,
 loop over all levels is at
 :src:`src/amr/multiphysics_integrator.hpp#L372-L378`).
 
-**History.** #1419 (inter-level schedules once per regrid; fixed a crash on
+**History.** :pr:`1419` (inter-level schedules once per regrid; fixed a crash on
 level-0 rebalance with 3 or more hybrid levels).
 
 Level 0 has no coarser level, so its "ghost" refiners are same-level
@@ -271,7 +271,7 @@ interpolation, as in a normal step, once its schedules are built
 has no such refill at this commit; its B and E ghosts are next filled by the
 solver during the first sub-step.
 
-**History.** #1494 (MHD ghost consistency).
+**History.** :pr:`1494` (MHD ghost consistency).
 
 
 Model pairs not yet coupled

@@ -163,7 +163,7 @@ A ``static_assert`` checks that SAMRAI's particle data ghost width covers that
 distance, since SAMRAI only builds a transfer between patches that close
 (L60-L63).
 
-**History.** #1334 (overlap single owner).
+**History.** :pr:`1334` (overlap single owner).
 
 Overlapping patches: one owner per cell
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -182,7 +182,7 @@ grab the particles that arrived there are dropped
 (:src:`src/amr/solvers/solver_ppc.hpp#L651-L656`). Without overlap the
 non-owned set is empty and nothing changes.
 
-**History.** #1334 (overlap single owner).
+**History.** :pr:`1334` (overlap single owner).
 
 Periodic neighbours
 ^^^^^^^^^^^^^^^^^^^
@@ -211,7 +211,7 @@ most 2 − ``delta`` cells forward and 2 + ``delta`` cells backward (up to about
 index particles by cell over a margin wide enough for any allowed move
 (``particleMapMargin``, :src:`src/core/data/grid/gridlayout.hpp#L59-L68`).
 
-**History.** #1592 (selectors missed far particles).
+**History.** :pr:`1592` (selectors missed far particles).
 
 .. admonition:: Known issue
    :class: note

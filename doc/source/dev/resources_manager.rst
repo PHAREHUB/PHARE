@@ -83,7 +83,7 @@ How it works
    patches of a level. Moving to a patch sets all listed objects on it; leaving it
    unsets them (``LevelLooper``,
    :src:`src/amr/resources_manager/resources_manager.hpp#L383-L454`). Prefer it to a
-   hand-written loop. It was added in #1014 (resource manager ``enumerate``).
+   hand-written loop. It was added in :pr:`1014` (resource manager ``enumerate``).
 
 An example, shortened from a debug helper of the solver
 (``_debug_log_move_ions``, :src:`src/amr/solvers/solver_ppc.hpp#L565-L579`):
@@ -188,7 +188,7 @@ throws (:src:`src/amr/resources_manager/resources_manager.hpp#L601-L606`).
    :class: note
 
    Restarts register every resource, including temporaries that need not be saved:
-   see the comment pointing to issue #664 "Restarts writing redundant information"
+   see the comment pointing to issue :issue:`664` "Restarts writing redundant information"
    (:src:`src/amr/resources_manager/resources_manager.hpp#L349-L356`).
 
 Go deeper

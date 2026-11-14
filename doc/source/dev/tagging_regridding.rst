@@ -275,7 +275,7 @@ covered a patch edge never goes away.
 ``DefaultTaggerStrategy::tag``
 (:src:`src/amr/tagging/default_tagger_strategy.hpp#L110-L114`).
 
-**History.** #1531 (1D tagging, refined patches stick).
+**History.** :pr:`1531` (1D tagging, refined patches stick).
 
 Level ghost particles are not regridded
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -289,7 +289,7 @@ the coarser domain particles, in
 ``HybridHybridMessengerStrategy::regrid``
 (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L281`).
 
-**History.** Issue #604 (cited in the code comment).
+**History.** Issue :issue:`604` (cited in the code comment).
 
 Some nodes are not copied correctly by SAMRAI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -315,7 +315,7 @@ cross-level schedules are handled in ``resetHierarchyConfiguration``, through
 ``onHierarchyChanged`` for every level (:src:`src/amr/multiphysics_integrator.hpp#L347-L378`). See
 :ref:`dev-messengers-schedules`.
 
-**History.** #1419 (schedules once per regrid).
+**History.** :pr:`1419` (schedules once per regrid).
 
 
 Go deeper

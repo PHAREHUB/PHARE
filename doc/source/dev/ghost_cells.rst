@@ -197,8 +197,8 @@ interpolated values, and two patches would disagree on the same point.
 
 A side benefit: a ghost that nobody fills stays NaN and is easy to spot.
 
-**History.** #1083 (fill B ghosts by refinement) replaced computing Faraday on
-the ghost layer by filling B ghosts; #1386 (NaN ghosts with a mask) made the
+**History.** :pr:`1083` (fill B ghosts by refinement) replaced computing Faraday on
+the ghost layer by filling B ghosts; :pr:`1386` (NaN ghosts with a mask) made the
 NaN step cheap at scale.
 
 Ghost fills never touch the patch's own cells

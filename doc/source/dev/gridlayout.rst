@@ -154,7 +154,7 @@ In 1D, a primal velocity read at a dual :math:`E_x` point is
 Debug builds check that the field passed really has the source centering
 (:src:`src/core/data/grid/gridlayout.hpp#L662-L672`).
 
-**History.** #1499 (stencils derived from centerings).
+**History.** :pr:`1499` (stencils derived from centerings).
 
 Centerings are a compile-time table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,7 +165,7 @@ Centerings are a compile-time table
 (``centering``, :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L127-L144`):
 no switch, no runtime cost, and a missing or duplicate entry fails to compile.
 
-**History.** #1495 (centering lookup table).
+**History.** :pr:`1495` (centering lookup table).
 
 The ghost width comes from the numerics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -195,7 +195,7 @@ centres), without allocating a copy.
 (:src:`src/core/data/field/recentered_field.hpp`). It checks centerings at run time, so it
 is meant for whole-field reads, not for solver loops, which use ``project``.
 
-**History.** #1486 (read at another centering).
+**History.** :pr:`1486` (read at another centering).
 
 Go deeper
 ---------

@@ -101,7 +101,7 @@ operators.
 derivative when read, at the right centering (:src:`src/core/numerics/differential_operators.hpp`).
 Nothing is allocated; ``Faraday`` reads ``curl(E)`` directly into its update.
 
-**History.** #1468 (shared curl, grad, div).
+**History.** :pr:`1468` (shared curl, grad, div).
 
 One scratch buffer
 ^^^^^^^^^^^^^^^^^^

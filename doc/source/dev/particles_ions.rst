@@ -52,7 +52,7 @@ A ``Particle<dim>`` (:src:`src/core/data/particles/particle.hpp#L54-L60`) has:
 There is no charge or mass per particle: they belong to the population
 (comment at L43; ``IonPopulation::charge``, ``mass``).
 
-**History.** #1473 (particles carry no charge).
+**History.** :pr:`1473` (particles carry no charge).
 
 One population
 ^^^^^^^^^^^^^^
@@ -154,7 +154,7 @@ selectors would not see it, and it would be kept or dropped wrongly.
 reasoning: level ghosts are selected after each half push, domain particles
 after both.
 
-**History.** #1592 (selectors missed far particles).
+**History.** :pr:`1592` (selectors missed far particles).
 
 One SAMRAI variable for five arrays
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

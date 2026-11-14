@@ -113,7 +113,7 @@ hyper-resistivity are runtime choices: the integrator is a virtual class behind 
 factory, and the ``eta > 0`` / ``nu > 0`` flags are turned into compile-time branches
 once per call (``Constexprifier``, as in Ohm's law).
 
-**History.** #1233 (runtime integrator and resistivity).
+**History.** :pr:`1233` (runtime integrator and resistivity).
 
 Invalid reconstruction/limiter pairs do not compile
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

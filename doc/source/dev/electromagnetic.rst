@@ -45,7 +45,7 @@ four calls, on every patch of the level:
      click M href "moments.html" "Moments: deposition and sum borders"
 
 What changes between stages is which B and E go in, and which moments the electrons
-see. That order is on :doc:`/numerics/time_integration` (the predictor-corrector) and,
+see. That order is on :doc:`/numerics/time_integration` (the :term:`predictor-predictor-corrector <PPC>`) and,
 for the ion push in between, on :doc:`/dev/ppc_order`.
 
 How it works

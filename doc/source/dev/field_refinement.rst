@@ -144,8 +144,8 @@ All corrections read the divergences computed from the stage-1 field (a
 snapshot, ``DivScratch``): recomputing them while faces are being corrected
 would mix corrected and uncorrected faces.
 
-**History.** #1278 (second-order AMR refinement) introduced the kernels and
-the touch-up; #1554 (readable refiners, one touch-up) rewrote them without
+**History.** :pr:`1278` (second-order AMR refinement) introduced the kernels and
+the touch-up; :pr:`1554` (readable refiners, one touch-up) rewrote them without
 changing results.
 
 SAMRAI's fill boxes cut coarse cells in half

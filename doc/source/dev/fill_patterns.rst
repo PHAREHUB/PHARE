@@ -170,7 +170,7 @@ so a set of nodes computed for Bx does not fit By.
   temporary coarse level, it replaces every fill pattern and regroups the
   items, and only a split by factory type survives that.
 
-**History.** #1492 (merge MHD schedules) introduced the split by factory type,
+**History.** :pr:`1492` (merge MHD schedules) introduced the split by factory type,
 which lets items of different centerings share one algorithm.
 
 Overlapping patches: one owner per cell
@@ -219,7 +219,7 @@ particles in owned cells. Without overlap, the set of non-owned cells is
 empty and nothing changes. How particles move to their owner is on
 :doc:`/dev/grabbing_particles`.
 
-**History.** #1334 (single owner for overlaps).
+**History.** :pr:`1334` (single owner for overlaps).
 
 
 Go deeper
