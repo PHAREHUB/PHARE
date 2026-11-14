@@ -124,6 +124,7 @@ smaller: ``MultiPhysicsIntegrator::getMaxFinerLevelDt`` returns
 :math:`\Delta t_\text{coarse} / \text{ratio}^2 = \Delta t_\text{coarse} / 4`
 (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`). With a fixed time
 step, each level therefore takes **4 sub-steps** per step of the level above.
+This rule does not depend on the model: MHD levels are sub-stepped by 4 too.
 
 SAMRAI walks the hierarchy depth first: it advances a level by one step, then
 advances all finer levels up to the same time, then moves on.
@@ -225,14 +226,15 @@ The messenger used depends on the models of the two levels: ``HybridModel-Hybrid
 ``MHDModel-MHDModel`` or ``MHDModel-HybridModel``. There is one messenger
 object per pair of models, shared by all levels that use that pair
 (``registerMessengers_``, :src:`src/amr/multiphysics_integrator.hpp#L778-L819`).
-Level 0 has a messenger too: there, it only moves data between patches of
+Level 0, also called the *root* level in the code, has a messenger too: there, it only moves data between patches of
 level 0.
 
 Inside the hybrid solver
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``SolverPPC::advanceLevel`` (:src:`src/amr/solvers/solver_ppc.hpp#L378-L404`)
-advances one level by one step with a predictor-corrector scheme. Particles
+advances one level by one step with a :term:`predictor-predictor-corrector
+<PPC>` scheme. Particles
 are pushed twice: the first push only *predicts* the ion moments at the new
 time (particles stay where they were); the second push really moves them.
 
@@ -320,7 +322,7 @@ sub-step, :math:`(t + t_\text{new})/2`
 Particles use the same idea with two sets of level ghost particles, old and
 new (:doc:`/dev/level_ghost_particles`).
 
-**History.** #1278 (second-order coarse-fine time interpolation) made B time
+**History.** :pr:`1278` (second-order coarse-fine time interpolation) made B time
 interpolated too and set the fill times to the solver's sub-step times.
 
 Two saved copies of B at the start of the step
