@@ -15,10 +15,10 @@ struct __attribute__((visibility("hidden"))) PatchData
 {
     static auto constexpr dimension = dim;
     std::string patchID;
-    std::string origin;
-    py_array_t<std::size_t> lower{dim};
-    py_array_t<std::size_t> upper{dim};
-    std::size_t nGhosts;
+    py_array_t<double> origin{dim};
+    py_array_t<int> lower{dim};
+    py_array_t<int> upper{dim};
+    std::size_t nGhosts = 0;
     Data data;
 
     PatchData() = default;
@@ -32,23 +32,20 @@ struct __attribute__((visibility("hidden"))) PatchData
 };
 
 
-template<typename PatchData, typename Container>
-void setPatchData(PatchData& data, std::string const patchID, std::string const origin,
-                  Container lower, Container upper)
+template<typename PatchData>
+void setPatchData(PatchData& data, std::string const patchID, auto const origin, auto const lower,
+                  auto const upper)
 {
-    constexpr std::size_t bytes = PatchData::dimension * sizeof(size_t);
-    std::memcpy(data.lower.request().ptr, lower.data(), bytes);
-    std::memcpy(data.upper.request().ptr, upper.data(), bytes);
+    std::memcpy(data.lower.request().ptr, lower.data(), PatchData::dimension * sizeof(int));
+    std::memcpy(data.upper.request().ptr, upper.data(), PatchData::dimension * sizeof(int));
+    std::memcpy(data.origin.request().ptr, origin.data(), PatchData::dimension * sizeof(double));
     data.patchID = patchID;
-    data.origin  = origin;
 }
 
 template<typename PatchData, typename GridLayout>
 void setPatchDataFromGrid(PatchData& pdata, GridLayout& grid, std::string patchID)
 {
-    setPatchData(pdata, patchID, grid.origin().str(),
-                 grid.AMRBox().lower.template toArray<std::size_t>(),
-                 grid.AMRBox().upper.template toArray<std::size_t>());
+    setPatchData(pdata, patchID, *grid.origin(), *grid.AMRBox().lower, *grid.AMRBox().upper);
 }
 
 template<typename PatchData, typename Field, typename GridLayout>
@@ -57,7 +54,7 @@ void setPatchDataFromField(PatchData& pdata, Field const& field, GridLayout& gri
 {
     setPatchDataFromGrid(pdata, grid, patchID);
     pdata.nGhosts = GridLayout::options.field_ghost_width;
-    pdata.data.assign(field.data(), field.data() + field.size());
+    pdata.data    = field_as_memory_view(field);
 }
 
 
