@@ -16,6 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../../pyphare"))
+sys.path.insert(0, os.path.abspath("_ext"))  # phare_draw (drawings), phare_flow (.. flow::)
 
 
 # -- Project information -----------------------------------------------------
@@ -55,6 +56,7 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "sphinx.ext.extlinks",
     "sphinxcontrib.mermaid",
+    "phare_flow",
 ]
 
 # diagrams are text (Mermaid), drawn by the browser: no images in the repository.
@@ -104,7 +106,8 @@ mathjax3_config = {
 }
 
 # figures drawn from data at build time (no images in the repository)
-plot_formats = [("png", 130)]
+# 100 dpi: a 3.4 in figure is 340 px = whole on a phone, a 6.5 in one is 650 px; "hires" gives 2x screens a sharp copy
+plot_formats = [("png", 100), ("hires.png", 200)]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 
