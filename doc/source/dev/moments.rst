@@ -11,14 +11,14 @@ Moments: deposition and sum borders
 
 **In one sentence:** the ion *moments* (density and flux of each population,
 then the total charge density, bulk velocity and charge flux) are computed on
-the grid nodes by *depositing* the particles of each patch, and are completed
+the grid nodes by :term:`depositing <deposition>` the particles of each :term:`patch`, and are completed
 near patch borders by summing the contributions of neighbour patches.
 
 Why it is not trivial
 ---------------------
 
 Each particle is a small cloud (its *shape*, one to a few cells wide depending on
-the interpolation order). It adds a share of its weight to every node it covers.
+the :term:`interpolation order`). It adds a share of its weight to every node it covers.
 A node near a patch border is covered by clouds of particles held by *two or
 more* patches. After each patch has deposited its own particles, every copy of
 that node holds only part of the total. Patches must exchange and add up these
@@ -94,7 +94,7 @@ Deposition
    and ``weight × coef × v × w_node`` to the three flux components
    (:src:`src/core/numerics/interpolator/interpolator.hpp#L616-L637`). ``coef``
    is 1, except for level ghost particles, which use the time weights
-   :math:`1-\alpha` and :math:`\alpha`. Moments live on primal nodes, the cell
+   :math:`1-\alpha` and :math:`\alpha`. Moments live on :term:`primal` nodes, the cell
    corners (:doc:`/dev/gridlayout`).
 
 Which particles are deposited depends on the push: see
@@ -109,7 +109,7 @@ Sum over patch borders
    (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L388-L434`)
    first copy the patch's density (or flux) into a scratch field,
    ``sumField_`` (or ``sumVec_``).
-#. A SAMRAI schedule over the level then *adds* (``PlusEqualsOp``) the
+#. A :term:`SAMRAI` :term:`schedule` over the :term:`level` then *adds* (``PlusEqualsOp``) the
    neighbours' original values into the scratch field
    (:src:`src/amr/messengers/refiner.hpp#L100-L121`). The nodes concerned are
    the overlap of the two patches' *ghost boxes* (each patch box grown by its

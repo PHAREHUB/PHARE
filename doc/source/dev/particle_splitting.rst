@@ -9,7 +9,7 @@ Particle splitting
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` ›
    :doc:`/dev/level_ghost_particles` › Particle splitting
 
-**In one sentence:** to move plasma from a coarse level to a finer one, PHARE
+**In one sentence:** to move plasma from a coarse :term:`level` to a finer one, PHARE
 replaces each coarse particle by a few smaller particles placed around it, with
 the same velocity, so that they deposit almost the same density on the fine grid.
 
@@ -134,14 +134,14 @@ The flow inside the refine operator:
 How it works
 ------------
 
-The work is done by ``ParticlesRefineOperator``, the SAMRAI refine operator
+The work is done by ``ParticlesRefineOperator``, the :term:`SAMRAI` refine operator
 PHARE provides for particles
 (:src:`src/amr/data/particles/refine/particles_data_split.hpp#L54-L281`).
 SAMRAI calls its ``refine`` method with a coarse source patch, a fine destination
 patch and the list of destination boxes to fill.
 
 #. **Source particles.** Only the coarse *domain* particles are split (L166).
-   When the coarse patch is on another MPI rank (parallel process), SAMRAI
+   When the coarse :term:`patch` is on another :term:`MPI` :term:`rank`, SAMRAI
    first streams the coarse
    particles of the region of interest into a temporary patch, and they arrive
    in its domain array (comment L159-L165). The region SAMRAI gathers around

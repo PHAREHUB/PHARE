@@ -8,15 +8,14 @@ GridLayout: centerings and index spaces
 
    You are here: :doc:`/dev/index` › GridLayout
 
-**In one sentence:** a ``GridLayout`` describes one patch's grid: where each physical
-quantity sits in a cell (its *centering*), how many ghost nodes surround the patch,
+**In one sentence:** a ``GridLayout`` describes one :term:`patch`'s grid: where each physical
+quantity sits in a cell (its *centering*), how many :term:`ghost <ghost cell>` nodes surround the patch,
 and how an array index turns into an AMR index and a position in space.
 
 Why it exists
 -------------
 
-PHARE stores each field component in its own array, on a staggered grid (the *Yee
-layout*, the standard staggered grid of electromagnetic codes): B components sit on cell faces, E and J on cell edges, and the hybrid ion
+PHARE stores each field component in its own array, on a staggered grid (the :term:`Yee layout`): B components sit on cell faces, E and J on cell edges, and the hybrid ion
 moments on cell corners (*nodes*). Every numerical operator needs to know, for every
 array it reads, where its values are. Writing that by hand in every loop is how index
 bugs are born. ``GridLayout`` answers these questions in one place, and most answers are
@@ -97,7 +96,7 @@ How it works
    (:src:`src/core/data/grid/gridlayout.hpp#L973-L997`). The box depends on the field's
    centering, so a primal field loops over one more value than a dual one.
 #. **Two index spaces.** The *local* index is the position in the patch's array; it starts
-   at 0 on the first ghost. The *AMR* index is the cell index on the whole level, shared by
+   at 0 on the first ghost. The *AMR* index is the cell index on the whole :term:`level`, shared by
    all patches of that level. ``localToAMR`` and ``AMRToLocal`` convert between them
    (:src:`src/core/data/grid/gridlayout.hpp#L582-L660`). Data exchange between patches
    (ghost filling, copies) speaks AMR indices; numerical loops speak local indices.

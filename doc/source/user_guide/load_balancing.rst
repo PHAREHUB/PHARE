@@ -1,42 +1,230 @@
-
 ==============
 Load balancing
 ==============
 
-On a parallel run, work (particles and cells) is split across MPI ranks by
-patch. As the simulation evolves - particles move, AMR levels change shape -
-that split can become uneven. ``LoadBalancer`` controls how and when PHARE
-corrects for that. It is optional: without one, load balancing still runs
-with the defaults below.
+**Goal:** keep every :term:`MPI` :term:`rank` about equally busy during a parallel run, so
+no rank waits for a slower one.
 
-.. autoclass:: pyphare.pharein.LoadBalancer
+.. contents:: On this page
+   :local:
+   :depth: 1
+
+
+On a parallel run, PHARE splits each :term:`level` of the mesh into
+:term:`patches <patch>` and gives each patch to one rank. The work of a
+rank is the work of its patches: for a hybrid run, it grows with its
+number of particles. As the simulation evolves, particles move and refined regions
+appear, grow and vanish, so a split that was even at the start becomes
+uneven. Load balancing moves patches between ranks to even it out again.
+
+You usually do not need to do anything: with ``refinement="tagging"``, load
+balancing is on by default. Use ``ph.LoadBalancer`` only
+to change how and when it acts.
+
+Minimal example
+---------------
+
+A 1D hybrid run with a dense clump of plasma in the middle and a sharp
+current sheet that gets refined. Save it as ``lb.py`` and run it on 2 ranks
+with ``mpirun -n 2 python3 lb.py``.
 
 .. code-block:: python
 
-    import pyphare.pharein as ph
+   import numpy as np
+   import pyphare.pharein as ph
+   from pyphare.simulator.simulator import Simulator
 
-    ph.LoadBalancer(mode="nppc", tol=0.05, every=200)
+   sim = ph.Simulation(
+       cells=200,
+       dl=0.5,
+       time_step=0.005,
+       final_time=0.5,
+       refinement="tagging",       # load balancing is on by default with tagging
+       max_nbr_levels=2,
+       smallest_patch_size=20,
+       diag_options={"format": "phareh5",
+                     "options": {"dir": "lb_run", "mode": "overwrite"}},
+   )
 
-Use ``mode="nppc"`` (particles per rank) for a Hybrid simulation - it's the
-quantity that actually drives compute cost there. ``mode="homogeneous"``
-(cells per rank) is closer to what an MHD-only run needs, since there are no
-particles.
+   def density(x):  # a dense clump: most particles sit in the middle
+       return 0.2 + 2.0 * np.exp(-((x - 50.0) / 5.0) ** 2)
+   def bx(x):    return 1.0
+   def by(x):    return np.tanh((x - 50.0) / 1.0)   # sharp current sheet: gets refined
+   def zero(x):  return 0.0
+   def vth(x):   return 0.1
 
-Two different scopes
----------------------
+   ph.MaxwellianFluidModel(
+       bx=bx, by=by, bz=zero,
+       protons={"charge": 1, "density": density,
+                "vbulkx": zero, "vbulky": zero, "vbulkz": zero,
+                "vthx": vth, "vthy": vth, "vthz": vth,
+                "nbr_part_per_cell": 100},
+   )
+   ph.ElectronModel(closure="isothermal", Te=0.1)
+   ph.ElectromagDiagnostics(quantity="B", write_timestamps=[0.0, 0.5])
 
-Not all parameters act on the same part of the hierarchy:
+   ph.LoadBalancer(mode="nppc", tol=0.05)   # optional: these are the defaults
 
-* ``mode`` shapes how load is measured everywhere - at any level, whenever
-  that level's patches are redistributed across ranks.
-* ``tol`` does too, but is also reused as the threshold for a second,
-  separate mechanism: proactively rebalancing the coarsest level (L0)
-  between regrids.
-* ``auto``, ``every`` and ``on_init`` control only that second mechanism.
-  They have no effect on finer levels - those are only ever redistributed
-  across ranks as part of their own AMR regrid, on their own cadence.
+   Simulator(sim).run()
 
-In practice, this makes ``auto``/``every``/``on_init`` mostly relevant to
-Hybrid simulations: L0 covers the whole domain and typically holds most of
-the particles, so it is the level whose imbalance matters most between
-regrids.
+To see which rank owns which patch, read the patch attribute ``mpi_rank``:
+
+.. code-block:: python
+
+   from pyphare.pharesee.run import Run
+
+   run = Run("lb_run")
+   for t in (0.0, 0.5):
+       B = run.GetB(t)
+       for ilvl, lvl in B.levels(t).items():
+           ranks = [int(p.attrs["mpi_rank"]) for p in lvl.patches]
+           print(f"t={t}  level {ilvl}: patch owners {ranks}")
+
+.. code-block:: text
+
+   t=0.0  level 0: patch owners [0, 1]
+   t=0.0  level 1: patch owners [0]
+   t=0.5  level 0: patch owners [0, 1]
+   t=0.5  level 1: patch owners [0, 1, 1]
+
+At ``t=0.5`` the refined level (level 1) has been rebuilt and its patches
+are now shared by both ranks.
+
+What it does
+------------
+
+Two separate mechanisms move patches between ranks.
+
+#. **At every regrid, on every level.** When a level is rebuilt by
+   :term:`regridding` (see :doc:`/user_guide/amr`), its new patches are shared
+   between ranks so that each rank gets about the same load. ``mode`` says
+   how load is counted, ``tol`` how much imbalance is accepted. A level
+   created for the first time is shared by number of cells; ``mode``
+   applies from its next rebuild.
+#. **Between regrids, on the coarsest level only.** The coarsest level
+   (level 0) covers the whole domain and is never rebuilt by refinement,
+   yet it usually holds most of the particles. So PHARE redistributes it
+   from time to time: with ``auto`` (the default) only when a check finds it
+   too uneven, with ``every=N`` every ``N`` steps without checking.
+   ``auto``, ``every`` and ``on_init`` control *when* this happens.
+
+.. mermaid::
+
+   flowchart TD
+     A["each time step"] --> C{"level 0 due?<br/>(auto / every / on_init)"}
+     C -- "yes, auto" --> M{"busiest rank more than<br/>tol above the average?"}
+     C -- "yes, every" --> B["level 0 redistributed<br/>(mechanism 2)"]
+     M -- yes --> B
+     A -- "when a regrid is due" --> R["levels rebuilt by refinement:<br/>new patches shared between<br/>ranks (mechanism 1)"]
+
+How load is counted (``mode``)
+   ``"nppc"`` (default) counts the particles in each cell: a rank's load is
+   the number of particles it owns; the cost of a hybrid run grows with
+   it. ``"homogeneous"`` counts each cell as 1: a rank's load is its
+   number of cells.
+
+When is a rank "too loaded" (``tol``)
+   The busiest rank may carry up to ``tol`` above the average load. With
+   ``tol=0.05``, a rank may carry at most 5% more than the average. Every
+   redistribution aims at this. With ``auto``, the same value also decides
+   *whether* level 0 is redistributed.
+
+When level 0 is redistributed (``auto``, ``every``, ``on_init``)
+   With ``auto`` (the default), the first check is at the first step if
+   ``on_init`` is ``True`` (the default), otherwise ``next_rebalance`` steps
+   after the start. Each time a
+   check finds level 0 balanced, the wait before the next one doubles
+   (``next_rebalance_backoff_multiplier``), up to ``max_next_rebalance``
+   steps. After a redistribution, the wait goes back to ``next_rebalance``.
+   With ``every=N`` instead, level 0 is redistributed every ``N`` steps
+   (and at the first step if ``on_init``), without looking at ``tol``
+   first.
+
+Options
+-------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 55 20
+
+   * - Option
+     - Meaning
+     - Default
+   * - ``mode``
+     - How load is counted: ``"nppc"`` (particles) or ``"homogeneous"``
+       (cells). Applies to hybrid levels; MHD levels always count cells.
+     - ``"nppc"``
+   * - ``tol``
+     - Accepted imbalance: the busiest rank may carry up to ``tol`` above
+       the average. Target of every redistribution; with ``auto``, also
+       the threshold that triggers one on level 0.
+     - ``0.05``
+   * - ``on_init``
+     - Act on level 0 at the very first step: check it (``auto``) or
+       redistribute it (``every``).
+     - ``True``
+   * - ``auto``
+     - Choose the checking interval of level 0 automatically (see above).
+       Cannot be combined with ``every``.
+     - ``True`` if ``every`` is not given
+   * - ``every``
+     - Redistribute level 0 every ``every`` steps, without a check.
+     - not set
+   * - ``next_rebalance``
+     - ``auto`` only: first and reset interval between level 0 checks, in
+       steps.
+     - ``200``
+   * - ``next_rebalance_backoff_multiplier``
+     - ``auto`` only: factor applied to the interval after a balanced check.
+     - ``2``
+   * - ``max_next_rebalance``
+     - ``auto`` only: longest interval between level 0 checks, in steps.
+     - ``1000``
+
+When is load balancing active?
+------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
+
+   * - Your setup
+     - What happens
+   * - No ``refinement`` option (the default, one level)
+     - Off: level 0 is shared by number of cells at start and never
+       redistributed. A ``LoadBalancer`` declared here has no effect.
+   * - ``refinement="tagging"``, no ``LoadBalancer``
+     - On, with the defaults above.
+   * - ``refinement="tagging"`` and a ``LoadBalancer``
+     - On, with your values.
+   * - ``refinement="boxes"`` with ``refinement_boxes``, no ``LoadBalancer``
+     - Off: patches are shared between ranks by number of cells, not
+       particles.
+   * - ``refinement="boxes"`` with ``refinement_boxes`` and a
+       ``LoadBalancer``
+     - Error at start: "LoadBalancer is not supported with refinement
+       boxes".
+   * - Level 0 is MHD (``max_mhd_level`` > 0)
+     - Mechanism 2 never runs; level 0 is redistributed only when rebuilt.
+
+Mechanism 2 also needs ``refinement="tagging"``.
+
+Common mistakes
+---------------
+
+* **Giving both** ``auto=True`` **and** ``every``. You get
+  ``RuntimeError: LoadBalancer cannot work with both 'every' and 'auto'``.
+  Pick one.
+* **Declaring a** ``LoadBalancer`` **with refinement boxes.** The run stops
+  at start. Remove the ``LoadBalancer`` or switch to
+  ``refinement="tagging"``.
+* **Expecting** ``every`` **to rebalance refined levels.** ``every``,
+  ``auto`` and ``on_init`` only act on level 0. Refined levels are
+  redistributed when they are rebuilt, on the refinement cadence.
+* **Declaring two** ``LoadBalancer``. Only one per simulation:
+  ``RuntimeError: LoadBalancer is already registered to simulation``.
+* **Declaring it before** ``Simulation``. The ``LoadBalancer`` attaches to
+  the current simulation: create the ``Simulation`` first, or you get
+  ``RuntimeError: LoadBalancer cannot be registered as no simulation exists``.
+
+.. seealso:: How this works inside: :doc:`/dev/load_balancing`.

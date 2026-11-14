@@ -8,16 +8,12 @@ MHD solver internals
 
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` › MHD solver internals
 
-**In one sentence:** ``SolverMHD`` advances one level of the MHD state with a Godunov
+**In one sentence:** ``SolverMHD`` advances one :term:`level` of the MHD state with a Godunov
 finite-volume scheme for density, momentum and energy, and constrained transport for
 the magnetic field, wrapped in a Runge-Kutta time integrator chosen at run time.
 
-In plain words: a *Godunov* scheme updates cell averages with the fluxes through the
-cell faces, each flux coming from a *Riemann solver* (an approximate solution of the
-jump between the two sides of the face). *Constrained transport* advances B on the faces
-with the curl of an electric field placed on the edges, which keeps
-:math:`\nabla\cdot\mathbf{B}` unchanged. *Refluxing* corrects a coarse level with the
-fluxes the finer level actually used at their common border.
+Terms: :term:`Godunov method`, :term:`Riemann solver`, :term:`constrained transport`,
+:term:`reflux`.
 
 The numerical method itself (reconstruction, Riemann solvers, constrained transport,
 the formulas of each integrator) is explained for users on

@@ -28,7 +28,7 @@ on one patch.
 The picture
 -----------
 
-Each stage of the hybrid time step (predictor 1, predictor 2, corrector) runs the same
+Each stage of the hybrid time step (:term:`predictor 1, predictor 2, corrector <PPC>`) runs the same
 four calls, on every patch of the level:
 
 .. mermaid::
@@ -107,8 +107,7 @@ The electrons
 ``Electrons::update`` (:src:`src/core/data/electrons/electrons.hpp#L264-L272`) does two
 things before Ohm runs:
 
-* electron velocity, from quasi-neutrality (the electron density equals the ion charge
-  density, :doc:`/theory/hybridpic`) and the current
+* electron velocity, from :term:`quasineutrality` and the current
   (``StandardHybridElectronFluxComputer::computeBulkVelocity``,
   :src:`src/core/data/electrons/electrons.hpp#L70-L98`):
 
@@ -119,7 +118,7 @@ things before Ohm runs:
   where :math:`\mathbf{F}_s` is the particle flux of population :math:`s` and
   :math:`N_e = \sum_s q_s n_s` the ion charge density. All three live on the primal
   nodes; J is averaged to the nodes first.
-* electron pressure, from the closure. The only closure is isothermal,
+* electron pressure, from the :term:`closure`. The only closure is isothermal,
   :math:`P_e = N_e T_e` with a constant :math:`T_e`
   (``IsothermalElectronPressureClosure``,
   :src:`src/core/data/electrons/electrons.hpp#L112-L178`). The user sets it with

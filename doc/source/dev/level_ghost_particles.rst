@@ -10,13 +10,13 @@ Level ghost particles
 
 **In one sentence:** level ghost particles are copies of coarse-level particles,
 split onto the fine grid and placed in a thin layer just outside a refined level,
-so that particles can flow *into* the refined level and the ion moments near its
+so that particles can flow *into* the refined :term:`level` and the ion :term:`moments` near its
 border are complete.
 
 Why they exist
 --------------
 
-A refined level covers only part of the domain. Its border is not a physical
+A refined level covers only part of the domain (:term:`AMR`). Its border is not a physical
 boundary: plasma keeps flowing across it. Two things go wrong at that border if
 nothing is done:
 
@@ -25,7 +25,7 @@ nothing is done:
 * **Moments are wrong near the border.** The *ion moments* are the density and
   the flux of the ions on the grid nodes. They are computed by *depositing* the
   particles: each particle is a small cloud (its *shape*, one to a few cells wide
-  depending on the interpolation order chosen by the user), and every node adds
+  depending on the :term:`interpolation order` chosen by the user), and every node adds
   up the share of each cloud that covers it (:doc:`/dev/moments`). Nodes near the
   border are also covered by clouds sitting *outside* the level. Without those
   particles, the density drops at the border:
@@ -71,7 +71,7 @@ are the level ghost particles.
 The picture
 -----------
 
-Where they live: a refined level made of two patches, A and B, seen from patch A.
+Where they live: a refined level made of two :term:`patches <patch>`, A and B, seen from patch A.
 
 .. plot::
    :include-source: False
@@ -250,9 +250,8 @@ New is filled at the first substep, not at every substep
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** Splitting means a parallel communication across the coarse and
-fine levels: a SAMRAI *refine schedule*, the plan of which data goes from which
-coarse patch to which fine patch, possibly on another MPI rank (one of the
-parallel processes of the run). Doing it at every fine substep
+fine levels: a :term:`SAMRAI` refine :term:`schedule`, the plan of which data goes from which
+coarse patch to which fine patch, possibly on another :term:`MPI` :term:`rank`. Doing it at every fine substep
 would be costly.
 
 **Fix.** The coarse level is ahead in time, so its particles at the end of the
