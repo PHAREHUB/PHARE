@@ -8,187 +8,136 @@ ParticleArray, Ions, populations
 
    You are here: :doc:`/dev/index` › ParticleArray, Ions, populations
 
-**In one sentence:** the ions of a :term:`hybrid model` are a list of :term:`populations <population>`
-(species with their own mass and charge); each population holds its moments
-(fields) and, on each :term:`patch`, five ``ParticleArray`` objects: its domain
-particles and four kinds of ghost particles.
+**In one sentence:** the ions of a :term:`hybrid model` are a list of
+:term:`populations <population>` (species with their own mass and charge); each
+population holds its moments and, on each :term:`patch`, five ``ParticleArray``
+objects: its domain particles and four kinds of ghost particles.
 
-The picture
------------
+* ``Ions`` → vector of ``IonPopulation`` + total moments (charge and mass
+  density, bulk velocity, charge flux, momentum tensor)
+  (:src:`src/core/data/ions/ions.hpp#L295-L300`).
+* ``IonPopulation`` → name, mass, charge, density, flux, momentum tensor, and a
+  ``ParticlesPack`` of 5 *pointers*
+  (:src:`src/core/data/ions/ion_population/ion_population.hpp#L137-L144`).
+* ``ParticlesData`` (SAMRAI patch data, one per patch) owns the 5 arrays; the
+  resources manager points the pack at them on each patch
+  (:src:`src/amr/data/particles/particles_data.hpp#L460-L466`,
+  :doc:`/dev/resources_manager`).
 
-.. mermaid::
+The five arrays of a patch
+--------------------------
 
-   flowchart TD
-     I["<b>Ions</b><br/>total moments: charge density, mass density,<br/>bulk velocity, charge flux, momentum tensor"] --> P1["<b>IonPopulation</b> 'protons'<br/>mass, charge<br/>density, flux, momentum tensor"]
-     I --> P2["<b>IonPopulation</b> 'alpha' ..."]
-     P1 --> K["<b>ParticlesPack</b><br/>5 pointers, set per patch"]
-     K --> D["domain particles"]
-     K --> G["patch ghost particles"]
-     K --> L["level ghost particles<br/>(pushable)"]
-     K --> O["level ghost Old"]
-     K --> N["level ghost New"]
-     S["<b>ParticlesData</b><br/>SAMRAI patch data,<br/>owns the 5 ParticleArrays"] -. "pointers set by the<br/>resources manager" .-> K
-     click G href "grabbing_particles.html" "Patch ghost particles"
-     click L href "level_ghost_particles.html" "Level ghost particles"
-     click O href "level_ghost_particles.html" "Level ghost particles"
-     click N href "level_ghost_particles.html" "Level ghost particles"
-     click S href "resources_manager.html" "Resources manager and patch data"
+.. plot::
+   :include-source: False
+   :caption: Where the particles of each array sit, for patch A on a refined
+      level whose neighbour B is on the right (2 ghost cells).
 
-How it works
-------------
+   from phare_draw import *
+   from matplotlib.patches import Rectangle
+   fig, (a,) = strip(1, ["Patch A and its five particle arrays"], height=3.6)
+   grid(a, (-2, -2, 13, 8), color=C["light"])
+   patch(a, (0, 0, 8, 6), ghosts=2, label="patch A")
+   patch(a, (8, 0, 13, 6), label="patch B")
+   a.add_patch(Rectangle((8, 0), 2, 6, fc=C["E"], alpha=0.3, ec="none", zorder=1))
+   particles(a, [(1.5, 1.4), (3.2, 4.1), (5.6, 2.3), (6.8, 4.6), (2.4, 2.8)], color=C["ion"])
+   particles(a, [(8.6, 3.3), (9.4, 1.2)], color=C["L2"])
+   particles(a, [(-1.4, 2.2), (2.3, 6.8), (5.1, -1.3)], color=C["grey"])
+   particles(a, [(-0.7, 3.6), (4.2, 7.3), (6.5, -0.6)], color=C["L1"])
+   text(a, 4, 3.0, "domain", color=C["ion"], bold=True)
+   text(a, 11.2, 3.6, "patch ghost", color=C["L2"], bold=True)
+   text(a, 4.0, -2.8, "level ghost: Old (grey), New (blue), copy of Old", color=C["ghost_edge"], bold=True)
+   a.plot([4.0], [-3.4], alpha=0)
+   finish(fig, [a])
 
-One particle
-^^^^^^^^^^^^
+* ``domainParticles``: cell in the patch and owned by it — the plasma of A.
+* ``patchGhostParticles``: just left A for B; deposited by A, then grabbed by B
+  (:doc:`/dev/grabbing_particles`).
+* ``levelGhostParticlesOld`` / ``New`` / ``levelGhostParticles`` (pushable copy):
+  split from the coarse level, outside the level only (:doc:`/dev/level_ghost_particles`).
+* A ``Particle``: ``weight`` (density per particle), ``iCell`` (global AMR
+  cell index), ``delta`` (position in the cell, in [0,1)), ``v``; no charge
+  (:src:`src/core/data/particles/particle.hpp#L54-L60`). :pr:`1473`.
 
-A ``Particle<dim>`` (:src:`src/core/data/particles/particle.hpp#L54-L60`) has:
+ParticleArray: a vector and a cell map
+--------------------------------------
 
-* ``weight``: its density contribution (density per particle; see
-  :doc:`/dev/particle_splitting` for how weights change with refinement);
-* ``iCell``: the index of the cell it is in, in the level's global (:term:`AMR`) index
-  space, so that it stays valid when the particle moves between patches;
-* ``delta``: its position inside that cell, between 0 and 1 in each direction;
-* ``v``: its three velocity components.
+.. plot::
+   :include-source: False
+   :caption: A ParticleArray is a vector of particles plus, for each cell, the
+      list of indexes of its particles. ``partition`` tests cells, not
+      particles, and moves the particles of failing cells to the end.
 
-There is no charge or mass per particle: they belong to the population
-(comment at L43; ``IonPopulation::charge``, ``mass``).
+   from phare_draw import *
+   from matplotlib.patches import Rectangle
+   cells = {0: "c0", 1: "c1", 2: "c2", 3: "c3"}
+   col = {0: C["L1"], 1: C["ion"], 2: C["rho"], 3: C["bad"]}
+   before = [("p0", 1), ("p1", 3), ("p2", 0), ("p3", 2), ("p4", 3), ("p5", 1)]
+   after = [("p0", 1), ("p5", 1), ("p2", 0), ("p3", 2), ("p4", 3), ("p1", 3)]
+   def vec(a, items, y, title):
+       text(a, -0.3, y + 0.4, title, ha="right", bold=True)
+       a.plot([-2.2], [y], alpha=0)
+       for i, (name, c) in enumerate(items):
+           a.add_patch(Rectangle((i, y), 1, 0.8, fc=col[c], alpha=0.35, ec=C["grey"]))
+           text(a, i + 0.5, y + 0.4, name)
+           text(a, i + 0.5, y + 1.05, str(i), color=C["grey"])
+   fig, (a1, a2) = strip(2, ["Vector of particles, and the cell map", "partition(cell ≤ c2)"], height=2.4)
+   vec(a1, before, 1.6, "vector")
+   for c, name in cells.items():
+       idx = [str(i) for i, (_, cc) in enumerate(before) if cc == c]
+       a1.add_patch(Rectangle((c * 1.5, 0), 1.4, 0.8, fc=col[c], alpha=0.2, ec=C["grey"]))
+       text(a1, c * 1.5 + 0.7, 0.4, name + ": " + ",".join(idx))
+   text(a1, -0.3, 0.4, "cell map", ha="right", bold=True)
+   a1.plot([-2.2], [0], alpha=0)
+   vec(a2, after, 0.5, "vector")
+   brace(a2, 0, 4, 0.3, "returned range: pass", color=C["ok"], up=False)
+   brace(a2, 4, 6, 0.3, "fail (c3)", color=C["bad"], up=False)
+   finish(fig, [a1, a2])
 
-**History.** :pr:`1473` (particles carry no charge).
-
-One population
-^^^^^^^^^^^^^^
-
-``IonPopulation``
-(:src:`src/core/data/ions/ion_population/ion_population.hpp#L19-L146`) has a
-name, a mass and a charge read from the input, its moments (particle density,
-charge density, flux, momentum tensor) and a ``ParticlesPack``
-(:src:`src/core/data/ions/ion_population/particle_pack.hpp#L19-L36`).
-
-The pack holds five *pointers*, not arrays. The arrays themselves live in the
-:term:`SAMRAI` patch data ``ParticlesData``
-(:src:`src/amr/data/particles/particles_data.hpp#L460-L466`), one per patch.
-Before working on a patch, the code asks the resources manager to point the
-population's pack and fields at that patch's data (``setOnPatch``; see
-:doc:`/dev/resources_manager`). The same ``IonPopulation`` object thus works on
-every patch in turn.
-
-.. list-table:: The five particle arrays of a patch
-   :header-rows: 1
-   :widths: 28 72
-
-   * - Array
-     - Holds
-   * - ``domainParticles``
-     - particles whose cell is in the patch and owned by it; the only ones
-       that are really "the plasma" of this patch
-   * - ``patchGhostParticles``
-     - particles that just left the patch for a same-level neighbour; live
-       between a push and the next exchange (:doc:`/dev/grabbing_particles`)
-   * - ``levelGhostParticles``
-     - the pushable copy of ``levelGhostParticlesOld``: fine particles split
-       from the coarse level, just outside a refined level
-       (:doc:`/dev/level_ghost_particles`)
-   * - ``levelGhostParticlesOld``, ``levelGhostParticlesNew``
-     - coarse particles split at the start and end of the coarse step, used for
-       the moments near the level border
-
-Ions
-^^^^
-
-``Ions`` (:src:`src/core/data/ions/ions.hpp#L295-L300`) holds the vector of
-populations and the total moments, computed from the populations' moments:
-charge density, mass density, bulk velocity, charge flux and the full momentum
-tensor (``computeChargeDensity`` and the next functions, L85-L197; formulas on
-:doc:`/dev/moments`).
-
-ParticleArray: particles indexed by cell
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``ParticleArray<dim>``
-(:src:`src/core/data/particles/particle_array.hpp#L21-L238`) is a
-``std::vector`` of particles (an *array of structures*: each particle's fields
-are stored together) plus a ``CellMap``: for every
-cell of a box, the list of indexes of the particles in that cell
-(:src:`src/core/utilities/cellmap.hpp#L26-L38`). The map is kept up to date
-when particles are added, erased or change cell (``push_back``,
-``erase`` on an index range, ``change_icell``, L99 and L131-L190). The other
-``erase``, on a pair of iterators, does *not* update the map; the comment at
-L101-L112 explains why this is considered harmless.
-
-What it gives:
-
-* ``nbr_particles_in(box)``: count the particles in a box by looking only at
-  the cells of that box;
-* ``export_particles(box, dest)``: copy the particles of a box into another
-  array (used by the exchanges between patches);
-* ``partition(range, predicate)``: move to the end of a range the particles
-  whose *cell* fails a test, and return the range of those that pass
-  (:src:`src/core/utilities/cellmap.hpp#L400-L445`). The pusher's *selectors*
-  ("is it still in my domain?", "is it in the ghost layer?") are partitions.
+* ``nbr_particles_in(box)``, ``export_particles(box, dest)`` only visit the
+  cells of the box (:src:`src/core/data/particles/particle_array.hpp#L149-L179`).
+* ``partition`` (:src:`src/core/utilities/cellmap.hpp#L400-L445`) is what the
+  pusher's *selectors* use ("still in my domain?", "in the ghost layer?").
+* ``push_back``, ``change_icell`` and ``erase`` on an index range keep the map
+  up to date (:src:`src/core/data/particles/particle_array.hpp#L99-L190`); the
+  iterator ``erase`` does not (comment at L101-L112).
 
 The tricks
 ----------
 
-Selections work on cells, not on particles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Selections test cells, so the map must cover every reachable cell
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** Testing every particle against a box is slow when only a few
-cells matter, and the pusher sorts particles several times per step.
-
-**Fix.** All selections go through the cell map: the test is done once per
-cell, then applied to all the particles indexed in that cell. The catch: a
-particle whose cell is outside the map's box is invisible to the selections.
-
-The cell map covers more than the ghost box
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Problem.** A pushed particle can end up a few cells past the ghost box: the
-pusher lets a particle's cell index change by up to 2 per half push (see
-:doc:`/dev/grabbing_particles`). If its new cell were outside the map, the
-selectors would not see it, and it would be kept or dropped wrongly.
-
-**Fix.** Each array of ``ParticlesData`` maps the ghost box grown by a margin
-(``ghostSafeMapLayer``,
-:src:`src/amr/data/particles/particles_data.hpp#L68-L73` and L79-L87), equal to
+**Problem.** A particle in a cell outside the map's box is never visited: a
+selector would keep it by mistake. A half push can change a particle's cell by
+up to 2.
+**Fix.** Every array maps the ghost box grown by
 ``particleMapMargin`` = max(2, 4 − particle ghost width)
-(:src:`src/core/data/grid/gridlayout.hpp#L59-L68`). The comment there gives the
-reasoning: level ghosts are selected after each half push, domain particles
-after both.
-
-**History.** :pr:`1592` (selectors missed far particles).
+(:src:`src/amr/data/particles/particles_data.hpp#L68-L87`,
+:src:`src/core/data/grid/gridlayout.hpp#L59-L68`). :pr:`1592`.
 
 One SAMRAI variable for five arrays
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** SAMRAI moves data per *variable*. Having five separate variables
-per population would multiply the schedules.
-
-**Fix.** ``ParticlesData`` is one SAMRAI *patch data* (the object SAMRAI stores per
-patch for a variable) holding all five arrays. SAMRAI tells it what to copy
-with an *overlap* object, built by a fill pattern (:doc:`/dev/fill_patterns`);
-how each operation treats the arrays depends on the overlap's type:
-a ``ParticlesDomainOverlap`` means "grab patch ghosts into my domain", a plain
-cell overlap means "copy domain particles"
-(:src:`src/amr/data/particles/particles_data.hpp#L245-L270`). Refinement goes
-through the split operators instead (:doc:`/dev/particle_splitting`).
+**Problem.** Five variables per population would multiply the schedules.
+**Fix.** One ``ParticlesData`` holds all five; the overlap type says what to
+copy: ``ParticlesDomainOverlap`` = grab patch ghosts into my domain, cell
+overlap = copy domain particles
+(:src:`src/amr/data/particles/particles_data.hpp#L245-L270`); refinement goes
+through the split operators (:doc:`/dev/particle_splitting`).
 
 Restarts store four arrays out of five
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Restart files hold the domain particles and the three level ghost arrays, not
-the patch ghost particles, which are empty between time steps
-(``ParticlesData::putToRestart``,
+Domain + the three level ghost arrays are written; patch ghosts are empty
+between steps (``putToRestart``,
 :src:`src/amr/data/particles/particles_data.hpp#L114-L141`).
 
 Go deeper
 ---------
 
-* :doc:`/dev/grabbing_particles` — what happens to patch ghost particles.
-* :doc:`/dev/level_ghost_particles` — the three level ghost arrays.
-* :doc:`/dev/moments` — how particles become moments.
+* :doc:`/dev/grabbing_particles` · :doc:`/dev/level_ghost_particles` · :doc:`/dev/moments`
 
 Related
 -------
 
-* :doc:`/dev/resources_manager` — how the pack is pointed at a patch's data.
-* :doc:`/dev/ppc_order` — when particles are pushed and deposited.
-* :doc:`/numerics/particles` — shapes, pusher, interpolation.
+* :doc:`/dev/resources_manager` · :doc:`/dev/ppc_order` · :doc:`/numerics/particles`
