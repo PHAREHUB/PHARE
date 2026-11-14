@@ -45,23 +45,35 @@ your machine: ranks on the same node share the node's memory.
 Where memory goes
 -----------------
 
-.. mermaid::
+.. plot::
+   :include-source: False
+   :caption: On a refined level, each rank also stores level ghost particles: fine particles split from coarse ones, in a thin layer just outside the refined region.
 
-   flowchart TD
-     R["memory of one rank"] --> P["particles<br/>(usually the largest)"]
-     R --> F["fields<br/>(with ghost cells)"]
-     R --> S["mesh bookkeeping<br/>(SAMRAI)"]
-     P --> P1["own particles +<br/>copies near patch<br/>and level borders"]
+   from phare_draw import *
+   import random
+   random.seed(3)
+   fig, (b,) = strip(1, ["Refined region over level 0: level ghost particles just outside it"], height=3.0)
+   grid(b, (0, 0, 10, 5))
+   level(b, (3, 1, 7, 4))
+   coarse = [(random.uniform(0.05, 9.95), random.uniform(0.05, 4.95)) for _ in range(45)]
+   fine = [(random.uniform(3.05, 6.95), random.uniform(1.05, 3.95)) for _ in range(45)]
+   ring = [p for p in [(random.uniform(2.5, 7.5), random.uniform(0.5, 4.5)) for _ in range(200)]
+           if not (2.75 < p[0] < 7.25 and 0.75 < p[1] < 4.25)][:26]
+   particles(b, coarse, color=C["grey"], size=18)
+   particles(b, fine, color=C["ion"], size=26)
+   particles(b, ring, color=C["ghost_edge"], size=30, marker="s")
+   particles(b, [(0.0, -0.7)], color=C["grey"], size=18); text(b, 0.25, -0.7, "level 0", color=C["grey"], ha="left")
+   b.add_patch(__import__("matplotlib").patches.Rectangle((2.05, -0.95), 0.5, 0.5, fc="none", ec=C["L1"], lw=2.5, zorder=3))
+   particles(b, [(2.3, -0.7)], color=C["ion"], size=26); text(b, 2.75, -0.7, "refined level", color=C["ion"], ha="left")
+   particles(b, [(5.6, -0.7)], color=C["ghost_edge"], size=30, marker="s"); text(b, 5.85, -0.7, "level ghost particles", color=C["ghost_edge"], ha="left")
+   finish(fig, [b])
 
-In a hybrid run, particles usually dominate. A :term:`rank` stores the particles of its
-patches, plus copies of neighbour particles near patch borders
-(:term:`patch ghost particles <patch ghost particle>`) and near the borders
-of refined levels (:term:`level ghost particles <level ghost particle>`).
-Fields are usually smaller, but every :term:`patch` carries extra
-:term:`ghost cells <ghost cell>` around it, so many small patches cost more
-than a few large ones. The last part, the lists of patches and the
-communication plans, is kept by :term:`SAMRAI`, the AMR library PHARE is
-built on.
+In a hybrid run, particles usually take most of the memory: each rank stores the particles of its
+patches and, on refined levels, the :term:`level ghost particles <level ghost particle>` drawn above.
+Particles that leave a patch during a step (:term:`patch ghost particles <patch ghost particle>`) are
+held only until they are handed to the neighbouring patch. Fields are usually smaller, but every
+:term:`patch` carries :term:`ghost cells <ghost cell>`, so many small patches cost more than a few
+large ones. :term:`SAMRAI` also keeps the patch lists and communication plans.
 
 What makes it grow
 ------------------
@@ -81,16 +93,16 @@ What makes it grow
    * - Number of populations
      - Each population has its own particles.
    * - ``smallest_patch_size`` / ``largest_patch_size``
-     - Smaller patches: more ghost cells and border copies per useful cell.
+     - Smaller patches: more ghost cells per useful cell.
    * - Number of ranks
-     - More ranks: less memory per rank, but not proportionally (border
-       copies and per-rank overheads remain).
+     - More ranks: less memory per rank, but not proportionally (ghost
+       cells and per-rank overheads remain).
 
 Common mistakes
 ---------------
 
 * **No file in** ``.phare/stats/`` — ``phlop`` is not installed: monitoring
-  silently does nothing — ``python3 -m pip install phlop``.
+  silently does nothing — ``python3 -m pip install phlop==0.0.45``.
 * **Passing** ``monitoring=True`` — samples every second, which makes long
   YAML files — give the interval in seconds, e.g. ``monitoring=60``.
 * **Comparing the peak of one rank with the memory of a node** — ranks on

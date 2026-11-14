@@ -108,14 +108,29 @@ Two separate mechanisms move patches between ranks.
    too uneven, with ``every=N`` every ``N`` steps without checking.
    ``auto``, ``every`` and ``on_init`` control *when* this happens.
 
-.. mermaid::
+.. plot::
+   :include-source: False
+   :caption: When level 0 is redistributed (red). With auto, the wait between checks (green) grows while level 0 stays balanced, up to 1000 steps.
 
-   flowchart TD
-     A["each time step"] --> C{"level 0 due?<br/>(auto / every / on_init)"}
-     C -- "yes, auto" --> M{"busiest rank more than<br/>tol above the average?"}
-     C -- "yes, every" --> B["level 0 redistributed<br/>(mechanism 2)"]
-     M -- yes --> B
-     A -- "when a regrid is due" --> R["levels rebuilt by refinement:<br/>new patches shared between<br/>ranks (mechanism 1)"]
+   from phare_draw import *
+   titles = ["auto (default): check, wait longer while balanced",
+             "every=400: redistribute every 400 steps, no check"]
+   fig, axes = strip(2, titles, height=1.9)
+   s = 1 / 200.0
+   auto = [(0, "ok"), (200, "ok"), (600, "ok"), (1400, "re"), (1600, "ok"), (1800, "ok"), (2200, "ok")]
+   every = [(k, "re") for k in range(0, 2401, 400)]
+   for ax, ev in zip(axes, [auto, every]):
+       ax.plot([-0.3, 12.0], [0, 0], color=C["grey"], lw=1.2)
+       for k in range(0, 2401, 400):
+           ax.plot([k * s, k * s], [-0.08, 0.08], color=C["grey"], lw=1)
+           text(ax, k * s, -0.38, str(k), fs=11)
+       text(ax, 12.4, 0, "step", fs=11, ha="left")
+       for st, kind in ev:
+           mark(ax, "primal", st * s, 0, color=C["bad"] if kind == "re" else C["ok"], size=12)
+       ax.plot([0, 13], [-0.9, 0.6], alpha=0)
+   text(axes[0], 1400 * s, -0.75, "too uneven: redistributed", color=C["bad"], fs=11)
+   text(axes[0], 400 * s, 0.4, "balanced: no change", color=C["ok"], fs=11)
+   finish(fig, axes)
 
 How load is counted (``mode``)
    ``"nppc"`` (default) counts the particles in each cell: a rank's load is
@@ -130,15 +145,8 @@ When is a rank "too loaded" (``tol``)
    *whether* level 0 is redistributed.
 
 When level 0 is redistributed (``auto``, ``every``, ``on_init``)
-   With ``auto`` (the default), the first check is at the first step if
-   ``on_init`` is ``True`` (the default), otherwise ``next_rebalance`` steps
-   after the start. Each time a
-   check finds level 0 balanced, the wait before the next one doubles
-   (``next_rebalance_backoff_multiplier``), up to ``max_next_rebalance``
-   steps. After a redistribution, the wait goes back to ``next_rebalance``.
-   With ``every=N`` instead, level 0 is redistributed every ``N`` steps
-   (and at the first step if ``on_init``), without looking at ``tol``
-   first.
+   See the drawing above: ``auto`` checks at the first step (``on_init``), then less and less often while
+   level 0 stays balanced; ``every=N`` redistributes every ``N`` steps without checking. Defaults below.
 
 Options
 -------

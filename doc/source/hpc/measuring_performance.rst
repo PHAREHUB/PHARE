@@ -29,13 +29,6 @@ PHARE gives you three tools, from the simplest to the most detailed:
      - time spent in each part of the code, per rank
      - a build with ``-DwithPhlop=ON`` and a log level
 
-.. mermaid::
-
-   flowchart TD
-     RUN["your run"] --> A["time per step<br/>plot_times"]
-     RUN --> B["resource monitor<br/>.phare/stats/"]
-     RUN --> C["scope timers<br/>.phare/timings/"]
-     C --> D["phloping.py"]
 
 Time per step
 -------------
