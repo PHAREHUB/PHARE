@@ -45,7 +45,10 @@ How to use this guide
 
       - :doc:`ghost_cells`
       - :doc:`fill_patterns`
+      - :doc:`subcycling`
       - :doc:`field_refinement`
+      - :doc:`time_interpolation`
+      - :doc:`refluxing`
       - :doc:`coarsening`
       - :doc:`messengers`
       - :doc:`tagging_regridding`
@@ -99,7 +102,10 @@ How to use this guide
    particles_ions
    ghost_cells
    fill_patterns
+   subcycling
    field_refinement
+   time_interpolation
+   refluxing
    coarsening
    messengers
    tagging_regridding
