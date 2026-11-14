@@ -9,8 +9,8 @@ Push and deposition order in the PPC
    You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` › Push and
    deposition order
 
-**In one sentence:** the hybrid solver ``SolverPPC`` (:term:`PPC`) advances one :term:`level` by one
-step with a predictor-corrector scheme in which particles are pushed twice: a
+**In one sentence:** the hybrid solver ``SolverPPC`` advances one :term:`level` by one
+step with a :term:`predictor-corrector scheme <PPC>` in which particles are pushed twice: a
 first push only *predicts* the ion moments at the new time, the second push
 really moves the particles.
 
@@ -160,7 +160,7 @@ the first half step are not pushed further, since they will be erased anyway
 (selector ``inGhostBox``,
 :src:`src/core/numerics/ion_updater/ion_updater.hpp#L294-L296`).
 
-**History.** #571 (Boris push desynchronization).
+**History.** :issue:`571` (Boris push desynchronization).
 
 Particles change patch only in push 2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

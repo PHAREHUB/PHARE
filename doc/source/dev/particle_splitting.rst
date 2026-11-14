@@ -24,7 +24,9 @@ direction. The density would become lumpy, and the
 fine level would have :math:`2^d` times fewer particles per cell than the coarse
 one (:math:`d` the dimension). Splitting it into :math:`N` children, spread
 around the parent's position, rebuilds almost the same wide cloud out of
-fine-grid clouds, and gives the fine level more particles per cell.
+fine-grid clouds. With :math:`N = 2^d` children the fine level keeps the
+coarse number of particles per cell (the defaults, 2 in 1D and 4 in 2D); the
+3D default, 6, gives 6/8 of it; larger :math:`N` give more.
 
 Splitting is used every time fine particles must be made from coarse ones:
 
@@ -215,7 +217,7 @@ size and the largest offset rounded up (``PatternDispatcher::maxDelta``)
 the 2D, order 1, 8-children pattern, whose diagonal children reach 1.058 fine
 cells.
 
-**History.** #1369 (splitters checked against reference tables).
+**History.** :pr:`1369` (splitters checked against reference tables).
 
 Patterns and weights come from published tables
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -232,8 +234,8 @@ and one offset (``SplitPattern``,
 Communications 261, 107666, 2021). A unit test checks the weights and offsets
 against those tables.
 
-**History.** #1369 (splitters checked against reference tables); before it,
-some non-default splitters did not conserve the plasma (#1340).
+**History.** :pr:`1369` (splitters checked against reference tables); before it,
+some non-default splitters did not conserve the plasma (:issue:`1340`).
 
 The number of children is fixed at compile time
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

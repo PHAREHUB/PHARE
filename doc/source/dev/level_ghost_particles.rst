@@ -179,8 +179,8 @@ The cycle over one coarse step, for a level above the root:
 #. **First fine substep** — ``HybridHybridMessengerStrategy::firstStep``
    (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L508-L532`)
    splits the coarse domain particles, now at the end of the coarse step, into
-   ``levelGhostParticlesNew`` (L523). It also stores the start and end times of
-   the coarse step (L528-L529). It is called by
+   ``levelGhostParticlesNew`` (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L523`). It also stores the start and end times of
+   the coarse step (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L528-L529`). It is called by
    ``MultiPhysicsIntegrator::advanceLevel`` only on the first substep
    (:src:`src/amr/multiphysics_integrator.hpp#L524-L531`).
 #. **Every substep, push** — the hybrid solver pushes particles twice per
@@ -195,7 +195,7 @@ The cycle over one coarse step, for a level above the root:
    ``fillIonPopMomentGhosts``
    (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L457-L495`).
    It deposits Old with weight :math:`1-\alpha` and New with weight
-   :math:`\alpha` (L485-L491), where
+   :math:`\alpha` (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L485-L491`), where
 
    .. math::
 
@@ -203,10 +203,10 @@ The cycle over one coarse step, for a level above the root:
                     {t_\text{coarse}^\text{end} - t_\text{coarse}^\text{start}}
 
    is the position of the fine time inside the coarse step
-   (``timeInterpCoef_``, L949-L953). This is a linear interpolation in time
+   (``timeInterpCoef_``, :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L949-L953`). This is a linear interpolation in time
    of the coarse plasma at the border.
-#. **Last fine substep** — ``lastStep`` (L542-L565) swaps New and Old, empties
-   New, and resets the pushable copy to the new Old (L560-L562). The next coarse
+#. **Last fine substep** — ``lastStep`` (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L542-L565`) swaps New and Old, empties
+   New, and resets the pushable copy to the new Old (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L560-L562`). The next coarse
    step starts from fresh coarse particles.
 
 With 4 substeps, :math:`\alpha` takes the values 1/4, 1/2, 3/4 and 1.
@@ -256,9 +256,9 @@ would be costly.
 
 **Fix.** The coarse level is ahead in time, so its particles at the end of the
 coarse step are already known at the first substep. They are split once into
-New (L523); the next substeps only interpolate in time, with no communication.
+New (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L523`); the next substeps only interpolate in time, with no communication.
 ``fillIonPopMomentGhosts`` throws an error if :math:`\alpha` falls outside
-[0, 1] on a refined level (L462-L470): that would mean the times stored by
+[0, 1] on a refined level (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L462-L470`): that would mean the times stored by
 ``firstStep`` do not frame the fine time.
 
 Only the layer outside the level is filled
@@ -285,10 +285,11 @@ count that plasma twice: once through it, once through Old and New.
 
 **Fix.** After the push, only domain particles that land in the patch's
 *non-level-ghost box* (its domain plus the parts of the ghost box covered by
-same-level neighbours) are kept as patch ghosts and deposited; those in the
-level ghost layer are erased (``IonUpdater::updateAndDepositAll_``,
+same-level neighbours) are deposited, and those among them that left the
+domain are copied to the patch ghost array; those in the level ghost layer are
+erased (``IonUpdater::updateAndDepositAll_``,
 :src:`src/core/numerics/ion_updater/ion_updater.hpp#L265-L289`). The same
-selection is used in the first, moments-only push (L198-L205).
+selection is used in the first, moments-only push (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L198-L205`).
 
 Entering level ghosts are deposited but not kept in the first push
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -314,7 +315,22 @@ for Old, it led to occasional failures in SAMRAI's parallel communication.
 coarse particles, as for a brand new level
 (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L280`).
 
-**History.** #604 (levelGhostOld regrid failures).
+**History.** :issue:`604` (levelGhostOld regrid failures).
+
+A limit: particles faster than the layer is wide
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Only particles of the layer can enter the level. The pushable copy is filled
+once per coarse step (from Old, at the last fine substep,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L560-L562`) and
+then pushed through all the fine substeps of the next coarse step; nothing is
+added to it in between. A plasma particle of the coarse region that is further
+from the level than the layer width (1 fine cell at interpolation order 1, 2 at
+orders 2 and 3) is therefore not in the copy, and cannot enter the level during
+that whole coarse step, even if its velocity would carry it in. Entry through
+the border is complete only while particles move less than the layer width
+over a whole coarse step (4 fine steps). The moments near the border do not
+depend on this: they come from Old and New.
 
 Restart files keep the level ghost arrays
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
