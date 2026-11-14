@@ -6,64 +6,175 @@ Field refinement operators
 
 .. container:: breadcrumb
 
-   You are here: :doc:`/dev/index` › :doc:`/dev/one_time_step` › :doc:`/dev/ghost_cells` › Field refinement
+   You are here: :doc:`/dev/index` › :doc:`/dev/subcycling` › Field refinement
+
+**Applies to:** hybrid ✓ | MHD ✓ (same code for both; the table below says which field uses it where)
 
 **In one sentence:** a field refinement operator computes fine-level values
-from the coarse level; PHARE's operators are second order, and the one for B
-keeps :math:`\nabla\cdot B = 0`.
+from the coarse level, at one given time; PHARE's operators are second order,
+and the one for B keeps :math:`\nabla\cdot B = 0`.
 
-They fill new levels and :term:`level ghost` cells (:doc:`/dev/ghost_cells`).
-Particles are refined by :term:`particle splitting`
-(:doc:`/dev/particle_splitting`).
+Why
+---
+
+A fine level has no data of its own in three places: a new level, a regridded
+patch, and its :term:`level ghost` cells (:doc:`/dev/ghost_cells`). In all three
+the values come from the coarse level. This page is about *how* in space; *which
+coarse time* is on :doc:`time_interpolation`. Particles are refined by
+:term:`particle splitting` (:doc:`/dev/particle_splitting`).
 
 
-The 1D rule
------------
+The 1D rule, on the running example
+-----------------------------------
+
+The example used on the sub-cycling pages: level 0 has 8 cells of size 1, level 1
+covers coarse cells 2 to 5, so its fine cells are 4 to 11, of size 1/2. Its
+left level-ghost cells are the fine cells 2 and 3 (hybrid, interpolation order 1:
+two ghost cells, :src:`src/core/models/options/hybrid_options.hpp#L24`).
 
 .. plot::
    :include-source: false
-   :alt: The four fine sites of second-order refinement in 1D, for primal and dual quantities.
+   :alt: One dimension. Left: the two fine level-ghost values of a cell-centred quantity, built from three coarse values. Right: the two fine ghost nodes of a node-centred quantity, one copied and one averaged.
 
    from phare_draw import *
+   from matplotlib.patches import Rectangle
 
-   fig, (a1, a2) = strip(2, titles=["primal direction (values on cell edges)",
-                                    "dual direction (values at cell centres)"])
-   for ax, coarse, fine in ((a1, [0, 2, 4, 6], [0, 1, 2, 3, 4, 5, 6]),
-                            (a2, [1, 3, 5, 7], [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5])):
-       grid(ax, (0, 0, 8 if ax is a2 else 6, 0.001), color=C["light"])
-       for x in coarse:
-           mark(ax, "dual", x, 1.0, color=C["L0"], size=11)
-       for x in fine:
-           mark(ax, "primal", x, 0.0, color=C["L1"], size=8)
-       text(ax, -0.6, 1.0, "coarse", ha="right")
-       text(ax, -0.6, 0.0, "fine", ha="right")
-       ax.plot([-2.6, 8.3], [-0.95, 1.25], alpha=0)   # room for the labels
-   arrow(a1, (2, 0.9), (2, 0.12), color=C["ink"], lw=1.4)
-   text(a1, 1.75, 0.5, "copy", ha="right")
-   arrow(a1, (2.1, 0.9), (2.95, 0.12), color=C["ink"], lw=1.4)
-   arrow(a1, (3.9, 0.9), (3.05, 0.12), color=C["ink"], lw=1.4)
-   text(a1, 3.0, -0.55, "average of the two")
-   for x0 in (1, 3, 5):
-       arrow(a2, (x0, 0.9), (3.5, 0.12), color=C["ink"], lw=1.4)
-   text(a2, 3.5, -0.55, r"right child of cell I: $c_I + (c_{I+1}-c_{I-1})/8$")
-   finish(fig, [a1, a2])
+   By = [1.0, 1.2, 1.6, 2.0, 2.2, 2.2, 2.0, 1.6]       # coarse cells 0..7 (dual)
+   Ey = [0.0, 0.1, 0.3, 0.4, 0.4, 0.3, 0.1, 0.0, 0.0]   # coarse nodes 0..8 (primal)
+   left = By[1] - (By[2] - By[0]) / 8                    # left child of coarse cell 1 = fine cell 2
+   right = By[1] + (By[2] - By[0]) / 8                   # right child = fine cell 3
+   assert abs(left - 1.125) < 1e-12 and abs(right - 1.275) < 1e-12
+   mid = (Ey[1] + Ey[2]) / 2
+   assert abs(mid - 0.2) < 1e-12
 
-Grey squares: coarse values; blue dots: fine values. Look at which coarse
-values each fine value is built from.
+   fig, (a1, a2) = strip(2, titles=["cell-centred (dual), By: three coarse values give both children",
+                                    "node-centred (primal), Ey: copy, or average of two"], aspect=False, height=2.9)
+   for ax in (a1, a2):
+       ax.add_patch(Rectangle((1, -0.3), 1, 1.9, fc=C["ghost"], ec="none", zorder=0))   # fine ghost region: x 1..2
+       text(ax, 1.5, 1.55, "level ghosts", color=C["ghost_edge"], fs=11)
+       text(ax, -0.15, 1.0, "coarse", ha="right"); text(ax, -0.15, 0.0, "fine", ha="right")
+       ax.plot([-1.0, 3.3], [-0.65, 1.8], alpha=0)
+   # a1: coarse cell centres 0.5, 1.5, 2.5; fine ghost cell centres 1.25 and 1.75
+   for x, v in ((0.5, By[0]), (1.5, By[1]), (2.5, By[2])):
+       mark(a1, "dual", x, 1.0, color=C["L0"], size=11)
+       text(a1, x, 1.3, f"{v}", fs=11)
+   for x, v in ((1.25, left), (1.75, right)):
+       mark(a1, "primal", x, 0.0, color=C["L1"], size=9)
+       text(a1, x, -0.32, f"{v:.3f}", color=C["L1"], fs=11)
+   for x in (0.5, 1.5, 2.5):
+       arrow(a1, (x, 0.9), (1.75, 0.1), color=C["grey"], lw=1.2)
+   # a2: coarse nodes 1, 2; fine ghost nodes at 1 (copy) and 1.5 (average)
+   for x, v in ((1, Ey[1]), (2, Ey[2])):
+       mark(a2, "dual", x, 1.0, color=C["L0"], size=11)
+       text(a2, x, 1.3, f"{v}", fs=11)
+   mark(a2, "primal", 1, 0.0, color=C["L1"], size=9); text(a2, 1, -0.32, f"{Ey[1]}", color=C["L1"], fs=11)
+   mark(a2, "primal", 1.5, 0.0, color=C["L1"], size=9); text(a2, 1.5, -0.32, f"{mid:.1f}", color=C["L1"], fs=11)
+   arrow(a2, (1, 0.9), (1, 0.12), color=C["grey"], lw=1.4)
+   text(a2, 0.82, 0.5, "copy", ha="right")
+   arrow(a2, (1.05, 0.9), (1.47, 0.12), color=C["grey"], lw=1.2)
+   arrow(a2, (1.95, 0.9), (1.53, 0.12), color=C["grey"], lw=1.2)
+   text(a2, 1.5, 0.5, "average", ha="left", fs=11)
+   finish(fig, [a1, a2], align=False)
 
-* Primal direction: copy on a coarse node, average halfway between two.
-* Dual direction: :math:`c_I \mp (c_{I+1}-c_{I-1})/8` for the left and right
-  child of coarse cell :math:`I`.
-* 2D and 3D: the product of the 1D rules (``CompositeFill``,
-  :src:`src/amr/data/field/refine/composite_field_refiner.hpp#L75-L87`; child
+Grey squares: coarse values; blue dots: fine level-ghost values. Look at which
+coarse values each fine value is built from.
+
+* **Cell-centred (dual) direction:** coarse cell :math:`I` gives two children,
+  :math:`c_I \mp (c_{I+1}-c_{I-1})/8`. Fine cell 3 is the right child of coarse
+  cell 1: :math:`1.2 + (1.6-1.0)/8 = 1.275`; fine cell 2 is its left child, 1.125.
+* **Node-centred (primal) direction:** a fine node on a coarse node copies it
+  (fine node 2 = coarse node 1, 0.1); halfway between two it is their average
+  (fine node 3, 0.2).
+* In 1D, By and Bz have no face normal, so the magnetic operator gives them exactly
+  this rule; only Bx gets the second stage (below).
+* The fine index :math:`f` belongs to coarse index :math:`\lfloor f/2 \rfloor`,
+  also when :math:`f` is negative
+  (``toCoarseIndex``, :src:`src/amr/resources_manager/amr_utils.hpp#L132-L138`).
+
+.. claim C-fr-01 C-fr-02 C-ex-01 C-ex-02 C-ex-04 C-ex-05
+
+* **2D and 3D:** the product of the 1D rules, one per direction
+  (``CompositeFill``,
+  :src:`src/amr/data/field/refine/composite_field_refiner.hpp#L88-L169`; child
   row ``directionalProlongation``,
-  :src:`src/core/data/grid/gridlayoutdefs.hpp#L153-L178`).
-* Only fine values that are still NaN are written
-  (:src:`src/amr/data/field/refine/composite_field_refiner.hpp#L171-L176`).
-* E and scalars use this fill; B uses it as stage 1 of the scheme below
-  (``makeRefineOperators_``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L761-L780`).
+  :src:`src/core/data/grid/gridlayoutdefs.hpp#L152-L178`). Only order 2 exists, and
+  only a refinement ratio of 2 (otherwise it throws,
+  :src:`src/amr/data/field/refine/composite_field_refiner.hpp#L111-L114`).
+* Only fine values that are still NaN are written, so a value already there (a
+  copy from a neighbour patch) is never overwritten
+  (:src:`src/amr/data/field/refine/composite_field_refiner.hpp#L171-L177`).
 
+.. claim C-fr-03
+
+* **Averages are kept:** the two children of a cell average back to the coarse
+  value (the :math:`\mp 1/8` cancel), also in 2D and 3D. For the MHD variables
+  :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}` this means a refined
+  coarse cell keeps its mass, momentum and energy (for cells filled from the coarse
+  level only: values already there are kept)
+  (:src:`src/core/data/grid/gridlayoutdefs.hpp#L134-L151`).
+
+.. claim C-fr-12
+
+
+Who is refined, with which operator
+-----------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 9 18 36 37
+
+   * - Model
+     - Field
+     - New level, regrid
+     - Level ghosts (with :doc:`time_interpolation`)
+   * - hybrid
+     - B
+     - magnetic, two stages (below)
+     - magnetic, two stages
+   * - hybrid
+     - Bpred
+     - none
+     - magnetic, two stages
+   * - hybrid
+     - E
+     - composite rule above
+     - composite rule above
+   * - hybrid
+     - :math:`E_\text{avg}`
+     - none
+     - composite rule above
+   * - hybrid
+     - J
+     - none: Ampère on each level
+     - none: computed from the refined B
+   * - hybrid
+     - ion density and flux
+     - none: deposited from particles (:doc:`/dev/level_ghost_particles`)
+     - none
+   * - MHD
+     - :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}`
+     - composite rule (conservative variables)
+     - composite rule
+   * - MHD
+     - B
+     - magnetic, two stages
+     - magnetic, two stages
+   * - MHD
+     - E
+     - none
+     - none: patch ghosts and physical boundary only
+   * - MHD
+     - fluxes
+     - none
+     - none: patch ghosts refilled after a reflux (:doc:`refluxing`)
+
+.. claim C-fr-04 C-fr-05 C-fr-06 C-fr-07 C-fr-08 C-fr-09 C-fr-10 C-fr-11
+
+* Hybrid operators: ``fieldRefineOp_`` and ``EfieldRefineOp_`` use the composite
+  fill, ``BInitRefineOp_`` and ``BRefineOp_`` the magnetic one
+  (``makeRefineOperators_``,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L761-L780`);
+  MHD: :src:`src/amr/messengers/mhd_messenger.hpp#L498-L519`.
 
 B is refined in two stages to keep div B = 0
 --------------------------------------------
@@ -169,7 +280,13 @@ green: div B = 0. Watch the four cells turn green in panel 3.
   differences of the cell pairs they separate (2D: [3, 1]/8; 1D: 1/2; 3D:
   [7, 2, 2, 1]/24; ``correctFace``,
   :src:`src/amr/data/field/refine/magnetic_refine_patch_strategy.hpp#L245-L295`).
-* Every fine cell ends with the div B of its coarse cell: here 0.
+* Every fine cell ends with the div B of its coarse cell (when its outer faces
+  come from stage 1): here 0.
+* Why the drawing is 2D: in 1D, Bx is the only component with a normal direction, and a
+  divergence-free 1D Bx is uniform, so stage 2 would change nothing visible.
+
+.. claim C-fr-13 C-fr-14 C-fr-15
+
 * Corrections read div B of the stage-1 field (``DivScratch``), not of faces
   already corrected.
 * Method: Balsara, Samantaray and Subramanian, *Efficient WENO-based
@@ -209,9 +326,12 @@ Only order 2 exists; other values are refused
 (:src:`src/amr/messengers/refinement_config.hpp`).
 
 
+Next: :doc:`time_interpolation`, which coarse time these values come from.
+
 Go deeper
 ---------
 
+* :doc:`subcycling`: why the coarse level is ahead of the fine one.
 * :doc:`/dev/ghost_cells`: when level ghosts are refined.
 * :doc:`/dev/fill_patterns`: which nodes a refinement may write.
 
