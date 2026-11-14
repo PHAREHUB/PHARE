@@ -223,7 +223,7 @@ between them:
      click M href "../numerics/particles.html" "Particles"
      click O href "../numerics/time_integration.html" "Time integration"
 
-The order of these operations within a step (a predictor-corrector scheme) is on
+The order of these operations within a step (a :term:`predictor-predictor-corrector <PPC>` scheme) is on
 :doc:`/numerics/time_integration`; the particle push and the deposit are on
 :doc:`/numerics/particles`.
 

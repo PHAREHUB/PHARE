@@ -139,7 +139,7 @@ charge density, as in the formula above
 (:src:`src/core/data/electrons/electrons.hpp#L75-L76`). For one population of protons it
 reduces to the textbook formula.
 
-**History.** #1466 (electron velocity from charge).
+**History.** :issue:`1466` (electron velocity from charge).
 
 Switching terms off without testing in the loop
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +174,7 @@ follows :math:`\Delta x^2`. The ``+ 1`` keeps a floor where B goes to zero; the 
 avoids a blow-up where the density is very low. The default ``hyper_mode="constant"``
 uses :math:`\nu` everywhere.
 
-**History.** #911 (safer hyper-resistivity).
+**History.** :pr:`911` (safer hyper-resistivity).
 
 .. note::
 
@@ -188,7 +188,7 @@ uses :math:`\nu` everywhere.
 
    In 2D, the isothermal pressure term :math:`-\nabla P_e/n` as written above can create a
    magnetic field out of density noise, because its discrete curl is not exactly zero.
-   See #1527 (pressure term creates B); a fix is proposed in #1528.
+   See :issue:`1527` (pressure term creates B); a fix is proposed in :pr:`1528`.
 
 Go deeper
 ---------
