@@ -157,7 +157,7 @@ public:
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
-    auto& tmpField() { return this->model_.getTmp(core::QtyCentering::primal); }
+    auto& tmpField() { return this->model_.getTmp(core::HybridQuantity::all_primal_field); }
 
     auto& tmpVecField() { return this->model_.getTmp(core::HybridQuantity::Vector::V); }
 
@@ -172,7 +172,10 @@ public:
     }
 
     // requests for the temporaries above, see TypeWriter::requestTemporaries
-    void requestTmpField() { this->model_.requestTemporaries(core::QtyCentering::primal); }
+    void requestTmpField()
+    {
+        this->model_.requestTemporaries(core::HybridQuantity::all_primal_field);
+    }
 
     void requestTmpVecField() { this->model_.requestTemporaries(core::HybridQuantity::Vector::V); }
 
@@ -313,21 +316,21 @@ public:
     //  cell centered, so never the all primal destination of convert_to_fortran_primal
     NO_DISCARD VecField& getV() { return this->model_.getTmp(core::MHDQuantity::Vector::V); }
 
-    NO_DISCARD Field& getP() { return this->model_.getTmp(core::QtyCentering::dual); }
+    NO_DISCARD Field& getP() { return this->model_.getTmp(core::MHDQuantity::Scalar::P); }
 
     // requests for the temporaries of getV/getP and below, see TypeWriter::requestTemporaries
     void requestV() { this->model_.requestTemporaries(core::MHDQuantity::Vector::V); }
 
-    void requestP() { this->model_.requestTemporaries(core::QtyCentering::dual); }
+    void requestP() { this->model_.requestTemporaries(core::MHDQuantity::Scalar::P); }
 
-    void requestTmpField() { this->model_.requestTemporaries(core::QtyCentering::primal); }
+    void requestTmpField() { this->model_.requestTemporaries(core::MHDQuantity::all_primal_field); }
 
     void requestTmpVecField()
     {
         this->model_.requestTemporaries(core::MHDQuantity::Vector::VecAllPrimal);
     }
 
-    auto& tmpField() { return this->model_.getTmp(core::QtyCentering::primal); }
+    auto& tmpField() { return this->model_.getTmp(core::MHDQuantity::all_primal_field); }
 
     auto& tmpVecField() { return this->model_.getTmp(core::MHDQuantity::Vector::VecAllPrimal); }
 

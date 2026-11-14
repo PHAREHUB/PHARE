@@ -2,11 +2,8 @@
 #define PHARE_AMR_PHYSICAL_MODELS_MODEL_TEMPORARIES_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
 #include "core/utilities/variants.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 
-#include <array>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
@@ -37,8 +34,8 @@ struct tensor_tmp_for<Qty, Tmp, Tmps...>
 
 /**
  * @brief ModelTemporaries holds the temporaries of a model, registered and allocated with it as
- * runtime resources. They are found by centering, never by name or physical quantity, so any
- * temporary laid out as asked for can be used.
+ * runtime resources. They are requested and found by physical quantity, matched on its centering
+ * (GridLayout::centering), never by name, so any temporary laid out as the quantity is can be used.
  *
  * Users of temporaries (messengers, diagnostics) request what they need with
  * requestTemporaries() before the model is first allocated, nothing exists unless requested.
@@ -55,7 +52,10 @@ class ModelTemporaries
 {
     static_assert(not requires { typename FieldTmp::tensor_t; }, "first Tmp must be the field");
 
-    static constexpr auto dimension = GridLayout::dimension;
+    // FieldTmp for a Scalar, else the first of TensorTmps for the Vector or Tensor quantity type
+    template<typename Qty>
+    using tmp_for_ = std::conditional_t<std::is_same_v<Qty, typename GridLayout::Scalar>, FieldTmp,
+                                        typename tensor_tmp_for<Qty, TensorTmps...>::type>;
 
 public:
     using Resources = std::variant<FieldTmp, TensorTmps...>;
@@ -64,23 +64,13 @@ public:
     NO_DISCARD auto& getRunTimeResourcesViewList() const { return resources; }
 
 
-    NO_DISCARD auto& getTmp(core::QtyCentering const centering)
-    {
-        return getTmp(core::ConstArray<core::QtyCentering, dimension>(centering));
-    }
-
-    NO_DISCARD auto& getTmp(std::array<core::QtyCentering, dimension> const& centering)
-    {
-        return getTmp_<FieldTmp>(centering);
-    }
-
-    // Vector for a vecfield, Tensor for a tensorfield, matched on the centering of qty
+    // Scalar for a field, Vector for a vecfield, Tensor for a tensorfield, matched on the
+    // centering of qty
     template<typename Qty>
-        requires(not std::is_void_v<typename tensor_tmp_for<Qty, TensorTmps...>::type>)
+        requires(not std::is_void_v<tmp_for_<Qty>>)
     NO_DISCARD auto& getTmp(Qty const qty)
     {
-        using Tmp = tensor_tmp_for<Qty, TensorTmps...>::type;
-        return getTmp_<Tmp>(GridLayout::centering(qty));
+        return getTmp_<tmp_for_<Qty>>(GridLayout::centering(qty));
     }
 
     // the next temporary of the same type and centering as previous
@@ -92,8 +82,7 @@ public:
     }
 
 
-    // QtyCentering or std::array<QtyCentering, dim> for a field, Vector or Tensor quantities for a
-    //  vecfield or tensorfield, see class description
+    // Scalar, Vector or Tensor quantities of the model, see getTmp and the class description
     template<typename... Requests>
     void requestTemporaries(Requests const&... requests)
     {
@@ -114,30 +103,14 @@ private:
             start);
     }
 
-    void request_(core::QtyCentering const centering, std::vector<std::size_t>& used)
-    {
-        request_(core::ConstArray<core::QtyCentering, dimension>(centering), used);
-    }
-
-    void request_(std::array<core::QtyCentering, dimension> const& centering,
-                  std::vector<std::size_t>& used)
-    {
-        ensure_<FieldTmp>(centering, used, [&]() { return fieldQuantityFor_(centering); });
-    }
-
+    // takes the first temporary of the kind not yet used by this call, or creates it for qty
     template<typename Qty>
-        requires(not std::is_void_v<typename tensor_tmp_for<Qty, TensorTmps...>::type>)
+        requires(not std::is_void_v<tmp_for_<Qty>>)
     void request_(Qty const qty, std::vector<std::size_t>& used)
     {
-        using Tmp = tensor_tmp_for<Qty, TensorTmps...>::type;
-        ensure_<Tmp>(GridLayout::centering(qty), used, [&]() { return qty; });
-    }
-
-    // takes the first temporary of the kind not yet used by this call, or creates it
-    template<typename Tmp>
-    void ensure_(auto const& centering, std::vector<std::size_t>& used, auto&& quantity)
-    {
-        std::size_t nOfType = 0;
+        using Tmp            = tmp_for_<Qty>;
+        auto const centering = GridLayout::centering(qty);
+        std::size_t nOfType  = 0;
         for (std::size_t idx = 0; idx < resources.size(); ++idx)
             if (auto const* tmp = std::get_if<Tmp>(&resources[idx]))
             {
@@ -154,26 +127,9 @@ private:
             throw std::runtime_error("requestTemporaries: cannot create a temporary after the "
                                      "model is allocated, request before");
 
-        auto& tmp = std::get<Tmp>(resources.emplace_back(Tmp{tmpName_<Tmp>(nOfType), quantity()}));
+        auto& tmp = std::get<Tmp>(resources.emplace_back(Tmp{tmpName_<Tmp>(nOfType), qty}));
         static_cast<Model&>(*this).resourcesManager->registerResources(tmp);
         used.push_back(resources.size() - 1);
-    }
-
-    // any scalar quantity with the centering, the temporary is only ever found by centering
-    auto fieldQuantityFor_(std::array<core::QtyCentering, dimension> const& centering) const
-    {
-        using PhysicalQuantity = Model::physical_quantity_type;
-        using Scalar           = PhysicalQuantity::Scalar;
-
-        if (centering
-            == core::ConstArray<core::QtyCentering, dimension>(core::QtyCentering::primal))
-            return PhysicalQuantity::all_primal_field;
-
-        for (std::size_t i = 0; i < static_cast<std::size_t>(Scalar::count); ++i)
-            if (GridLayout::centering(static_cast<Scalar>(i)) == centering)
-                return static_cast<Scalar>(i);
-
-        throw std::runtime_error("requestTemporaries: no scalar quantity with this centering");
     }
 
     // prefixed by model, SAMRAI variable names are shared across ResourcesManagers

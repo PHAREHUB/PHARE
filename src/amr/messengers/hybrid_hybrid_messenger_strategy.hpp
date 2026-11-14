@@ -12,7 +12,6 @@
 #include "synchronizer_pool.hpp"
 
 #include "amr/data/field/coarsening/moments_coarsener.hpp"
-#include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
@@ -117,7 +116,8 @@ namespace amr
             resourcesManager_->registerResources(Bold_);
             resourcesManager_->registerResources(Eold_);
             // scratch to sum the ion moments on patch borders, see fill(Flux|Density)Borders
-            model_.requestTemporaries(core::QtyCentering::primal, core::HybridQuantity::Vector::V);
+            model_.requestTemporaries(core::HybridQuantity::all_primal_field,
+                                      core::HybridQuantity::Vector::V);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -411,7 +411,7 @@ namespace amr
         {
             using value_type = FieldT::value_type;
 
-            auto& tmpField = model_.getTmp(core::QtyCentering::primal);
+            auto& tmpField = model_.getTmp(core::HybridQuantity::all_primal_field);
 
             // one particle density per population, the charge density is computed from it
             assert(popDensityBorderSumRefiners_.size() == ions.size());
@@ -876,7 +876,7 @@ namespace amr
 
             // the model's temporaries, see requestTemporaries
             auto const tmpVecFieldName = model_.getTmp(core::HybridQuantity::Vector::V).name();
-            auto const tmpFieldName    = model_.getTmp(core::QtyCentering::primal).name();
+            auto const tmpFieldName = model_.getTmp(core::HybridQuantity::all_primal_field).name();
 
             for (auto const& vecfield : info->ghostFlux)
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
