@@ -19,7 +19,7 @@ Yee cell, patch with ghosts, 1D values and particles
    grid(b, (-2, -2, 8, 5)); patch(b, (0, 0, 6, 3), ghosts=2, label="patch 0")
    ruler(c, 0, 6)
    particles(c, [(0.3, .3), (0.8, .35), (2.2, .3), (2.5, .35), (4.6, .3)], color=C["ion"], size=22)
-   legend(c, [("primal (edge)", C["rho"], "primal"), ("dual (centre)", C["B"], "dual"), ("particle", C["ion"], "particle")], loc="upper center", bbox=(0.5, 1.0), ncol=3)
+   legend(c, [("primal (node)", C["rho"], "primal"), ("dual (centre)", C["B"], "dual"), ("particle", C["ion"], "particle")], loc="upper center", bbox=(0.5, 1.0), ncol=3)
    finish(fig, [a, b, c])
 
 Level and boxes

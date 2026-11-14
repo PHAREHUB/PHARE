@@ -12,7 +12,7 @@ Use from a ``.. plot::`` block::
        finish(fig, [a1, a2])      # always last: sizes every panel to its content (no empty margins)
 
 Conventions (all lengths are in *cells*; a cell i spans [i, i+1)):
-  primal = integer position (cell edge / node), dual = half-integer position (cell centre).
+  primal = integer position (a node, on a cell boundary), dual = half-integer position (cell centre).
   Yee layout in 2D, as in src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp:
     Bx (primal x, dual y)  By (dual x, primal y)  Bz (dual, dual)
     Ex (dual, primal)      Ey (primal, dual)      Ez (primal, primal)     density/moments: (primal, primal)
@@ -229,7 +229,7 @@ def legend(ax, entries, loc="center left", bbox=(1.0, 0.5), ncol=1, fs=11):
 
 
 def ruler(ax, x0, x1, y=0.0, primal=True, dual=True, ticks=True, labels=True):
-    """A 1D grid line from x0 to x1 (cell edges): primal values (filled dots) ON the cell edges, dual values (open
+    """A 1D grid line from x0 to x1 (cell edges): primal values (filled dots) ON the nodes (cell boundaries), dual values (open
     squares) at the cell centres, ON the same line. labels: write the cell number under each centre."""
     ax.plot([x0, x1], [y, y], color=C["grey"], lw=1.4, zorder=1)
     ax.update_datalim([(x0, y - 0.8), (x1, y + 1.1)])  # room for a legend above and labels below
