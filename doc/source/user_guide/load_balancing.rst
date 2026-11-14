@@ -110,7 +110,7 @@ Two separate mechanisms move patches between ranks.
 
 .. plot::
    :include-source: False
-   :caption: When level 0 is redistributed (red). With auto, the wait between checks (green) grows while level 0 stays balanced, up to 1000 steps.
+   :caption: When level 0 is redistributed (red). With auto, the wait between checks (green, steps written above) doubles while level 0 stays balanced, up to 1000 steps.
 
    from phare_draw import *
    titles = ["auto (default): check, wait longer while balanced",
@@ -128,8 +128,10 @@ Two separate mechanisms move patches between ranks.
        for st, kind in ev:
            mark(ax, "primal", st * s, 0, color=C["bad"] if kind == "re" else C["ok"], size=12)
        ax.plot([0, 13], [-0.9, 0.6], alpha=0)
-   text(axes[0], 1400 * s, -0.75, "too uneven: redistributed", color=C["bad"], fs=11)
-   text(axes[0], 400 * s, 0.4, "balanced: no change", color=C["ok"], fs=11)
+   for (a, b) in zip(auto[:-1], auto[1:]):
+       text(axes[0], (a[0] + b[0]) / 2 * s, 0.3, str(b[0] - a[0]), color=C["ink"], fs=11)
+   text(axes[0], 9.0, -0.75, "redistributed: wait back to 200", color=C["bad"], fs=11)
+   text(axes[0], 2.2, -0.75, "balanced: wait doubles", color=C["ok"], fs=11)
    finish(fig, axes)
 
 How load is counted (``mode``)
@@ -212,7 +214,7 @@ When is load balancing active?
        ``LoadBalancer``
      - Error at start: "LoadBalancer is not supported with refinement
        boxes".
-   * - Level 0 is MHD (``max_mhd_level`` > 0)
+   * - MHD run (``model_options=["MHDModel"]``)
      - Mechanism 2 never runs; level 0 is redistributed only when rebuilt.
 
 Mechanism 2 also needs ``refinement="tagging"``.
