@@ -12,8 +12,8 @@ PHARE is a plasma simulation code with two models:
 - **magnetohydrodynamics (MHD)**: the whole plasma is one fluid.
 
 Using adaptive mesh refinement (AMR), provided by the SAMRAI library, PHARE
-refines the mesh only where the solution needs it. It aims at filling the gap
-between sub-ion scales and large "MHD" scales.
+refines the mesh only where the solution needs it. A single run can then
+resolve sub-ion scales in small regions of a much larger domain.
 
 .. note::
 

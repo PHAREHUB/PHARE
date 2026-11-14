@@ -49,8 +49,8 @@ Writing and reading the output:
      click OIO href "diagnostics_restarts.html" "Diagnostics and restarts internals"
      click OSEE href "../data_analysis/reading_data.html" "Reading data"
 
-An arrow means "uses" or "calls". Nothing in a lower box calls a box above
-it: ``src/core`` is used by ``src/amr`` and uses nothing else of PHARE except
+Unlabelled arrows mean "calls"; labelled arrows say what happens. Nothing in
+a lower box calls a box above it: ``src/core`` is used by ``src/amr`` and uses nothing else of PHARE except
 the dictionary.
 
 
