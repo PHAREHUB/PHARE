@@ -4,7 +4,7 @@ The Hybrid PIC model
 ====================
 
 The Hybrid formalism consists in modeling the plasma as a
-combination of constituants treated with a different physical models.
+combination of constituents treated with different physical models.
 This usually means that ions and electrons are treated differently.
 A rather complete description of the different ways a code can be "hybrid"
 is given in The Hybrid Multiscale Simulation Technology by A.S. Lipatov.
@@ -94,17 +94,28 @@ Quasineutrality
 At this point, the equation for the electric field still has unknowns.
 The most obvious perhaps is :math:`n_e` the electron particle density.
 This is where the hybrid formalism makes the assumption that at the scale
-we solve the equations, the plasma is quasineutral, and thus we can neglect
-the difference between :math:`n_i` and :math:`n_e` and have only one variable :math:`n`:
-the plasma density. Since we have the total ion density already, that's our :math:`n`.
-Quasineutrality enable us to get the electron bulk velocity from the known ion
-bulk velocity  and the electric current density:
+we solve the equations, the plasma is quasineutral (:term:`quasineutrality`): the electron charge density
+balances the total ion charge density,
 
+.. math::
+   e\,n_e = \sum_p q_p n_p \equiv e\,n
 
+so we have only one variable :math:`n`, the plasma density, and it is known from the ions.
+Quasineutrality also gives the electron bulk velocity. The current density is the sum of
+the ion and electron currents, :math:`\mathbf{j} = \sum_p q_p n_p \mathbf{u}_p - e n \mathbf{u_e}`, so
+
+.. math::
+   \mathbf{u_e} = \frac{1}{en}\left(\sum_p q_p n_p \mathbf{u}_p - \mathbf{j}\right)
+
+where :math:`q_p n_p \mathbf{u}_p` is the charge flux of population :math:`p`. This is what
+PHARE computes. With a single population of protons (:math:`q_p = e`, :math:`n_p = n`) it
+reduces to the familiar
 
 .. math::
    \mathbf{u_e} = \mathbf{u_i} - \frac{\mathbf{j}}{en}
 
+With several populations the ion bulk velocity :math:`\mathbf{u_i}` is weighted by mass,
+not by charge, so this short form must not be used.
 
 The total current density is obtained from the static Maxwell-Ampere equation,
 meaning we neglect the displacement current:
@@ -129,7 +140,7 @@ Massless electrons
 The next assumption usually made in Hybrid codes, that is also made in PHARE,
 is that the spatial and time scales at which we are interested in are much larger
 and longer that the scales at which the electron bulk inertia matters. The electrons
-being so light compare to even protons, that it is mostly ok to neglect the last term of,
+being so light compare to even protons, that it is mostly ok to neglect the last term of the equation above,
 which now reads:
 
 
@@ -166,7 +177,7 @@ Dissipative terms
 
 Using above equations to calculate the electric field would result in
 current sheets to collapse at grid scale in the  absence of an intrinsic
-dissipation scale in the system. Too ways are typically employed in
+dissipation scale in the system. Two ways are typically employed in
 Hybrid codes to include such a dissipation. Joule resistivity well known to
 be used already in MHD codes. It is a simple term :math:`\eta \mathbf{j}` to
 add on the right hand side of the electric field equation. This term adds
@@ -187,9 +198,34 @@ PHARE include these two terms and the electric field is obtained via :
 
     \mathbf{E} = -\mathbf{u_e}\times\mathbf{B} - \frac{1}{en}\nabla P_e +\eta\mathbf{j} - \nu\nabla^2\mathbf{j}
 
+By default :math:`\nu` is a constant. With ``hyper_mode="spatial"`` it is multiplied by a
+factor that grows with :math:`|\mathbf{B}|/n` and follows the square of the mesh size on
+refined levels (on level :math:`\ell` it never drops below :math:`\nu/4^{\ell}`), so that the dissipation stays at the
+grid scale everywhere (see :doc:`/user_guide/electrons`).
+
 
 Numerical scheme
 ----------------
+
+PHARE solves the ion equations with the Particle-In-Cell method (:doc:`pic`) and the
+field equations on a staggered grid (:doc:`/numerics/grid`). One time step closes the loop
+between them:
+
+.. mermaid::
+
+   flowchart TD
+     P["ion macro-particles<br/>(Vlasov equation)"] -->|"deposit"| M["ion moments<br/>n, charge flux"]
+     M --> O["Ohm's law<br/>→ E"]
+     O --> F["Faraday's law<br/>→ B"]
+     F --> O
+     O -->|"push"| P
+     F -->|"push"| P
+     click M href "../numerics/particles.html" "Particles"
+     click O href "../numerics/time_integration.html" "Time integration"
+
+The order of these operations within a step (a predictor-corrector scheme) is on
+:doc:`/numerics/time_integration`; the particle push and the deposit are on
+:doc:`/numerics/particles`.
 
 
 

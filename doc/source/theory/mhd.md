@@ -16,7 +16,7 @@ $$
 \end{align}
 $$
 
-where $e$ is the internal energy, $\vb{u}$ the bulk velocity, $\vb{B}$ the
+where $e$ is the internal energy per unit mass (in Ohm's law, $e$ in $1/(ne)$ is the elementary charge), $\vb{u}$ the bulk velocity, $\vb{B}$ the
 magnetic field, $\vb{E}$ the electric field, $\vb{j}$ the electric current
 density, $P$ the thermal pressure, and $e_t = e + \flatfrac{\vb{u}^2}{2}$ the
 total plasma energy. In Ohm's law, $\eta$ is the Joule resistivity and $\nu$
@@ -44,6 +44,8 @@ The system is closed with a polytropic equation of state:
 $$
     \dv{}{t}\left(\frac{P}{\rho^\gamma}\right) = 0
 $$ (eq:theory_mhd_dimensional_eos)
+
+where $\gamma$ is the adiabatic index (ratio of specific heats), set with `gamma` in the input.
 
 ## Normalized equations
 
@@ -116,3 +118,7 @@ $$
 $$
 
 ## Numerical scheme
+
+The MHD equations are solved with a finite-volume Godunov scheme and constrained transport
+for the magnetic field, described in {doc}`/numerics/mhd_finite_volume`. The time
+integrators are described in {doc}`/numerics/time_integration`.
