@@ -175,7 +175,9 @@ Conventions
   Design / Tests).
 * C++ formatting: ``.clang-format`` at the root (clang-format version
   pinned in ``pyproject.toml``, ``lint`` group).
-* Python: ``ruff.toml``; Python dependencies in ``pyproject.toml``; do not
+* Python: lint rules in ``ruff.toml``. (``pyproject.toml`` also has a
+  ``[tool.ruff]`` table, but ruff ignores it while ``ruff.toml`` exists:
+  edit ``ruff.toml``.) Python dependencies in ``pyproject.toml``; do not
   import ``h5py``, ``mpi4py`` or ``scipy.optimize`` at the top of a module
   (they load system libraries that may not match the build). See
   ``doc/conventions.md``.
