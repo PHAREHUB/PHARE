@@ -126,8 +126,9 @@ they follow the tagged cells (see :ref:`tagging-for-refinement`).
 Field refinement
 ----------------
 
-:term:`Refinement <refinement>` computes fine values from coarse ones. PHARE
-uses a second-order rule in each direction:
+:term:`Refinement <refinement>` computes fine values from coarse ones, at one given time.
+PHARE's rule is **second order** (the only order available: ``refinement_order`` must be
+2) and the refinement ratio is 2. It works one direction at a time:
 
 * where a fine node sits on a coarse node, it takes the coarse value;
 * where it sits halfway between two coarse nodes, it takes their average;
@@ -137,20 +138,62 @@ uses a second-order rule in each direction:
 
 In 2D and 3D the rule is the product of the 1D rules.
 
-The magnetic field is refined in two stages so that its divergence stays
-zero: each component is first refined with the rule above, then the fine
-faces inside each coarse cell are corrected so that every fine cell has the
-divergence of the coarse cell it comes from, which is zero. The correction
-follows Balsara, Samantaray and Subramanian, *Efficient WENO-based
-prolongation strategies for divergence-preserving vector fields*, Commun.
-Appl. Math. Comput., `doi:10.1007/s42967-021-00182-x
-<https://doi.org/10.1007/s42967-021-00182-x>`_.
+.. plot::
+   :include-source: False
+   :alt: One dimension. Cell-centred values: three coarse values give two fine values. Node-centred values: a fine node copies a coarse node or averages two.
 
-The same rules serve hybrid and MHD. MHD refines its conservative variables
-(density, momentum, total energy), which sit at cell centres, with the cell-centre
-rule (the third one): its two children average back to the coarse value, so a
-refined coarse cell keeps its mass, momentum and energy. How the code does it is on
-:doc:`/dev/field_refinement`.
+   import matplotlib.pyplot as plt
+   from phare_draw import C
+
+   c = [1.0, 1.2, 1.6]                         # coarse cell values I-1, I, I+1
+   s = (c[2] - c[0]) / 8
+   left, right = c[1] - s, c[1] + s
+   assert abs(left - 1.125) < 1e-12 and abs(right - 1.275) < 1e-12 and abs((left + right) / 2 - c[1]) < 1e-12
+   n = [0.1, 0.3]                              # two coarse nodes
+   mid = (n[0] + n[1]) / 2
+   assert abs(mid - 0.2) < 1e-12
+   fig, axes = plt.subplots(2, 1, figsize=(3.4, 5.0))
+   ax = axes[0]
+   for k, v in enumerate(c):
+       ax.add_patch(plt.Rectangle((k, 1.0), 1, 0.45, fc="white", ec=C["L0"], lw=1.8))
+       ax.text(k + 0.5, 1.22, f"{v}", ha="center", va="center", fontsize=9)
+   for k, v in enumerate((left, right)):
+       ax.add_patch(plt.Rectangle((1 + 0.5 * k, 0.2), 0.5, 0.45, fc=C["patch"], ec=C["L1"], lw=1.8))
+       ax.text(1.25 + 0.5 * k, 0.42, f"{v:.3f}", ha="center", va="center", fontsize=9, color=C["L1"])
+   ax.text(1.5, 1.62, "cell-centred: two children of the middle cell", ha="center", fontsize=8)
+   ax.text(1.5, -0.05, "their average is 1.2, the coarse value", ha="center", fontsize=8, color=C["grey"])
+   ax.set_xlim(-0.1, 3.1); ax.set_ylim(-0.2, 1.8); ax.set_axis_off()
+   ax = axes[1]
+   for x, v in zip((0, 1), n):
+       ax.plot([x], [1.0], "s", mfc="white", mec=C["L0"], mew=1.8, ms=10)
+       ax.text(x, 1.22, f"{v}", ha="center", fontsize=9)
+   for x, v, t in [(0, n[0], "copy"), (0.5, mid, "average"), (1, n[1], "copy")]:
+       ax.plot([x], [0.2], "o", color=C["L1"], ms=8)
+       ax.text(x, 0.0, f"{v:.1f}", ha="center", va="top", fontsize=9, color=C["L1"])
+       ax.text(x, 0.55, t, ha="center", fontsize=8, color=C["grey"])
+   ax.text(0.5, 1.62, "node-centred: copy or average", ha="center", fontsize=8)
+   ax.set_xlim(-0.3, 1.3); ax.set_ylim(-0.4, 1.8); ax.set_axis_off()
+   fig.tight_layout()
+
+What the rule keeps:
+
+* the two children of a cell average back to the coarse value, also in 2D and 3D;
+* a field that varies linearly in space is reproduced exactly (the children lie on the
+  line through the coarse value with the slope given by the neighbours), which is what
+  second order means here.
+
+The same rules serve hybrid and MHD. MHD refines its conservative variables (density,
+momentum, total energy), which sit at cell centres, with the cell-centre rule: a refined
+coarse cell keeps its mass, momentum and energy (for the cells filled from the coarse level).
+
+The magnetic field is refined in two stages so that its divergence is kept: each component
+is first refined with the rule above, then the fine faces inside each coarse cell are
+corrected so that every fine cell has the divergence of the coarse cell it comes from. The
+two stages, a drawing with numbers and what this guarantees across levels are on
+:doc:`div_b`. The correction follows Balsara, Samantaray and Subramanian, *Efficient
+WENO-based prolongation strategies for divergence-preserving vector fields*, Commun. Appl.
+Math. Comput., `doi:10.1007/s42967-021-00182-x <https://doi.org/10.1007/s42967-021-00182-x>`_.
+How the code does it is on :doc:`/dev/field_refinement`.
 
 
 Particle refinement
@@ -193,19 +236,97 @@ summed over the sub-steps replace the coarse fluxes on the coarse faces they cov
 and the coarse level redoes its step with them (again refluxing). Details:
 :doc:`/dev/refluxing` and :doc:`/dev/coarsening`.
 
+What refluxing keeps, with a fixed time step:
+
+* **MHD:** the mass, momentum and energy that leave a coarse cell through a face of the
+  border are exactly what the fine cells on the other side receive, because the coarse
+  face is given the time average of the fine fluxes (a quarter of each of the four
+  sub-step fluxes) and, in 2D and 3D, the mean over the 2 (2D) or 4 (3D) fine faces it
+  covers.
+* **Hybrid and MHD:** the magnetic flux through a coarse face of the border changes by the
+  sum of the changes through the fine faces it contains, so the divergence of B is kept
+  across the border (:doc:`div_b`).
+
+.. plot::
+   :include-source: False
+   :alt: Flux through a coarse-fine face over one coarse step: four fine sub-step fluxes and the single coarse flux, before and after refluxing.
+   :caption: Illustrative fluxes through a face of the coarse–fine border over one coarse step. After refluxing, the area under the grey line (coarse flux times the coarse step) equals the sum of the areas of the four blue bars (fine fluxes times a quarter of the step).
+
+   import numpy as np
+   import matplotlib.pyplot as plt
+   from phare_draw import C
+
+   F_fine = np.array([1.10, 1.20, 1.30, 1.40])    # illustrative fluxes of the four fine sub-steps
+   F_coarse = 1.00                                # illustrative flux of the coarse step
+   mean = F_fine.mean()
+   assert abs(mean - 1.25) < 1e-12
+   assert abs(np.sum(F_fine * 0.25) - mean * 1.0) < 1e-12    # time integrals over the coarse step agree
+   fig, axes = plt.subplots(2, 1, figsize=(3.4, 4.6), sharex=True, sharey=True)
+   for ax, title in zip(axes, ["before: the coarse level used its own flux", "after: it uses the mean of the fine fluxes"]):
+       for k, f in enumerate(F_fine):
+           ax.add_patch(plt.Rectangle((0.25 * k, 0), 0.25, f, fc=C["patch"], ec=C["L1"], lw=1.5))
+           ax.text(0.25 * k + 0.125, f / 2, f"{f:.2f}", ha="center", va="center", fontsize=8, color=C["L1"])
+       ax.set_title(title, fontsize=9, loc="left")
+       ax.set_xlim(0, 1); ax.set_ylim(0, 1.7)
+       ax.set_yticks([]); ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+       ax.set_xticklabels(["t", "", "", "", "t + Δt"], fontsize=8)
+       for s in ("top", "right", "left"):
+           ax.spines[s].set_visible(False)
+   axes[0].plot([0, 1], [F_coarse] * 2, color=C["L0"], lw=3)
+   axes[0].text(0.5, 1.58, f"coarse flux {F_coarse:.2f} (grey)", ha="center", fontsize=8, color=C["L0"])
+   axes[1].plot([0, 1], [mean] * 2, color=C["L0"], lw=3)
+   axes[1].text(0.5, 1.58, f"coarse flux {mean:.2f} = mean (grey)", ha="center", fontsize=8, color=C["L0"])
+   fig.text(0.5, 0.01, "illustrative numbers", ha="center", fontsize=7, color=C["grey"])
+   fig.tight_layout(rect=(0, 0.03, 1, 1))
+
+With an adaptive time step in MHD the number of fine sub-steps can differ from four and the
+mean is no longer the time average: see the known issue on :doc:`/dev/refluxing`.
+
 
 Fields at level boundaries
 --------------------------
 
 Each patch stores a few layers of :term:`ghost cells <ghost cell>` around
-its own cells, so that derivatives can be computed at its edge. Where the
-ghost cells overlap another patch of the same level, their values are copied
-from it (:term:`patch ghosts <patch ghost>`). Where they lie outside the
-level, there is no data of the same level: values are refined from the
-coarser level and interpolated linearly in time between the two coarse
-states that bracket the fine sub-step (:term:`level ghosts <level ghost>`).
-Each field is filled at its own time within the sub-step, so its time weight
-differs; see :doc:`/dev/time_interpolation`.
+its own cells, so that derivatives can be computed at its edge. Where the ghost cells
+overlap another patch of the same level, their values are copied from it
+(:term:`patch ghosts <patch ghost>`). Where they lie outside the level, there is no data
+of the same level (:term:`level ghosts <level ghost>`). They are filled in two steps, in
+this order:
+
+#. the coarse values are **interpolated in time**, linearly, between the values saved at
+   the start of the coarse step and the values at its end:
+   :math:`(1-\alpha)\,\text{old}+\alpha\,\text{new}`;
+#. the result is **refined in space** with the rules above.
+
+The time interpolation is exact for a field that varies linearly in time over the coarse
+step, and its error is second order in the time step.
+
+.. plot::
+   :include-source: false
+   :alt: One coarse step, four fine sub-steps, the two saved coarse times, and the times at which B and the averaged E are filled in sub-step 2 (hybrid).
+   :caption: Hybrid, sub-step 2 (shaded): the coarse level holds an *old* value (saved at the start of its step) and a *new* one (already computed for the end of the step); the averaged electric field (E) is filled at the middle of the sub-step and B at its end.
+
+   from phare_draw import *
+   fig, (a,) = strip(1, aspect=False, height=3.0, phone=True)
+   amr_clock(a, side_labels=True, shade=[2],
+             coarse_dots=[(0, "old"), (1, "new")],
+             marks=[(0.375, "E"), (0.5, "B")])
+   finish(fig, [a], align=False)
+
+* **Hybrid:** each field is filled at its own time inside the sub-step, so each has its own
+  weight :math:`\alpha`. B, Bpred and E are filled at the end of the sub-step:
+  :math:`\alpha=0.25, 0.5, 0.75, 1` for the four sub-steps. The averaged electric field is
+  filled at the middle of the sub-step: :math:`\alpha=0.125, 0.375, 0.625, 0.875`.
+* **MHD:** the ghosts of density, momentum, total energy and B are filled at the time of
+  each Runge–Kutta stage inside each sub-step, so the weights depend on the integrator
+  (:doc:`mhd_time_integration`).
+
+How the code does it: :doc:`/dev/time_interpolation`. The ghost B, and the cells next to the
+level border where it is not divergence-free, are discussed on :doc:`div_b`.
+
+The order of the whole scheme with refinement is measured by the 2D AMR convergence tests of
+the repository (``WENOZ``, MHD, an Alfvén wave and a whistler wave): the measured order must
+lie between 1.70 and 2.25 (:doc:`/validation/mhd`).
 
 
 Particles at level boundaries

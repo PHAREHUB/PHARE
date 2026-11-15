@@ -59,7 +59,7 @@ on the cell faces, one component per face, and the electric field on the cell ed
 
 .. plot::
    :include-source: False
-   :caption: Why constrained transport keeps ∇·B. In 2D, Ez sits on the four corners of a
+   :caption: Why constrained transport keeps ∇·B (more on :doc:`div_b`). In 2D, Ez sits on the four corners of a
       cell; each corner value changes the two faces that meet there, with opposite signs in
       the cell's balance, so the net flux of B out of the cell does not change.
 

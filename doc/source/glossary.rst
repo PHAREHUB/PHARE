@@ -246,10 +246,15 @@ Grid and numerical methods
       Updating the magnetic field from electric fields on cell edges. The
       update does not change the discrete divergence of :math:`B`: if it is
       zero at the start, it stays zero to round-off.
+      See :doc:`/numerics/div_b` for how the divergence is kept across refined levels.
 
    CFL condition
       The time step limit that keeps an explicit scheme stable: information
       must not cross more than about one cell per time step.
+
+   divergence-free refinement
+      The two-stage refinement of the magnetic field: each fine cell gets the divergence of its
+      coarse cell, zero if that is zero. See :doc:`/numerics/div_b`.
 
    reconstruction
       In the MHD solver, the step that builds from the cell values a left and a right

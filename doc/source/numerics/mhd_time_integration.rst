@@ -152,9 +152,9 @@ Divergence of B
 ---------------
 
 B is advanced with the electric field of each stage, added with the same weights
-:math:`\beta_k` as the fluxes (:src:`src/amr/solvers/time_integrator/base_mhd_timestepper.hpp#L115-L124`).
-The update of B is therefore a curl whatever the integrator, and the integrator does not
-change :math:`\nabla\cdot\mathbf B` (:doc:`mhd_finite_volume`).
+:math:`\beta_k` as the fluxes (:src:`src/amr/solvers/time_integrator/base_mhd_timestepper.hpp#L115-L124`),
+so the integrator does not change :math:`\nabla\cdot\mathbf B`. Why, and what happens
+across refined levels: :doc:`div_b`.
 
 Memory
 ------
