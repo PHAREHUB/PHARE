@@ -38,6 +38,7 @@ REPO = HERE.parents[3]  # scripts -> validation -> source -> doc -> repo root
 CONV = "mhd_convergence_scan.py"
 SHOCK = "mhd_shock_solvers.py"
 RUNS = []  # (data file, script, argv, build permutation)
+DIVB = "mhd_divb_runs.py"
 BUILD_ARG = ["<build>"]  # the --build string as given (no absolute path in the data files)
 
 
@@ -63,6 +64,9 @@ for st, dts in [("Euler", ["0.0001953125", "0.000390625", "0.00078125", "0.00156
         RUNS.append((f"mhd_time_order_{st}_{dt}.txt", CONV, ["MP5", "None", "OUT", st, dt, "1e-6", "64", "10"],
                      "1_MP5_None_Rusanov_false"))
 
+RUNS.append(("mhd_divb_init.txt", DIVB, ["init", "OUT"], "2_Linear_VanLeer_Rusanov_false"))
+RUNS.append(("mhd_divb_amr.txt", DIVB, ["amr", "OUT"], "2_Linear_VanLeer_Rusanov_false"))
+
 # --check tolerances. The committed files were written with single-precision diagnostics (float32 output, ~1e-13
 # resolution on B ~ 1e-6); a CI build may write double precision and use another compiler (gcc, clang, -O3). So:
 #  * an error is compared if the new OR the committed value is >= ERR_FLOOR (when both are below it the float32
@@ -72,6 +76,8 @@ for st, dts in [("Euler", ["0.0001953125", "0.000390625", "0.00078125", "0.00156
 ERR_FLOOR = 1e-12
 ORDER_FLOOR = 1e-11
 TOLERANCES = {"L1": 0.10, "local_order": 0.15, "rho": 1e-3, "By": 1e-3}   # relative (local_order: absolute)
+DIVB_REL = 1e-2          # divergences of order 1e-3..1e-1 (single-precision output noise is ~1e-4 relative or less)
+DIVB_ABS_BOUNDS = {3: 5e-5, 4: 1e-6}   # mhd_divb_amr: |div fine - div parent| and flux mismatch must stay below these
 SHOCK_ABS = 1e-5  # absolute floor for the shock-tube profiles (single vs double output, compiler)
 
 
@@ -154,6 +160,17 @@ def compare(name, new, old):
         o = old_by.get(r[0])
         if o is None:
             problems.append(f"{name}: row {r[0]} not in the committed file")
+            continue
+        if name.startswith("mhd_divb_"):
+            cols = (2, 3) if name == "mhd_divb_init.txt" else (1, 2)
+            for c in cols:
+                x, y = float(r[c]), float(o[c])
+                if abs(x - y) > DIVB_REL * abs(y):
+                    problems.append(f"{name} row {r[0]} column {c}: {x:.6g} vs committed {y:.6g}")
+            if name == "mhd_divb_amr.txt":
+                for c, bound in DIVB_ABS_BOUNDS.items():
+                    if float(r[c]) > bound:
+                        problems.append(f"{name} row {r[0]} column {c}: {float(r[c]):.3g} above {bound:g}")
             continue
         if name.startswith("mhd_shock_"):
             for label, c in (("rho", 1), ("By", 2)):

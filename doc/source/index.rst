@@ -105,6 +105,7 @@ Where to start
    numerics/mhd_time_integration
    numerics/domain_boundary_conditions
    numerics/amr
+   numerics/div_b
 
 
 .. toctree::

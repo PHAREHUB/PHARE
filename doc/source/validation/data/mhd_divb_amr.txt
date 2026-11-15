@@ -1,0 +1,13 @@
+# PHARE code dc62fdd4e (branch HEAD b26c5bdbd; src/ and pyphare/ identical to it: yes), build build/rel, serial (1 MPI rank)
+# written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
+# command: python3 mhd_divb_runs.py amr out.txt
+# R6: two levels (static refined box, coarse cells 10..21), 2D MHD, same field, fixed time step 2e-3 (the coarse step)
+# every time listed is the end of a coarse step (levels synchronised)
+# t maxdiv_level0 maxdiv_level1 max|div_fine_cell - div_parent_cell| max|flux_coarse - flux_fine_sum_per_face|
+0 2.137804e-02 2.137947e-02 2.861023e-06 1.490116e-08
+0.004 2.137876e-02 2.137995e-02 3.337860e-06 2.980232e-08
+0.008 2.137804e-02 2.137947e-02 3.814697e-06 2.980232e-08
+0.012 2.137804e-02 2.137899e-02 3.814697e-06 1.490116e-08
+0.016 2.137828e-02 2.137947e-02 3.337860e-06 2.980232e-08
+0.02 2.137780e-02 2.138042e-02 4.768372e-06 2.980232e-08
+# max change of the coarse B_x over the run: 1.572865e-02
