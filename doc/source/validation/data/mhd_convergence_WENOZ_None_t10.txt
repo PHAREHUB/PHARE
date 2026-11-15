@@ -1,0 +1,10 @@
+# PHARE commit dc62fdd4e (documentation branch), build build/rel, serial, 1 rank
+# collected 2026-11-15 by doc/source/validation/scripts/collect_mhd_data.py
+# command: python3 mhd_convergence_scan.py WENOZ None conv.txt SSPRK4_5 5e-4 1e-6 <nx list> 10
+# WENOZ None SSPRK4_5 dt=0.0005 amp=1e-06 final_time=10.0
+# nx dx L1 local_order
+16 0.0625 4.34311460e-09 
+24 0.041666667 6.15726191e-10 4.818
+32 0.03125 1.52902904e-10 4.842
+48 0.020833333 2.15523817e-11 4.832
+64 0.015625 5.32099174e-12 4.862

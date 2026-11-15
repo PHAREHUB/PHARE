@@ -100,6 +100,7 @@ Where to start
    numerics/time_integration
    numerics/particles
    numerics/mhd_finite_volume
+   numerics/mhd_reconstruction
    numerics/domain_boundary_conditions
    numerics/amr
 
