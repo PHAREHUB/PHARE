@@ -12,6 +12,12 @@ The equations solved are on :doc:`/theory/mhd`. How to write an MHD input script
    :local:
    :depth: 1
 
+The details of each part have their own page:
+:doc:`mhd_reconstruction` (values at the faces, limiters),
+:doc:`mhd_riemann_solvers` (the face flux and the electric field on the edges),
+:doc:`mhd_time_integration` (Runge–Kutta integrators and time step) and
+:doc:`/validation/mhd` (which tests exist and what was measured).
+
 Minimal example
 ---------------
 
@@ -111,55 +117,123 @@ on the cell faces, one component per face, and the electric field on the cell ed
    axes[1].set_xlabel("cell faces", fontsize=12)
    fig.tight_layout()
 
+One stage on a row of cells
+---------------------------
+
+.. plot::
+   :include-source: False
+   :alt: One stage of the scheme in 1D: cell values, primitive values, left and right value at a face, flux, update of a cell.
+   :caption: One stage in 1D. 1: the stored cell values (density, momentum, total energy; B on the faces). 2: density, velocity and pressure, cell by cell. 3: the reconstruction gives a left and a right value at each face. 4: the Riemann solver gives the flux through the face. 5: each cell is updated from the two fluxes around it.
+
+   from phare_draw import *
+
+   fig, ax = strip(5, ["Cell values", "Primitive values", "Left and right at a face", "Flux through a face", "Update of a cell"], phone=True, height=1.5)
+   n = 5
+   for k, a in enumerate(ax):
+       grid(a, (0, 0, n, 1), color=C["grey"], lw=1.2)
+       for i in range(n):
+           mark(a, "primal", i + 0.5, 0.5, color=C["ion"] if k < 2 else C["light"], size=7)
+   x = 3.0
+   mark(ax[2], "primal", x - 0.25, 0.5, color=C["L1"], size=8); text(ax[2], x - 0.55, 1.2, "left", color=C["L1"], fs=9)
+   mark(ax[2], "primal", x + 0.25, 0.5, color=C["L2"], size=8); text(ax[2], x + 0.55, 1.2, "right", color=C["L2"], fs=9)
+   arrow(ax[3], (x - 0.6, 0.5), (x + 0.6, 0.5), color=C["B"], lw=2.4, ms=12); text(ax[3], x, 1.25, "flux F", color=C["B"], fs=9)
+   arrow(ax[4], (1.9, 0.5), (2.4, 0.5), color=C["B"], lw=2.2, ms=10); arrow(ax[4], (3.4, 0.5), (3.9, 0.5), color=C["B"], lw=2.2, ms=10)
+   mark(ax[4], "primal", 3.0 + 0.0, 0.5, color=C["ion"], size=9)
+   text(ax[4], 2.9, 1.3, "new = old − Δt/Δx (F_right − F_left)", fs=8)
+   finish(fig, ax)
+
 Options
 -------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 18 40 42
-
-   * - Option
-     - Values
-     - Notes
-   * - ``reconstruction``
-     - ``"Constant"``, ``"Linear"``, ``"WENO3"``, ``"WENOZ"``, ``"MP5"``
-     - WENO: weighted essentially non-oscillatory; MP5: fifth-order
-       monotonicity-preserving. In 1D, orders on smooth flows: 1, 2, 3, 5, 5. In 2D and 3D
-       the whole scheme is second order (one flux point per face), so higher-order
-       reconstructions lower the error, not the order. Wider stencils need more ghosts:
-       2 layers for ``Constant``, 4 for the others. No default: must be given.
-   * - ``limiter``
-     - ``"None"``, ``"VanLeer"``, ``"MinMod"``
-     - Only ``Linear`` uses a limiter, and it needs one: ``VanLeer`` or ``MinMod``. All other
-       reconstructions need ``"None"``. No default: must be given. ``MinMod`` is more diffusive than ``VanLeer``.
-   * - ``riemann``
-     - ``"Rusanov"``, ``"HLL"``, ``"HLLD"``
-     - ``Rusanov`` uses one wave speed (the fastest) and is the most diffusive. ``HLL``
-       (a two-wave approximate solver) uses the fastest left- and right-going speeds.
-       ``HLLD`` (HLL with intermediate discontinuities) also resolves the Alfvén and
-       contact waves, so it is the least diffusive. The wave speeds are fast-magnetosonic
-       only, without the whistler speed. No default: must be given.
-   * - ``hall``
-     - ``True``, ``False``
-     - Adds the Hall term :math:`\mathbf{J}\times\mathbf{B}/\rho` to the electric field
-       (Hall MHD; :math:`\rho = n` in PHARE units). Its whistler waves make the time step scale like :math:`\Delta x^2`.
-   * - ``gamma``
-     - number > 1
-     - Adiabatic index. Default 5/3.
-   * - ``eta``
-     - number ≥ 0
-     - Resistivity :math:`\eta`. Default 0.
-   * - ``nu``
-     - number ≥ 0
-     - Hyper-resistivity :math:`\nu`. Default 0. Requires ``hall=True``.
-   * - ``hyper_mode``
-     - ``"constant"``, ``"spatial"``
-     - ``"spatial"`` uses :math:`\nu\,\Delta x^2\,(|\mathbf{B}|/\rho + 1)` with
-       :math:`\Delta x` the smallest cell size, so the dissipation follows the grid.
-       Default ``"constant"``.
+* ``reconstruction``: ``"Constant"``, ``"Linear"``, ``"WENO3"``, ``"WENOZ"``, ``"MP5"``.
+  WENO: weighted essentially non-oscillatory; MP5: fifth-order monotonicity-preserving. The
+  scheme is second order at best whatever the reconstruction (see `Order of the scheme`_): a
+  wider reconstruction lowers the numerical diffusion, not the order. Ghost layers: 2 for
+  ``Constant``, 4 for the others. No default: must be given. Details:
+  :doc:`mhd_reconstruction`.
+* ``limiter``: ``"None"``, ``"VanLeer"``, ``"MinMod"``. Only ``Linear`` uses a limiter, and it
+  needs one: ``VanLeer`` or ``MinMod``. All other reconstructions need ``"None"``. No default:
+  must be given. ``MinMod`` is more diffusive than ``VanLeer``.
+* ``riemann``: ``"Rusanov"``, ``"HLL"``, ``"HLLD"``. ``Rusanov`` uses one wave speed (the
+  fastest) and is the most diffusive. ``HLL`` (a two-wave approximate solver) uses the
+  fastest left- and right-going speeds. ``HLLD`` (HLL with intermediate discontinuities) also
+  resolves the Alfvén and contact waves, so it is the least diffusive. The wave speeds are
+  fast-magnetosonic only, without the whistler speed. No default: must be given. Details:
+  :doc:`mhd_riemann_solvers`.
+* ``hall``: ``True`` or ``False``. Adds the Hall term :math:`\mathbf{J}\times\mathbf{B}/\rho` to
+  the electric field (Hall MHD; :math:`\rho = n` in PHARE units). Its whistler waves make the
+  time step scale like :math:`\Delta x^2`.
+* ``gamma``: number > 1. Adiabatic index. Default 5/3.
+* ``eta``: number ≥ 0. Resistivity :math:`\eta`. Default 0.
+* ``nu``: number ≥ 0. Hyper-resistivity :math:`\nu`. Default 0. Requires ``hall=True``.
+* ``hyper_mode``: ``"constant"`` or ``"spatial"``. ``"spatial"`` uses
+  :math:`\nu\,\Delta x^2\,(|\mathbf{B}|/\rho + 1)` with :math:`\Delta x` the smallest cell
+  size, so the dissipation follows the grid. Default ``"constant"``.
 
 ``reconstruction``, ``limiter`` and ``riemann`` are written exactly as above
-(case-sensitive). ``mhd_timestepper`` is described on :doc:`time_integration`.
+(case-sensitive). ``mhd_timestepper`` is described on :doc:`mhd_time_integration`.
+
+Order of the scheme
+-------------------
+
+**PHARE's MHD scheme is second order at best, in 1D, 2D and 3D.** The reason, in one line:
+the stored cell values are used as if they were point values, and each face gets one flux
+value, so the scheme cannot be better than second order whatever the reconstruction
+(:src:`src/amr/solvers/time_integrator/compute_fluxes.hpp#L66`,
+:src:`src/core/numerics/godunov_fluxes/godunov_fluxes.hpp#L106-L146`). This is an argument from the
+code. The only measurement above one dimension is the 2D AMR convergence tests, which accept
+orders between 1.70 and 2.25 (:doc:`/validation/mhd`).
+
+* The reconstructions are chosen for **less numerical diffusion and sharper features** on a
+  given grid. Their own orders (1, 2, 3, 5, 5) are properties of the reconstructions,
+  visible on a small linear wave (:doc:`mhd_reconstruction`); they are not the order of the
+  scheme.
+* The integrators have orders 1 to 4 in time (:doc:`mhd_time_integration`). The result is no
+  better than the lowest order of its parts.
+
+.. admonition:: In preparation
+   :class: note
+
+   A fourth-order version of the MHD scheme is in development.
+
+How to choose
+-------------
+
+Only what the tests and measurements of this documentation support:
+
+* **Shocks and discontinuities, as in the tests of the repository.** The shock-tube and
+  Orszag–Tang tests use ``Linear`` + ``VanLeer`` + ``Rusanov`` + ``TVDRK2``
+  (:src:`tests/functional/mhd_shock/common.py#L77-L80`,
+  :src:`tests/functional/mhd_orszagtang/orszag_tang.py#L59-L62`). On the shock tube,
+  ``Linear`` + ``VanLeer`` smears the contact over 7 cells, ``Constant`` + ``Rusanov`` over
+  45 (:doc:`mhd_riemann_solvers`).
+* **Less diffusion for the same reconstruction.** ``HLLD`` smears the contact about half as
+  much as ``Rusanov`` on that test; it is built in 1D with ``Constant`` only in the default
+  list (:ref:`below <which-combinations>`).
+* **Smooth flows.** ``WENOZ`` or ``MP5`` give the smallest left–right difference on a
+  smooth profile (:doc:`mhd_reconstruction`); pair them with ``TVDRK3`` or ``SSPRK4_5``
+  (a recommendation of the literature for WENO-Z; PHARE does not enforce it; the tests that use ``WENOZ``
+  do so).
+* **Cost.** Ghost layers: 2 for ``Constant``, 4 for the others. Flux computations per
+  step: 1, 2, 3, 5 for ``Euler``, ``TVDRK2``, ``TVDRK3``, ``SSPRK4_5``.
+* **Hall.** With ``hall=True`` the step must follow the whistler limit, :math:`\Delta t\propto\Delta x^2`
+  (:doc:`mhd_time_integration`).
+
+Extra terms
+-----------
+
+* **Hall** (``hall=True``): the field :math:`\mathbf J\times\mathbf B/\rho` is added to the
+  flux of B and of energy, and to the electric field on the edges
+  (:src:`src/core/numerics/MHD_equations/MHD_equations.hpp#L113-L144`).
+* **Resistivity** ``eta``: :math:`\mathbf E_\mathrm{diss}=\eta\mathbf J`. **Hyper-resistivity** ``nu``:
+  :math:`-\nu\nabla^2\mathbf J`, or with ``hyper_mode="spatial"`` the coefficient
+  :math:`\nu\,\Delta x^2(|\mathbf B|/\rho+1)`
+  (:src:`src/core/numerics/constrained_transport/dissipative_electric_field.hpp#L63-L113`).
+  They add to the electric field and to the fluxes of B and energy.
+* There is no density or pressure floor: the line that would apply one is commented out
+  (:src:`src/core/numerics/primite_conservative_converter/to_primitive_converter.hpp#L26-L28`).
+
+.. _which-combinations:
 
 Which combinations exist
 ------------------------

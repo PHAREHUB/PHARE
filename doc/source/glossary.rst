@@ -251,6 +251,35 @@ Grid and numerical methods
       The time step limit that keeps an explicit scheme stable: information
       must not cross more than about one cell per time step.
 
+   reconstruction
+      In the MHD solver, the step that builds from the cell values a left and a right
+      value at each face. See :doc:`/numerics/mhd_reconstruction`.
+
+   slope limiter
+      A rule that reduces the slope used by the ``Linear`` reconstruction so that no new
+      extremum appears next to a jump. ``MinMod`` and ``VanLeer`` are the two available.
+
+   WENO
+      Weighted essentially non-oscillatory: a reconstruction that mixes several small
+      stencils and gives almost no weight to those that cross a jump.
+
+   order of accuracy
+      A method has order :math:`p` if its error falls like :math:`\Delta^p` when the cell
+      size (or the time step) :math:`\Delta` is made smaller. The MHD scheme is second order
+      at best; see :doc:`/numerics/mhd_finite_volume`.
+
+   SSP Runge–Kutta
+      Strong-stability-preserving Runge–Kutta: a time integrator built from Euler stages,
+      so that it adds no new oscillation when a single Euler stage does not, provided the time step
+      is small enough. See
+      :doc:`/numerics/mhd_time_integration`.
+
+   HLL
+   HLLD
+      Two approximate :term:`Riemann solvers <Riemann solver>`: HLL keeps one state
+      between the slowest and fastest waves; HLLD also keeps the contact and the two
+      Alfvén waves. See :doc:`/numerics/mhd_riemann_solvers`.
+
 Running and code
 ================
 

@@ -1,6 +1,6 @@
-# PHARE commit dc62fdd4e (documentation branch), build build/rel, serial, 1 rank
-# collected 2026-11-15 by doc/source/validation/scripts/collect_mhd_data.py
-# command: python3 mhd_shock_solvers.py Constant None HLL shock.txt (ghost rows removed)
+# PHARE code dc62fdd4e (branch HEAD 36ba5aad4; src/ and pyphare/ identical to it: yes), build build/rel, serial (1 MPI rank)
+# written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
+# command: python3 mhd_shock_solvers.py Constant None HLL out.txt
 # shock tube, Constant None HLL, TVDRK2, dt=0.2, t=80, 800 cells
 # x rho By
 0 0.66248733 -0.49375635

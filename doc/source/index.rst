@@ -124,6 +124,7 @@ Where to start
    :hidden:
 
    validation/hybrid_dispersion
+   validation/mhd
 
 
 .. toctree::

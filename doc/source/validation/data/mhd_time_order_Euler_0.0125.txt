@@ -1,4 +1,4 @@
-# PHARE commit 82ba902facf05ea499e71365334eb0aa9bb2f27e, build build/rel, serial (1 MPI rank)
+# PHARE code dc62fdd4e (branch HEAD 36ba5aad4; src/ and pyphare/ identical to it: yes), build build/rel, serial (1 MPI rank)
 # written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
 # command: python3 mhd_convergence_scan.py MP5 None out.txt Euler 0.0125 1e-6 64 10
 # MP5 None Euler dt=0.0125 amp=1e-06 final_time=10.0

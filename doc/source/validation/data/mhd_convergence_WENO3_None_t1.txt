@@ -1,6 +1,6 @@
-# PHARE commit dc62fdd4e (documentation branch), build build/rel, serial, 1 rank
-# collected 2026-11-15 by doc/source/validation/scripts/collect_mhd_data.py
-# command: python3 mhd_convergence_scan.py WENO3 None conv.txt SSPRK4_5 5e-4 1e-6 <nx list> 1
+# PHARE code dc62fdd4e (branch HEAD 36ba5aad4; src/ and pyphare/ identical to it: yes), build build/rel, serial (1 MPI rank)
+# written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
+# command: python3 mhd_convergence_scan.py WENO3 None out.txt SSPRK4_5 5e-4 1e-6 50:1600 1
 # WENO3 None SSPRK4_5 dt=0.0005 amp=1e-06 final_time=1.0
 # nx dx L1 local_order
 50 0.02 5.59833236e-10 

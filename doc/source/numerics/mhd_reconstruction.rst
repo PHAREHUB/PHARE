@@ -19,7 +19,7 @@ Why reconstruct
 
 A cell holds one number. Taken as is, the value is flat over the cell and jumps at every
 face, even where the flow is smooth. Every jump costs numerical diffusion. A
-reconstruction replaces the flat value by a better guess at the face, using the
+:term:`reconstruction` replaces the flat value by a better guess at the face, using the
 neighbouring cells. The :doc:`Riemann solver <mhd_riemann_solvers>` then turns the left and
 right guess into a flux.
 
@@ -124,7 +124,7 @@ reads for the face drawn in the middle.
   the value is kept unchanged when :math:`(f-u)(f-f_\mathrm{MP})<0` holds, with no tolerance
   (:src:`src/core/numerics/reconstructions/mp5.hpp#L69-L88`).
 
-WENO means *weighted essentially non-oscillatory*: the stencil is cut into smaller stencils,
+:term:`WENO` means *weighted essentially non-oscillatory*: the stencil is cut into smaller stencils,
 and a cell on the other side of a jump is given almost no weight. The formulas follow
 Jiang and Shu (1996) for the smoothness indicators, Borges et al. (2008) for the WENO-Z
 weights and Suresh and Huynh (1997) for the monotonicity-preserving limits.
@@ -132,7 +132,7 @@ weights and Suresh and Huynh (1997) for the monotonicity-preserving limits.
 Limiters (``Linear`` only)
 --------------------------
 
-The limiter keeps the slope of ``Linear`` from creating new extrema. With
+The :term:`slope limiter` keeps the slope of ``Linear`` from creating new extrema. With
 :math:`a=u_i-u_{i-1}`, :math:`b=u_{i+1}-u_i` and :math:`r=a/b`, the limited slope is
 :math:`\varphi(r)\,b`:
 

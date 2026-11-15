@@ -33,7 +33,7 @@ The four integrators
 
 ``mhd_timestepper`` takes ``"Euler"``, ``"TVDRK2"``, ``"TVDRK3"`` or ``"SSPRK4_5"``. The name
 is not case sensitive; an unknown name stops the run with an error
-(:src:`pyphare/pyphare/pharein/initialize/dict_populator.py#L50-L58`). "RK" stands for
+(:src:`pyphare/pyphare/pharein/initialize/dict_populator.py#L50-L61`). "RK" stands for
 Runge–Kutta; "TVD" and "SSP" (strong-stability-preserving) mean that, when a single Euler
 stage adds no new oscillation, the whole step adds none either, provided the time step is
 small enough.
@@ -198,7 +198,7 @@ diffusive limit only applies when ``eta`` is not zero; hyper-resistivity gives n
 :math:`C_{\text{wave}}` and :math:`C_{\text{diff}}` are ``cfl_wave`` and ``cfl_diffusive``,
 positive numbers (the docstring advises values in (0, 1], 1 being the estimated limit; ``cfl_diffusive`` defaults to
 ``cfl_wave``) (:src:`pyphare/pyphare/pharein/simulation.py#L889-L900`). The estimate is not a
-guarantee: in the documentation run above the stage-based integrators failed at Courant
+guarantee: in the documentation run above the first- and second-order integrators failed at Courant
 numbers of 0.2 (``Euler``) and 0.8 (``TVDRK2``). How each level's limit becomes a
 step of the coarsest level, and what the sub-steps of the finer levels do, are on
 :doc:`time_integration` and :doc:`/dev/subcycling`; how the fine-level flux sums are used to
@@ -216,7 +216,7 @@ How to choose
   ``TVDRK2`` with ``Linear``.
 * **Step size.** ``cfl_wave`` and ``cfl_diffusive`` multiply the estimated limits above; the
   docstring advises values in (0, 1]. The first-order and second-order integrators failed at
-  0.2 and 0.8 in the documentation run, so a smaller factor is not a safeguard by itself.
+  0.2 and 0.8 in the documentation run, so staying at or below 1 does not guarantee stability.
 
 .. seealso::
    :doc:`mhd_reconstruction`, :doc:`mhd_riemann_solvers`, :doc:`mhd_finite_volume`,
