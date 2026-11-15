@@ -2,8 +2,9 @@
 Numerics common to hybrid and MHD
 ==================================
 
-What both solvers share: the staggered grid, the time step, the domain boundaries,
-adaptive mesh refinement, and how the divergence of B is kept.
+What both solvers share: the staggered grid, the time step, adaptive mesh refinement and
+how the divergence of B is kept. The domain boundaries page is here too; boundaries other
+than periodic exist for MHD only.
 
 .. toctree::
    :maxdepth: 1
