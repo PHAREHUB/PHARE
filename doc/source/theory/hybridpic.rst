@@ -244,7 +244,7 @@ between them:
    finish(fig, ax)
 
 The order of these operations within a step (a :term:`predictor-predictor-corrector <PPC>` scheme) is on
-:doc:`/numerics/time_integration`; the particle push and the deposit are on
+:doc:`/numerics/hybrid_time_integration`; the particle push and the deposit are on
 :doc:`/numerics/particles`.
 
 

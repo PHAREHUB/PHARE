@@ -93,19 +93,12 @@ Where to start
 
 .. toctree::
    :caption: Numerics
-   :maxdepth: 1
+   :maxdepth: 2
    :hidden:
 
-   numerics/grid
-   numerics/time_integration
-   numerics/particles
-   numerics/mhd_finite_volume
-   numerics/mhd_reconstruction
-   numerics/mhd_riemann_solvers
-   numerics/mhd_time_integration
-   numerics/domain_boundary_conditions
-   numerics/amr
-   numerics/div_b
+   Hybrid <numerics/hybrid>
+   MHD <numerics/mhd>
+   Common <numerics/common>
 
 
 .. toctree::

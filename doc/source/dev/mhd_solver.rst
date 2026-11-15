@@ -148,7 +148,7 @@ Go deeper
 ---------
 
 * :doc:`/dev/gridlayout` — the MHD centering table.
-* :doc:`/numerics/mhd_finite_volume` · :doc:`/numerics/time_integration`
+* :doc:`/numerics/mhd_finite_volume` · :doc:`/numerics/mhd_time_integration`
 
 Related
 -------

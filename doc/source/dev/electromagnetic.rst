@@ -83,7 +83,7 @@ One stage, on the grid
 
 * The four calls are in ``predictor1_``, ``predictor2_``, ``corrector_``
   (:src:`src/amr/solvers/solver_ppc.hpp#L410-L532`); which B, E and moments go in at each
-  stage is on :doc:`/numerics/time_integration`.
+  stage is on :doc:`/numerics/hybrid_time_integration`.
 * Derivatives come from ``curl``, ``grad``, ``laplacian``
   (:src:`src/core/numerics/differential_operators.hpp`): lazy views evaluated where read,
   primal → dual and dual → primal.

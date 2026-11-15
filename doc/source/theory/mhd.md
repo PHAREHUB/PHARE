@@ -121,4 +121,4 @@ $$
 
 The MHD equations are solved with a finite-volume Godunov scheme and constrained transport
 for the magnetic field, described in {doc}`/numerics/mhd_finite_volume`. The time
-integrators are described in {doc}`/numerics/time_integration`.
+integrators are described in {doc}`/numerics/mhd_time_integration`.

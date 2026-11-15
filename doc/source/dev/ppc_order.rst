@@ -16,7 +16,7 @@ time, the second really moves the particles.
 
 Why two pushes: :term:`Ohm's law` needs the moments at n+1, which need the
 particles pushed with fields at n+½, which need E at n+1. The scheme predicts,
-then corrects (physics: :doc:`/numerics/time_integration`).
+then corrects (physics: :doc:`/numerics/hybrid_time_integration`).
 
 One step, four stages
 ---------------------
@@ -119,5 +119,5 @@ Go deeper
 Related
 -------
 
-* :doc:`/dev/one_time_step` · :doc:`/numerics/time_integration` ·
+* :doc:`/dev/one_time_step` · :doc:`/numerics/hybrid_time_integration` ·
   :doc:`/dev/electromagnetic` · :doc:`/numerics/particles`

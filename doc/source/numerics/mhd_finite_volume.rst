@@ -32,7 +32,7 @@ exactly these choices):
        reconstruction="Linear",   # how cell averages are extended to the faces
        limiter="VanLeer",         # only used by "Linear"
        riemann="Rusanov",         # flux at each face
-       mhd_timestepper="TVDRK2",  # time integrator, see numerics/time_integration
+       mhd_timestepper="TVDRK2",  # time integrator, see numerics/mhd_time_integration
        hall=False,
        gamma=5.0 / 3.0,
        eta=0.0,                   # resistivity

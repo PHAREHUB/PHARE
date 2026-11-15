@@ -121,7 +121,7 @@ for charged particles. One time step Δt:
    finish(fig, [a1, a2])
 
 The fields are the average of those at the start of the step and the predicted
-ones at its end (:doc:`/numerics/time_integration`). Particles are pushed twice
+ones at its end (:doc:`/numerics/hybrid_time_integration`). Particles are pushed twice
 per step: once to predict the ion moments, once for real.
 
 A particle may move about **2 cells per half step** at most (a bit less forward,

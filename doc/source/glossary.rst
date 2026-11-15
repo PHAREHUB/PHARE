@@ -225,7 +225,7 @@ Grid and numerical methods
    predictor-predictor-corrector
    PPC
       The time scheme of the hybrid solver: two prediction stages and one
-      correction stage per time step. See :doc:`/numerics/time_integration`
+      correction stage per time step. See :doc:`/numerics/hybrid_time_integration`
       and :doc:`/dev/ppc_order`.
 
    finite volume
