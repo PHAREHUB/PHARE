@@ -1,0 +1,6 @@
+# PHARE commit 82ba902facf05ea499e71365334eb0aa9bb2f27e, build build/rel, serial (1 MPI rank)
+# written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
+# command: python3 mhd_convergence_scan.py MP5 None out.txt Euler 0.003125 1e-6 64 10
+# MP5 None Euler dt=0.003125 amp=1e-06 final_time=10.0
+# nx dx L1 local_order
+64 0.015625 nan 

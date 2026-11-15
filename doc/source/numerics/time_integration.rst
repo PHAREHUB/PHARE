@@ -103,42 +103,10 @@ push is the real one.
 The MHD integrators
 -------------------
 
-The MHD solver computes, from a state :math:`U` (density, momentum, total energy, B), the
-change rate :math:`L(U)` given by the finite-volume fluxes and the electric field on the
-edges (:doc:`mhd_finite_volume`). One *Euler stage* is
-:math:`U + \Delta t\,L(U)`. The integrators chain Euler stages. You choose one with
-``mhd_timestepper`` (required for MHD). In the names, RK means Runge–Kutta; TVD (total-variation
-diminishing) and SSP (strong-stability preserving) mean that the scheme adds no new
-oscillations when a single Euler stage does not.
-
-.. list-table::
-   :header-rows: 1
-
-   * - ``mhd_timestepper``
-     - Stages
-     - Scheme
-   * - ``"Euler"``
-     - 1
-     - :math:`U^{n+1} = U^n + \Delta t\,L(U^n)` (first order)
-   * - ``"TVDRK2"``
-     - 2
-     - :math:`U^{(1)} = U^n + \Delta t\,L(U^n)`;
-       :math:`U^{n+1} = U^n + \tfrac{\Delta t}{2}\big(L(U^n) + L(U^{(1)})\big)` (second-order Runge–Kutta)
-   * - ``"TVDRK3"``
-     - 3
-     - :math:`U^{(1)} = U^n + \Delta t\,L(U^n)`;
-       :math:`U^{(2)} = \tfrac34 U^n + \tfrac14\big(U^{(1)} + \Delta t\,L(U^{(1)})\big)`;
-       :math:`U^{n+1} = \tfrac13 U^n + \tfrac23\big(U^{(2)} + \Delta t\,L(U^{(2)})\big)`
-       (third-order strong-stability-preserving Runge–Kutta)
-   * - ``"SSPRK4_5"``
-     - 5
-     - five-stage, fourth-order strong-stability-preserving Runge–Kutta;
-       coefficients in
-       :src:`src/amr/solvers/time_integrator/ssprk4_5_integrator.hpp#L129-L153`
-
-The name is not case-sensitive. In every scheme, the magnetic field is advanced with the
-same weighted sum of edge electric fields as the other variables use for their fluxes, so
-its divergence is not changed.
+The MHD solver advances its state with a Runge–Kutta integrator chosen by
+``mhd_timestepper`` (required for MHD): ``Euler``, ``TVDRK2``, ``TVDRK3`` or ``SSPRK4_5``.
+Their stages, order, cost and how the magnetic field follows are on
+:doc:`mhd_time_integration`.
 
 Choosing a stable time step
 ---------------------------
@@ -151,25 +119,13 @@ from the fastest wave, the whistler, whose frequency grows like :math:`k^2`. At 
 scale this gives :math:`\Delta t \propto \Delta x^2`: halving the cell size requires a time
 step four times smaller.
 
-**MHD, adaptive.** At every step (and once at start-up), PHARE computes on each level the
-smallest, over the level's cells, of
-
-.. math::
-
-   \Delta t_{\text{wave}} = \frac{C_{\text{wave}}}
-   {\sum_d \big(|v_d| + c_{f,d} + c_{w,d}\big)/\Delta x_d},
-   \qquad
-   \Delta t_{\text{diff}} = \frac{C_{\text{diff}}}{2\eta\sum_d 1/\Delta x_d^2},
-
-where :math:`c_{f,d}` is the fast magnetosonic speed along direction :math:`d`,
-:math:`c_{w,d}` a whistler speed at the grid scale (only with ``hall=True``), and the
-diffusive limit only applies when the resistivity :math:`\eta` is not zero
-(:src:`src/amr/solvers/solver_mhd.hpp#L386-L459`).
-:math:`C_{\text{wave}}` and :math:`C_{\text{diff}}` are ``cfl_wave`` and ``cfl_diffusive``,
-between 0 and 1. Each level's limit is then converted to a coarsest-level time step by
-multiplying it by :math:`4^{\ell}` (level :math:`\ell` takes :math:`4^{\ell}` steps per
-coarsest step, see below), and the smallest over all levels and all MPI ranks is used
-(:src:`src/amr/multiphysics_integrator.hpp#L435-L461`).
+**MHD, adaptive.** At every step PHARE computes, on each level, the smallest over the
+cells of a wave limit (fast magnetosonic speed, flow speed and, with Hall, a whistler speed
+at the grid scale) and, when the resistivity is not zero, a diffusive limit. The formulas
+are on :doc:`mhd_time_integration`. Each level's limit is then converted to a
+coarsest-level time step by multiplying it by :math:`4^{\ell}` (level :math:`\ell` takes
+:math:`4^{\ell}` steps per coarsest step, see below), and the smallest over all levels and
+all MPI ranks is used (:src:`src/amr/multiphysics_integrator.hpp#L435-L461`).
 
 Time steps on refined levels
 ----------------------------

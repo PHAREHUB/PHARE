@@ -102,6 +102,7 @@ Where to start
    numerics/mhd_finite_volume
    numerics/mhd_reconstruction
    numerics/mhd_riemann_solvers
+   numerics/mhd_time_integration
    numerics/domain_boundary_conditions
    numerics/amr
 
