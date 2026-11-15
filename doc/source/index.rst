@@ -101,6 +101,7 @@ Where to start
    numerics/particles
    numerics/mhd_finite_volume
    numerics/mhd_reconstruction
+   numerics/mhd_riemann_solvers
    numerics/domain_boundary_conditions
    numerics/amr
 
