@@ -225,9 +225,10 @@ read from ``pyphare/pharein/simulation.py``.
        simulator starts.
    * - ``tagging_threshold``
      - ``"tagging"`` only. A cell is tagged when a measure of how fast the
-       magnetic field changes around it is above this number. In 1D: how much
-       the 5-cell average of By and Bz changes from one cell to the next,
-       relative to 1 + that average. In 2D and 3D: the jump of Bx, By or Bz
+       magnetic field changes around it is above this number. In 1D, for By and Bz
+       separately: how much the 5-cell average changes from one cell to the next,
+       relative to 1 + that average; the two numbers are combined as the square
+       root of the sum of their squares. In 2D and 3D: the jump of Bx, By or Bz
        over two cells, relative to 1 + the jump over one cell. Values are in
        code units, so the threshold is relative to a field of order 1. Lower
        value, more cells tagged, larger fine regions.

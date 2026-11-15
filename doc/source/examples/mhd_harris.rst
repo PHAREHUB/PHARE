@@ -43,7 +43,7 @@ Setup
      - same
      - single level
    * - Scheme
-     - ``WENOZ`` reconstruction, Rusanov :term:`Riemann solver`, ``TVDRK3``, Hall term on, :math:`\nu = 0.02`
+     - ``WENOZ`` reconstruction, Rusanov :term:`Riemann solver`, ``TVDRK3``, Hall term on, :math:`\nu = 0.02` with ``hyper_mode="spatial"`` (the coefficient is :math:`\nu\,\Delta x^2(|\mathbf{B}|/\rho+1)`, see :doc:`/numerics/mhd_finite_volume`)
      - same
      - same (the script also sets ``resistivity=0.001``, which has no effect in an MHD run; ``eta`` is 0)
    * - Output

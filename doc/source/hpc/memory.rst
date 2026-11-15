@@ -38,8 +38,8 @@ Then read the per-rank files and plot the memory of each rank:
    fig.tight_layout()
    fig.savefig("memory_per_rank.png")
 
-``mem_used_mb`` is the resident memory of the process (the RAM it really
-occupies), in MB. Compare the peak with the memory available per core on
+``mem_used_mb`` is the memory column of the monitor, in MB (what exactly it
+measures is defined by ``phlop``). Compare the peak with the memory available per core on
 your machine: ranks on the same node share the node's memory.
 
 Where memory goes

@@ -137,14 +137,15 @@ commit, build, command and date. One script runs everything and rewrites them:
 
    python3 doc/source/validation/scripts/run_doc_runs.py --build <PHARE build dir>
 
-It takes about 20 seconds on a workstation (31 serial runs, eight at a time). With
+It takes about 40 seconds on a workstation (33 serial runs, four at a time by default,
+``--jobs`` changes it; about 20 seconds with eight). With
 ``--check`` it reruns into a temporary folder and compares with the committed files, with a
 relative tolerance for each quantity; errors at the precision floor of the single-precision
 output are not compared, so a build that writes double precision, or another compiler, can
 be checked. The exit status is non-zero on any drift. ``--list-modules`` prints the PHARE
-modules the runs need (1D, ``Rusanov`` unless stated: ``Constant``, ``Linear`` + ``VanLeer``,
-``Linear`` + ``MinMod``, ``WENO3``, ``WENOZ``, ``MP5``, and ``Constant`` with ``HLL`` and
-``HLLD``).
+modules the runs need: in 1D, with ``Rusanov`` unless stated, ``Constant``, ``Linear`` +
+``VanLeer``, ``Linear`` + ``MinMod``, ``WENO3``, ``WENOZ``, ``MP5``, and ``Constant`` with
+``HLL`` and ``HLLD``; in 2D, ``Linear`` + ``VanLeer`` + ``Rusanov`` (the divergence runs).
 
 .. literalinclude:: scripts/run_doc_runs.py
    :language: python

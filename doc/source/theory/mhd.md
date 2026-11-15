@@ -39,13 +39,13 @@ $$
 \end{align}
 $$
 
-The system is closed with a polytropic equation of state:
+The system is closed with the ideal-gas equation of state, which gives the pressure from the total energy:
 
 $$
-    \dv{}{t}\left(\frac{P}{\rho^\gamma}\right) = 0
+    P = (\gamma - 1)\left(E - \frac{\rho \vb{u}^2}{2} - \frac{\vb{B}^2}{2 \mu_0}\right)
 $$ (eq:theory_mhd_dimensional_eos)
 
-where $\gamma$ is the adiabatic index (ratio of specific heats), set with `gamma` in the input.
+where $\gamma$ is the adiabatic index (ratio of specific heats), set with `gamma` in the input. In smooth flow this is equivalent to the polytropic relation $\dv{}{t}\left(P/\rho^\gamma\right) = 0$; across a shock it is not.
 
 ## Normalized equations
 
@@ -73,6 +73,11 @@ $$
 In the following, equations will be considered under their non-dimensional form, with the tildes dropped for readability.
 
 ## Splitting of the magnetic field
+
+```{admonition} In preparation
+:class: note
+Imposing an external magnetic field with this splitting is not in the code yet: {pr}`1327` (infrastructure for an external field). The derivation below is the method it is based on.
+```
 
 To numerically impose an external magnetic field, the magnetic field is decomposed as
 

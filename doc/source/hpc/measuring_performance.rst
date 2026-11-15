@@ -59,7 +59,8 @@ then ask for monitoring when you run:
 
 Or, without changing the script, set the environment variable
 ``PHARE_SIM_MON=1`` (one sample every second). Each rank writes
-``.phare/stats/rank.<rank>.yaml``; here written by ``run(monitoring=1)``:
+``.phare/stats/rank.<rank>.yaml``. The format is that of ``phlop`` (version 0.0.45
+here), not defined by PHARE; this is what ``run(monitoring=1)`` wrote in one run:
 
 .. code-block:: yaml
 
@@ -75,8 +76,8 @@ Or, without changing the script, set the environment variable
    - v: 3,248,99.9
    - v: 3,248,89.9
 
-Each snapshot gives the number of open files, the memory used by the
-process (resident memory, in MB) and its CPU use in percent. See
+The ``headers`` list names the columns of each snapshot (``open_file``,
+``mem_used_mb``, ``cpu_usage``); their exact meaning is given by ``phlop``. See
 :doc:`memory` for a script that reads these files.
 
 .. note::
@@ -96,16 +97,11 @@ dumps...). They cost nothing unless you compile them in.
 
        -DwithPhlop=ON -DCMAKE_CXX_FLAGS="-DPHARE_LOG_LEVEL=1"
 
-   ``PHARE_LOG_LEVEL`` selects how many timers are compiled in:
-
-   - ``0`` = OFF (default)
-   - ``1`` = LIGHT
-   - ``2`` = MEDIUM
-   - ``3`` = HEAVY
+   ``PHARE_LOG_LEVEL`` is a number that selects how many timers are compiled in:
+   ``0`` (the default) compiles none, and 1, 2, 3 compile more and more of them.
 
    Each timer in the code is tagged with a level from 1 to 3; a build
-   keeps the timers whose level is at most ``PHARE_LOG_LEVEL``. Higher
-   levels add finer, more frequently called timers.
+   keeps the timers whose level is at most ``PHARE_LOG_LEVEL``.
 
 2. **Run** with the environment variable
    :ref:`PHARE_SCOPE_TIMING <phare_scope_timing>` set to ``1``. Each rank

@@ -227,7 +227,8 @@ Give exactly two of the three. ``time_step`` can also be a dictionary:
 * ``{"mode": "adaptive", "cfl_wave": 0.5, "cfl_diffusive": 0.5}`` recomputes
   the time step at every step from a stability limit (:term:`CFL <CFL condition>`). It needs
   ``final_time`` and cannot be combined with ``time_step_nbr``.
-  ``cfl_diffusive`` defaults to ``cfl_wave``. Both must be positive.
+  ``cfl_wave`` is required and other keys are refused. ``cfl_diffusive``
+  defaults to ``cfl_wave``. Both must be positive.
   Diagnostics then need explicit ``write_timestamps`` (there is no fixed
   step to build a default output grid from).
 
@@ -444,8 +445,9 @@ Miscellaneous
        written (use ``diag_options`` and ``restart_options``).
      - ``"./"``
    * - ``description``
-     - Free text stored in the simulation object. It is not written to the
-       output files at this version.
+     - Free text stored in the simulation object. The simulation object is
+       written (serialized) into the ``serialized_simulation`` attribute of the
+       output files; the description is not an attribute of its own.
      - none
 
 

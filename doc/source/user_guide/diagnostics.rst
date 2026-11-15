@@ -176,7 +176,7 @@ Particles
      - Meaning
      - File
    * - ``"domain"``
-     - particles inside the patches (default, use this)
+     - particles inside the patches (use this)
      - ``ions_pop_protons_domain.h5``
    * - ``"levelGhost"``
      - particles in the ghost zone between two levels, for debugging refinement
@@ -297,7 +297,8 @@ diagnostics blocks themselves.
      - ``"phareh5"``
    * - ``options["dir"]``
      - directory for the files (created if missing, when ``format`` and
-       ``dir`` are both given)
+       ``dir`` are both given). If you give ``options``, ``dir`` is required:
+       without it the run stops with ``KeyError: 'dir'``
      - ``"phare_output"`` when ``diag_options`` is not given, but PHARE then
        does **not create** the folder: always give ``format`` and
        ``options["dir"]``

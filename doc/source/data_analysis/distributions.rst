@@ -110,7 +110,7 @@ Other maps from the same data:
 
 To keep only some particles, pass a function to ``select`` that takes a
 ``Particles`` object and returns the selected ones; here the particles with
-:math:`0 \le x \le 50`:
+:math:`0 < x < 50` (the bounds are strict, and ``box_type="pos"`` works in 1D only):
 
 .. code-block:: python
 

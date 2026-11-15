@@ -232,7 +232,7 @@ Drawing a map
      - ``"Spectral_r"``
    * - ``vmin``, ``vmax``
      - colour range
-     - minimum and maximum of the quantity over the whole hierarchy (widened by 1e-6)
+     - minimum and maximum of the quantity over all levels, at the hierarchy's first time (ghost points included), widened by 1e-6; this matters only for a hierarchy that holds several times
    * - ``plot_patches``
      - ``True`` draws the edge of every patch
      - ``False``

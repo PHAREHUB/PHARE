@@ -95,6 +95,26 @@ are also a jump, and waves leave them too.
    fig.tight_layout()
 
 
+Scheme options
+--------------
+
+The numerical scheme is chosen by these arguments of ``Simulation`` (details and
+consequences: :doc:`/numerics/mhd_finite_volume`):
+
+* ``reconstruction``: ``"Constant"``, ``"Linear"``, ``"WENO3"``, ``"WENOZ"`` or ``"MP5"``
+  (:doc:`/numerics/mhd_reconstruction`);
+* ``limiter``: ``"None"``, ``"VanLeer"`` or ``"MinMod"``; only ``"Linear"`` uses one;
+* ``riemann``: ``"Rusanov"``, ``"HLL"`` or ``"HLLD"`` (:doc:`/numerics/mhd_riemann_solvers`);
+* ``mhd_timestepper``: ``"Euler"``, ``"TVDRK2"``, ``"TVDRK3"`` or ``"SSPRK4_5"``, mandatory
+  (:doc:`/numerics/mhd_time_integration`);
+* ``hall``: ``True`` or ``False`` (default ``False``);
+* ``gamma``: adiabatic index, greater than 1 (default 5/3);
+* ``eta``, ``nu``: resistivity and hyper-resistivity (default 0; ``nu`` needs ``hall=True``),
+  with ``hyper_mode``: ``"constant"`` (default) or ``"spatial"``.
+
+``reconstruction``, ``limiter``, ``riemann``, ``hall`` and the dimension are fixed when PHARE
+is compiled: not every combination is built by default (:doc:`/numerics/mhd_finite_volume`).
+
 What it does
 ------------
 
