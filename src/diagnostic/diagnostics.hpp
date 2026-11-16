@@ -42,6 +42,8 @@ struct NullOpDiagnosticsManager : public IDiagnosticsManager
     {
         throw std::runtime_error("NOOP");
     }
+
+    void flush() override {} // no files
 };
 
 struct DiagnosticsManagerResolver

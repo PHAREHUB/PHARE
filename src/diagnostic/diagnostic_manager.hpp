@@ -67,6 +67,7 @@ class IDiagnosticsManager
 public:
     virtual bool dump(double timeStamp, double timeStep)         = 0;
     virtual void dump_level(std::size_t level, double timeStamp) = 0;
+    virtual void flush()                                         = 0;
     inline virtual ~IDiagnosticsManager();
 };
 IDiagnosticsManager::~IDiagnosticsManager() {}
@@ -83,6 +84,9 @@ public:
 
 
     void dump_level(std::size_t level, double timeStamp) override;
+
+
+    void flush() override { writer_->flush(); }
 
 
     DiagnosticsManager(std::unique_ptr<Writer>&& writer_ptr)

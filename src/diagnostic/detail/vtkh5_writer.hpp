@@ -114,6 +114,13 @@ public:
     void dump_level(std::size_t level, std::vector<DiagnosticProperties*> const& diagnostics,
                     double timestamp);
 
+    // closes every open file, collective: all ranks have the same files open
+    void flush()
+    {
+        for (auto& [_, typeWriter] : typeWriters_)
+            typeWriter->flush();
+    }
+
     template<typename String>
     auto getDiagnosticWriterForType(String& type)
     {

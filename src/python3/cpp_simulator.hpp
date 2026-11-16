@@ -52,7 +52,8 @@ void declareSimulator(PyClass&& sim)
         .def("cell_width", &Simulator::cellWidth)
         .def("dump_diagnostics", &Simulator::dump_diagnostics, py::arg("timestamp"),
              py::arg("timestep"))
-        .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"));
+        .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"))
+        .def("flush_diagnostics", &Simulator::flush_diagnostics);
 }
 
 template<auto opts>

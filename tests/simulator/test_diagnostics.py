@@ -378,7 +378,7 @@ class DiagnosticsTest(SimulatorTest):
 
         self.simulator = Simulator(sim)
         self.simulator.run()
-        self.simulator = None  # run() already reset()
+        self.simulator = None  # releases it, nothing else holds it
 
         diag_dir = sim.diag_options["options"]["dir"]
         diagInfo = next(iter(sim.diagnostics.values()))
