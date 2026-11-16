@@ -179,7 +179,7 @@ protected:
             marder(s.E, *s.rho, dt);
             for (auto& c : s.E)
                 fillPeriodicGhosts(s.layout, c);
-            auto const F = gaussResidual(s);
+            auto const F      = gaussResidual(s);
             auto const factor = std::pow(g, step);
             for (std::size_t n = 0; n < F.size(); ++n)
                 ASSERT_NEAR(F[n], factor * F0[n], 1e-12 * std::max(1., std::abs(factor)))
@@ -230,16 +230,19 @@ TYPED_TEST(MarderTest, correctionHasNoCurl)
 {
     for (auto* s : {&this->dyadic, &this->general})
     {
-        double const d = s->coefficient(0.25, this->dt);
+        // on the power of two grid, d and dt are powers of two and rho integers, so that every
+        // operation is exact
+        bool const exact = s == &this->dyadic;
+        double const dt  = exact ? 1. / 128 : this->dt;
+        double const d   = exact ? 1. / 8 : s->coefficient(0.25, dt);
         Marder<typename TestFixture::GridLayout_t> const marder{s->layout, this->c2, d};
 
-        // integers on the power of two grid, so that every operation is exact
         std::mt19937 gen{12};
         std::uniform_int_distribution<int> integers{-8, 8};
         auto& rho = *s->rho;
         s->layout.evalOnGhostBox(rho, [&](auto const&... ijk) { rho(ijk...) = integers(gen); });
 
-        marder(s->E, rho, this->dt); // E = 0 before: E is now the correction
+        marder(s->E, rho, dt); // E = 0 before: E is now the correction
 
         double maxE = 0.;
         for (auto& c : s->E)
@@ -255,16 +258,15 @@ TYPED_TEST(MarderTest, correctionHasNoCurl)
         Faraday<typename TestFixture::GridLayout_t>{s->layout}(s->B, s->E, s->B, 1.);
         double maxCurl = 0.;
         for (auto& c : s->B)
-            s->layout.evalOnBox(c, [&](auto const&... ijk) {
-                maxCurl = std::max(maxCurl, std::abs(c(ijk...)));
-            });
+            s->layout.evalOnBox(
+                c, [&](auto const&... ijk) { maxCurl = std::max(maxCurl, std::abs(c(ijk...))); });
 
-        if (s == &this->dyadic)
+        if (exact)
             EXPECT_EQ(maxCurl, 0.);
         else
         {
-            auto const minDl = *std::min_element(s->layout.meshSize().begin(),
-                                                 s->layout.meshSize().end());
+            auto const minDl
+                = *std::min_element(s->layout.meshSize().begin(), s->layout.meshSize().end());
             EXPECT_LT(maxCurl, 1e-14 * maxE / minDl);
             std::ostringstream os;
             os << std::scientific << maxCurl / (maxE / minDl);
