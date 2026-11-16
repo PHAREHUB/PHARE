@@ -134,12 +134,9 @@ public:
     //-------------------------------------------------------------------------
 
 
-    NO_DISCARD bool isUsable() const
-    {
-        return Pe_.isUsable() and pressureTerm_.isUsable() and ions_.isUsable();
-    }
+    NO_DISCARD bool isUsable() const { return core::isUsable(Pe_, pressureTerm_, ions_); }
 
-    NO_DISCARD bool isSettable() const { return Pe_.isSettable() and pressureTerm_.isSettable(); }
+    NO_DISCARD bool isSettable() const { return core::isSettable(Pe_, pressureTerm_); }
 
     struct PressureProperty
     {

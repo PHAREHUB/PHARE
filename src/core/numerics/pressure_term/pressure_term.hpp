@@ -2,12 +2,12 @@
 #define PHARE_CORE_NUMERICS_PRESSURE_TERM_HPP
 
 #include "core/data/field/field.hpp"
+#include "core/data/field/field_scratch.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
 
 #include <cmath>
 #include <stdexcept>
-#include <vector>
 
 
 namespace PHARE::core
@@ -34,14 +34,16 @@ public:
     }
 
     template<typename Density, typename VecField>
-    void operator()(GridLayout const& layout, Density const& n, VecField& pressureTerm)
+    void operator()(GridLayout const& layout, Density const& n, VecField& pressureTerm) const
     {
         using NodeField = Field<GridLayout::dimension, typename Density::physical_quantity_type>;
 
-        // The gradient on E's domain box reads n on domain nodes only, so ln(n) is computed there
-        // only. Its ghost nodes keep the values the previous patch wrote.
-        lnNData_.resize(n.size());
-        auto lnN = NodeField{"lnN", n.physicalQuantity(), lnNData_.data(), n.shape()};
+        // ln(n) lives in the shared scratch buffer, held until the term is written. The gradient
+        // on E's domain box reads n on domain nodes only, so ln(n) is computed there only: its
+        // ghost nodes keep whatever the buffer held before, and are never read.
+        ScratchWrite scratch;
+        auto& lnNData = scratch.get().get_no_copy(n.size())();
+        auto lnN      = NodeField{"lnN", n.physicalQuantity(), lnNData.data(), n.shape()};
         layout.evalOnBox(n, [&](auto const&... ijk) { lnN(ijk...) = std::log(n(ijk...)); });
 
         auto const gradLnN = grad(layout, lnN);
@@ -61,7 +63,6 @@ public:
 
 private:
     double Te_;
-    std::vector<double> lnNData_; // reused from one patch to the next
 };
 
 } // namespace PHARE::core

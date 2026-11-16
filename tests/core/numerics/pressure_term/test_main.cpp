@@ -156,8 +156,8 @@ TYPED_TEST(IsothermalPressureTermTest, ThatItIsSecondOrderAccurate)
 }
 
 
-// one IsothermalPressureTerm serves patches of different sizes in a row: its ln(n) storage keeps
-// the previous patch's values on nodes it does not rewrite, which must not change the result
+// patches of different sizes in a row: the scratch buffer holding ln(n) keeps the previous
+// patch's values on nodes it does not rewrite, which must not change the result
 TYPED_TEST(IsothermalPressureTermTest, ThatReusingItOnAnotherPatchSizeGivesTheSameResult)
 {
     using GridLayout_t = typename TestFixture::GridLayout_t;
