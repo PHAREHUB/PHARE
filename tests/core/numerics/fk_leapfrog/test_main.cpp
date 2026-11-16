@@ -83,6 +83,16 @@ protected:
 
     FKLeapfrog1D()
     {
+        for (auto& f : E)
+            fill_(f, [](double) { return 0.; });
+        for (auto& f : B)
+            fill_(f, [](double) { return 0.; });
+        pusher.setMeshAndTimeStep({dx}, dt);
+    }
+
+    // warm ions and electrons in the central cells, with a transverse B
+    void loadWarmPlasma()
+    {
         auto const box = grow(layout.AMRBox(), 2);
         // |v| dt < 0.3 dx and particles loaded in the central cells: they never get closer
         // than 8 cells to the box edges in nSteps
@@ -102,13 +112,16 @@ protected:
                                    s.vmax * (2 * unit(gen) - 1)}});
 
         auto const k = 2 * std::numbers::pi / (nCells * dx);
-        for (auto& f : E)
-            fill_(f, [](double) { return 0.; });
         fill_(B(Component::X), [](double) { return 1.; });
         fill_(B(Component::Y), [&](double x) { return 0.1 * std::sin(k * x); });
         fill_(B(Component::Z), [&](double x) { return 0.1 * std::cos(k * x); });
+    }
 
-        pusher.setMeshAndTimeStep({dx}, dt);
+    // E^{-1/2} from the backward half segment
+    void startUp()
+    {
+        depositCurrent(1., 0.);
+        AmpereMaxwell{layout, c2}(B.super(), J.super(), E.super(), -dt / 2);
     }
 
     void fill_(auto& f, auto&& fn)
@@ -185,13 +198,12 @@ TYPED_TEST_SUITE(FKLeapfrog1D, InterpOrders);
 
 TYPED_TEST(FKLeapfrog1D, gaussResidualStaysAtItsInitialValue)
 {
+    this->loadWarmPlasma();
+
     // residual of E^0 with the charge at x^0
     auto const atZero = this->gaussResidual(0.);
 
-    // start-up: E^{-1/2} from the backward half segment
-    this->depositCurrent(1., 0.);
-    AmpereMaxwell{this->layout, this->c2}(this->B.super(), this->J.super(), this->E.super(),
-                                          -this->dt / 2);
+    this->startUp();
 
     auto const initial = this->gaussResidual();
     auto const tol     = 1e-10 * this->maxChargeTerm();
@@ -214,6 +226,91 @@ TYPED_TEST(FKLeapfrog1D, gaussResidualStaysAtItsInitialValue)
         maxDrift = std::max(maxDrift, drift);
     }
     std::cout << "max Gauss residual drift / max c2 rho = " << maxDrift / (tol / 1e-10) << "\n";
+}
+
+
+
+// cold electrons on immobile ions, paired loading (no initial charge), with a velocity profile
+// vanishing at the slab edges: in 1D every electron sheet oscillates at the plasma frequency,
+// here sqrt(c^2 n q^2 / m), at the leapfrog frequency (2/dt) asin(omega_pe dt / 2)
+TYPED_TEST(FKLeapfrog1D, coldPlasmaOscillatesAtThePlasmaFrequency)
+{
+    auto const box   = grow(this->layout.AMRBox(), 2);
+    auto const dx    = this->dx;
+    auto const dt    = this->dt;
+    double const me  = 0.04;
+    int const first  = 16;
+    int const last   = 47;
+    int const ppc    = 20;
+    double const v0  = 0.1;
+    auto const slab  = (last + 1 - first) * dx;
+    auto const omega = std::sqrt(this->c2 / me); // n = 1, |q| = 1
+
+    this->species.push_back({+1., 1e6, 0., typename TestFixture::ParticleArray_t{box}});
+    this->species.push_back({-1., me, 0., typename TestFixture::ParticleArray_t{box}});
+    for (int cell = first; cell <= last; ++cell)
+        for (int i = 0; i < ppc; ++i)
+        {
+            double const delta = (i + 0.5) / ppc;
+            double const x     = (cell + delta) * dx;
+            double const vx    = v0 * std::sin(std::numbers::pi * (x - first * dx) / slab);
+            this->species[0].particles.emplace_back(
+                Particle<1>{1. / ppc, {cell}, {delta}, {0., 0., 0.}});
+            this->species[1].particles.emplace_back(
+                Particle<1>{1. / ppc, {cell}, {delta}, {vx, 0., 0.}});
+        }
+
+    // the electron in the middle of the slab
+    auto const probe = static_cast<std::size_t>((last + 1 - first) * ppc / 2);
+    ASSERT_GT(this->species[1].particles[probe].v[0], 0.9 * v0);
+
+    this->startUp();
+
+    std::vector<double> crossings;
+    double previous = this->species[1].particles[probe].v[0];
+    for (std::size_t n = 1; n <= 120; ++n)
+    {
+        this->step();
+        auto const v = this->species[1].particles[probe].v[0];
+        if (v * previous < 0)
+            crossings.push_back(dt * (n - 1 + previous / (previous - v)));
+        previous = v;
+    }
+    ASSERT_GE(crossings.size(), 6u);
+
+    auto const halfPeriod  = (crossings.back() - crossings.front()) / (crossings.size() - 1);
+    auto const measured    = std::numbers::pi / halfPeriod;
+    auto const leapfrogged = 2 / dt * std::asin(omega * dt / 2);
+    std::cout << "plasma oscillation: measured " << measured << " expected " << leapfrogged << "\n";
+    EXPECT_NEAR(measured / leapfrogged, 1., 5e-3);
+}
+
+
+// no particles: a standing light wave B_z = cos(kx) cos(wt) follows the Yee dispersion
+// sin(w dt / 2) / (c dt) = sin(k dx / 2) / dx. Checked in the middle of the box, before the
+// stale ghost nodes can be felt there.
+TYPED_TEST(FKLeapfrog1D, lightWaveFollowsTheYeeDispersion)
+{
+    auto const dx = this->dx;
+    auto const dt = this->dt;
+    auto const c  = std::sqrt(this->c2);
+    auto const k  = 2 * std::numbers::pi / (this->nCells * dx) * 4;
+    auto& Bz      = this->B(Component::Z);
+    this->fill_(Bz, [&](double x) { return std::cos(k * x); });
+
+    this->startUp();
+
+    auto const omega = 2 / dt * std::asin(c * dt / dx * std::sin(k * dx / 2));
+    auto const mid   = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X)
+                     + this->nCells / 2; // Bz is dual in 1D
+    auto const xmid = (this->nCells / 2 + 0.5) * dx;
+
+    for (std::size_t n = 1; n <= 20; ++n)
+    {
+        this->step();
+        auto const expected = std::cos(k * xmid) * std::cos(omega * n * dt);
+        EXPECT_NEAR(Bz(mid), expected, 2e-3) << "at step " << n;
+    }
 }
 
 
