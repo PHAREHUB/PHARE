@@ -40,6 +40,8 @@ if(HighFive)
 
     phare_mpi_python3_exec(9 4 vtk_diagnostics test_vtk_diagnostics.py ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 3 seed_tiling test_seed_tiling.py ${CMAKE_CURRENT_BINARY_DIR})
+    # patch border sums and particle exchange of the fully kinetic model between ranks
+    phare_mpi_python3_exec(9 3 fully_kinetic test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 4 mhd_shared_faces test_mhd_shared_faces.py ${CMAKE_CURRENT_BINARY_DIR})
 
   else() # serial only

@@ -11,11 +11,18 @@ c = c/V_A.
 - two_stream: two cold electron beams +-v0 on cold ions, mode 1 seeded, linear growth rate
   from 1 = w_pi^2 / w^2 + sum over beams w_pb^2 / (w -+ k v0)^2
 
-The scheme is compared with: k -> (2/dx) sin(k dx / 2) where k comes from a Yee derivative
-(light wave), w -> (2/dt) asin(w dt / 2) for the leapfrog, and w_p^2 -> S(k)^2 w_p^2 for the
-particle shape of order p, S(k) = sinc(k dx / 2)^(p+1), which deposits and gathers (Birdsall
-and Langdon, Plasma Physics via Computer Simulation, ch. 8). Measured at k dx = 0.2: without
-S(k) the Langmuir error grows with the order, -0.71%, -0.92%, -1.03% for p = 1, 2, 3. The dumped E is half a step
+The scheme is compared with:
+- k -> (2/dx) sin(k dx / 2) where k comes from a Yee derivative (light wave),
+- w -> (2/dt) asin(w dt / 2) for the leapfrog,
+- w_p^2 -> S(k)^2 w_p^2 for the particle shape of order p, S(k) = sinc(k dx / 2)^(p+1), which
+  deposits and gathers (Birdsall and Langdon, Plasma Physics via Computer Simulation, ch. 8).
+  Measured at k dx = 0.2: without S(k) the Langmuir error grows with the order, -0.71%, -0.92%,
+  -1.03% for p = 1, 2, 3,
+- w_p^2 -> w_p^2 k / K for longitudinal waves: the discrete Gauss law divergence acts as
+  K = (2/dx) sin(k dx / 2) while the particle density responds to k (+0.08% on w),
+- the warm transverse correction w_pe^2 -> w_pe^2 (1 + k^2 v_th,x^2 / w^2) (+0.12% on w).
+Neglected: higher thermal terms (~1e-4) and the nonlinear Langmuir shift, which grows as v0^2
+(measured -0.49% +- 0.14% at v0 = 0.3, -0.18% +- 0.14% at v0 = 0.15). The dumped E is half a step
 behind its time label; frequencies and growth rates do not depend on it.
 """
 
@@ -35,8 +42,15 @@ dl = 0.04
 time_step = 0.002  # w_pe dt = 0.1, c dt / dx = 0.5
 diag_root = "phare_outputs/fully_kinetic_waves"
 
-FREQUENCY_TOLERANCE = 1e-2
-GROWTH_TOLERANCE = 1e-1
+# |mean| + 3 standard deviations of a single run, measured over 5 random seeds at order 1:
+# langmuir -0.18% +- 0.14%, light +0.15% +- 0.10%, two-stream growth +1.1% +- 1.1%
+TOLERANCES = {"langmuir": 7e-3, "light": 5e-3, "two-stream": 5e-2}
+# the light wave decays at gamma / w = 1.1e-3 +- 0.2e-3 (5 seeds, order 1; 0.7e-3 at orders 2
+# and 3), not from the fit (a synthetic undamped signal gives 0 +- 4e-4), nor from nonlinearity
+# (unchanged at half amplitude), nor mostly from particle noise (0.071 vs 0.080 with 4x more
+# particles), nor from the field solver (vacuum: w exact to 3e-6, no damping over 11
+# periods). Small and unexplained: only bounded.
+MAX_LIGHT_DAMPING = 5e-3
 
 
 def plasma_frequency(n, q, m):
@@ -123,31 +137,31 @@ def mode_amplitude(diag_dir, quantity, component, times, cells, mode):
     return np.array(amplitude)
 
 
-def standing_frequency(times, amplitude, guess):
-    """frequency of a standing oscillation of a complex mode amplitude: least squares fit of
-    a cos(w t + p) + c to its projection on its dominant phase. Zero crossings are biased
-    once a damped wave reaches the noise level."""
+def standing_fit(times, amplitude, guess):
+    """fit a exp(-g t) cos(w t + p) + c to the projection of a complex mode amplitude on its
+    dominant phase: returns w, its standard error, and g. Zero crossings are biased once a
+    damped wave reaches the noise level, and a constant amplitude fit mismatches its decay."""
     from scipy.optimize import curve_fit
 
     phase = np.angle(amplitude[np.argmax(np.abs(amplitude))])
     signal = (amplitude * np.exp(-1j * phase)).real
 
-    def model(t, a, w, p, c):
-        return a * np.cos(w * t + p) + c
+    def model(t, a, w, p, c, g):
+        return a * np.exp(-g * t) * np.cos(w * t + p) + c
 
     best = None
     for p0 in np.linspace(0, 2 * np.pi, 8, endpoint=False):
         try:
-            params, _ = curve_fit(
-                model, times, signal, p0=[np.abs(signal).max(), guess, p0, 0]
+            params, cov = curve_fit(
+                model, times, signal, p0=[np.abs(signal).max(), guess, p0, 0, 0]
             )
         except RuntimeError:
             continue
         residual = np.sum((model(times, *params) - signal) ** 2)
         if best is None or residual < best[0]:
-            best = (residual, abs(params[1]))
+            best = (residual, abs(params[1]), np.sqrt(cov[1, 1]), params[4])
     assert best is not None, "no frequency fit converged"
-    return best[1]
+    return best[1:]
 
 
 def check(name, measured, expected, tolerance):
@@ -159,8 +173,14 @@ def check(name, measured, expected, tolerance):
     return error < tolerance
 
 
-def langmuir(interp_order):
-    cells, mode, Te, v0 = 32, 1, 0.04, 0.3
+def k_over_K(k):
+    """longitudinal fields: in the discrete Gauss law the grid divergence acts as
+    (2/dx) sin(k dx/2) = K, while the particle density responds to k: w_p^2 -> w_p^2 k / K"""
+    return 1 / np.sinc(k * dl / 2 / np.pi)
+
+
+def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400):
+    cells, mode = 32, 1
     k = 2 * np.pi * mode / (cells * dl)
 
     def vx(x):
@@ -172,24 +192,24 @@ def langmuir(interp_order):
         cells,
         final_time=20 * 2 * np.pi / plasma_frequency(1, 1, mass_e),
         populations={
-            "protons": maxwellian(1, 1.0, 1.0, 0.01, ppc=400, seed=1),
-            "electrons": maxwellian(-1, mass_e, 1.0, Te, vx=vx, ppc=400, seed=2),
+            "protons": maxwellian(1, 1.0, 1.0, 0.01, ppc=ppc, seed=1 + 10 * seed),
+            "electrons": maxwellian(
+                -1, mass_e, 1.0, Te, vx=vx, ppc=ppc, seed=2 + 10 * seed
+            ),
         },
     )
     w_pe, w_pi = plasma_frequency(1, -1, mass_e), plasma_frequency(1, 1, 1.0)
     debye = np.sqrt(Te / mass_e) / w_pe
-    S2 = shape_factor2(k, interp_order)
+    S2 = shape_factor2(k, interp_order) * k_over_K(k)
     expected = leapfrog(np.sqrt(S2 * (w_pe**2 * (1 + 3 * (k * debye) ** 2) + w_pi**2)))
 
     Ex = mode_amplitude(diag_dir, "E", "x", times, cells, mode)
-    measured = standing_frequency(times, Ex, guess=expected)
-    return check(
-        f"langmuir order {interp_order}", measured, expected, FREQUENCY_TOLERANCE
-    )
+    measured, error, damping = standing_fit(times, Ex, guess=expected)
+    return measured, error, damping, expected
 
 
-def light(interp_order):
-    cells, mode, b = 64, 2, 0.05
+def light(interp_order, seed=0, b=0.05, Te=0.04, ppc=100, density=1.0):
+    cells, mode = 64, 2
     k = 2 * np.pi * mode / (cells * dl)
 
     def bz(x):
@@ -201,26 +221,38 @@ def light(interp_order):
         cells,
         final_time=1.0,
         populations={
-            "protons": maxwellian(1, 1.0, 1.0, 0.01, ppc=100, seed=3),
-            "electrons": maxwellian(-1, mass_e, 1.0, 0.04, ppc=100, seed=4),
+            "protons": maxwellian(1, 1.0, density, 0.01, ppc=ppc, seed=3 + 10 * seed),
+            "electrons": maxwellian(
+                -1, mass_e, density, Te, ppc=ppc, seed=4 + 10 * seed
+            ),
         },
         bz=bz,
     )
     k_grid = 2 / dl * np.sin(k * dl / 2)
-    w_p2 = plasma_frequency(1, -1, mass_e) ** 2 + plasma_frequency(1, 1, 1.0) ** 2
+    w_pe2 = plasma_frequency(density, -1, mass_e) ** 2
+    w_p2 = w_pe2 + plasma_frequency(density, 1, 1.0) ** 2
     S2 = shape_factor2(k, interp_order)
-    expected = leapfrog(np.sqrt(S2 * w_p2 + (c_over_va * k_grid) ** 2))
+    cold2 = S2 * w_p2 + (c_over_va * k_grid) ** 2
+    # warm transverse wave: w_pe^2 -> w_pe^2 (1 + k^2 v_th,x^2 / w^2)
+    warm2 = S2 * w_pe2 * k**2 * (Te / mass_e) / cold2
+    expected = leapfrog(np.sqrt(cold2 + warm2))
 
     Bz = mode_amplitude(diag_dir, "B", "z", times, cells, mode)
-    measured = standing_frequency(times, Bz, guess=expected)
-    return check(f"light order {interp_order}", measured, expected, FREQUENCY_TOLERANCE)
+    measured, error, damping = standing_fit(times, Bz, guess=expected)
+    return measured, error, damping, expected
+
+
+# heavy neutralizing ions: with m_i = 1, k v0 / w_pb = 0.83 sits where an ion-coupled root and
+# the electron two-stream root exchange the largest growth (gamma jumps from 14.1 to 11.8
+# between 0.8 and 0.9), the expected value is ill-conditioned. With m_i = 100, w_pi = 1.
+two_stream_ion_mass = 100.0
 
 
 def two_stream_growth(k, v0, interp_order):
     """largest imaginary part of w, roots of the cold two-beam + ions dispersion relation"""
-    S2 = shape_factor2(k, interp_order)
+    S2 = shape_factor2(k, interp_order) * k_over_K(k)
     w_pb2 = S2 * plasma_frequency(0.5, -1, mass_e) ** 2
-    w_pi2 = S2 * plasma_frequency(1, 1, 1.0) ** 2
+    w_pi2 = S2 * plasma_frequency(1, 1, two_stream_ion_mass) ** 2
     a, b = k * v0, w_pb2
     # w^2 (w-a)^2 (w+a)^2 = w_pi^2 (w-a)^2 (w+a)^2 + b w^2 ((w+a)^2 + (w-a)^2)
     w = np.polynomial.Polynomial([0, 1])
@@ -229,7 +261,7 @@ def two_stream_growth(k, v0, interp_order):
     return max(r.imag for r in (lhs - rhs).roots())
 
 
-def two_stream(interp_order):
+def two_stream(interp_order, seed=0):
     cells, mode, v0 = 32, 1, 6.0
     k = 2 * np.pi * mode / (cells * dl)
 
@@ -246,34 +278,66 @@ def two_stream(interp_order):
         cells,
         final_time=12 / expected,
         populations={
-            "protons": maxwellian(1, 1.0, 1.0, 1e-4, ppc=200, seed=5),
+            "ions": maxwellian(
+                1, two_stream_ion_mass, 1.0, 1e-4, ppc=200, seed=5 + 10 * seed
+            ),
             "beam_right": maxwellian(
-                -1, mass_e, 0.5, 1e-4, vx=beam(+1), ppc=200, seed=6
+                -1, mass_e, 0.5, 1e-4, vx=beam(+1), ppc=200, seed=6 + 10 * seed
             ),
             "beam_left": maxwellian(
-                -1, mass_e, 0.5, 1e-4, vx=beam(-1), ppc=200, seed=7
+                -1, mass_e, 0.5, 1e-4, vx=beam(-1), ppc=200, seed=7 + 10 * seed
             ),
         },
     )
     amplitude = np.abs(mode_amplitude(diag_dir, "E", "x", times, cells, mode))
 
-    # linear phase: between 30 times the initial level and a tenth of the maximum
-    peak = np.argmax(amplitude)
-    window = (amplitude[:peak] > 30 * amplitude[0]) & (
-        amplitude[:peak] < 0.1 * amplitude[peak]
+    # linear phase: from 3 e-foldings after t=0 (the velocity-only seed still projects onto the
+    # eigenmode before: amplitude x155 in the first 2 e-foldings, the decaying root is gone
+    # after) until the amplitude first exceeds 30% of saturation. Saturation is the first
+    # approach to the maximum: later bounces can exceed it.
+    saturation = amplitude.max()
+    end = np.argmax(amplitude > 0.3 * saturation)
+    assert np.any(amplitude[end:] > 0.9 * saturation), "saturation not reached"
+    window = slice(np.argmax(times > 3 / expected), end)
+    t, log_a = times[window], np.log(amplitude[window])
+    assert len(t) >= 8, f"linear phase too short ({len(t)} dumps)"
+    measured = np.polyfit(t, log_a, 1)[0]
+    half = len(t) // 2
+    lower = np.polyfit(t[:half], log_a[:half], 1)[0]
+    upper = np.polyfit(t[half:], log_a[half:], 1)[0]
+    print(
+        f"two-stream growth on the lower/upper half of the window: {lower:.3f} / {upper:.3f}"
     )
-    assert window.sum() >= 10, f"linear phase too short ({window.sum()} dumps)"
-    measured = np.polyfit(times[:peak][window], np.log(amplitude[:peak][window]), 1)[0]
-    return check(
-        f"two-stream order {interp_order}", measured, expected, GROWTH_TOLERANCE
-    )
+    return measured, expected
 
 
 def main():
     interp_orders = [int(arg) for arg in sys.argv[1:]] or [1, 2, 3]
-    results = [
-        case(order) for order in interp_orders for case in (langmuir, light, two_stream)
-    ]
+    results = []
+    for order in interp_orders:
+        for name, case in (("langmuir", langmuir), ("light", light)):
+            measured, error, damping, expected = case(order)
+            print(
+                f"{name} order {order}: fit error {error / expected:.1e}, damping {damping:.3g}"
+            )
+            results.append(
+                check(f"{name} order {order}", measured, expected, TOLERANCES[name])
+            )
+            if name == "light":
+                ok = damping / expected < MAX_LIGHT_DAMPING
+                print(
+                    f"light damping / w = {damping / expected:.2e} {'ok' if ok else 'FAILED'}"
+                )
+                results.append(ok)
+        measured, expected = two_stream(order)
+        results.append(
+            check(
+                f"two-stream order {order}",
+                measured,
+                expected,
+                TOLERANCES["two-stream"],
+            )
+        )
     if not all(results):
         sys.exit(1)
 
