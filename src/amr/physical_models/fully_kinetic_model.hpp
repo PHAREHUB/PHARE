@@ -56,6 +56,8 @@ public:
 
     core::FullyKineticState<Electromag, Ions> state;
     double const c_over_va; // speed of light over the Alfven speed
+    // binomial filter passes on the deposited current, 0: no filter
+    std::size_t const current_filter_passes;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
 
@@ -65,6 +67,8 @@ public:
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
         , c_over_va{dict["c_over_va"].template to<double>()}
+        , current_filter_passes{static_cast<std::size_t>(
+              cppdict::get_value(dict, "current_filter_passes", 0))}
         , resourcesManager{_resourcesManager}
     {
         // periodic only: no particle boundary conditions yet, and the Esirkepov segment would

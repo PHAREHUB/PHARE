@@ -4,6 +4,7 @@
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/numerics/esirkepov/esirkepov.hpp"
+#include "core/numerics/filter/binomial_filter.hpp"
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
@@ -18,6 +19,13 @@ namespace PHARE::solver
  * summed on patch borders. Domain particles are the owned ones: the push (or the level
  * initializer) erased the others. Patch ghost particles never deposit, their owner does.
  * A particle crossing a cell in a step stops the run on all ranks, the error names its population.
+ *
+ * With model.current_filter_passes > 0, J is then filtered by binomial passes. A pass reads one
+ * ghost layer and writes the physical nodes only, so after a pass the ghosts still hold the
+ * unfiltered neighbor values: the ghosts are filled again before every pass, fill then filter,
+ * never two passes on one fill. (A ghost width of 2, order 1, could serve 2 passes per fill:
+ * a later optimization keeping this loop.) The solver and the level initializer both deposit
+ * here, so the E half step back of t=0 sees the filtered current too.
  */
 template<typename FKModel, typename Messenger>
 void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
@@ -60,6 +68,13 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
 
     TimeSetter{level, model, time}(J);
     messenger.fillCurrentBorders(J, level, time);
+
+    for (std::size_t pass = 0; pass < model.current_filter_passes; ++pass)
+    {
+        messenger.fillCurrentGhosts(J, level, time);
+        for (auto& patch : rm.enumerate(level, J))
+            core::BinomialFilter{amr::layoutFromPatch<GridLayout>(*patch)}(J);
+    }
 }
 
 } // namespace PHARE::solver
