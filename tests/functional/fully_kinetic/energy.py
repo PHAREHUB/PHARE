@@ -9,10 +9,10 @@ field part (E at half steps, B at integer steps). The dumped E is half a step be
 label: the dump at t_n is E^{n-1/2}, so E is dumped at t_n and t_{n+1}.
 
 Setup (default): v_th,e = 0.09 c (dx = 2.2 lambda_De), w_pe dt = 0.1, 32^2 cells, 64 particles
-per cell and species, 1000 steps (t = 2), strict setup checks. Measurement only, not a
-registered test: prints per seed the relative drift of W, total and after the first sample (E
-starts at 0, the field fluctuations take a few plasma periods to fill), and the B_z energy growth
-rate per unit time over W(0); then mean, std and mean + 3 sigma. Options: --help.
+per cell and species, 1000 steps (t = 2), strict setup checks. Measurement: prints per seed the
+relative drift of W, total and after the first sample (E starts at 0, the field fluctuations
+take a few plasma periods to fill), and the B_z energy growth rate per unit time over W(0) with
+its fit error; then mean, std and mean + 3 sigma. Options: --help.
 
 Measured, seed 0, Debug build; 2D runs with the C++ at a15c436cc, 1D at 524f91e6d or a15c436cc
 (the 1D module build time was not recorded). In 2D the grid scale B_z noise grows linearly in
@@ -24,9 +24,24 @@ unfiltered charge conserving deposition, the current filter (--filter-passes) is
 - 2D, default setup: +3.3e-3 total, +2.7e-3 after step 100; B_z energy grows 6.7e-5 per unit
   time (4.2e-4 of W(0)), from 2.0e-5 at t = 0.2 to 1.4e-4 at t = 2; kinetic energy +1.5e-3
 - 2D, default setup, --half-dt: +3.5e-3, +2.8e-3; B_z grows 6.3e-5 per unit time
+
+Current filter, C++ at a7e231319, Debug, seed 0, default setup (B_z growth / W(0) per unit
+time; unfiltered 4.22e-4 +- 1.2e-5): one pass 5.94e-5 (x 0.141, predicted 0.13), +3.5e-4 after
+step 100; two passes 2.17e-5 (x 0.051, predicted 0.064), +1.9e-4 after step 100.
+
+--check (registered, level 10, label physics): --short runs (16^2 cells, 24 particles per cell
+and species, 400 steps, fit over t = 0.08 ... 0.8), without and with one filter pass, seed 0.
+Calibration by hand, C++ at a7e231319, Debug, seeds 0 1 2 (~23 s per run):
+- unfiltered: 1.14e-3 +- 1.0e-4, 1.11e-3 +- 7.7e-5, 1.07e-3 +- 7.6e-5 (11.1, 14.5, 14.1 fit
+  errors)
+- one pass: 1.89e-4, 1.81e-4, 7.48e-5; ratios 0.166, 0.163, 0.070 (mean 0.133, std 0.045,
+  mean + 3 sigma 0.27), bound 0.5
+With 32 particles per cell the check took 60.8 s (over the 60 s budget), with the same
+significance (16.5, 12.1, 9.1 fit errors) and ratios (0.219, 0.112, 0.072).
 """
 
 import argparse
+import dataclasses
 from dataclasses import dataclass
 
 import numpy as np
@@ -41,6 +56,12 @@ from pyphare.simulator.simulator import Simulator
 Te = mass_e * 0.9**2
 Ti = Te
 masses = {"protons": 1.0, "electrons": mass_e}
+
+# --check: one filter pass keeps cos^4(k dx / 2) cos^4(k dy / 2) of the grid scale B_z drive,
+# 0.13 once weighted by the unfiltered spectrum (experiment A); calibration in the docstring
+PREDICTED_RATIO = 0.13
+RATIO_BOUND = 0.5
+SIGNIFICANCE = 3  # unfiltered growth over its fit error
 
 
 @dataclass(frozen=True)
@@ -193,12 +214,14 @@ def measure(setup, seed):
         )
     drift = (energy[-1] - energy[0]) / energy[0]
     heating = (energy[-1] - energy[1]) / energy[0]
-    bz_rate = np.polyfit(times[1:], np.array(bz[1:]) / energy[0], 1)[0]
+    fit, covariance = np.polyfit(times[1:], np.array(bz[1:]) / energy[0], 1, cov=True)
+    bz_rate, bz_rate_error = fit[0], np.sqrt(covariance[0, 0])
     print(
         f"seed {seed}: W / W(0) - 1 = {drift:+.3e} total, {heating:+.3e} after step"
-        f" {samples[1]}; B_z energy growth / W(0) = {bz_rate:.3e} per unit time"
+        f" {samples[1]}; B_z energy growth / W(0) = {bz_rate:.3e} +- {bz_rate_error:.1e}"
+        f" per unit time ({bz_rate / bz_rate_error:.1f} fit errors)"
     )
-    return drift, heating, bz_rate
+    return drift, heating, bz_rate, bz_rate_error
 
 
 def parse_args():
@@ -221,6 +244,16 @@ def parse_args():
         "--order", type=int, choices=[1, 2, 3], default=1, help="interpolation order"
     )
     parser.add_argument(
+        "--short",
+        action="store_true",
+        help="16^2 cells, 24 particles per cell, 400 steps (the registered test size)",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="short runs without and with one filter pass, first seed only: the test",
+    )
+    parser.add_argument(
         "--filter-passes",
         type=int,
         default=0,
@@ -229,20 +262,48 @@ def parse_args():
     return parser.parse_args()
 
 
+def check(setup, seed):
+    """the B_z energy growth must be significant without the filter, and one filter pass must
+    cut it by about the transfer factor of the grid scale modes (0.13 predicted)"""
+    unfiltered = measure(setup, seed)
+    filtered = measure(dataclasses.replace(setup, filter_passes=1), seed)
+    rate, error = unfiltered[2], unfiltered[3]
+    ratio = filtered[2] / rate
+    print(
+        f"filtered / unfiltered B_z growth = {ratio:.3f} (predicted {PREDICTED_RATIO})"
+    )
+    if rate < SIGNIFICANCE * error:
+        raise RuntimeError(
+            f"unfiltered B_z growth {rate:.3e} below {SIGNIFICANCE} x {error:.1e}"
+        )
+    if ratio > RATIO_BOUND:
+        raise RuntimeError(
+            f"filtered / unfiltered B_z growth {ratio:.3f} > {RATIO_BOUND}"
+        )
+
+
 def main():
     args = parse_args()
+    short = args.short or args.check
     setup = Setup(
         ndim=1 if args.one_d else 2,
-        cells_per_direction=64 if args.one_d else 32,
+        cells_per_direction=64 if args.one_d else 16 if short else 32,
+        ppc=24 if short else 64,
+        physical_steps=400 if short else 1000,
+        sample_every=40 if short else 100,
         interp_order=args.order,
         substeps=2 if args.half_dt else 1,
         filter_passes=args.filter_passes,
     )
+    if args.check:
+        check(setup, args.seeds[0])
+        return
     results = np.array([measure(setup, seed) for seed in args.seeds])
     for name, values in (
         ("energy drift, total", results[:, 0]),
         (f"energy drift after step {setup.sample_every}", results[:, 1]),
         ("B_z energy growth / W(0) per unit time", results[:, 2]),
+        ("its fit error", results[:, 3]),
     ):
         print(
             f"{name}, {len(args.seeds)} seeds: mean {values.mean():+.3e},"
