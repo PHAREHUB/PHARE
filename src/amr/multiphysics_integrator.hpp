@@ -436,11 +436,12 @@ namespace solver
          *
          * Only called by SAMRAI at startup, in
          * TimeRefinementIntegrator::initializeRefinedTimesteppingLevelData, for the levels that
-         * exist at that time (never on restart). For a level > 0, SAMRAI keeps the min between
-         * this value and getMaxFinerLevelDt.
+         * exist at that time (never on restart). For a level L > 0, its first advance overwrites
+         * this function's value with the min between the coarse dt (dt of level L-1) and
+         * getMaxFinerLevelDt. Therefore, getLevelDt only sets dt at t=0 on level 0.
          *
          * - adaptive mode: computes the level's stable dt on the initial state with
-         *   levelStableDt_ and stores it in levelDts_.
+         *   levelStableDt_. As a side effect, it updates the levelDts_ list.
          * - constant mode: reads levelDts_, already filled by initializeLevelIntegrator.
          *
          * @param level the level SAMRAI has just created and initialized
@@ -469,7 +470,10 @@ namespace solver
          *   constant time-stepping mode.
          * - SAMRAI's TimeRefinementIntegrator::initializeRefinedTimesteppingLevelData, at
          *   simulation startup, for the levels > 0 that exist at that time: their first dt is
-         *   the min between getMaxFinerLevelDt and getLevelDt.
+         *   initialized with the min between getLevelDt and getMaxFinerLevelDt, but it gets
+         *   immediately overwritten at its first advance in SAMRAI's
+         *   TimeRefinementIntegrator::advanceRecursivelyForRefinedTimestepping as the min between
+         *   getMaxFinerLevelDt and the coarse dt value.
          * - SAMRAI's TimeRefinementIntegrator::advanceRecursivelyForRefinedTimestepping, at the
          *   first advance of a level created by a regrid: getLevelDt is not called, and the
          *   first dt of the new level is bounded by getMaxFinerLevelDt (and by the coarser dt).
