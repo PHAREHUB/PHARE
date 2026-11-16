@@ -8,6 +8,7 @@
 #include "amr/messenger_registration.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 #include "amr/solvers/solver.hpp"
 #include "amr/tagging/tagger.hpp"
 
@@ -343,6 +344,43 @@ namespace solver
 
 
 
+        // A restart file restores the patch data it contains, and leaves any other registered data
+        // unallocated. Data registered after the file was written (e.g. the ion current on the E
+        // nodes, #1577) would then be read unallocated: refuse the file instead.
+        void checkRestartRestoredAllData_(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                          int const coarsestLevel, int const finestLevel) const
+        {
+            auto const allocatedEverywhere = [&](int const id) {
+                for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
+                    for (auto const& patch : *hierarchy.getPatchLevel(ilvl))
+                        if (!patch->checkAllocated(id))
+                            return false;
+                return true;
+            };
+
+            std::vector<std::string> missing;
+            for (auto const* resources : amr::ResourcesManagerGlobals::INSTANCE().resources_)
+                for (auto const& [name, info] : *resources)
+                    if (!allocatedEverywhere(info.id))
+                        missing.push_back(name);
+
+            // decided on every rank: a rank throwing alone would leave the others waiting in the
+            // next collective call
+            if (mpi::any(missing.size() > 0))
+            {
+                std::string names = missing.empty() ? " found missing on another rank" : "";
+                for (auto const& name : missing)
+                    names += " " + name;
+                throw std::runtime_error(
+                    "Error - restart: the restart file does not contain data this version of PHARE "
+                    "needs ("
+                    + names
+                    + " ). It was probably written by an earlier version; restart "
+                      "files written before #1577 (ion current on the E nodes) cannot be loaded.");
+            }
+        }
+
+
         void
         resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                     int const coarsestLevel, int const finestLevel) override
@@ -363,9 +401,13 @@ namespace solver
                         auto time = dict_["restarts"]["restart_time"].template to<double>();
                         load_balancer_manager_->allocate(*patch, time);
                     }
-                    // if load balance on restart advance
-                    load_balancer_manager_->estimate(*level, getModel_(ilvl));
                 }
+                // after the load balancer allocates its own data, before anything reads the ions
+                checkRestartRestoredAllData_(*hierarchy, coarsestLevel, finestLevel);
+                // if load balance on restart advance
+                for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
+                    load_balancer_manager_->estimate(*hierarchy->getPatchLevel(ilvl),
+                                                     getModel_(ilvl));
                 restartInitialized_ = true;
             }
 
