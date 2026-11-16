@@ -1,0 +1,196 @@
+#ifndef PHARE_FULLY_KINETIC_MODEL_HPP
+#define PHARE_FULLY_KINETIC_MODEL_HPP
+
+
+#include "core/def.hpp"
+#include "core/models/fully_kinetic_state.hpp"
+#include "core/boundary/boundary_manager.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+
+#include "initializer/data_provider.hpp"
+
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
+
+
+#include <string>
+
+namespace PHARE::solver
+{
+/**
+ * @brief FullyKineticModel is the IPhysicalModel of a plasma where all species, electrons
+ * included, are particles. It exposes the same types and state members as HybridModel (minus the
+ * fluid electrons) so that the hybrid messenger machinery can be reused on it.
+ */
+template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types,
+         typename Grid_t>
+class FullyKineticModel : public IPhysicalModel<AMR_Types>
+{
+public:
+    static constexpr auto dimension    = GridLayoutT::dimension;
+    static constexpr auto interp_order = GridLayoutT::options.interp_order;
+
+    using Interface              = IPhysicalModel<AMR_Types>;
+    using amr_types              = AMR_Types;
+    using patch_t                = AMR_Types::patch_t;
+    using level_t                = AMR_Types::level_t;
+    using physical_quantity_type = core::HybridQuantity;
+    using gridlayout_type        = GridLayoutT;
+    using electromag_type        = Electromag;
+    using vecfield_type          = Electromag::vecfield_type;
+    using field_type             = vecfield_type::field_type;
+    using grid_type              = Grid_t;
+    using ions_type              = Ions;
+    using particle_array_type    = Ions::particle_array_type;
+    using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
+    using boundary_manager_type  = core::BoundaryManager<gridlayout_type, field_type>;
+    using ParticleInitializerFactory
+        = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+
+    static constexpr std::string_view model_type_name = "FullyKineticModel";
+    static inline std::string const model_name{model_type_name};
+
+
+    core::FullyKineticState<Electromag, Ions> state;
+    std::shared_ptr<resources_manager_type> resourcesManager;
+    std::shared_ptr<boundary_manager_type> boundaryManager;
+
+
+    FullyKineticModel(PHARE::initializer::PHAREDict const& dict,
+                      std::shared_ptr<resources_manager_type> const& _resourcesManager)
+        : IPhysicalModel<AMR_Types>{model_name}
+        , state{dict}
+        , resourcesManager{_resourcesManager}
+    {
+        // no physical boundary conditions yet (periodic only), the messenger still needs one
+        if (dict.contains("grid"))
+            core::validatePhysicalBoundariesDeclared<dimension>(dict["grid"]);
+        auto const has_bcs = dict.contains("grid") && dict["grid"].contains("domain_boundaries");
+        boundaryManager    = std::make_shared<boundary_manager_type>(
+            has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
+            std::vector<core::HybridQuantity::Scalar>{},
+            std::vector<core::HybridQuantity::Vector>{});
+    }
+
+    ~FullyKineticModel() override {}
+
+
+    /**
+     * @brief initialize loads the particles of all species and the magnetic field.
+     * The electric field starts at zero, the level initializer then moves it half a step back.
+     */
+    void initialize(level_t& level) override
+    {
+        for (auto& patch : level)
+        {
+            auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
+            auto _      = resourcesManager->setOnPatch(*patch, state.electromag, state.ions);
+
+            for (auto& pop : state.ions)
+            {
+                auto const& info         = pop.particleInitializerInfo();
+                auto particleInitializer = ParticleInitializerFactory::create(info, pop.name());
+                particleInitializer->loadParticles(pop.domainParticles(), layout);
+            }
+
+            state.electromag.initialize(layout);
+            state.electromag.E.zero();
+        }
+    }
+
+
+    void allocate(patch_t& patch, double const allocateTime) override
+    {
+        resourcesManager->allocate(state, patch, allocateTime);
+    }
+
+
+    /**
+     * @brief fillMessengerInfo declares the same quantities as the hybrid model, plus the
+     * particle current and half step charge density that are summed on patch borders.
+     */
+    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
+    {
+        auto& fkInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
+
+        fkInfo.modelMagnetic      = state.electromag.B.name();
+        fkInfo.modelElectric      = state.electromag.E.name();
+        fkInfo.modelIonDensity    = state.ions.chargeDensityName();
+        fkInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
+        fkInfo.modelCurrent       = state.J.name();
+        fkInfo.modelChargeHalf    = state.rho.name();
+
+        fkInfo.initElectric.emplace_back(state.electromag.E.name());
+        fkInfo.initMagnetic.emplace_back(state.electromag.B.name());
+
+        fkInfo.ghostElectric.push_back(fkInfo.modelElectric);
+        fkInfo.ghostMagnetic.push_back(fkInfo.modelMagnetic);
+
+        for (auto const& pop : state.ions)
+        {
+            fkInfo.interiorParticles.push_back(pop.name());
+            fkInfo.levelGhostParticlesOld.push_back(pop.name());
+            fkInfo.levelGhostParticlesNew.push_back(pop.name());
+            fkInfo.patchGhostParticles.push_back(pop.name());
+            fkInfo.ghostFlux.emplace_back(pop.flux().name());
+            fkInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
+        }
+
+        fkInfo.maxBorderFields.emplace_back(state.ions.chargeDensity().name());
+        fkInfo.maxBorderVecFields.emplace_back(state.ions.chargeFlux().name());
+    }
+
+
+    NO_DISCARD auto setOnPatch(patch_t& patch)
+    {
+        return resourcesManager->setOnPatch(patch, *this);
+    }
+
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
+    NO_DISCARD bool isUsable() const { return state.isUsable(); }
+
+    NO_DISCARD bool isSettable() const { return state.isSettable(); }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
+    std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
+};
+
+
+
+
+template<typename Model>
+auto constexpr is_fully_kinetic_model(Model* m) -> decltype(m->model_type_name, bool())
+{
+    return Model::model_type_name == "FullyKineticModel";
+}
+
+template<typename... Args>
+auto constexpr is_fully_kinetic_model(Args...)
+{
+    return false;
+}
+
+template<typename Model>
+auto constexpr is_fully_kinetic_model_v = is_fully_kinetic_model(static_cast<Model*>(nullptr));
+
+
+// models whose species are particles, and that share the hybrid diagnostics and messengers
+template<typename Model>
+auto constexpr is_particle_model_v = is_hybrid_model_v<Model> or is_fully_kinetic_model_v<Model>;
+
+
+} // namespace PHARE::solver
+
+#endif

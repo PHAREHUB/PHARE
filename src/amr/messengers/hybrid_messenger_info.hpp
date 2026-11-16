@@ -42,6 +42,11 @@ namespace amr
         std::string modelIonChargeFlux;
         std::string modelIonDensity;
 
+        // fully kinetic model only: the particle current and the charge density at the half
+        // step, both deposited by particles and summed on patch borders
+        std::string modelCurrent;
+        std::string modelChargeHalf;
+
         // store names of vector fields that need to be initialized by refinement
         // moments are initialized by particles so only EM fields need to be init.
         std::vector<std::string> initMagnetic;

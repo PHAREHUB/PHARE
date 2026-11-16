@@ -14,6 +14,7 @@
 
 #include "amr/types/amr_types.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -47,13 +48,14 @@ using Electromag1D = Electromag<VecField1D>;
 using Electrons1D  = Electrons<Ions1D>;
 using HybridModelT
     = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types, Grid1D>;
+using FullyKineticModelT = FullyKineticModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types, Grid1D>;
 // using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types, Grid1D>;
 using ResourcesManagerT = ResourcesManager<GridYee1D, Grid1D>;
 
 
 using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
-PHARE::initializer::PHAREDict createDict()
+PHARE::initializer::PHAREDict createDict(bool const withElectrons = true)
 {
     PHARE::initializer::PHAREDict dict;
     dict["ions"]["nbrPopulations"] = std::size_t{2};
@@ -125,8 +127,11 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<InitFunctionT>(by);
     dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<InitFunctionT>(bz);
 
-    dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
-    dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
+    if (withElectrons)
+    {
+        dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
+        dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
+    }
 
     return dict;
 }
@@ -154,6 +159,46 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
 
     EXPECT_EQ("EM_B", modelInfo.modelMagnetic);
     EXPECT_EQ("EM_E", modelInfo.modelElectric);
+}
+
+
+
+
+static_assert(is_fully_kinetic_model_v<FullyKineticModelT>);
+static_assert(!is_hybrid_model_v<FullyKineticModelT>);
+static_assert(!is_fully_kinetic_model_v<HybridModelT>);
+static_assert(is_particle_model_v<FullyKineticModelT> and is_particle_model_v<HybridModelT>);
+
+
+TEST(AFullyKineticModel, isBuiltWithoutFluidElectrons)
+{
+    auto dict                                              = createDict(/*withElectrons=*/false);
+    dict["ions"]["pop0"]["particle_initializer"]["charge"] = 1.;
+
+    auto resourcesManager = std::make_shared<ResourcesManagerT>();
+    FullyKineticModelT model{dict, resourcesManager};
+
+    EXPECT_EQ("FullyKineticModel", model.name());
+    ASSERT_EQ(2u, model.state.ions.size());
+    EXPECT_EQ(+1., model.state.ions[0].charge());
+    EXPECT_EQ(-1., model.state.ions[1].charge());
+}
+
+
+TEST(AFullyKineticModel, fillsHybridMessengerInfo)
+{
+    auto resourcesManager = std::make_shared<ResourcesManagerT>();
+    FullyKineticModelT model{createDict(/*withElectrons=*/false), resourcesManager};
+
+    std::unique_ptr<IMessengerInfo> infoPtr = std::make_unique<HybridMessengerInfo>();
+    model.fillMessengerInfo(infoPtr);
+    auto& info = dynamic_cast<HybridMessengerInfo const&>(*infoPtr);
+
+    EXPECT_EQ("EM_B", info.modelMagnetic);
+    EXPECT_EQ("EM_E", info.modelElectric);
+    EXPECT_EQ(model.state.J.name(), info.modelCurrent);
+    EXPECT_EQ(model.state.rho.name(), info.modelChargeHalf);
+    EXPECT_EQ(2u, info.interiorParticles.size());
 }
 
 
