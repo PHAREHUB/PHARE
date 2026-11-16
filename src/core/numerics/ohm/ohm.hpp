@@ -49,16 +49,22 @@ public:
     {
     }
 
+    // pressureTerm: -grad(Pe)/n on the E edges, from the electron pressure closure (see
+    // pressure_term.hpp). n is only read by spatial hyper-resistivity.
     template<typename VecField, typename Field>
-    void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
-                    VecField const& J, VecField& Enew)
+    void operator()(Field const& n, VecField const& Ve, VecField const& pressureTerm,
+                    VecField const& B, VecField const& J, VecField& Enew)
     {
+        for (auto const c : {Component::X, Component::Y, Component::Z})
+            if (layout_.centering(pressureTerm(c)) != layout_.centering(Enew(c)))
+                throw std::runtime_error("Error - Ohm - the pressure term must be E-centred");
+
         // lift the resistive / hyper-resistive runtime flags into compile-time tags: the per-cell
         // E_Eq_ branches only via if constexpr, skipping the projection / laplacian when eta or
         // nu is zero without ever testing the flags inside the evalOnBox loop.
         Constexprifier{isResistive(),
                        isHyperResistive()}([&]<bool isResistiveV, bool isHyperResistiveV>() {
-            solve_<isResistiveV, isHyperResistiveV>(n, Ve, Pe, B, J, Enew);
+            solve_<isResistiveV, isHyperResistiveV>(n, Ve, pressureTerm, B, J, Enew);
         });
     }
 
@@ -66,26 +72,24 @@ private:
     GridLayout layout_;
 
     template<bool isResistive, bool isHyperResistive, typename VecField, typename Field>
-    void solve_(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
+    void solve_(Field const& n, VecField const& Ve, VecField const& pressureTerm, VecField const& B,
                 VecField const& J, VecField& Enew) const
     {
         using Pack = OhmPack<VecField, Field>;
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        auto const gradPe = grad(layout_, Pe);
-
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
+                Pack{Enew, n, Ve, B, J}, pressureTerm(Component::X), args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
+                Pack{Enew, n, Ve, B, J}, pressureTerm(Component::Y), args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
+                Pack{Enew, n, Ve, B, J}, pressureTerm(Component::Z), args...);
         });
     }
 
@@ -98,16 +102,16 @@ private:
     };
 
 
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
-             typename... IDXs>
-    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack,
+             typename PressureTerm, typename... IDXs>
+    void E_Eq_(OhmPack&& pack, PressureTerm const& pressureTerm, IDXs const&... ijk) const
     {
         auto const& [E, n, Ve, B, J]     = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, gradPe, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressureTerm(ijk...);
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -168,48 +172,6 @@ private:
             return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
         }
     }
-
-
-    template<auto component, typename Field, typename GradPe>
-    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
-    {
-        if constexpr (component == Component::X)
-        {
-            auto const nOnEx = GridLayout::template project<Scalar::rho, Scalar::Ex>(n, index);
-
-            return -gradPe(index) / nOnEx;
-        }
-
-        else if constexpr (component == Component::Y)
-        {
-            if constexpr (Field::dimension >= 2)
-            {
-                auto const nOnEy = GridLayout::template project<Scalar::rho, Scalar::Ey>(n, index);
-
-                return -gradPe(index) / nOnEy;
-            }
-            else
-            {
-                return 0.;
-            }
-        }
-
-        else if constexpr (component == Component::Z)
-        {
-            if constexpr (Field::dimension >= 3)
-            {
-                auto const nOnEz = GridLayout::template project<Scalar::rho, Scalar::Ez>(n, index);
-
-                return -gradPe(index) / nOnEz;
-            }
-            else
-            {
-                return 0.;
-            }
-        }
-    }
-
-
 
 
     template<auto component, typename VecField>

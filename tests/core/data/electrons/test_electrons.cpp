@@ -150,7 +150,7 @@ struct ElectronsTest : public ::testing::Test
 
     Electromag<VecFieldND> electromag;
 
-    UsableVecField<dim> J, F, Ve, Vi, chargeFlux;
+    UsableVecField<dim> J, F, Ve, Vi, chargeFlux, pressureTerm;
     UsableTensorField<dim> ionTensor, protonTensor;
 
     GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
@@ -198,6 +198,7 @@ struct ElectronsTest : public ::testing::Test
         , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
@@ -220,9 +221,10 @@ struct ElectronsTest : public ::testing::Test
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
 
-        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
-        auto const& [_, P] = pc.getCompileTimeResourcesViewList();
+        auto&& pc                 = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto const& [_, P, Pterm] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
+        pressureTerm.set_on(Pterm);
 
         auto const& [Jx, Jy, Jz] = J();
         auto const& [Fx, Fy, Fz] = chargeFlux();
@@ -522,6 +524,33 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 }
 
 
+// update() fills the pressure term with -Te grad(ln n), from the ion charge density and the
+// closure's own Te
+TYPED_TEST(ElectronsTest, ThatIsothermalPressureTermIsMinusTeGradLnNe)
+{
+    static constexpr auto dim = typename TypeParam::first_type{}();
+    using GridYee             = TestFixture::GridYee;
+
+    auto& electrons = this->electrons;
+    auto& layout    = this->layout;
+
+    electrons.update(layout);
+
+    auto expected = UsableVecField<dim>{"expected", layout, HybridQuantity::Vector::E};
+    IsothermalPressureTerm<GridYee>{Te}(layout, electrons.density(), expected);
+    auto const& term = electrons.pressureTerm();
+
+    auto nonZero = 0;
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+        layout.evalOnBox(term(c), [&](auto const&... ijk) {
+            ASSERT_TRUE(std::isfinite(term(c)(ijk...)));
+            EXPECT_EQ(term(c)(ijk...), expected(c)(ijk...));
+            nonZero += term(c)(ijk...) != 0.;
+        });
+    EXPECT_GT(nonZero, 0);
+}
+
+
 
 
 // two populations with different q/m drifting relative to each other:
@@ -620,6 +649,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
                            layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -634,9 +664,10 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
-        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
-        auto const& [_, P] = pc.getCompileTimeResourcesViewList();
+        auto&& pc                 = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto const& [_, P, Pterm] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
+        pressureTerm.set_on(Pterm);
 
         // uniform moments everywhere, ghost nodes included
         auto fill = [](auto& field, double const value) {
@@ -659,7 +690,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     GridYee layout                     = NDlayout<dim, Base::interp>::create();
     PHARE::initializer::PHAREDict dict = createTwoPopulationDict(pops);
 
-    UsableVecField<dim> J, Ve, Vi, chargeFlux;
+    UsableVecField<dim> J, Ve, Vi, chargeFlux, pressureTerm;
     UsableTensorField<dim> ionTensor;
     GridND ionChargeDensity, ionMassDensity, Pe;
     std::array<PopulationBuffers, nbrPops> popBuffers;
