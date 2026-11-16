@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 FullyKineticModel end to end, one level, periodic: kinetic ions and electrons, E from
-Ampere-Maxwell, Esirkepov current. Command line: dimension (1 if omitted), then optionally the
-interpolation orders (those of CASES if omitted).
+Ampere-Maxwell, Esirkepov current. Command line (--help): dimension (1 if omitted), the
+interpolation orders (those of CASES if omitted), --filter-passes N for the binomial current
+filter: the Python charge density of the Gauss check is then filtered the same way, since the
+filter commutes with the Yee divergence and the conserved residual is div E - c^2 F^N rho.
 
 With a seed, the initial particles do not depend on the tiling, so the same run on one patch
 and on several patches must give the same fields: this exercises the patch border sums of the
@@ -13,6 +15,7 @@ node in particle order, several patches partial sums then border sums), so the c
 headroom rather than asking for equality.
 """
 
+import argparse
 import itertools
 import unittest
 
@@ -26,8 +29,24 @@ from tests.simulator import SimulatorTest, parse_cli_args
 
 ph.NO_GUI()
 
-cli_args = parse_cli_args() or ["1"]
-ndim = int(cli_args[0])
+parser = argparse.ArgumentParser(description="FullyKineticModel end to end")
+parser.add_argument("ndim", nargs="?", type=int, choices=[1, 2, 3], default=1)
+parser.add_argument(
+    "orders",
+    nargs="*",
+    type=int,
+    choices=[1, 2, 3],
+    help="interpolation orders (those of CASES if omitted)",
+)
+parser.add_argument(
+    "--filter-passes",
+    type=int,
+    default=0,
+    help="binomial current filter passes (the Python charge density gets the same)",
+)
+cli = parser.parse_args(parse_cli_args())
+ndim = cli.ndim
+filter_passes = cli.filter_passes
 
 # cells per direction, the patch size of the tiled run (4, 16 and 8 patches: in 2D and 3D,
 # nodes shared by 4 and 8 patches), particles per cell and species, interpolation orders,
@@ -39,7 +58,7 @@ CASES = {
     3: {"cells": 16, "tiled": 8, "ppc": 2, "orders": [1, 2, 3], "steps": 20},
 }
 cells = CASES[ndim]["cells"]
-interp_orders = [int(order) for order in cli_args[1:]] or CASES[ndim]["orders"]
+interp_orders = cli.orders or CASES[ndim]["orders"]
 dl = 0.04
 L = cells * dl
 c_over_va = 10.0
@@ -47,10 +66,12 @@ mass_e = 0.04  # m_i / m_e = 25
 T = 0.03  # dx = 2.3 Debye lengths, 3 v_th,e / c = 0.27: no setup warning under strict
 time_step = 0.002  # omega_pe dt = 0.1, c dt / dx = 0.5
 time_step_nbr = CASES[ndim]["steps"]
-diag_dir = f"phare_outputs/fully_kinetic_{ndim}d"
+diag_dir = f"phare_outputs/fully_kinetic_{ndim}d_filter{filter_passes}"
 
 # relative difference of the tiled and single patch fields, and Gauss residual drift.
-# Measured: 0 everywhere; drift 2.3e-8 to 3.5e-8 (1D), 3.2e-8 to 5.5e-8 (2D), 3.2e-8 (3D)
+# Measured (Debug): 0 everywhere; drift 2.3e-8 to 3.5e-8 (1D), 3.2e-8 to 5.5e-8 (2D), 3.2e-8 to
+# 4.5e-8 (3D), C++ at a15c436cc. Current filter, C++ at a7e231319, order 1: 0 everywhere, drift
+# 8.6e-8 (2D, N=1), 1.2e-7 (2D, N=2), 8.2e-8 (3D, N=1), serial and on 3 ranks
 MAX_TILING_DIFFERENCE = 1e-6
 MAX_GAUSS_DRIFT = 1e-6
 
@@ -82,6 +103,7 @@ def config(largest_patch_size, diag_subdir, interp_order):
         interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
+        current_filter_passes=filter_passes,
         smallest_patch_size=8,
         largest_patch_size=largest_patch_size,
         diag_options={
@@ -182,7 +204,19 @@ def charge_density_at_half_step(diag_subdir, time, interp_order):
                 node = left + np.asarray(offsets)
                 w = weights * np.prod(shape(pos - node, interp_order), axis=1)
                 np.add.at(rho, tuple((node % cells).T), w)
-    return rho
+    return binomial(rho, filter_passes)
+
+
+def binomial(field, passes):
+    """the current filter on primal periodic nodes: (1/4, 1/2, 1/4) along every direction"""
+    for _ in range(passes):
+        for axis in range(ndim):
+            field = (
+                0.25 * np.roll(field, 1, axis)
+                + 0.5 * field
+                + 0.25 * np.roll(field, -1, axis)
+            )
+    return field
 
 
 def field_by_node(diag_subdir, quantity, component, time=time_step * time_step_nbr):

@@ -33,6 +33,9 @@ if(HighFive)
   phare_python3_exec(10      fully_kinetic_2d_o23 test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 2 3)
   phare_python3_exec(9       fully_kinetic_3d test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 3 1)
   phare_python3_exec(10      fully_kinetic_3d_o23 test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 3 2 3)
+  # current filter: J ghosts at patch corners, Gauss with the filtered charge
+  phare_python3_exec(9       fully_kinetic_2d_filter test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1)
+  phare_python3_exec(10      fully_kinetic_3d_filter test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 3 1 --filter-passes 1)
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)
@@ -48,6 +51,7 @@ if(HighFive)
     phare_mpi_python3_exec(9 3 fully_kinetic test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 3 fully_kinetic_2d test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1)
     phare_mpi_python3_exec(9 3 fully_kinetic_3d test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 3 1)
+    phare_mpi_python3_exec(9 3 fully_kinetic_2d_filter test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1)
     phare_mpi_python3_exec(9 4 mhd_shared_faces test_mhd_shared_faces.py ${CMAKE_CURRENT_BINARY_DIR})
 
   else() # serial only
