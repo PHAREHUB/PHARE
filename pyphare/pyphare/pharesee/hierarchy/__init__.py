@@ -1,12 +1,13 @@
 from pyphare.core.phare_utilities import listify
 
-from .hierarchy import PatchHierarchy
+from .hierarchy import PatchHierarchy, TimeNotFoundError
 from .scalarfield import ScalarField
 from .vectorfield import VectorField
 
 __all__ = [
     "PatchHierarchy",
     "ScalarField",
+    "TimeNotFoundError",
     "VectorField",
 ]
 

@@ -13,7 +13,7 @@ from ...core.phare_utilities import (
     refinement_ratio,
 )
 from ..particles import Particles
-from .hierarchy import PatchHierarchy, format_timestamp
+from .hierarchy import PatchHierarchy, TimeNotFoundError, format_timestamp
 from .hierarchy_utils import field_qties
 from .patch import Patch
 from .patchdata import FieldData, ParticleData
@@ -219,6 +219,9 @@ def patch_levels_from_h5(h5f, time, selection_box=None):
     interp_order = int(h5f.attrs["interpOrder"]) if "interpOrder" in h5f.attrs else 0
     basename = os.path.basename(h5f.filename)
 
+    if time not in h5f[h5_time_grp_key]:
+        raise TimeNotFoundError(f"{time} not found in {h5f.filename}")
+
     patch_levels = {}
 
     for lvl_key, lvl in h5f[h5_time_grp_key][time].items():
@@ -295,7 +298,7 @@ def add_data_from_h5(hier, filepath, time):
     Data will be extracted from the selection box of the hierarchy at that time.
     """
     if not hier.has_time(time):
-        raise ValueError("time does not exist in hierarchy")
+        raise TimeNotFoundError(f"{time} does not exist in hierarchy")
 
     import h5py  # see doc/conventions.md section 2.1.1
 
