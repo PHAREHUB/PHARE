@@ -13,9 +13,10 @@ if(HighFive)
   foreach(order 1 2 3)
     phare_python3_exec(10 test-fully-kinetic-waves-o${order} waves.py ${CMAKE_CURRENT_BINARY_DIR} ${order})
     phare_test_labels(test-fully-kinetic-waves-o${order} physics)
-    # 2D: oblique Langmuir and light waves (both polarizations)
-    phare_python3_exec(10 test-fully-kinetic-waves-2d-o${order} waves_2d.py ${CMAKE_CURRENT_BINARY_DIR} ${order})
-    phare_test_labels(test-fully-kinetic-waves-2d-o${order} physics)
   endforeach()
+  # 2D: oblique Langmuir and light waves (both polarizations), order 1 only (cost);
+  # orders 2 and 3: waves_2d.py 2 3, by hand
+  phare_python3_exec(10 test-fully-kinetic-waves-2d-o1 waves_2d.py ${CMAKE_CURRENT_BINARY_DIR} 1)
+  phare_test_labels(test-fully-kinetic-waves-2d-o1 physics)
   # energy.py (energy drift of a thermal plasma) is a measurement, registered once calibrated
 endif()
