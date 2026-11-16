@@ -114,7 +114,8 @@ namespace solver
 
             for (auto& patch : rm.enumerate(level, ions))
             {
-                // now all nodes are complete, the total ion moments
+                // now all domain nodes are complete (ghost nodes may not be, and are not
+                // read), the total ion moments
                 // can safely be computed.
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
