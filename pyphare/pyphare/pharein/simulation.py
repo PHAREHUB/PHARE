@@ -200,7 +200,6 @@ def check_path(**kwargs):
 # ------------------------------------------------------------------------------
 
 
-
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
 # This should match possibleSimulators() in meta_utilities.h
 valid_refined_particle_nbr = {
@@ -703,6 +702,7 @@ def checker(func):
             "hyper_resistivity",
             "hyper_mode",
             "strict",
+            "min_initial_density",
             "restart_options",
             "tag_buffer",
             "description",
@@ -731,6 +731,7 @@ def checker(func):
         dl, cells = check_domain(**kwargs)
 
         kwargs["strict"] = kwargs.get("strict", False)
+        kwargs["min_initial_density"] = kwargs.get("min_initial_density", None)
 
         kwargs["dl"] = dl
         kwargs["cells"] = cells
@@ -758,8 +759,8 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
-            ndim, **kwargs
+        kwargs["periodicities"], kwargs["domain_boundaries"] = (
+            boundary.resolve_boundaries(ndim, **kwargs)
         )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
@@ -1144,6 +1145,10 @@ class Simulation:
         * **strict** (``bool``), turns warnings into errors (default False)
         * **dry_run** (``bool``), default=False (or the `PHARE_DRY_RUN` environment variable if set), builds and validates the simulation - constructing models, populating the dict, building the hierarchy - without actually initializing or advancing it. `Simulator.initialize()`, `advance()` and `run()` become no-ops. Useful to check that a script is well-formed without paying for a real run.
         * **domain_boundaries** (``dict``) domain boundaries per location (e.g. "xlower"); a direction is periodic unless both of its locations are given (MHD only)
+        * **min_initial_density** (``float``), smallest initial ion charge density accepted on the
+          grid nodes of the domain of level 0, checked when the dictionary is populated: the electron
+          velocity and Ohm's law divide by it, and a net negative charge is refused. 0 disables the
+          check. Default None: no check
     """
 
     @checker

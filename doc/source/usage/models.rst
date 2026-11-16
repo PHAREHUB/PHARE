@@ -100,6 +100,17 @@ Examples:
 - ``tests/functional/harris/harris_2d.py`` - one population.
 - ``tests/functional/ionIonBeam/ion_ion_beam1d.py`` - two populations.
 
+Minimum density
+^^^^^^^^^^^^^^^
+
+The electron velocity :math:`\mathbf{V}_e = (\sum_s q_s \mathbf{F}_s - \mathbf{J})/n`
+and Ohm's law divide by the ion charge density. If ``min_initial_density`` is given to
+``Simulation``, an initial condition whose total ion charge density goes below it, a net
+negative charge included, on any grid node of the domain of level 0, is refused. Without it
+no check is made, so that existing inputs with deliberately rarefied regions are unchanged;
+``min_initial_density=0`` disables it. It is made once, in Python, on the initial density:
+it does not see the density of refined levels nor its later evolution.
+
 A Hybrid simulation also requires an ``ElectronModel`` block, see below.
 
 Hybrid: ElectronModel
