@@ -5,15 +5,16 @@
 #include "core/errors.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/ampere/ampere_maxwell.hpp"
-#include "core/numerics/esirkepov/esirkepov.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/solvers/solver.hpp"
+#include "amr/solvers/particle_level_boxings.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
+#include "amr/solvers/fk_current_deposit.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 
@@ -39,8 +40,8 @@ namespace PHARE::solver
  *  4. Boris push with E^{n+1/2} and B^{n+1/2}
  *  5. B^{n+1} = B^n - dt curl E^{n+1/2}
  *
- * The model E is labelled with the time of B, half a step ahead of its true time E^{n+1/2},
- * and J with the time of the particles it comes from, t_n. The deposit only depends on the
+ * The model E is labelled with its own time t_{n+1/2}, J with the time of the particles it
+ * comes from, t_n. The deposit only depends on the
  * particles at time n, so anything that changes particles between two steps is accounted for.
  * Single level only for now.
  */
@@ -61,16 +62,13 @@ private:
 
     using Faraday_t    = FaradayLevelTransformer<FKModel>;
     using IonUpdater_t = core::IonUpdater<Ions, Electromag, GridLayout>;
-    using Esirkepov_t  = core::Esirkepov<dimension, interp_order>;
 
     // E^{n+1/2} and B^{n+1/2}, the fields the particles are pushed with
     Electromag electromagHalf_{"EMHalf"};
 
     VecFieldT fluxSumE_{this->name() + "_fluxSumE", core::HybridQuantity::Vector::E};
 
-    double c2_;
     IonUpdater_t ionUpdater_;
-    Esirkepov_t esirkepov_;
 
 
 public:
@@ -82,7 +80,6 @@ public:
 
     explicit SolverFK(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"FK"}
-        , c2_{square_(dict["c_over_va"].template to<double>())}
         , ionUpdater_{dict["algo"]["ion_updater"]}
     {
     }
@@ -176,50 +173,11 @@ public:
 
 
 private:
-    static double square_(double const x) { return x * x; }
-
-    void depositCurrent_(level_t& level, FKModel& model, Messenger& messenger,
-                         double const currentTime, double const dt);
-
     void moveParticles_(level_t& level, FKModel& model, Messenger& messenger,
                         double const currentTime, double const newTime);
 
 
-    void make_boxes(hierarchy_t const& hierarchy, level_ptr const& level)
-    {
-        auto& levelBoxing = boxing[level->getLevelNumber()] = LevelBoxing{level, {}};
-
-        auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, level->getLevelNumber());
-
-        for (auto const& patch : *level)
-            if (auto [it, suc] = levelBoxing.patches.try_emplace(
-                    amr::to_string(patch->getGlobalId()),
-                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors),
-                             amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
-                !suc)
-                throw std::runtime_error("boxing map insertion failure");
-    }
-
-    auto& setup_level(hierarchy_t const& hierarchy, int const levelNumber)
-    {
-        auto level = hierarchy.getPatchLevel(levelNumber);
-        // level may have been removed and re-created without a regrid notification
-        auto const it            = boxing.find(levelNumber);
-        bool const needsCreating = it == boxing.end() or it->second.level.lock() != level;
-        if (needsCreating)
-            make_boxes(hierarchy, level);
-        return *level;
-    }
-
-
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
-    struct LevelBoxing
-    {
-        std::weak_ptr<level_t> level; // identity of the level the boxes were built for
-        std::unordered_map<std::string /*patchid*/, Boxing_t> patches;
-    };
-    std::unordered_map<int /*level*/, LevelBoxing> boxing;
+    ParticleLevelBoxings<IonUpdater_t, GridLayout, AMR_Types> boxing;
 };
 
 
@@ -237,29 +195,28 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
 
     auto& model     = dynamic_cast<FKModel&>(level_model);
     auto& messenger = dynamic_cast<Messenger&>(fromCoarserMessenger);
-    auto& level     = setup_level(hierarchy, levelNumber);
+    auto& level     = boxing.setup_level(hierarchy, levelNumber);
     auto& rm        = *model.resourcesManager;
     auto& E         = model.state.electromag.E;
     auto& B         = model.state.electromag.B;
     auto const dt   = newTime - currentTime;
 
-    TimeSetter setTime{level, model, newTime};
+    auto const halfTime = 0.5 * (currentTime + newTime);
 
     // 1. J^n from the particles at time n
-    depositCurrent_(level, model, messenger, currentTime, dt);
+    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., currentTime);
 
     // 2. E^{n-1/2} -> E^{n+1/2}
     for (auto& patch : rm.enumerate(level, B, model.state.J, E))
     {
         auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-        core::AmpereMaxwell{layout, c2_}(B, model.state.J, E, dt);
+        core::AmpereMaxwell{layout, model.c2()}(B, model.state.J, E, dt);
     }
-    setTime(E);
-    messenger.fillElectricGhosts(E, level, newTime);
+    TimeSetter{level, model, halfTime}(E);
+    messenger.fillElectricGhosts(E, level, halfTime);
 
     // 3. B^{n+1/2}, and the E^{n+1/2} copy the particles are pushed with
-    auto const halfTime = 0.5 * (currentTime + newTime);
-    auto const halfDt   = 0.5 * dt;
+    auto const halfDt = 0.5 * dt;
     Faraday_t{level, model}(B, E, electromagHalf_.B, halfDt);
     for (auto& patch : rm.enumerate(level, E, electromagHalf_))
         electromagHalf_.E.copyData(E);
@@ -271,53 +228,8 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
 
     // 5. B^n -> B^{n+1}
     Faraday_t{level, model}(B, E, B, dt);
-    setTime(B);
+    TimeSetter{level, model, newTime}(B);
     messenger.fillMagneticGhosts(B, level, newTime);
-}
-
-
-
-template<typename FKModel, typename AMR_Types>
-void SolverFK<FKModel, AMR_Types>::depositCurrent_(level_t& level, FKModel& model,
-                                                   Messenger& messenger, double const currentTime,
-                                                   double const dt)
-{
-    PHARE_LOG_SCOPE(1, "SolverFK::depositCurrent_");
-
-    auto& rm   = *model.resourcesManager;
-    auto& ions = model.state.ions;
-    auto& J    = model.state.J;
-
-    try
-    {
-        // domain particles are owned ones: the previous push (or the level initializer) erased
-        // the others. Patch ghost particles never deposit, their owner does.
-        for (auto& patch : rm.enumerate(level, ions, J))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            J.zero();
-            for (auto const& pop : ions)
-            {
-                try
-                {
-                    esirkepov_(pop.domainParticles(), J, layout, pop.charge(), dt);
-                }
-                catch (core::DictionaryException& ex)
-                {
-                    throw ex("population", pop.name());
-                }
-            }
-        }
-    }
-    catch (core::DictionaryException const& ex)
-    {
-        PHARE_LOG_ERROR(ex());
-    }
-    if (mpi::any_errors())
-        throw core::DictionaryException{}("ID", "SolverFK::depositCurrent_");
-
-    TimeSetter{level, model, currentTime}(J);
-    messenger.fillCurrentBorders(J, level, currentTime);
 }
 
 
@@ -352,9 +264,22 @@ void SolverFK<FKModel, AMR_Types>::moveParticles_(level_t& level, FKModel& model
     // this needs to be done before calling the messenger
     setTime(ions);
 
-    // the moments at n+1 are diagnostics only, the fields only use the deposit of step 1
+    // the moments at n+1 are diagnostics only, the fields only use the deposit of step 1.
+    // No level ghost moments (fillIonPopMomentGhosts): single level for now
     messenger.fillFluxBorders(ions, level, newTime);
     messenger.fillDensityBorders(ions, level, newTime);
+
+    // the next deposit relies on domain particles being owned ones
+    PHARE_DEBUG_DO({
+        for (auto& patch : rm.enumerate(level, ions))
+        {
+            auto const& boxes = levelBoxing.at(amr::to_string(patch->getGlobalId()));
+            for (auto const& pop : ions)
+                for (auto const& particle : pop.domainParticles())
+                    if (!boxes.isOwned(particle.iCell))
+                        throw std::runtime_error("domain particle outside owned cells");
+        }
+    })
 
     messenger.fillIonGhostParticles(ions, level, newTime);
 

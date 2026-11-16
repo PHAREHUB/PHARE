@@ -132,6 +132,8 @@ PHARE::initializer::PHAREDict createDict(bool const withElectrons = true)
         dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
         dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
     }
+    else // fully kinetic
+        dict["c_over_va"] = 10.;
 
     return dict;
 }
@@ -182,6 +184,7 @@ TEST(AFullyKineticModel, isBuiltWithoutFluidElectrons)
     ASSERT_EQ(2u, model.state.ions.size());
     EXPECT_EQ(+1., model.state.ions[0].charge());
     EXPECT_EQ(-1., model.state.ions[1].charge());
+    EXPECT_EQ(100., model.c2());
 }
 
 

@@ -38,7 +38,7 @@ template<auto opts>
 inline constexpr bool has_mhd_v = opts.mhd_enabled;
 
 template<auto opts>
-inline constexpr bool has_fk_v = opts.fk_enabled;
+inline constexpr bool has_fk_v = opts.fully_kinetic;
 
 } // namespace PHARE
 

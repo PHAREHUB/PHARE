@@ -34,6 +34,11 @@ static_assert(
                       MHDOpts::RiemannSolverType::Rusanov}>);
 
 static_assert(SimOpts{}.mhd_axes_consistent());
+
+// fully kinetic builds have no hybrid model, even though they have an interpolation order
+static_assert(PHARE::has_fk_v<SimOpts{.dimension = 1, .interp_order = 1, .fully_kinetic = true}>);
+static_assert(!has_hybrid_v<SimOpts{.dimension = 1, .interp_order = 1, .fully_kinetic = true}>);
+static_assert(!PHARE::has_fk_v<SimOpts{}>);
 } // namespace
 
 struct __attribute__((visibility("hidden"))) StaticIntepreter

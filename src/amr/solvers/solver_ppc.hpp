@@ -11,6 +11,7 @@
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 
 #include "amr/solvers/solver.hpp"
+#include "amr/solvers/particle_level_boxings.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
@@ -155,33 +156,6 @@ private:
                    double const currentTime, double const newTime, core::UpdaterMode mode);
 
 
-    void make_boxes(hierarchy_t const& hierarchy, level_ptr const& level)
-    {
-        auto& levelBoxing = boxing[level->getLevelNumber()] = LevelBoxing{level, {}};
-
-        auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, level->getLevelNumber());
-
-        for (auto const& patch : *level)
-            if (auto [it, suc] = levelBoxing.patches.try_emplace(
-                    amr::to_string(patch->getGlobalId()),
-                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors),
-                             amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
-                !suc)
-                throw std::runtime_error("boxing map insertion failure");
-    }
-
-    auto& setup_level(hierarchy_t const& hierarchy, int const levelNumber)
-    {
-        auto level = hierarchy.getPatchLevel(levelNumber);
-        // level may have been removed and re-created without a regrid notification
-        auto const it            = boxing.find(levelNumber);
-        bool const needsCreating = it == boxing.end() or it->second.level.lock() != level;
-        if (needsCreating)
-            make_boxes(hierarchy, level);
-        return *level;
-    }
-
     void update_electrons(auto& level, auto& model)
     {
         auto& rm = *model.resourcesManager;
@@ -190,13 +164,7 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
-    struct LevelBoxing
-    {
-        std::weak_ptr<level_t> level; // identity of the level the boxes were built for
-        std::unordered_map<std::string /*patchid*/, Boxing_t> patches;
-    };
-    std::unordered_map<int /*level*/, LevelBoxing> boxing;
+    ParticleLevelBoxings<IonUpdater_t, GridLayout, AMR_Types> boxing;
 
 
 }; // end solverPPC
@@ -385,7 +353,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     auto& model       = dynamic_cast<HybridModel&>(level_model);
     auto& fromCoarser = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
-    auto& level       = setup_level(hierarchy, levelNumber);
+    auto& level       = boxing.setup_level(hierarchy, levelNumber);
 
     predictor1_(level, model, fromCoarser, currentTime, newTime);
 

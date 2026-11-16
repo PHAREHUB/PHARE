@@ -1,4 +1,6 @@
-// The fully kinetic leapfrog on one grid, without communications:
+// The fully kinetic leapfrog on one grid, without communications. This tests the core
+// operators composed in the order of SolverFK::advanceLevel, not SolverFK itself: the solver is
+// covered end to end by tests/simulator/test_fully_kinetic.py.
 // particles (x, v) and B at integer times, E at half integer times.
 //   1. J^n by Esirkepov over x^n -+ (dt/2) v^n
 //   2. E^{n+1/2} = E^{n-1/2} + dt c^2 (curl B^n - J^n)

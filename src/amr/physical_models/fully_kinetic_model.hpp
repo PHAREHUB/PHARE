@@ -55,6 +55,7 @@ public:
 
 
     core::FullyKineticState<Electromag, Ions> state;
+    double const c_over_va; // speed of light over the Alfven speed
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
 
@@ -63,6 +64,7 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
+        , c_over_va{dict["c_over_va"].template to<double>()}
         , resourcesManager{_resourcesManager}
     {
         // periodic only: no particle boundary conditions yet, and the Esirkepov segment would
@@ -80,6 +82,8 @@ public:
     }
 
     ~FullyKineticModel() override {}
+
+    NO_DISCARD double c2() const { return c_over_va * c_over_va; }
 
 
     /**
@@ -119,31 +123,8 @@ public:
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
     {
         auto& fkInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
-
-        fkInfo.modelMagnetic      = state.electromag.B.name();
-        fkInfo.modelElectric      = state.electromag.E.name();
-        fkInfo.modelIonDensity    = state.ions.chargeDensityName();
-        fkInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
-        fkInfo.modelCurrent       = state.J.name();
-
-        fkInfo.initElectric.emplace_back(state.electromag.E.name());
-        fkInfo.initMagnetic.emplace_back(state.electromag.B.name());
-
-        fkInfo.ghostElectric.push_back(fkInfo.modelElectric);
-        fkInfo.ghostMagnetic.push_back(fkInfo.modelMagnetic);
-
-        for (auto const& pop : state.ions)
-        {
-            fkInfo.interiorParticles.push_back(pop.name());
-            fkInfo.levelGhostParticlesOld.push_back(pop.name());
-            fkInfo.levelGhostParticlesNew.push_back(pop.name());
-            fkInfo.patchGhostParticles.push_back(pop.name());
-            fkInfo.ghostFlux.emplace_back(pop.flux().name());
-            fkInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
-        }
-
-        fkInfo.maxBorderFields.emplace_back(state.ions.chargeDensity().name());
-        fkInfo.maxBorderVecFields.emplace_back(state.ions.chargeFlux().name());
+        fillParticleModelMessengerInfo(state, fkInfo);
+        fkInfo.modelCurrent = state.J.name();
     }
 
 

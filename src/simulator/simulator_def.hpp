@@ -56,13 +56,13 @@ struct SimOpts
     MHDOpts::RiemannSolverType riemann_solver_type  = MHDOpts::RiemannSolverType::MHDOff;
     bool Hall                                       = false;
 
-    // all species are particles, E from Ampere-Maxwell: no hybrid model in such a build
+    // all species are particles, E from Ampere-Maxwell: no hybrid model in such a build.
+    // Only built as python modules (res/sim lines d,i,n,FK), not by the phare executable
     bool fully_kinetic = false;
 
     // derived — independent axes, never one as the other's negation
     bool hybrid_enabled = interp_order > 0 and !fully_kinetic;
     bool mhd_enabled    = reconstruction_type != MHDOpts::ReconstructionType::MHDOff;
-    bool fk_enabled     = fully_kinetic;
 
     // all four MHD axes must agree on off-ness; a member fn keeps SimOpts an aggregate
     constexpr bool mhd_axes_consistent() const

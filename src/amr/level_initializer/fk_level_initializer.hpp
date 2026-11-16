@@ -4,7 +4,6 @@
 #include "core/errors.hpp"
 #include "mpi/mpi_utils.hpp"
 #include "core/numerics/moments/moments.hpp"
-#include "core/numerics/esirkepov/esirkepov.hpp"
 #include "core/numerics/ampere/ampere_maxwell.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
@@ -12,6 +11,7 @@
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
+#include "amr/solvers/fk_current_deposit.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 
@@ -40,15 +40,13 @@ class FKLevelInitializer : public LevelInitializer<typename FKModel::amr_types>
     static constexpr auto dimension    = GridLayoutT::dimension;
     static constexpr auto interp_order = GridLayoutT::options.interp_order;
 
-    double c2_;
     double dt_;
 
 public:
     using model_type = FKModel;
 
     explicit FKLevelInitializer(PHARE::initializer::PHAREDict const& dict)
-        : c2_{dict["c_over_va"].template to<double>() * dict["c_over_va"].template to<double>()}
-        , dt_{dict["time_step"]["value"].template to<double>()}
+        : dt_{dict["time_step"]["value"].template to<double>()}
     {
     }
 
@@ -100,45 +98,17 @@ public:
         fkMessenger.fillIonBorders(ions, level, initDataTime);
 
         // E^{-1/2} from the current of the backward half segment
-        core::Esirkepov<dimension, interp_order> esirkepov;
-        try
-        {
-            for (auto& patch : rm.enumerate(level, ions, J))
-            {
-                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                J.zero();
-                for (auto const& pop : ions)
-                {
-                    try
-                    {
-                        esirkepov(pop.domainParticles(), J, layout, pop.charge(), dt_,
-                                  /*back=*/1., /*front=*/0.);
-                    }
-                    catch (core::DictionaryException& ex)
-                    {
-                        throw ex("population", pop.name());
-                    }
-                }
-            }
-        }
-        catch (core::DictionaryException const& ex)
-        {
-            PHARE_LOG_ERROR(ex());
-        }
-        if (mpi::any_errors())
-            throw core::DictionaryException{}("ID", "FKLevelInitializer::initialize");
-
-        fkMessenger.fillCurrentBorders(J, level, initDataTime);
+        depositFKCurrent(level, fkModel, fkMessenger, dt_, /*back=*/1., /*front=*/0., initDataTime);
 
         for (auto& patch : rm.enumerate(level, B, J, E))
         {
             auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            core::AmpereMaxwell{layout, c2_}(B, J, E, -0.5 * dt_);
+            core::AmpereMaxwell{layout, fkModel.c2()}(B, J, E, -0.5 * dt_);
         }
 
-        TimeSetter setTime{level, fkModel, initDataTime};
-        setTime(E, J);
-        fkMessenger.fillElectricGhosts(E, level, initDataTime);
+        // E is labelled with its own time, half a step before the particles
+        TimeSetter{level, fkModel, initDataTime - 0.5 * dt_}(E);
+        fkMessenger.fillElectricGhosts(E, level, initDataTime - 0.5 * dt_);
 
         fkMessenger.prepareStep(fkModel, level, initDataTime);
     }
