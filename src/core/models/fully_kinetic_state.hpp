@@ -18,15 +18,14 @@ namespace PHARE::core
 {
 /**
  * @brief FullyKineticState holds the state of a fully kinetic model: the electromagnetic field,
- * all particle species (ions and electrons alike, in the Ions container), the particle current
- * J and the charge density at the half step rho, used for Gauss's law.
+ * all particle species (ions and electrons alike, in the Ions container) and the particle
+ * current J.
  * There are no fluid electrons.
  */
 template<typename Electromag, typename Ions>
 class FullyKineticState : public IPhysicalState
 {
     using VecField = Electromag::vecfield_type;
-    using Field    = VecField::field_type;
 
 public:
     static constexpr auto dimension = Ions::dimension;
@@ -35,14 +34,12 @@ public:
         : electromag{dict["electromag"]}
         , ions{dict["ions"]}
         , J{"J", HybridQuantity::Vector::J}
-        , rho{"FK_rho_half", HybridQuantity::Scalar::rho}
     {
     }
 
     Electromag electromag;
     Ions ions;
     VecField J;
-    Field rho;
 
     NO_DISCARD std::string to_str()
     {
@@ -60,23 +57,22 @@ public:
 
     NO_DISCARD bool isUsable() const
     {
-        return electromag.isUsable() and ions.isUsable() and J.isUsable() and rho.isUsable();
+        return electromag.isUsable() and ions.isUsable() and J.isUsable();
     }
 
     NO_DISCARD bool isSettable() const
     {
-        return electromag.isSettable() and ions.isSettable() and J.isSettable()
-               and rho.isSettable();
+        return electromag.isSettable() and ions.isSettable() and J.isSettable();
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(electromag, ions, J, rho);
+        return std::forward_as_tuple(electromag, ions, J);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(electromag, ions, J, rho);
+        return std::forward_as_tuple(electromag, ions, J);
     }
 
     //-------------------------------------------------------------------------

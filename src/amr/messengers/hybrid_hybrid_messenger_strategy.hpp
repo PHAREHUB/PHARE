@@ -79,7 +79,7 @@ namespace amr
         static constexpr std::size_t dimension   = GridLayoutT::dimension;
         static constexpr std::size_t interpOrder = GridLayoutT::options.interp_order;
 
-        // the fully kinetic model deposits its current and half step charge density
+        // the fully kinetic model deposits its current
         static constexpr bool sumsParticleCurrent = solver::is_fully_kinetic_model_v<HybridModel>;
 
         using InteriorParticleRefineOp = RefinementParams::InteriorParticleRefineOp;
@@ -466,26 +466,6 @@ namespace amr
                 HybridMessengerStrategy<HybridModel>::fillCurrentBorders(J, level, fillTime);
         }
 
-        void fillChargeBorders(FieldT& rho, level_t& level, double const fillTime) override
-        {
-            if constexpr (sumsParticleCurrent)
-            {
-                using value_type = FieldT::value_type;
-                assert(chargeBorderSumRefiners_.size() == 1);
-
-                for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
-                    std::memcpy(sumField_.data(), rho.data(), rho.size() * sizeof(value_type));
-
-                chargeBorderSumRefiners_[0].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
-                    std::memcpy(rho.data(), sumField_.data(), rho.size() * sizeof(value_type));
-            }
-            else
-                HybridMessengerStrategy<HybridModel>::fillChargeBorders(rho, level, fillTime);
-        }
-
-
         void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
         {
             assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
@@ -746,8 +726,6 @@ namespace amr
 
             for (auto& refiner : currentBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : chargeBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
 
             for (auto& refiner : ionFluxBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
@@ -955,11 +933,6 @@ namespace amr
                         sumJ_.name(), info->modelCurrent, nullptr, sumJ_.name(),
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
-
-                chargeBorderSumRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        sumField_.name(), info->modelChargeHalf, nullptr, sumField_.name(),
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
             }
 
             assert(info->maxBorderFields.size() == 1); // charge density
@@ -1117,9 +1090,8 @@ namespace amr
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
 
-        //! += particle current and half step charge density (fully kinetic only)
+        //! += particle current (fully kinetic only)
         std::vector<VecFieldGhostSumRefinerPool> currentBorderSumRefiners_;
-        std::vector<FieldGhostSumRefinerPool> chargeBorderSumRefiners_;
 
         std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;

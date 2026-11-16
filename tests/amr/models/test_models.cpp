@@ -197,7 +197,6 @@ TEST(AFullyKineticModel, fillsHybridMessengerInfo)
     EXPECT_EQ("EM_B", info.modelMagnetic);
     EXPECT_EQ("EM_E", info.modelElectric);
     EXPECT_EQ(model.state.J.name(), info.modelCurrent);
-    EXPECT_EQ(model.state.rho.name(), info.modelChargeHalf);
     EXPECT_EQ(2u, info.interiorParticles.size());
 }
 

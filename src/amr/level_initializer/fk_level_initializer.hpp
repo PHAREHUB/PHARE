@@ -69,7 +69,6 @@ public:
         auto& E           = fkModel.state.electromag.E;
         auto& B           = fkModel.state.electromag.B;
         auto& J           = fkModel.state.J;
-        auto& rho         = fkModel.state.rho;
 
         model.initialize(level);
         messenger.fillRootGhosts(model, level, initDataTime);
@@ -100,23 +99,36 @@ public:
         }
         fkMessenger.fillIonBorders(ions, level, initDataTime);
 
-        // E^{-1/2} from the backward half segment, and rho^{-1/2}
+        // E^{-1/2} from the current of the backward half segment
         core::Esirkepov<dimension, interp_order> esirkepov;
-        for (auto& patch : rm.enumerate(level, ions, J, rho))
+        try
         {
-            auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            J.zero();
-            rho.zero();
-            for (auto const& pop : ions)
+            for (auto& patch : rm.enumerate(level, ions, J))
             {
-                esirkepov(pop.domainParticles(), J, layout, pop.charge(), dt_, /*back=*/1.,
-                          /*front=*/0.);
-                esirkepov.depositCharge(pop.domainParticles(), rho, layout, pop.charge(),
-                                        -0.5 * dt_);
+                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                J.zero();
+                for (auto const& pop : ions)
+                {
+                    try
+                    {
+                        esirkepov(pop.domainParticles(), J, layout, pop.charge(), dt_,
+                                  /*back=*/1., /*front=*/0.);
+                    }
+                    catch (core::DictionaryException& ex)
+                    {
+                        throw ex("population", pop.name());
+                    }
+                }
             }
         }
+        catch (core::DictionaryException const& ex)
+        {
+            PHARE_LOG_ERROR(ex());
+        }
+        if (mpi::any_errors())
+            throw core::DictionaryException{}("ID", "FKLevelInitializer::initialize");
+
         fkMessenger.fillCurrentBorders(J, level, initDataTime);
-        fkMessenger.fillChargeBorders(rho, level, initDataTime);
 
         for (auto& patch : rm.enumerate(level, B, J, E))
         {
@@ -125,7 +137,7 @@ public:
         }
 
         TimeSetter setTime{level, fkModel, initDataTime};
-        setTime(E, J, rho);
+        setTime(E, J);
         fkMessenger.fillElectricGhosts(E, level, initDataTime);
 
         fkMessenger.prepareStep(fkModel, level, initDataTime);

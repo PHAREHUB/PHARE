@@ -31,13 +31,16 @@ time_step_nbr = 40
 diag_dir = "phare_outputs/fully_kinetic"
 
 
-def config(largest_patch_size, diag_subdir):
+interp_orders = [1, 2, 3]
+
+
+def config(largest_patch_size, diag_subdir, interp_order):
     sim = ph.Simulation(
         time_step=time_step,
         time_step_nbr=time_step_nbr,
         cells=cells,
         dl=dl,
-        interp_order=1,
+        interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
         smallest_patch_size=8,
@@ -115,11 +118,23 @@ def config(largest_patch_size, diag_subdir):
 charges = {"protons": 1.0, "electrons": -1.0}
 
 
-def shape_order1(distance):
-    return np.maximum(0.0, 1.0 - np.abs(distance))
+def shape(distance, interp_order):
+    """b-spline of the particle shape on primal nodes, as core::Weighter"""
+    d = np.abs(distance)
+    if interp_order == 1:
+        return np.maximum(0.0, 1.0 - d)
+    if interp_order == 2:
+        return np.where(
+            d < 0.5, 0.75 - d**2, np.where(d < 1.5, 0.5 * (1.5 - d) ** 2, 0.0)
+        )
+    return np.where(
+        d < 1.0,
+        2.0 / 3.0 - d**2 + 0.5 * d**3,
+        np.where(d < 2.0, (2.0 - d) ** 3 / 6.0, 0.0),
+    )
 
 
-def charge_density_at_half_step(diag_subdir, time):
+def charge_density_at_half_step(diag_subdir, time, interp_order):
     """rho at x - (dt/2) v of the dumped particles, on the primal nodes 0..cells-1 (periodic):
     the charge density at the time of the dumped E, which is half a step behind"""
     rho = np.zeros(cells)
@@ -136,22 +151,26 @@ def charge_density_at_half_step(diag_subdir, time):
                 - 0.5 * time_step * particles.v[:, 0].astype(np.float64) / dl
             )
             left = np.floor(pos).astype(int)
-            for node in (left, left + 1):
+            for node in (left - 1, left, left + 1, left + 2):
                 np.add.at(
                     rho,
                     node % cells,
-                    charge * particles.weights.ravel() * shape_order1(pos - node),
+                    charge
+                    * particles.weights.ravel()
+                    * shape(pos - node, interp_order),
                 )
     return rho
 
 
-def gauss_residual(diag_subdir, time):
+def gauss_residual(diag_subdir, time, interp_order):
     """div E - c^2 rho on the primal nodes, periodic"""
     Ex = field_by_node(diag_subdir, "E", "x", time)
     # dual node j at (j + 1/2) dl has key 2j+1
     ex = np.array([Ex[2 * j + 1] for j in range(cells)], dtype=np.float64)
     div = (ex - np.roll(ex, 1)) / dl
-    return div - c_over_va**2 * charge_density_at_half_step(diag_subdir, time)
+    return div - c_over_va**2 * charge_density_at_half_step(
+        diag_subdir, time, interp_order
+    )
 
 
 def field_by_node(diag_subdir, quantity, component, time=time_step * time_step_nbr):
@@ -173,21 +192,30 @@ class FullyKineticTest(SimulatorTest):
         super().tearDown()
         ph.global_vars.sim = None
 
-    def run_with(self, largest_patch_size, diag_subdir):
+    def run_with(self, largest_patch_size, diag_subdir, interp_order):
         ph.global_vars.sim = None
-        Simulator(config(largest_patch_size, diag_subdir)).run().reset()
+        Simulator(config(largest_patch_size, diag_subdir, interp_order)).run().reset()
 
     def test_one_patch_and_four_patches_agree(self):
-        self.run_with(cells, "one_patch")
-        self.run_with(cells // 4, "four_patches")
+        for interp_order in interp_orders:
+            with self.subTest(interp_order=interp_order):
+                self._one_and_four_patches(interp_order)
+
+    def _one_and_four_patches(self, interp_order):
+        one_patch, four_patches = (
+            f"one_patch_{interp_order}",
+            f"four_patches_{interp_order}",
+        )
+        self.run_with(cells, one_patch, interp_order)
+        self.run_with(cells // 4, four_patches, interp_order)
 
         if cpp.mpi_rank() != 0:
             return
 
         for quantity in ["E", "B"]:
             for component in ["x", "y", "z"]:
-                one = field_by_node("one_patch", quantity, component)
-                four = field_by_node("four_patches", quantity, component)
+                one = field_by_node(one_patch, quantity, component)
+                four = field_by_node(four_patches, quantity, component)
                 self.assertEqual(one.keys(), four.keys())
 
                 a = np.array([one[k] for k in sorted(one)])
@@ -196,24 +224,33 @@ class FullyKineticTest(SimulatorTest):
                 scale = max(np.abs(a).max(), 1e-12)
                 diff = np.abs(a - b).max() / scale
                 print(
-                    f"{quantity}{component}: max |one - four| / max |one| = {diff:.3e}"
+                    f"order {interp_order} {quantity}{component}:"
+                    f" max |one - four| / max |one| = {diff:.3e}"
                 )
                 self.assertLess(diff, 1e-5, f"{quantity}{component}")
 
     def test_gauss_residual_does_not_drift(self):
-        self.run_with(cells // 4, "gauss")
+        for interp_order in interp_orders:
+            with self.subTest(interp_order=interp_order):
+                self._gauss(interp_order)
+
+    def _gauss(self, interp_order):
+        subdir = f"gauss_{interp_order}"
+        self.run_with(cells // 4, subdir, interp_order)
 
         if cpp.mpi_rank() != 0:
             return
 
-        initial = gauss_residual("gauss", 0.0)
-        final = gauss_residual("gauss", time_step * time_step_nbr)
-        scale = c_over_va**2 * np.abs(charge_density_at_half_step("gauss", 0.0)).max()
+        initial = gauss_residual(subdir, 0.0, interp_order)
+        final = gauss_residual(subdir, time_step * time_step_nbr, interp_order)
+        rho = charge_density_at_half_step(subdir, 0.0, interp_order)
+        scale = c_over_va**2 * np.abs(rho).max()
         drift = np.abs(final - initial).max() / scale
         print(
-            f"Gauss residual: initial {np.abs(initial).max() / scale:.3e}, drift {drift:.3e}"
+            f"order {interp_order} Gauss residual: initial"
+            f" {np.abs(initial).max() / scale:.3e}, drift {drift:.3e}"
         )
-        # diagnostics are single precision
+        # E diagnostics are single precision
         self.assertLess(drift, 1e-6)
 
 

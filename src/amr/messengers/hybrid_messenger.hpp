@@ -56,7 +56,6 @@ namespace amr
     private:
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
-        using FieldT         = VecFieldT::field_type;
         using IPhysicalModel = HybridModel::Interface;
         using amr_types      = HybridModel::amr_types;
         using patch_t        = amr_types::patch_t;
@@ -348,10 +347,6 @@ namespace amr
             strat_->fillCurrentBorders(J, level, fillTime);
         }
 
-        void fillChargeBorders(FieldT& rho, level_t& level, double const fillTime)
-        {
-            strat_->fillChargeBorders(rho, level, fillTime);
-        }
 
         /* -------------------------------------------------------------------------
                             End HybridMessenger Interface

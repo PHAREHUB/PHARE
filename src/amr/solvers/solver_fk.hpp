@@ -32,14 +32,15 @@ namespace PHARE::solver
  * @brief SolverFK advances a fully kinetic model with an explicit leapfrog: particles (x, v) and
  * B are known at integer times, E at half integer times. One step from n to n+1 is
  *
- *  1. J^n by Esirkepov over x^n - (dt/2)v^n -> x^n + (dt/2)v^n, rho^{n-1/2} at x^n - (dt/2)v^n,
- *     deposited by owned domain particles and summed on patch borders
+ *  1. J^n by Esirkepov over x^n - (dt/2)v^n -> x^n + (dt/2)v^n, deposited by owned domain
+ *     particles and summed on patch borders
  *  2. E^{n+1/2} = E^{n-1/2} + dt c^2 (curl B^n - J^n)
  *  3. B^{n+1/2} = B^n - (dt/2) curl E^{n+1/2}
  *  4. Boris push with E^{n+1/2} and B^{n+1/2}
  *  5. B^{n+1} = B^n - dt curl E^{n+1/2}
  *
- * The model E is therefore half a step behind its time label. The deposit only depends on the
+ * The model E is labelled with the time of B, half a step ahead of its true time E^{n+1/2},
+ * and J with the time of the particles it comes from, t_n. The deposit only depends on the
  * particles at time n, so anything that changes particles between two steps is accounted for.
  * Single level only for now.
  */
@@ -65,9 +66,7 @@ private:
     // E^{n+1/2} and B^{n+1/2}, the fields the particles are pushed with
     Electromag electromagHalf_{"EMHalf"};
 
-    VecFieldT Bold_{this->name() + "_Bold", core::HybridQuantity::Vector::B};
     VecFieldT fluxSumE_{this->name() + "_fluxSumE", core::HybridQuantity::Vector::E};
-    std::unordered_map<std::size_t, double> oldTime_;
 
     double c2_;
     IonUpdater_t ionUpdater_;
@@ -110,7 +109,6 @@ public:
     {
         auto& rm = *dynamic_cast<FKModel&>(model).resourcesManager;
         rm.registerResources(electromagHalf_);
-        rm.registerResources(Bold_);
         rm.registerResources(fluxSumE_);
     }
 
@@ -118,22 +116,13 @@ public:
     {
         auto& rm = *dynamic_cast<FKModel&>(model).resourcesManager;
         rm.allocate(electromagHalf_, patch, allocateTime);
-        rm.allocate(Bold_, patch, allocateTime);
         rm.allocate(fluxSumE_, patch, allocateTime);
     }
 
-    void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime) override
+    // B^n stays in the model B until the last Faraday of the step, no copy needed
+    void prepareStep(IPhysicalModel_t& /*model*/, level_t& /*level*/,
+                     double const /*currentTime*/) override
     {
-        oldTime_[level.getLevelNumber()] = currentTime;
-
-        auto& fkModel = dynamic_cast<FKModel&>(model);
-        auto& B       = fkModel.state.electromag.B;
-
-        for (auto& patch : fkModel.resourcesManager->enumerate(level, B, Bold_))
-        {
-            fkModel.resourcesManager->setTime(Bold_, *patch, currentTime);
-            Bold_.copyData(B);
-        }
     }
 
     void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef) override
@@ -177,20 +166,20 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(electromagHalf_, Bold_, fluxSumE_);
+        return std::forward_as_tuple(electromagHalf_, fluxSumE_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(electromagHalf_, Bold_, fluxSumE_);
+        return std::forward_as_tuple(electromagHalf_, fluxSumE_);
     }
 
 
 private:
     static double square_(double const x) { return x * x; }
 
-    void depositCurrent_(level_t& level, FKModel& model, Messenger& messenger, double const dt,
-                         double const newTime);
+    void depositCurrent_(level_t& level, FKModel& model, Messenger& messenger,
+                         double const currentTime, double const dt);
 
     void moveParticles_(level_t& level, FKModel& model, Messenger& messenger,
                         double const currentTime, double const newTime);
@@ -256,8 +245,8 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
 
     TimeSetter setTime{level, model, newTime};
 
-    // 1. J^n and rho^{n-1/2} from the particles at time n
-    depositCurrent_(level, model, messenger, dt, newTime);
+    // 1. J^n from the particles at time n
+    depositCurrent_(level, model, messenger, currentTime, dt);
 
     // 2. E^{n-1/2} -> E^{n+1/2}
     for (auto& patch : rm.enumerate(level, B, model.state.J, E))
@@ -290,30 +279,33 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
 
 template<typename FKModel, typename AMR_Types>
 void SolverFK<FKModel, AMR_Types>::depositCurrent_(level_t& level, FKModel& model,
-                                                   Messenger& messenger, double const dt,
-                                                   double const newTime)
+                                                   Messenger& messenger, double const currentTime,
+                                                   double const dt)
 {
     PHARE_LOG_SCOPE(1, "SolverFK::depositCurrent_");
 
     auto& rm   = *model.resourcesManager;
     auto& ions = model.state.ions;
     auto& J    = model.state.J;
-    auto& rho  = model.state.rho;
 
     try
     {
         // domain particles are owned ones: the previous push (or the level initializer) erased
         // the others. Patch ghost particles never deposit, their owner does.
-        for (auto& patch : rm.enumerate(level, ions, J, rho))
+        for (auto& patch : rm.enumerate(level, ions, J))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             J.zero();
-            rho.zero();
             for (auto const& pop : ions)
             {
-                esirkepov_(pop.domainParticles(), J, layout, pop.charge(), dt);
-                esirkepov_.depositCharge(pop.domainParticles(), rho, layout, pop.charge(),
-                                         -0.5 * dt);
+                try
+                {
+                    esirkepov_(pop.domainParticles(), J, layout, pop.charge(), dt);
+                }
+                catch (core::DictionaryException& ex)
+                {
+                    throw ex("population", pop.name());
+                }
             }
         }
     }
@@ -324,11 +316,8 @@ void SolverFK<FKModel, AMR_Types>::depositCurrent_(level_t& level, FKModel& mode
     if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverFK::depositCurrent_");
 
-    TimeSetter setTime{level, model, newTime};
-    setTime(J, rho);
-
-    messenger.fillCurrentBorders(J, level, newTime);
-    messenger.fillChargeBorders(rho, level, newTime);
+    TimeSetter{level, model, currentTime}(J);
+    messenger.fillCurrentBorders(J, level, currentTime);
 }
 
 

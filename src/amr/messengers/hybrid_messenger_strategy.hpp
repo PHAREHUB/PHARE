@@ -23,7 +23,6 @@ namespace amr
     {
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
-        using FieldT         = VecFieldT::field_type;
         using IPhysicalModel = HybridModel::Interface;
         using amr_types      = HybridModel::amr_types;
         using patch_t        = amr_types::patch_t;
@@ -120,17 +119,12 @@ namespace amr
         virtual void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) = 0;
         virtual void fillIonBorders(IonsT& ions, level_t& level, double const fillTime)     = 0;
 
-        // fully kinetic only: sum the particle current and the half step charge density on patch
-        // borders, after each patch deposited its own particles
+        // fully kinetic only: sum the particle current on patch borders, after each patch
+        // deposited its own particles
         virtual void fillCurrentBorders(VecFieldT& /*J*/, level_t& /*level*/,
                                         double const /*fillTime*/)
         {
             throw std::runtime_error(stratname_ + " does not sum current borders");
-        }
-        virtual void fillChargeBorders(FieldT& /*rho*/, level_t& /*level*/,
-                                       double const /*fillTime*/)
-        {
-            throw std::runtime_error(stratname_ + " does not sum charge borders");
         }
 
 

@@ -16,6 +16,7 @@
 
 
 #include <string>
+#include <string_view>
 
 namespace PHARE::solver
 {
@@ -64,13 +65,17 @@ public:
         , state{dict}
         , resourcesManager{_resourcesManager}
     {
-        // no physical boundary conditions yet (periodic only), the messenger still needs one
+        // periodic only: no particle boundary conditions yet, and the Esirkepov segment would
+        // need to be folded at a physical boundary. The messenger still needs a manager.
         if (dict.contains("grid"))
             core::validatePhysicalBoundariesDeclared<dimension>(dict["grid"]);
-        auto const has_bcs = dict.contains("grid") && dict["grid"].contains("domain_boundaries");
-        boundaryManager    = std::make_shared<boundary_manager_type>(
-            has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
-            std::vector<core::HybridQuantity::Scalar>{},
+        if (dict.contains("grid") && dict["grid"].contains("periodicities"))
+            for (auto const direction : std::string_view{"xyz"}.substr(0, dimension))
+                if (!dict["grid"]["periodicities"][std::string{direction}].template to<bool>())
+                    throw std::runtime_error(
+                        "FullyKineticModel: only periodic domains are supported");
+        boundaryManager = std::make_shared<boundary_manager_type>(
+            PHARE::initializer::PHAREDict{}, std::vector<core::HybridQuantity::Scalar>{},
             std::vector<core::HybridQuantity::Vector>{});
     }
 
@@ -109,7 +114,7 @@ public:
 
     /**
      * @brief fillMessengerInfo declares the same quantities as the hybrid model, plus the
-     * particle current and half step charge density that are summed on patch borders.
+     * particle current that is summed on patch borders.
      */
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
     {
@@ -120,7 +125,6 @@ public:
         fkInfo.modelIonDensity    = state.ions.chargeDensityName();
         fkInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
         fkInfo.modelCurrent       = state.J.name();
-        fkInfo.modelChargeHalf    = state.rho.name();
 
         fkInfo.initElectric.emplace_back(state.electromag.E.name());
         fkInfo.initMagnetic.emplace_back(state.electromag.B.name());
