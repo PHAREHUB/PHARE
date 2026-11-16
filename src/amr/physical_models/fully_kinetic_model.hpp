@@ -123,7 +123,7 @@ public:
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
     {
         auto& fkInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
-        fillParticleModelMessengerInfo(state, fkInfo);
+        amr::fillParticleModelMessengerInfo(state, fkInfo);
         fkInfo.modelCurrent = state.J.name();
     }
 

@@ -79,6 +79,40 @@ namespace amr
     };
 
 
+    /**
+     * @brief fillParticleModelMessengerInfo declares the quantities shared by models whose species
+     * are particles (hybrid and fully kinetic): EM fields, particles and moments.
+     */
+    void fillParticleModelMessengerInfo(auto const& state, amr::HybridMessengerInfo& info)
+    {
+        // only the charge density and the charge flux, which give the electron velocity in hybrid,
+        // are communicated. The mass density and the bulk velocity are diagnostics only
+        info.modelMagnetic      = state.electromag.B.name();
+        info.modelElectric      = state.electromag.E.name();
+        info.modelIonDensity    = state.ions.chargeDensityName();
+        info.modelIonChargeFlux = state.ions.chargeFlux().name();
+
+        info.initElectric.emplace_back(state.electromag.E.name());
+        info.initMagnetic.emplace_back(state.electromag.B.name());
+
+        info.ghostElectric.push_back(info.modelElectric);
+        info.ghostMagnetic.push_back(info.modelMagnetic);
+
+        for (auto const& pop : state.ions)
+        {
+            info.interiorParticles.push_back(pop.name());
+            info.levelGhostParticlesOld.push_back(pop.name());
+            info.levelGhostParticlesNew.push_back(pop.name());
+            info.patchGhostParticles.push_back(pop.name());
+            info.ghostFlux.emplace_back(pop.flux().name());
+            info.sumBorderFields.emplace_back(pop.particleDensity().name());
+        }
+
+        info.maxBorderFields.emplace_back(state.ions.chargeDensity().name());
+        info.maxBorderVecFields.emplace_back(state.ions.chargeFlux().name());
+    }
+
+
 } // namespace amr
 } // namespace PHARE
 #endif

@@ -7,7 +7,10 @@ c = c/V_A.
 - langmuir: electron velocity perturbation v_x = v0 sin(kx), standing Langmuir wave,
   w^2 = w_pe^2 (1 + 3 k^2 lambda_De^2) + w_pi^2 (the ions, m = 1, are not immobile)
 - light: unmagnetized plasma, B_z = b cos(kx), standing light wave,
-  w^2 = w_pe^2 + w_pi^2 + c^2 k^2
+  w^2 = w_pe^2 + w_pi^2 + c^2 k^2. Particles start with v_y = -(q/m) A_y, A_y = (b/k) sin(kx):
+  at rest they would keep the memory of the initial field (conserved canonical momentum), a
+  static B_z of w_p^2/w^2 ~ half of b that thermal motion mixes away, which a damped fit
+  reads as damping (measured: 0.064 at rest, 0.015 with this start)
 - two_stream: two cold electron beams +-v0 on cold ions, mode 1 seeded, linear growth rate
   from 1 = w_pi^2 / w^2 + sum over beams w_pb^2 / (w -+ k v0)^2
 
@@ -43,14 +46,14 @@ time_step = 0.002  # w_pe dt = 0.1, c dt / dx = 0.5
 diag_root = "phare_outputs/fully_kinetic_waves"
 
 # |mean| + 3 standard deviations of a single run, measured over 5 random seeds at order 1:
-# langmuir -0.18% +- 0.14%, light +0.15% +- 0.10%, two-stream growth +1.1% +- 1.1%
-TOLERANCES = {"langmuir": 7e-3, "light": 5e-3, "two-stream": 5e-2}
-# the light wave decays at gamma / w = 1.1e-3 +- 0.2e-3 (5 seeds, order 1; 0.7e-3 at orders 2
-# and 3), not from the fit (a synthetic undamped signal gives 0 +- 4e-4), nor from nonlinearity
-# (unchanged at half amplitude), nor mostly from particle noise (0.071 vs 0.080 with 4x more
-# particles), nor from the field solver (vacuum: w exact to 3e-6, no damping over 11
-# periods). Small and unexplained: only bounded.
-MAX_LIGHT_DAMPING = 5e-3
+# langmuir -0.18% +- 0.14%, light -0.04% +- 0.09%, two-stream growth +1.1% +- 1.1%
+TOLERANCES = {"langmuir": 7e-3, "light": 4e-3, "two-stream": 5e-2}
+# light wave damping, 5 seeds: gamma / w = 0.9e-4 +- 1.3e-4, consistent with no damping
+# (it was 1.1e-3 with particles starting at rest, see the light case above)
+MAX_LIGHT_DAMPING = 1e-3
+# two-stream: growth rates fitted on the two halves of the linear window differ by up to 10%
+# (5 seeds); more means the window reached the nonlinear phase
+MAX_WINDOW_CURVATURE = 0.15
 
 
 def plasma_frequency(n, q, m):
@@ -215,18 +218,22 @@ def light(interp_order, seed=0, b=0.05, Te=0.04, ppc=100, density=1.0):
     def bz(x):
         return b * np.cos(k * x)
 
+    populations = {
+        "protons": maxwellian(1, 1.0, density, 0.01, ppc=ppc, seed=3 + 10 * seed),
+        "electrons": maxwellian(-1, mass_e, density, Te, ppc=ppc, seed=4 + 10 * seed),
+    }
+
+    def canonical_vy(q, m):
+        def vy(x):
+            return -q / m * b / k * np.sin(k * x)
+
+        return vy
+
+    for pop in populations.values():
+        pop["vbulky"] = canonical_vy(pop["charge"], pop["mass"])
+
     diag_dir, times = run(
-        "light",
-        interp_order,
-        cells,
-        final_time=1.0,
-        populations={
-            "protons": maxwellian(1, 1.0, density, 0.01, ppc=ppc, seed=3 + 10 * seed),
-            "electrons": maxwellian(
-                -1, mass_e, density, Te, ppc=ppc, seed=4 + 10 * seed
-            ),
-        },
-        bz=bz,
+        "light", interp_order, cells, final_time=1.0, populations=populations, bz=bz
     )
     k_grid = 2 / dl * np.sin(k * dl / 2)
     w_pe2 = plasma_frequency(density, -1, mass_e) ** 2
@@ -295,9 +302,13 @@ def two_stream(interp_order, seed=0):
     # eigenmode before: amplitude x155 in the first 2 e-foldings, the decaying root is gone
     # after) until the amplitude first exceeds 30% of saturation. Saturation is the first
     # approach to the maximum: later bounces can exceed it.
-    saturation = amplitude.max()
+    peak = np.argmax(amplitude)
+    saturation = amplitude[peak]
+    assert peak < len(amplitude) - 10, (
+        "saturation not reached before the end of the run"
+    )
+    assert amplitude[peak:].min() < 0.8 * saturation, "no saturation, still growing"
     end = np.argmax(amplitude > 0.3 * saturation)
-    assert np.any(amplitude[end:] > 0.9 * saturation), "saturation not reached"
     window = slice(np.argmax(times > 3 / expected), end)
     t, log_a = times[window], np.log(amplitude[window])
     assert len(t) >= 8, f"linear phase too short ({len(t)} dumps)"
@@ -307,6 +318,9 @@ def two_stream(interp_order, seed=0):
     upper = np.polyfit(t[half:], log_a[half:], 1)[0]
     print(
         f"two-stream growth on the lower/upper half of the window: {lower:.3f} / {upper:.3f}"
+    )
+    assert abs(upper - lower) / measured < MAX_WINDOW_CURVATURE, (
+        "window is not exponential"
     )
     return measured, expected
 

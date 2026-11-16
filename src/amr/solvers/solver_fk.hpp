@@ -21,6 +21,7 @@
 #include <SAMRAI/hier/Patch.h>
 #include "SAMRAI/hier/PatchLevel.h"
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <stdexcept>
@@ -200,6 +201,13 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     auto& E         = model.state.electromag.E;
     auto& B         = model.state.electromag.B;
     auto const dt   = newTime - currentTime;
+
+    // E^{n-1/2} was built with this dt: by the level initializer from the input time step, or by
+    // the previous step. A different dt would silently break the half step staggering.
+    for (auto& patch : level)
+        for (auto const time : rm.getTimes(E, *patch))
+            if (std::abs(time - (currentTime - 0.5 * dt)) > 1e-6 * dt)
+                throw std::runtime_error("SolverFK: E is not at t - dt/2, the time step changed");
 
     auto const halfTime = 0.5 * (currentTime + newTime);
 
