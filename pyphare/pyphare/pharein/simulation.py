@@ -201,7 +201,6 @@ def check_path(**kwargs):
 # ------------------------------------------------------------------------------
 
 
-
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
 # This should match possibleSimulators() in meta_utilities.h
 valid_refined_particle_nbr = {
@@ -659,6 +658,27 @@ def check_c_over_va(**kwargs):
     return float(c_over_va)
 
 
+def check_current_filter_passes(**kwargs):
+    """binomial filter passes on the fully kinetic current, 0 (no filter) by default"""
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+    passes = kwargs.get("current_filter_passes")
+
+    if "FullyKineticModel" not in model_options:
+        if passes is not None:
+            raise ValueError(
+                "Error: current_filter_passes is only used by FullyKineticModel"
+            )
+        return None
+
+    if passes is None:
+        return 0
+    if isinstance(passes, bool) or not isinstance(passes, int) or passes < 0:
+        raise ValueError(
+            f"Error: current_filter_passes must be an integer >= 0, got {passes!r}"
+        )
+    return passes
+
+
 def check_mhd_constants(**kwargs):
     gamma = kwargs.get("gamma", 5.0 / 3.0)
     eta = kwargs.get("eta", 0.0)
@@ -744,6 +764,7 @@ def checker(func):
             "mhd_timestepper",
             "refinement_order",
             "c_over_va",
+            "current_filter_passes",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -783,8 +804,8 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
-            ndim, **kwargs
+        kwargs["periodicities"], kwargs["domain_boundaries"] = (
+            boundary.resolve_boundaries(ndim, **kwargs)
         )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
@@ -844,6 +865,7 @@ def checker(func):
 
         kwargs["model_options"] = check_model_options(**kwargs)
         kwargs["c_over_va"] = check_c_over_va(**kwargs)
+        kwargs["current_filter_passes"] = check_current_filter_passes(**kwargs)
         if "FullyKineticModel" in kwargs["model_options"]:
             fully_kinetic.check_fully_kinetic_simulation(**kwargs)
 
@@ -1143,6 +1165,20 @@ class Simulation:
           `Simulation` construction time (mirrored on the Python side in `valid_refined_particle_nbr`,
           `pyphare/pharein/simulation.py`). If omitted, the first valid value for the given
           `ndim`/`interp_order` is used as the default.
+
+    **Fully kinetic parameters:**
+
+        These parameters only apply to ``model_options=["FullyKineticModel"]``: every species,
+        electrons included, is a population of particles, and E follows Ampere-Maxwell.
+
+        * **c_over_va** (``float``), mandatory, the speed of light over the Alfven speed
+        * **current_filter_passes** (``int``), default=0 (no filter), passes of the binomial
+          filter (1/4, 1/2, 1/4) applied in every direction to the deposited current, each
+          pass multiplying a mode by prod_d cos^2(k_d dx_d / 2). The filtered current is the
+          one that advances E at every step, including the initial half step back of E at
+          t=0, and the one the diagnostics see. The setup stability check is not changed: the
+          filter only lowers the plasma response at short wavelengths, the check without it
+          stays conservative.
 
     **MHD parameters:**
 

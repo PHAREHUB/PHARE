@@ -127,6 +127,24 @@ class TestFullyKineticChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "one level only"):
             make_sim(refinement_boxes={"L0": {"B0": [(10,), (20,)]}})
 
+    def test_current_filter_is_off_by_default(self):
+        self.assertEqual(make_sim().current_filter_passes, 0)
+
+    def test_current_filter_passes_are_kept(self):
+        self.assertEqual(make_sim(current_filter_passes=2).current_filter_passes, 2)
+
+    def test_current_filter_passes_must_be_a_non_negative_integer(self):
+        for passes in [-1, 1.5, True]:
+            global_vars.sim = None
+            with self.assertRaisesRegex(ValueError, "current_filter_passes"):
+                make_sim(current_filter_passes=passes)
+
+    def test_current_filter_is_only_for_fully_kinetic(self):
+        with self.assertRaisesRegex(ValueError, "only used by FullyKineticModel"):
+            make_sim(
+                model_options=["HybridModel"], c_over_va=None, current_filter_passes=1
+            )
+
     def test_restarts_are_refused(self):
         with self.assertRaisesRegex(ValueError, "restarts"):
             make_sim(
