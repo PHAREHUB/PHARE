@@ -114,7 +114,10 @@ def run(name, interp_order, cells, final_time, populations, by=None, bz=None, bx
         strict=False,
     )
     ph.MaxwellianFluidModel(
-        bx=uniform(bx), by=by or uniform(0.0), bz=bz or uniform(0.0), **populations
+        bx=bx if callable(bx) else uniform(bx),
+        by=by or uniform(0.0),
+        bz=bz or uniform(0.0),
+        **populations,
     )
     timestamps = time_step * np.arange(0, nsteps + 1, 2)
     for quantity in ["E", "B"]:
