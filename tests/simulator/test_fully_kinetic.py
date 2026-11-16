@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
 FullyKineticModel end to end, one level, periodic: kinetic ions and electrons, E from
-Ampere-Maxwell, Esirkepov current. The dimension is the first command line argument (1 if
-omitted).
+Ampere-Maxwell, Esirkepov current. Command line: dimension (1 if omitted), then optionally the
+interpolation orders (those of CASES if omitted).
 
 With a seed, the initial particles do not depend on the tiling, so the same run on one patch
 and on several patches must give the same fields: this exercises the patch border sums of the
 current and charge (in 2D and 3D, at nodes shared by 4 and 8 patches), the field ghosts and the
-particle exchange. Not bitwise: one patch sums the contributions of a node in particle order,
-several patches as partial sums then border sums. The dumps are single precision.
+particle exchange. Measured, serial and on 3 MPI ranks, in 1D, 2D and 3D: no difference in
+the single precision dumps. Summation order differs (one patch adds the contributions of a
+node in particle order, several patches partial sums then border sums), so the check keeps
+headroom rather than asking for equality.
 """
 
 import itertools
@@ -24,18 +26,20 @@ from tests.simulator import SimulatorTest, parse_cli_args
 
 ph.NO_GUI()
 
-ndim = int((parse_cli_args() or ["1"])[0])
+cli_args = parse_cli_args() or ["1"]
+ndim = int(cli_args[0])
 
 # cells per direction, the patch size of the tiled run (4, 16 and 8 patches: in 2D and 3D,
 # nodes shared by 4 and 8 patches), particles per cell and species, interpolation orders,
-# time steps. 3D is cut to stay in the PR tier: 4 ppc and 40 steps took 26.8 s (Debug)
+# time steps. 3D is cut for the PR tier: 4 ppc and 40 steps took 26.8 s at order 1 (Debug), now
+# 11.7 s; orders 2 and 3 add 29 s (registered apart)
 CASES = {
     1: {"cells": 64, "tiled": 16, "ppc": 50, "orders": [1, 2, 3], "steps": 40},
     2: {"cells": 32, "tiled": 8, "ppc": 8, "orders": [1, 2, 3], "steps": 40},
-    3: {"cells": 16, "tiled": 8, "ppc": 2, "orders": [1], "steps": 20},
+    3: {"cells": 16, "tiled": 8, "ppc": 2, "orders": [1, 2, 3], "steps": 20},
 }
 cells = CASES[ndim]["cells"]
-interp_orders = CASES[ndim]["orders"]
+interp_orders = [int(order) for order in cli_args[1:]] or CASES[ndim]["orders"]
 dl = 0.04
 L = cells * dl
 c_over_va = 10.0
@@ -45,8 +49,8 @@ time_step = 0.002  # omega_pe dt = 0.1, c dt / dx = 0.5
 time_step_nbr = CASES[ndim]["steps"]
 diag_dir = f"phare_outputs/fully_kinetic_{ndim}d"
 
-# relative difference of the tiled and single patch fields, and Gauss residual drift
-# (1D, measured: 0 and 2.3e-8 to 3.5e-8)
+# relative difference of the tiled and single patch fields, and Gauss residual drift.
+# Measured: 0 everywhere; drift 2.3e-8 to 3.5e-8 (1D), 3.2e-8 to 5.5e-8 (2D), 3.2e-8 (3D)
 MAX_TILING_DIFFERENCE = 1e-6
 MAX_GAUSS_DRIFT = 1e-6
 
