@@ -6,6 +6,7 @@
 #include "phare_amr.hpp"
 
 #include "amr/solvers/solver_mhd.hpp"
+#include "amr/solvers/solver_fk.hpp"
 #include "amr/solvers/solver_ppc.hpp"
 #include "amr/multiphysics_integrator.hpp"
 #include "amr/physical_models/mhd_model.hpp"
@@ -14,15 +15,18 @@
 #include "amr/messengers/mhd_hybrid_messenger_strategy.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/data/particles/refine/splitter.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
 #include "amr/level_initializer/level_initializer_factory.hpp"
 #include "amr/level_initializer/hybrid_level_initializer.hpp"
+#include "amr/level_initializer/fk_level_initializer.hpp"
 #include "amr/level_initializer/mhd_level_initializer.hpp"
 #include "amr/solvers/mhd_resolver.hpp"
 
 #include <memory>
+#include <type_traits>
 
 namespace PHARE
 {
@@ -32,6 +36,9 @@ inline constexpr bool has_hybrid_v = opts.hybrid_enabled;
 
 template<auto opts>
 inline constexpr bool has_mhd_v = opts.mhd_enabled;
+
+template<auto opts>
+inline constexpr bool has_fk_v = opts.fk_enabled;
 
 } // namespace PHARE
 
@@ -69,6 +76,43 @@ struct HybridStack<opts, CoreTypes, true>
         = PHARE::amr::RefinementParams<typename CoreTypes::Hybrid::ParticleArray_t, Splitter_t>;
 
     using LevelInitializer_t = HybridLevelInitializer<Model_t>;
+};
+
+template<auto opts, typename CoreTypes, bool enabled = has_fk_v<opts>>
+struct FKStack;
+
+template<auto opts, typename CoreTypes>
+struct FKStack<opts, CoreTypes, false>
+{
+};
+
+// fully kinetic: the hybrid core types (layout, fields, particles, species container) without
+// the fluid electrons, its own model, solver and level initializer
+template<auto opts, typename CoreTypes>
+struct FKStack<opts, CoreTypes, true>
+{
+    using GridLayout_t = CoreTypes::Hybrid::GridLayout_t;
+    using Model_t      = FullyKineticModel<GridLayout_t, typename CoreTypes::Hybrid::Electromag_t,
+                                           typename CoreTypes::Hybrid::Ions_t, amr::SAMRAI_Types,
+                                           typename CoreTypes::Hybrid::Grid_t>;
+    using Solver_t     = PHARE::solver::SolverFK<Model_t, PHARE::amr::SAMRAI_Types>;
+
+    using Splitter_t = PHARE::amr::Splitter<PHARE::core::DimConst<opts.dimension>,
+                                            PHARE::core::InterpConst<opts.interp_order>,
+                                            PHARE::core::RefinedParticlesConst<opts.nbRefinedPart>>;
+    using RefinementParams_t
+        = PHARE::amr::RefinementParams<typename CoreTypes::Hybrid::ParticleArray_t, Splitter_t>;
+
+    using LevelInitializer_t = FKLevelInitializer<Model_t>;
+};
+
+template<auto opts, typename FK>
+struct FKFactorySelector
+{
+    using Messenger_t = amr::MessengerFactory<
+        typename FK::Model_t, typename FK::Model_t,
+        amr::HybridHybridMessengerStrategy<typename FK::Model_t, typename FK::RefinementParams_t>>;
+    using LevelInit_t = LevelInitializerFactory<amr::SAMRAI_Types, typename FK::LevelInitializer_t>;
 };
 
 template<auto opts, typename CoreTypes, bool enabled = has_mhd_v<opts>>
@@ -138,7 +182,10 @@ template<auto opts>
 struct PHARE_Types
 {
     static_assert(opts.mhd_axes_consistent());
-    static_assert(has_hybrid_v<opts> || has_mhd_v<opts>, "a build must enable at least one model");
+    static_assert(has_hybrid_v<opts> || has_mhd_v<opts> || has_fk_v<opts>,
+                  "a build must enable at least one model");
+    static_assert(!has_fk_v<opts> || !(has_hybrid_v<opts> || has_mhd_v<opts>),
+                  "a fully kinetic build has no other model");
 
     auto static constexpr dimension = opts.dimension;
 
@@ -147,13 +194,16 @@ struct PHARE_Types
 
     using Hybrid = HybridStack<opts, core_types>;
     using MHD    = MHDStack<opts, core_types>;
+    using FK     = FKStack<opts, core_types>;
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
 
     // amr deps
     using amr_types = PHARE::amr::PHARE_Types<opts>;
 
-    using Selector_t = FactorySelector<opts, Hybrid, MHD, has_hybrid_v<opts>, has_mhd_v<opts>>;
+    using Selector_t = std::conditional_t<
+        has_fk_v<opts>, FKFactorySelector<opts, FK>,
+        FactorySelector<opts, Hybrid, MHD, has_hybrid_v<opts>, has_mhd_v<opts>>>;
 
     using MessengerFactory // = amr/solver bidirectional dependency
         = Selector_t::Messenger_t;
@@ -178,6 +228,20 @@ template<auto opts>
 struct HybridSimState<opts, true>
 {
     using Model_t  = PHARE_Types<opts>::Hybrid::Model_t;
+    using ResMan_t = Model_t::resources_manager_type;
+    std::shared_ptr<ResMan_t> resman_;
+    std::shared_ptr<Model_t> model_;
+};
+
+template<auto opts, bool enabled = has_fk_v<opts>>
+struct FKSimState
+{
+};
+
+template<auto opts>
+struct FKSimState<opts, true>
+{
+    using Model_t  = PHARE_Types<opts>::FK::Model_t;
     using ResMan_t = Model_t::resources_manager_type;
     std::shared_ptr<ResMan_t> resman_;
     std::shared_ptr<Model_t> model_;

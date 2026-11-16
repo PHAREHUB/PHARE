@@ -6,6 +6,7 @@
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 #include "diagnostic/detail/vtkh5_type_writer.hpp"
 
 #include <string>
@@ -187,7 +188,7 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
     auto const init = [&](auto const ilvl) -> std::optional<std::size_t> {
         //
 
-        if constexpr (solver::is_hybrid_model_v<Model_t>)
+        if constexpr (solver::is_particle_model_v<Model_t>)
             if (auto ret = HybridFluidInitializer{this, diagnostic, initializer}(ilvl))
                 return ret;
 
@@ -213,7 +214,7 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 
-    if constexpr (solver::is_hybrid_model_v<Model_t>)
+    if constexpr (solver::is_particle_model_v<Model_t>)
         for (auto const& pop : modelView.getIons())
             if (diagnostic.quantity.starts_with("/ions/pop/" + pop.name() + "/"))
             {
@@ -301,7 +302,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
             VTKFileWriter writer{diagnostic, this, ilvl, info.offset_per_level[ilvl]};
 
             auto const write_quantity = [&](auto& layout, auto const&, auto const) {
-                if constexpr (solver::is_hybrid_model_v<Model_t>)
+                if constexpr (solver::is_particle_model_v<Model_t>)
                     HybridFluidWriter{this, diagnostic, writer}(layout);
 
                 if constexpr (solver::is_mhd_model_v<Model_t>)
@@ -372,7 +373,7 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     {
         MhdFluidComputer{this, diagnostic}();
     }
-    else if constexpr (solver::is_hybrid_model_v<Model_t>)
+    else if constexpr (solver::is_particle_model_v<Model_t>)
     {
         // to implement
     }

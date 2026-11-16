@@ -56,9 +56,13 @@ struct SimOpts
     MHDOpts::RiemannSolverType riemann_solver_type  = MHDOpts::RiemannSolverType::MHDOff;
     bool Hall                                       = false;
 
-    // derived — two independent axes, never one as the other's negation
-    bool hybrid_enabled = interp_order > 0;
+    // all species are particles, E from Ampere-Maxwell: no hybrid model in such a build
+    bool fully_kinetic = false;
+
+    // derived — independent axes, never one as the other's negation
+    bool hybrid_enabled = interp_order > 0 and !fully_kinetic;
     bool mhd_enabled    = reconstruction_type != MHDOpts::ReconstructionType::MHDOff;
+    bool fk_enabled     = fully_kinetic;
 
     // all four MHD axes must agree on off-ness; a member fn keeps SimOpts an aggregate
     constexpr bool mhd_axes_consistent() const
@@ -96,6 +100,7 @@ SimOpts inline SimOpts::FROM(initializer::PHAREDict const& dict)
         enum_from("limiter", defaults.slope_limiter_type),
         enum_from("riemann", defaults.riemann_solver_type),
         cppdict::get_value(dict, "hall", defaults.Hall),
+        cppdict::get_value(dict, "fully_kinetic", defaults.fully_kinetic),
     };
 }
 
@@ -108,7 +113,8 @@ constexpr bool operator==(SimOpts const& lhs, SimOpts const& rhs)
            and lhs.reconstruction_type == rhs.reconstruction_type //
            and lhs.slope_limiter_type == rhs.slope_limiter_type   //
            and lhs.riemann_solver_type == rhs.riemann_solver_type //
-           and lhs.Hall == rhs.Hall;
+           and lhs.Hall == rhs.Hall                               //
+           and lhs.fully_kinetic == rhs.fully_kinetic;
 }
 
 

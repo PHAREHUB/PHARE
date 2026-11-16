@@ -20,6 +20,20 @@ while(THIS_FILE)
     string(REPLACE "," ";" LINE_LIST ${LINE})
     list(LENGTH LINE_LIST LINE_LENGTH)
 
+    # fully kinetic shape: dim,interp,nbRefinedPart,FK
+    # normalize to the 8-field SimOpts aggregate order: MHD off, no Hall, fully_kinetic
+    set(_FULLY_KINETIC OFF)
+    if(LINE_LENGTH EQUAL 4)
+        list(GET LINE_LIST 3 _LAST)
+        if(NOT "${_LAST}" STREQUAL "FK")
+            message(FATAL_ERROR "PHARE permutation line of arity 4 must end with FK: ${LINE}")
+        endif()
+        list(REMOVE_AT LINE_LIST 3)
+        list(APPEND LINE_LIST "MHDOff" "MHDOff" "MHDOff" "false")
+        list(LENGTH LINE_LIST LINE_LENGTH)
+        set(_FULLY_KINETIC ON)
+    endif()
+
     if(LINE_LENGTH EQUAL 5)
         # MHD-only shape: dim,recon,slope,riemann,hall
         # normalize to the 7-field SimOpts aggregate order: dim,0,0,...
@@ -40,6 +54,9 @@ while(THIS_FILE)
 
     string(REPLACE "," "_" OUT ${LINE})
     SET(MOD_STR "cpp_${OUT}")
+    if(_FULLY_KINETIC)
+        list(APPEND LINE_LIST "true")
+    endif()
     list(JOIN LINE_LIST "," LINE) # semicolon separated list to csv
 
     pybind11_add_module(${MOD_STR} cpp_simulator.cpp)

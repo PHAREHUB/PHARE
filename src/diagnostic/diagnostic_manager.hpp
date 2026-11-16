@@ -2,6 +2,7 @@
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 #include "amr/physical_models/mhd_model.hpp"
 
 #include "core/def.hpp"
@@ -31,7 +32,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
     auto const diagTypes = []() {
         using Model = DiagManager::Model_t;
 
-        if constexpr (solver::is_hybrid_model_v<Model>)
+        if constexpr (solver::is_particle_model_v<Model>)
             return std::vector<std::string>{"fluid", "electromag", "particle", "meta", "info"};
 
         else if constexpr (solver::is_mhd_model_v<Model>)

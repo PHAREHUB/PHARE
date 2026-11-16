@@ -31,6 +31,10 @@
 3,3,6
 3,3,12
 3,3,27
+# --- fully kinetic builds (dim,interp,nbRefinedPart,FK) ---
+1,1,2,FK
+1,2,2,FK
+1,3,2,FK
 # --- MHD-only builds (dim,reconstruction,limiter,riemann,hall) ---
 # --- one line per single-run functional test ---
 # mhd_harris (higher-order, kept)

@@ -57,7 +57,7 @@ public:
         , flags{_flags}
         , filePath_{hifivePath}
     {
-        if constexpr (solver::is_hybrid_model_v<Model>)
+        if constexpr (solver::is_particle_model_v<Model>)
         {
             typeWriters_ = {
                 {"info", make_writer<InfoDiagnosticWriter<This>>()},
@@ -248,7 +248,7 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
 {
     timestamp_                   = timestamp;
     fileAttributes_["dimension"] = dimension;
-    if constexpr (solver::is_hybrid_model_v<Model_t>)
+    if constexpr (solver::is_particle_model_v<Model_t>)
         fileAttributes_["interpOrder"] = GridLayout::options.interp_order;
     fileAttributes_["layoutType"] = modelView_.getLayoutTypeString();
     fileAttributes_["domain_box"] = modelView_.domainBox();

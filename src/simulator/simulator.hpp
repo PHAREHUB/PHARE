@@ -86,6 +86,7 @@ public:
 
     NO_DISCARD auto& getHybridModel() { return hyb_.model_; }
     NO_DISCARD auto& getMHDModel() { return mhd_.model_; }
+    NO_DISCARD auto& getFKModel() { return fk_.model_; }
     NO_DISCARD auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
 
     NO_DISCARD std::string to_str() override;
@@ -173,6 +174,7 @@ private:
     // empty when opts has the corresponding model disabled, see phare_solver.hpp
     solver::HybridSimState<opts> hyb_;
     solver::MHDSimState<opts> mhd_;
+    solver::FKSimState<opts> fk_;
 
     std::unique_ptr<PHARE::core::ITimeStamper> timeStamper;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
@@ -193,6 +195,7 @@ private:
     void diagnostics_init(initializer::PHAREDict const&, auto&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
+    void fk_init(initializer::PHAREDict const&);
     void finalize_init(PHARE::initializer::PHAREDict const& dict);
 
     void handle_dictionary_exception(core::DictionaryException const& ex);
@@ -274,6 +277,9 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
 
     if (lb_info.active)
     {
+        if constexpr (has_fk_v<opts>)
+            throw std::runtime_error("FullyKineticModel: load balancing is not supported yet");
+
         if constexpr (has_hybrid_v<opts>)
         {
             if (find_model("HybridModel"))
@@ -338,6 +344,35 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 
     if (dict["simulation"].contains("diagnostics"))
         diagnostics_init(dict["simulation"]["diagnostics"], *hyb_.model_);
+}
+
+
+template<auto opts>
+void Simulator<opts>::fk_init(initializer::PHAREDict const& dict)
+{
+    using FKModel  = PHARETypes::FK::Model_t;
+    using SolverFK = PHARETypes::FK::Solver_t;
+
+    // first version: one level, periodic, no tagging and no restarts
+    if (maxLevelNumber_ != 1)
+        throw std::runtime_error("FullyKineticModel: only one level is supported yet");
+    if (dict["simulation"]["AMR"]["refinement"].contains("tagging")
+        and dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
+                != "none")
+        throw std::runtime_error("FullyKineticModel: tagging is not supported yet");
+    if (dict["simulation"].contains("restarts"))
+        throw std::runtime_error("FullyKineticModel: restarts are not supported yet");
+
+    fk_.model_ = std::make_shared<FKModel>(dict["simulation"], fk_.resman_);
+    fk_.resman_->registerResources(fk_.model_->state); // still valid, never moved
+
+    multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, fk_.model_);
+    multiphysInteg_->registerAndInitSolver(0, maxLevelNumber_ - 1,
+                                           std::make_unique<SolverFK>(dict["simulation"]));
+    multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
+
+    if (dict["simulation"].contains("diagnostics"))
+        diagnostics_init(dict["simulation"]["diagnostics"], *fk_.model_);
 }
 
 
@@ -452,6 +487,23 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
             throw std::runtime_error("MHDModel requested but this build has no MHD support");
     }
 
+    if constexpr (has_fk_v<opts>)
+    {
+        if (find_model("FullyKineticModel"))
+        {
+            anyModel       = true;
+            using ResMan_t = PHARETypes::FK::Model_t::resources_manager_type;
+            fk_.resman_    = std::make_shared<ResMan_t>();
+            fk_init(dict);
+        }
+    }
+    else
+    {
+        if (find_model("FullyKineticModel"))
+            throw std::runtime_error(
+                "FullyKineticModel requested but this build has no fully kinetic support");
+    }
+
     if (!anyModel)
     {
         std::string names;
@@ -487,6 +539,11 @@ std::string Simulator<opts>::to_str()
     {
         if (mhd_.model_)
             ss << core::to_str(mhd_.model_->state);
+    }
+    if constexpr (has_fk_v<opts>)
+    {
+        if (fk_.model_)
+            ss << fk_.model_->state.to_str();
     }
     return ss.str();
 }

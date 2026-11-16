@@ -119,7 +119,7 @@ public:
             auto const s
                 = shape_(localPosition_(particle, layout) + timeShift * particle.v[0] / dx);
 
-            assert(s.start >= 0 and s.start + support <= rho.size());
+            assert(s.start >= 0 and static_cast<std::size_t>(s.start) + support <= rho.size());
 
             auto const qw = charge * particle.weight;
             for (std::size_t ik = 0; ik < support; ++ik)

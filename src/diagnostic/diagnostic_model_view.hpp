@@ -8,6 +8,7 @@
 #include "amr/amr_constants.hpp"
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 #include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
@@ -150,7 +151,7 @@ class ModelView;
 
 
 template<typename Hierarchy, typename Model>
-class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
+class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_particle_model_v<Model>>>
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
     using Super        = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
