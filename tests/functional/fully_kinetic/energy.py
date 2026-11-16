@@ -5,22 +5,30 @@ Energy of a 2D thermal plasma (unmagnetized, kinetic ions and electrons), PHARE 
     W^n = sum_p m w |v^n|^2 / 2 dV + sum_nodes (E^{n-1/2} . E^{n+1/2} / c^2 + |B^n|^2) / 2 dV
 
 with w = n / ppc the particle weight. In vacuum the leapfrog Yee scheme conserves exactly this
-field part (E at half steps, B at integer steps); with particles, momentum conserving PIC heats
-(finite grid instability, noise), and W drifts. The dumped E is half a step behind its time
+field part (E at half steps, B at integer steps). The dumped E is half a step behind its time
 label: the dump at t_n is E^{n-1/2}, so E is dumped at t_n and t_{n+1}.
 
-Setup: dx = lambda_De, w_pe dt = 0.1, 64 particles per cell and species, 1000 steps.
-Measurement only: prints the relative drift of W per seed, then mean and mean + 3 sigma, over
-the whole run and from the first sample on (E starts at 0, the field fluctuations take a few
-plasma periods to fill: in 1D most of the drift is there, +3.7e-4 then flat within 1.5e-4).
-Usage: energy.py [--1d] [seed ...] (--1d: 64 cells, a check of the script itself)
+Setup: v_th,e = 0.09 c (dx = 2.2 lambda_De), w_pe dt = 0.1, 64 particles per cell and species,
+1000 steps (t = 2), strict setup checks. Measurement only, not a registered test: prints the
+relative drift of W per seed, total and after the first sample (E starts at 0, the field
+fluctuations take a few plasma periods to fill), then mean and mean + 3 sigma.
+
+Measured (seed 0). In 2D the grid scale B_z noise grows linearly in time, driven by the in-plane
+charge conserving currents; B_x, B_y stay flat, and so does 1D. Cause under investigation
+(deposit checked against the published Esirkepov scheme).
+- 1D, v_th,e = 0.2 c: +3.06e-4 total, +9.1e-6 after step 100
+- 2D, v_th,e = 0.2 c: +1.9e-3 total, +1.6e-3 after step 100, B_z 1.7e-4 -> 1.1e-3
+- 2D, this setup: +3.3e-3 total, +2.7e-3 after step 100; B_z grows 6.7e-5 per unit time
+  (2.0e-5 at t = 0.2, 1.4e-4 at t = 2), the kinetic energy +1.5e-3
+- 2D, this setup with --half-dt: +3.5e-3, +2.8e-3; B_z grows 6.3e-5 per unit time
+Usage: energy.py [--1d] [--half-dt] [seed ...] (--1d: 64 cells, a check of the script itself)
 """
 
 import sys
 
 import numpy as np
 import waves
-from waves import c_over_va, dl, mass_e, plasma_frequency, time_step
+from waves import c_over_va, dl, mass_e, time_step
 
 import pyphare.pharein as ph
 from pyphare.pharesee.hierarchy import hierarchy_from
@@ -28,10 +36,13 @@ from pyphare.simulator.simulator import Simulator
 
 cells = (64,) if "--1d" in sys.argv else (32, 32)
 ppc = 64
-nsteps = 1000
-sample_every = 100
-# v_th,e = dx w_pe: dx = lambda_De
-Te = mass_e * (dl * plasma_frequency(1, -1, mass_e)) ** 2
+# --half-dt: same physical time and samples with dt / 2 (c dt / dx = 0.25)
+substeps = 2 if "--half-dt" in sys.argv else 1
+time_step = time_step / substeps
+nsteps = 1000 * substeps
+sample_every = 100 * substeps
+# (|v| + 3 v_th,e) / c = 0.27, below the 0.3 guard of the setup checks
+Te = mass_e * 0.9**2
 Ti = Te
 masses = {"protons": 1.0, "electrons": mass_e}
 cell_volume = dl ** len(cells)
@@ -58,8 +69,7 @@ def run(seed):
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
         },
-        # v_th,e / c = 0.2: the speed of light warning is expected
-        strict=False,
+        strict=True,
     )
     ph.MaxwellianFluidModel(
         bx=waves.uniform(0.0),
@@ -144,7 +154,7 @@ def measure(seed):
 
 
 def main():
-    seeds = [int(arg) for arg in sys.argv[1:] if arg != "--1d"] or [0]
+    seeds = [int(arg) for arg in sys.argv[1:] if not arg.startswith("--")] or [0]
     drifts = np.array([measure(seed) for seed in seeds])
     for name, values in (
         ("total", drifts[:, 0]),
