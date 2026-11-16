@@ -5,6 +5,12 @@ Ampere-Maxwell, Esirkepov current. Command line (--help): dimension (1 if omitte
 interpolation orders (those of CASES if omitted), --filter-passes N for the binomial current
 filter: the Python charge density of the Gauss check is then filtered the same way, since the
 filter commutes with the Yee divergence and the conserved residual is div E - c^2 F^N rho.
+--cleaning s for the Marder divergence cleaning: the residual F = div E - c^2 F^N rho is then
+no longer conserved but diffused, each step multiplies its mode k by
+g_k = 1 - s lambda_k / sum_i (2 / dx_i^2), lambda_k = sum_i 4 / dx_i^2 sin^2(k_i dx_i / 2),
+exactly (the particles and the current keep F as it is between two cleanings). The check then
+asks for F at step n to be the initial F with every mode multiplied by g_k^n, for its norm to
+decrease at every dump, below a measured fraction at the end.
 
 With a seed, the initial particles do not depend on the tiling, so the same run on one patch
 and on several patches must give the same fields: this exercises the patch border sums of the
@@ -44,9 +50,16 @@ parser.add_argument(
     default=0,
     help="binomial current filter passes (the Python charge density gets the same)",
 )
+parser.add_argument(
+    "--cleaning",
+    type=float,
+    default=0.0,
+    help="Marder divergence cleaning s in [0, 1] (Simulation divergence_cleaning)",
+)
 cli = parser.parse_args(parse_cli_args())
 ndim = cli.ndim
 filter_passes = cli.filter_passes
+cleaning = cli.cleaning
 
 # cells per direction, the patch size of the tiled run (4, 16 and 8 patches: in 2D and 3D,
 # nodes shared by 4 and 8 patches), particles per cell and species, interpolation orders,
@@ -66,7 +79,11 @@ mass_e = 0.04  # m_i / m_e = 25
 T = 0.03  # dx = 2.3 Debye lengths, 3 v_th,e / c = 0.27: no setup warning under strict
 time_step = 0.002  # omega_pe dt = 0.1, c dt / dx = 0.5
 time_step_nbr = CASES[ndim]["steps"]
-diag_dir = f"phare_outputs/fully_kinetic_{ndim}d_filter{filter_passes}"
+diag_dir = f"phare_outputs/fully_kinetic_{ndim}d_filter{filter_passes}" + (
+    f"_cleaning{cleaning}" if cleaning else ""
+)
+# with cleaning, E and particles are dumped every SAMPLE_EVERY steps to follow the residual
+SAMPLE_EVERY = time_step_nbr // 5
 
 # relative difference of the tiled and single patch fields, and Gauss residual drift.
 # Measured (Debug): 0 everywhere; drift 2.3e-8 to 3.5e-8 (1D), 3.2e-8 to 5.5e-8 (2D), 3.2e-8 to
@@ -74,6 +91,9 @@ diag_dir = f"phare_outputs/fully_kinetic_{ndim}d_filter{filter_passes}"
 # 8.6e-8 (2D, N=1), 1.2e-7 (2D, N=2), 8.2e-8 (3D, N=1), serial and on 3 ranks
 MAX_TILING_DIFFERENCE = 1e-6
 MAX_GAUSS_DRIFT = 1e-6
+# with cleaning: |F(n) - G^n F(0)| / max |F(0)|, and the final over the initial norm of F
+MAX_CLEANING_ERROR = 1e-6
+MAX_CLEANED_FRACTION = 1.0  # TODO measured
 
 
 def uniform(value):
@@ -104,6 +124,7 @@ def config(largest_patch_size, diag_subdir, interp_order):
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
         current_filter_passes=filter_passes,
+        divergence_cleaning=cleaning,
         smallest_patch_size=8,
         largest_patch_size=largest_patch_size,
         diag_options={
@@ -152,7 +173,7 @@ def config(largest_patch_size, diag_subdir, interp_order):
         },
     )
 
-    timestamps = [0.0, time_step * time_step_nbr]
+    timestamps = sample_times()
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
     for pop in ["protons", "electrons"]:
@@ -160,6 +181,16 @@ def config(largest_patch_size, diag_subdir, interp_order):
             quantity="domain", write_timestamps=timestamps, population_name=pop
         )
     return sim
+
+
+def sample_steps():
+    if cleaning:
+        return list(range(0, time_step_nbr + 1, SAMPLE_EVERY))
+    return [0, time_step_nbr]
+
+
+def sample_times():
+    return [step * time_step for step in sample_steps()]
 
 
 charges = {"protons": 1.0, "electrons": -1.0}
@@ -277,7 +308,10 @@ class FullyKineticTest(SimulatorTest):
             return
 
         self._check_tiling(one_patch, tiled, interp_order)
-        self._check_gauss(tiled, interp_order)
+        if cleaning:
+            self._check_cleaning(tiled, interp_order)
+        else:
+            self._check_gauss(tiled, interp_order)
 
     def _check_tiling(self, one_patch, tiled, interp_order):
         nbr_patches = len(
@@ -322,6 +356,41 @@ class FullyKineticTest(SimulatorTest):
         )
         # E diagnostics are single precision
         self.assertLess(drift, MAX_GAUSS_DRIFT)
+
+    def _check_cleaning(self, subdir, interp_order):
+        steps = sample_steps()
+        residuals = [
+            gauss_residual(subdir, step * time_step, interp_order) for step in steps
+        ]
+        initial = residuals[0]
+        scale = np.abs(initial).max()
+        norms = np.array([np.linalg.norm(F) for F in residuals])
+        amplification = marder_amplification()
+        # the slowest mode, along x
+        slowest = (1,) + (0,) * (ndim - 1)
+        initial_modes = np.fft.fftn(initial)
+        for step, F, norm in zip(steps, residuals, norms):
+            predicted = np.fft.ifftn(amplification**step * initial_modes).real
+            error = np.abs(F - predicted).max() / scale
+            ratio = np.fft.fftn(F)[slowest] / initial_modes[slowest]
+            print(
+                f"{ndim}D order {interp_order} step {step}: |F| / |F(0)| ="
+                f" {norm / norms[0]:.4e}, |F - G^n F(0)| / max |F(0)| = {error:.3e},"
+                f" slowest mode {ratio.real:.6f} (g^n {amplification[slowest] ** step:.6f})"
+            )
+            self.assertLess(error, MAX_CLEANING_ERROR)
+            self.assertAlmostEqual(
+                ratio.real, amplification[slowest] ** step, delta=1e-4
+            )
+        self.assertTrue(np.all(np.diff(norms) <= 1e-6 * norms[0]), norms)
+        self.assertLess(norms[-1] / norms[0], MAX_CLEANED_FRACTION)
+
+
+def marder_amplification():
+    """g_k per periodic mode of the grid (numpy fft order), s = d dt sum_i 2 / dx_i^2"""
+    modes = np.meshgrid(*[np.fft.fftfreq(cells) * cells] * ndim, indexing="ij")
+    eigenvalue = sum(4 / dl**2 * np.sin(np.pi * m / cells) ** 2 for m in modes)
+    return 1 - cleaning * eigenvalue / (ndim * 2 / dl**2)
 
 
 if __name__ == "__main__":
