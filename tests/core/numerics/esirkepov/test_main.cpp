@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 
 #include <cmath>
+#include <optional>
 #include <random>
 #include <vector>
 #include <algorithm>
@@ -147,11 +148,15 @@ struct EsirkepovSetup
     }
 
     // largest |d rho / dt + div J| on the primal nodes where every dual neighbour exists,
-    // with dual node i between primal nodes i and i+1 in its direction
-    double maxContinuityResidual(double const duration) const
+    // with dual node i between primal nodes i and i+1 in its direction,
+    // in the box of the given extent starting at lower (default: everywhere)
+    double maxContinuityResidual(double const duration, Index_t const lower = {},
+                                 std::optional<Index_t> const extent = std::nullopt) const
     {
         double residual = 0;
-        forEachNode(rho0.shape(), [&](Index_t const& idx) {
+        forEachNode(extent ? *extent : rho0.shape(), [&](Index_t idx) {
+            for (std::size_t d = 0; d < dim; ++d)
+                idx[d] += lower[d];
             double divJ = 0;
             for (std::size_t d = 0; d < dim; ++d)
             {
@@ -241,8 +246,15 @@ TYPED_TEST(EsirkepovTest, continuityOfEachCrossingParticle)
         this->reset();
         this->depositAll();
 
+        // the deposit spans at most 5 nodes around the particle cell
+        auto lower = this->layout.AMRToLocal(Point{iCell}).toArray();
+        for (auto& l : lower)
+            l -= 3;
+        typename TestFixture::Index_t extent;
+        extent.fill(8);
+
         auto const tol = 1e-12 * this->maxAbs(this->rho0) / this->dt;
-        EXPECT_LT(this->maxContinuityResidual(this->dt), tol)
+        EXPECT_LT(this->maxContinuityResidual(this->dt, lower, extent), tol)
             << " delta " << delta[0] << " v " << v[0] << " " << v[1] << " " << v[2];
     });
 }
@@ -329,9 +341,9 @@ TYPED_TEST(EsirkepovTest, cornerParticlesDepositInsideGhostBox)
         for (std::size_t d = 0; d < dim; ++d)
         {
             auto const upper = corner[d] == 1;
-            iCell[d] = this->allLower[d] + (upper ? int(this->allCells[d]) - 1 : 0);
-            delta[d] = upper ? 0.999999 : 0.;
-            v[d]     = (upper ? 0.99 : -0.99) * this->dl[d] / this->dt;
+            iCell[d]         = this->allLower[d] + (upper ? int(this->allCells[d]) - 1 : 0);
+            delta[d]         = upper ? 0.999999 : 0.;
+            v[d]             = (upper ? 0.99 : -0.99) * this->dl[d] / this->dt;
         }
         this->particles.emplace_back(this->weight, iCell, delta, v);
     });
