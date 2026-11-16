@@ -12,6 +12,9 @@ def _simulator_id_parts(sim):
     if sim.interp_order:
         parts += [str(sim.interp_order), str(sim.refined_particle_nbr)]
 
+    if "FullyKineticModel" in sim.model_options:
+        parts += ["FK"]
+
     if sim.mhd_timestepper:
         hall_active = "true" if sim.hall else "false"
         parts += [

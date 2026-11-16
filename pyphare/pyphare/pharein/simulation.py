@@ -158,7 +158,8 @@ def check_interp_order(**kwargs):
     interp_order = kwargs.get("interp_order")
 
     if interp_order is None:
-        return 1 if "HybridModel" in model_options else no_hybrid_interp_order
+        particle_models = {"HybridModel", "FullyKineticModel"}
+        return 1 if particle_models & set(model_options) else no_hybrid_interp_order
 
     if interp_order not in valid_interp_orders:
         raise ValueError(
@@ -198,7 +199,6 @@ def check_path(**kwargs):
 
 
 # ------------------------------------------------------------------------------
-
 
 
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
@@ -619,7 +619,7 @@ def check_max_mhd_level(**kwargs):
 def check_model_options(**kwargs):
     model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
 
-    valid_options = {"MHDModel", "HybridModel"}
+    valid_options = {"MHDModel", "HybridModel", "FullyKineticModel"}
 
     if not set(model_options).issubset(valid_options):
         raise ValueError(
@@ -632,7 +632,30 @@ def check_model_options(**kwargs):
     if "MHDModel" in model_options and not kwargs["mhd_timestepper"]:
         raise ValueError("Error: MHDModel requires a non-empty mhd_timestepper")
 
+    if "FullyKineticModel" in model_options:
+        if len(model_options) != 1:
+            raise ValueError(
+                "Error: FullyKineticModel cannot be combined with another model"
+            )
+        if not hybrid_is_active(kwargs["interp_order"]):
+            raise ValueError("Error: FullyKineticModel requires an interp_order")
+
     return model_options
+
+
+def check_c_over_va(**kwargs):
+    """speed of light over the Alfven speed, the only new parameter of FullyKineticModel"""
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+    c_over_va = kwargs.get("c_over_va")
+
+    if "FullyKineticModel" not in model_options:
+        if c_over_va is not None:
+            raise ValueError("Error: c_over_va is only used by FullyKineticModel")
+        return None
+
+    if c_over_va is None or c_over_va <= 0:
+        raise ValueError("Error: FullyKineticModel requires c_over_va > 0")
+    return float(c_over_va)
 
 
 def check_mhd_constants(**kwargs):
@@ -719,6 +742,7 @@ def checker(func):
             "riemann",
             "mhd_timestepper",
             "refinement_order",
+            "c_over_va",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -758,8 +782,8 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
-            ndim, **kwargs
+        kwargs["periodicities"], kwargs["domain_boundaries"] = (
+            boundary.resolve_boundaries(ndim, **kwargs)
         )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
@@ -818,6 +842,7 @@ def checker(func):
         kwargs["mhd_timestepper"] = mhd_timestepper
 
         kwargs["model_options"] = check_model_options(**kwargs)
+        kwargs["c_over_va"] = check_c_over_va(**kwargs)
 
         kwargs["refinement_order"] = check_refinement_operator(**kwargs)
 

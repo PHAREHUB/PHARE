@@ -89,3 +89,5 @@ def populateDict(simulation=None):
         initialize.hybrid.populateDict(simulation)
     if "MHDModel" in simulation.model_options:
         initialize.mhd.populateDict(simulation)
+    if "FullyKineticModel" in simulation.model_options:
+        initialize.fully_kinetic.populateDict(simulation)
