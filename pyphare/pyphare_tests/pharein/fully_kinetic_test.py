@@ -33,28 +33,34 @@ def make_sim(**overrides):
     return simulation.Simulation(**kwargs)
 
 
-def make_model(
-    electron_density=1.0, electron_charge=-1, electron_mass=0.04, bx=1.0, Te=0.04
-):
-    def pop(charge, mass, density, T):
-        return {
-            "charge": charge,
-            "mass": mass,
-            "density": uniform(density),
-            "vbulkx": uniform(0.0),
-            "vbulky": uniform(0.0),
-            "vbulkz": uniform(0.0),
-            "vthx": uniform(np.sqrt(T / mass)),
-            "vthy": uniform(np.sqrt(T / mass)),
-            "vthz": uniform(np.sqrt(T / mass)),
-        }
+def pop(charge, mass, density, T, vx=0.0):
+    return {
+        "charge": charge,
+        "mass": mass,
+        "density": uniform(density),
+        "vbulkx": uniform(vx),
+        "vbulky": uniform(0.0),
+        "vbulkz": uniform(0.0),
+        "vthx": uniform(np.sqrt(T / mass)),
+        "vthy": uniform(np.sqrt(T / mass)),
+        "vthz": uniform(np.sqrt(T / mass)),
+    }
 
+
+def make_model(
+    electron_density=1.0,
+    electron_charge=-1,
+    electron_mass=0.04,
+    bx=1.0,
+    Te=0.04,
+    vx=0.0,
+):
     return MaxwellianFluidModel(
         bx=uniform(bx),
         by=uniform(0.0),
         bz=uniform(0.0),
         protons=pop(1, 1.0, 1.0, 0.01),
-        electrons=pop(electron_charge, electron_mass, electron_density, Te),
+        electrons=pop(electron_charge, electron_mass, electron_density, Te, vx),
     )
 
 
@@ -114,6 +120,61 @@ class TestFullyKineticChecks(unittest.TestCase):
         sim = make_sim()
         make_model(electron_density=0.9)
         with self.assertRaisesRegex(ValueError, "net charge"):
+            check_fully_kinetic(sim)
+
+    def test_light_and_plasma_limits_combine(self):
+        # c dt / dx = 0.9 and w_pe dt = 1: each fine alone, unstable together
+        sim = make_sim(time_step=0.0036)
+        make_model(electron_mass=(10 * 0.0036) ** 2)
+        with self.assertRaisesRegex(ValueError, "unstable"):
+            check_fully_kinetic(sim)
+
+    def test_the_plasma_frequency_is_the_total_one(self):
+        # two beams of half density: w_pb dt = 1.5 each, sqrt(2) times more together,
+        # (2.12 / 2)^2 + (c dt / dx)^2 = 1.12 + 0.25 > 1
+        sim = make_sim()
+        mass = (10 * np.sqrt(0.5) * 0.002 / 1.5) ** 2
+        MaxwellianFluidModel(
+            bx=uniform(1.0),
+            by=uniform(0.0),
+            bz=uniform(0.0),
+            protons=pop(1, 1.0, 1.0, 0.01),
+            beam1=pop(-1, mass, 0.5, 1e-6),
+            beam2=pop(-1, mass, 0.5, 1e-6),
+        )
+        with self.assertRaisesRegex(ValueError, "unstable"):
+            check_fully_kinetic(sim)
+
+    def test_bulk_velocity_beyond_a_cell_per_step_is_refused(self):
+        # 25 * 0.002 = 0.05 > dx
+        sim = make_sim()
+        make_model(vx=25.0)
+        with self.assertRaisesRegex(ValueError, "bulk velocity"):
+            check_fully_kinetic(sim)
+
+    def test_tail_warning_counts_the_particles(self):
+        # 6400 electrons: sqrt(2 ln 6400) + 1 = 5.2 thermal velocities,
+        # v_th = sqrt(0.6 / 0.04) = 3.9: 5.2 * 3.9 * 0.002 = 0.040 >= dx
+        sim = make_sim()
+        make_model(Te=0.6)
+        with self.assertWarns(UserWarning) as caught:
+            check_fully_kinetic(sim)
+        self.assertIn("thermal", " ".join(str(w.message) for w in caught.warnings))
+
+    def test_fast_particles_compared_to_light_warn(self):
+        # v_th = sqrt(0.16 / 0.04) = 2, 3 v_th / c = 0.6
+        sim = make_sim()
+        make_model(Te=0.16)
+        with self.assertWarns(UserWarning) as caught:
+            check_fully_kinetic(sim)
+        self.assertIn(
+            "speed of light", " ".join(str(w.message) for w in caught.warnings)
+        )
+
+    def test_strict_turns_warnings_into_errors(self):
+        sim = make_sim(strict=True)
+        make_model(Te=0.16)
+        with self.assertRaisesRegex(RuntimeError, "speed of light"):
             check_fully_kinetic(sim)
 
     def test_unstable_plasma_period_is_refused(self):

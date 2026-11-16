@@ -91,7 +91,8 @@ def run(name, interp_order, cells, final_time, populations, by=None, bz=None, bx
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
         },
-        strict=True,
+        # these runs explore warned regimes on purpose (cold beams, v_th,e / c = 0.3)
+        strict=False,
     )
     ph.MaxwellianFluidModel(
         bx=uniform(bx), by=by or uniform(0.0), bz=bz or uniform(0.0), **populations

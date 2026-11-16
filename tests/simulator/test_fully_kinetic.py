@@ -25,7 +25,7 @@ dl = 0.04
 L = cells * dl
 c_over_va = 10.0
 mass_e = 0.04  # m_i / m_e = 25
-T = 0.01
+T = 0.03  # dx = 2.3 Debye lengths, 3 v_th,e / c = 0.27: no setup warning under strict
 time_step = 0.002  # omega_pe dt = 0.1, c dt / dx = 0.5
 time_step_nbr = 40
 diag_dir = "phare_outputs/fully_kinetic"

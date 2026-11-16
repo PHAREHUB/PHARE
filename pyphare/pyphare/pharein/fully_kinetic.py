@@ -4,20 +4,18 @@ the plasma frequency of a species is omega_p = (c/V_A) |q| sqrt(n/m), its cyclot
 Omega_c = |q| B / m and its Debye length v_th / omega_p.
 
 Errors are setups the explicit scheme cannot run (unstable, or without a solution for E),
-warnings are setups it runs inaccurately.
+warnings are setups it runs inaccurately, errors as well with Simulation(strict=True).
 """
 
 import warnings
 
 import numpy as np
 
-# leapfrog stability limit of omega_p dt, and the accuracy one
-unstable_plasma_period = 2.0
 accurate_plasma_period = 0.2
 accurate_cyclotron_period = 0.3
 max_dx_over_debye = 3.0
-# a particle at this many thermal velocities must still move less than a cell per step
-thermal_tail = 4.0
+# the pusher is not relativistic
+max_speed_over_light = 0.3
 net_charge_tolerance = 1e-6
 
 
@@ -56,65 +54,105 @@ def check_fully_kinetic(sim):
 
     model = sim.model
     coords = _cell_centers(sim)
+    directions = "xyz"[: sim.ndim]
     dt = sim.time_stepper.time_step
     c = sim.c_over_va
-    dx = min(sim.dl)
+    dl = np.asarray(sim.dl)
+    dx = dl.min()
 
     def sample(fn):
         return np.asarray(fn(*coords), dtype=float) * np.ones_like(coords[0])
 
     B = np.sqrt(sum(sample(model.model_dict[f"b{k}"]) ** 2 for k in "xyz"))
-
-    charge_density = np.zeros_like(coords[0])
-    abs_charge_density = np.zeros_like(coords[0])
-    problems = []
-
-    for name in model.populations:
-        pop = model.model_dict[name]
-        q, m = pop["charge"], pop["mass"]
-        if q == 0 or m <= 0:
+    pops = {name: model.model_dict[name] for name in model.populations}
+    for name, pop in pops.items():
+        if pop["charge"] == 0 or pop["mass"] <= 0:
             raise ValueError(
                 f"Error: population {name} needs a non zero charge and a positive mass"
             )
 
-        n = sample(pop["density"])
-        charge_density += q * n
-        abs_charge_density += abs(q) * n
+    density = {name: sample(pop["density"]) for name, pop in pops.items()}
+    vbulk = {
+        name: {k: sample(pop[f"v{k}"]) for k in "xyz"} for name, pop in pops.items()
+    }
+    vth = {
+        name: {k: sample(pop[f"vth{k}"]) for k in "xyz"} for name, pop in pops.items()
+    }
 
-        omega_p = c * abs(q) * np.sqrt(n.max() / m)
-        if omega_p * dt >= unstable_plasma_period:
-            raise ValueError(
-                f"Error: {name} plasma frequency times dt = {omega_p * dt:.3f}"
-                f" >= {unstable_plasma_period}, the leapfrog is unstable"
-            )
-        if omega_p * dt > accurate_plasma_period:
-            problems.append(f"{name} plasma frequency times dt = {omega_p * dt:.3f}")
-
-        omega_c = abs(q) * B.max() / m
-        if omega_c * dt > accurate_cyclotron_period:
-            problems.append(f"{name} cyclotron frequency times dt = {omega_c * dt:.3f}")
-
-        vth = max(sample(pop[f"vth{k}"]).max() for k in "xyz")
-        if thermal_tail * vth * dt >= dx:
-            problems.append(
-                f"{name} thermal velocity: {thermal_tail:g} v_th dt = "
-                f"{thermal_tail * vth * dt:.3g} >= dx, tail particles will stop the run"
-            )
-
-        if q < 0:
-            vth_min = min(sample(pop[f"vth{k}"]).min() for k in "xyz")
-            debye = vth_min / omega_p
-            if dx > max_dx_over_debye * debye:
-                problems.append(
-                    f"{name} Debye length {debye:.3g}: dx / lambda_D = {dx / debye:.1f}"
-                    f" > {max_dx_over_debye:g}, expect numerical heating"
-                )
-
+    charge_density = sum(pop["charge"] * density[name] for name, pop in pops.items())
+    abs_charge_density = sum(
+        abs(pop["charge"]) * density[name] for name, pop in pops.items()
+    )
     net = abs(charge_density.sum()) / abs_charge_density.sum()
     if net > net_charge_tolerance:
         raise ValueError(
             f"Error: net charge {net:.3g} (relative), Gauss's law has no periodic solution"
         )
 
+    def plasma_frequency2(name):
+        pop = pops[name]
+        return c**2 * pop["charge"] ** 2 * density[name] / pop["mass"]
+
+    # Yee + leapfrog in a cold plasma: sin^2(w dt / 2) = (w_p dt / 2)^2 + c^2 dt^2 sum k_grid^2,
+    # with the total plasma frequency
+    w_p = np.sqrt(sum(plasma_frequency2(name) for name in pops)).max()
+    stability = (w_p * dt / 2) ** 2 + (c * dt) ** 2 * np.sum(1.0 / dl**2)
+    if stability >= 1:
+        raise ValueError(
+            f"Error: (w_p dt / 2)^2 + c^2 dt^2 sum 1/dx^2 = {stability:.3f} >= 1,"
+            " the leapfrog is unstable"
+        )
+
+    problems = []
+    if w_p * dt > accurate_plasma_period:
+        problems.append(f"total plasma frequency times dt = {w_p * dt:.3f}")
+
+    nbr_cells = np.prod(sim.cells)
+    for name, pop in pops.items():
+        omega_c = abs(pop["charge"]) * B.max() / pop["mass"]
+        if omega_c * dt > accurate_cyclotron_period:
+            problems.append(f"{name} cyclotron frequency times dt = {omega_c * dt:.3f}")
+
+        # the displacement guard stops the run if a particle crosses a cell in a step;
+        # the largest of N gaussian samples is about sqrt(2 ln N) thermal velocities
+        tail = np.sqrt(2 * np.log(nbr_cells * pop["nbrParticlesPerCell"])) + 1
+        for d, k in enumerate(directions):
+            bulk = np.abs(vbulk[name][k]).max()
+            if bulk * dt >= dl[d]:
+                raise ValueError(
+                    f"Error: {name} bulk velocity times dt = {bulk * dt:.3g} >= d{k}"
+                )
+            fastest = (np.abs(vbulk[name][k]) + tail * vth[name][k]).max()
+            if fastest * dt >= dl[d]:
+                problems.append(
+                    f"{name} thermal velocity: (|v_bulk| + {tail:.1f} v_th) dt ="
+                    f" {fastest * dt:.3g} >= d{k}, tail particles will stop the run"
+                )
+
+        speed = max(np.abs(vbulk[name][k]).max() for k in "xyz") + 3 * max(
+            vth[name][k].max() for k in "xyz"
+        )
+        if speed / c > max_speed_over_light:
+            problems.append(
+                f"{name} (|v_bulk| + 3 v_th) / c = {speed / c:.2f} > {max_speed_over_light},"
+                " the pusher is not relativistic, compare with the speed of light"
+            )
+
+    # finite grid heating is driven by the lightest species
+    lightest = min(pop["mass"] for pop in pops.values())
+    inverse_debye2 = sum(
+        plasma_frequency2(name) / vth[name]["x"] ** 2
+        for name, pop in pops.items()
+        if pop["mass"] == lightest
+    )
+    debye = 1 / np.sqrt(inverse_debye2.max())
+    if dx > max_dx_over_debye * debye:
+        problems.append(
+            f"Debye length {debye:.3g} of the lightest species: dx / lambda_D ="
+            f" {dx / debye:.1f} > {max_dx_over_debye:g}, expect numerical heating"
+        )
+
     for problem in problems:
+        if sim.strict:
+            raise RuntimeError(f"FullyKineticModel: {problem}")
         warnings.warn(f"FullyKineticModel: {problem}", UserWarning, stacklevel=2)

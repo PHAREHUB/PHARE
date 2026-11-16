@@ -287,8 +287,8 @@ TYPED_TEST(FKLeapfrog1D, coldPlasmaOscillatesAtThePlasmaFrequency)
 
 
 // no particles: a standing light wave B_z = cos(kx) cos(wt) follows the Yee dispersion
-// sin(w dt / 2) / (c dt) = sin(k dx / 2) / dx. Checked in the middle of the box, before the
-// stale ghost nodes can be felt there.
+// sin(w dt / 2) / (c dt) = sin(k dx / 2) / dx. Checked in the middle of the box: the stale
+// ghost nodes reach it after ~16 steps, but their contribution stays far below the tolerance.
 TYPED_TEST(FKLeapfrog1D, lightWaveFollowsTheYeeDispersion)
 {
     auto const dx = this->dx;
