@@ -7,6 +7,7 @@
 
 #include "gtest/gtest.h"
 
+#include <array>
 #include <cmath>
 #include <numbers>
 
@@ -14,34 +15,54 @@
 using namespace PHARE::core;
 
 
-template<typename InterpOrder>
-class AmpereMaxwell1D : public ::testing::Test
+template<std::size_t dim_, std::size_t interp_order_>
+struct Opts
+{
+    static constexpr std::size_t dim          = dim_;
+    static constexpr std::size_t interp_order = interp_order_;
+};
+
+
+template<typename Opts_t>
+class AmpereMaxwellTest : public ::testing::Test
 {
 protected:
-    static constexpr std::size_t dim          = 1;
-    static constexpr std::size_t interp_order = InterpOrder::value;
+    static constexpr std::size_t dim          = Opts_t::dim;
+    static constexpr std::size_t interp_order = Opts_t::interp_order;
     using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
 
-    static constexpr std::size_t nCells = 100;
-    static constexpr double dx          = 0.1;
-    static constexpr double L           = nCells * dx;
-    static constexpr double c2          = 25.;
-    static constexpr double dt          = 0.01;
-    static constexpr double k           = 2 * std::numbers::pi / L;
-    static constexpr double sentinel    = 12345.;
+    static constexpr std::uint32_t nCells = 32;
+    static constexpr double dx            = 0.1;
+    static constexpr double L             = nCells * dx;
+    static constexpr double c2            = 25.;
+    static constexpr double dt            = 0.01;
+    static constexpr double k             = 2 * std::numbers::pi / L;
+    static constexpr double sentinel      = 12345.;
 
-    GridLayout_t layout{{{dx}}, {{nCells}}, Point{0.}};
+    GridLayout_t layout{ConstArray<double, dim>(dx), ConstArray<std::uint32_t, dim>(nCells),
+                        Point<double, dim>{}};
     UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
     UsableVecField<dim> J{"J", layout, HybridQuantity::Vector::J};
     UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
 
-    // physical coordinate of local node i of field f
-    double x(auto const& f, std::uint32_t i) const
+
+    auto position(auto const& f, auto const... ijk) const
     {
-        auto const start   = layout.physicalStartIndex(f, Direction::X);
-        auto const isDual  = layout.centering(f.physicalQuantity())[0] == QtyCentering::dual;
-        auto const shifted = static_cast<double>(i) - static_cast<double>(start);
-        return (shifted + (isDual ? 0.5 : 0.)) * dx;
+        return layout.fieldNodeCoordinates(
+            f, layout.localToAMR(Point{static_cast<std::uint32_t>(ijk)...}.as_signed()));
+    }
+
+    bool isPhysical(auto const& f, auto const... ijk) const
+    {
+        std::array<std::uint32_t, dim> const index{static_cast<std::uint32_t>(ijk)...};
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            auto const direction = static_cast<Direction>(d);
+            if (index[d] < layout.physicalStartIndex(f, direction)
+                or index[d] > layout.physicalEndIndex(f, direction))
+                return false;
+        }
+        return true;
     }
 
     void fillAll(auto& vecfield, double value)
@@ -50,20 +71,39 @@ protected:
             layout.evalOnGhostBox(f, [&](auto const&... ijk) { f(ijk...) = value; });
     }
 
-    bool isPhysical(auto const& f, std::uint32_t i) const
+
+    // B_c = sum over the simulated directions d of sin(k x_d + phase(c, d)), so that every
+    // derivative entering the curl is non zero
+    static double phase(std::size_t c, std::size_t d) { return 0.3 * (c + 1) + 0.7 * d; }
+
+    static double bValue(std::size_t c, auto const& r)
     {
-        return i >= layout.physicalStartIndex(f, Direction::X)
-               and i <= layout.physicalEndIndex(f, Direction::X);
+        double value = 0.;
+        for (std::size_t d = 0; d < dim; ++d)
+            value += std::sin(k * r[d] + phase(c, d));
+        return value;
+    }
+
+    static double bDerivative(std::size_t c, std::size_t d, auto const& r)
+    {
+        return d < dim ? k * std::cos(k * r[d] + phase(c, d)) : 0.;
+    }
+
+    // (curl B)_c = d_i B_j - d_j B_i, (c, i, j) a circular permutation of (x, y, z)
+    static double curlB(std::size_t c, auto const& r)
+    {
+        auto const i = (c + 1) % 3;
+        auto const j = (c + 2) % 3;
+        return bDerivative(j, i, r) - bDerivative(i, j, r);
     }
 };
 
-using InterpOrders = ::testing::Types<std::integral_constant<std::size_t, 1>,
-                                      std::integral_constant<std::size_t, 2>,
-                                      std::integral_constant<std::size_t, 3>>;
-TYPED_TEST_SUITE(AmpereMaxwell1D, InterpOrders);
+using AllOpts = ::testing::Types<Opts<1, 1>, Opts<1, 2>, Opts<1, 3>, Opts<2, 1>, Opts<2, 2>,
+                                 Opts<2, 3>, Opts<3, 1>, Opts<3, 2>, Opts<3, 3>>;
+TYPED_TEST_SUITE(AmpereMaxwellTest, AllOpts);
 
 
-TYPED_TEST(AmpereMaxwell1D, currentOnlyTermIsExact)
+TYPED_TEST(AmpereMaxwellTest, currentOnlyTermIsExact)
 {
     this->fillAll(this->B, 0.);
     for (auto c : {Component::X, Component::Y, Component::Z})
@@ -86,48 +126,42 @@ TYPED_TEST(AmpereMaxwell1D, currentOnlyTermIsExact)
 }
 
 
-TYPED_TEST(AmpereMaxwell1D, curlTermIsSecondOrderAndGhostsUntouched)
+TYPED_TEST(AmpereMaxwellTest, curlTermIsSecondOrderAndGhostsUntouched)
 {
-    auto const k = this->k;
     this->fillAll(this->J, 0.);
-    this->fillAll(this->B, 0.);
     this->fillAll(this->E, this->sentinel);
     for (auto& f : this->E)
         this->layout.evalOnBox(f, [&](auto const&... ijk) { f(ijk...) = 0.; });
 
-    auto& By = this->B(Component::Y);
-    auto& Bz = this->B(Component::Z);
-    this->layout.evalOnGhostBox(By, [&](auto const& i) { By(i) = std::sin(k * this->x(By, i)); });
-    this->layout.evalOnGhostBox(Bz, [&](auto const& i) { Bz(i) = std::cos(k * this->x(Bz, i)); });
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto& Bc = this->B[c];
+        this->layout.evalOnGhostBox(Bc, [&](auto const&... ijk) {
+            Bc(ijk...) = this->bValue(c, this->position(Bc, ijk...));
+        });
+    }
 
     AmpereMaxwell{this->layout, this->c2}(this->B, this->J, this->E, this->dt);
 
-    // (curl B)_y = -dBz/dx = k sin(kx), (curl B)_z = dBy/dx = k cos(kx)
-    auto const amp = this->dt * this->c2 * k;
-    auto const tol = amp * (k * this->dx) * (k * this->dx); // second order finite difference
+    // each Yee derivative of sin(k x) is centered: error k^3 dx^2 / 24, two per component
+    auto const amp = this->dt * this->c2 * this->k;
+    auto const kdx = this->k * this->dx;
+    auto const tol = amp * kdx * kdx / 6;
 
-    auto& Ex = this->E(Component::X);
-    auto& Ey = this->E(Component::Y);
-    auto& Ez = this->E(Component::Z);
-
-    this->layout.evalOnGhostBox(Ey, [&](auto const& i) {
-        if (this->isPhysical(Ey, i))
-            EXPECT_NEAR(Ey(i), amp * std::sin(k * this->x(Ey, i)), tol);
-        else
-            EXPECT_EQ(Ey(i), this->sentinel);
-    });
-    this->layout.evalOnGhostBox(Ez, [&](auto const& i) {
-        if (this->isPhysical(Ez, i))
-            EXPECT_NEAR(Ez(i), amp * std::cos(k * this->x(Ez, i)), tol);
-        else
-            EXPECT_EQ(Ez(i), this->sentinel);
-    });
-    this->layout.evalOnGhostBox(Ex, [&](auto const& i) {
-        if (this->isPhysical(Ex, i))
-            EXPECT_EQ(Ex(i), 0.);
-        else
-            EXPECT_EQ(Ex(i), this->sentinel);
-    });
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto& Ec = this->E[c];
+        this->layout.evalOnGhostBox(Ec, [&](auto const&... ijk) {
+            if (this->isPhysical(Ec, ijk...))
+            {
+                auto const expected
+                    = this->dt * this->c2 * this->curlB(c, this->position(Ec, ijk...));
+                EXPECT_NEAR(Ec(ijk...), expected, tol) << "component " << c;
+            }
+            else
+                EXPECT_EQ(Ec(ijk...), this->sentinel) << "component " << c;
+        });
+    }
 }
 
 
