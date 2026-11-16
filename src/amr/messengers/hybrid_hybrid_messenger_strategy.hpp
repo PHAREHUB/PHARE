@@ -24,6 +24,7 @@
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/messengers/refinement_config.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
@@ -78,6 +79,9 @@ namespace amr
         static constexpr std::size_t dimension   = GridLayoutT::dimension;
         static constexpr std::size_t interpOrder = GridLayoutT::options.interp_order;
 
+        // the fully kinetic model deposits its current and half step charge density
+        static constexpr bool sumsParticleCurrent = solver::is_fully_kinetic_model_v<HybridModel>;
+
         using InteriorParticleRefineOp = RefinementParams::InteriorParticleRefineOp;
         using CoarseToFineRefineOpOld  = RefinementParams::CoarseToFineRefineOpOld;
         using CoarseToFineRefineOpNew  = RefinementParams::CoarseToFineRefineOpNew;
@@ -101,7 +105,8 @@ namespace amr
         using ElectricFieldCoarsenOp   = VecFieldCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
     public:
-        static inline std::string const stratName    = "HybridModel-HybridModel";
+        static inline std::string const stratName = std::string{HybridModel::model_type_name} + "-"
+                                                    + std::string{HybridModel::model_type_name};
         static constexpr std::size_t rootLevelNumber = 0;
 
 
@@ -122,6 +127,8 @@ namespace amr
             resourcesManager_->registerResources(sumVec_);
             resourcesManager_->registerResources(sumField_);
             resourcesManager_->registerResources(sumTensor_);
+            if constexpr (sumsParticleCurrent)
+                resourcesManager_->registerResources(sumJ_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -144,6 +151,8 @@ namespace amr
             resourcesManager_->allocate(sumVec_, patch, allocateTime);
             resourcesManager_->allocate(sumField_, patch, allocateTime);
             resourcesManager_->allocate(sumTensor_, patch, allocateTime);
+            if constexpr (sumsParticleCurrent)
+                resourcesManager_->allocate(sumJ_, patch, allocateTime);
         }
 
 
@@ -434,6 +443,49 @@ namespace amr
         }
 
 
+        // same copy, sum, copy back as fillFluxBorders, on the Yee centered current
+        void fillCurrentBorders(VecFieldT& J, level_t& level, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
+                using value_type = FieldT::value_type;
+                assert(currentBorderSumRefiners_.size() == 1);
+
+                for (auto patch : resourcesManager_->enumerate(level, J, sumJ_))
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        std::memcpy(sumJ_[c].data(), J[c].data(), J[c].size() * sizeof(value_type));
+
+                currentBorderSumRefiners_[0].fill(level.getLevelNumber(), fillTime);
+
+                for (auto patch : resourcesManager_->enumerate(level, J, sumJ_))
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        std::memcpy(J[c].data(), sumJ_[c].data(), J[c].size() * sizeof(value_type));
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::fillCurrentBorders(J, level, fillTime);
+        }
+
+        void fillChargeBorders(FieldT& rho, level_t& level, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                using value_type = FieldT::value_type;
+                assert(chargeBorderSumRefiners_.size() == 1);
+
+                for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
+                    std::memcpy(sumField_.data(), rho.data(), rho.size() * sizeof(value_type));
+
+                chargeBorderSumRefiners_[0].fill(level.getLevelNumber(), fillTime);
+
+                for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
+                    std::memcpy(rho.data(), sumField_.data(), rho.size() * sizeof(value_type));
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::fillChargeBorders(rho, level, fillTime);
+        }
+
+
         void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
         {
             assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
@@ -692,6 +744,11 @@ namespace amr
             for (auto& refiner : popDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
+            for (auto& refiner : currentBorderSumRefiners_)
+                refiner.registerLevel(hierarchy, level);
+            for (auto& refiner : chargeBorderSumRefiners_)
+                refiner.registerLevel(hierarchy, level);
+
             for (auto& refiner : ionFluxBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
             for (auto& refiner : ionDensityBorderMaxRefiners_)
@@ -891,6 +948,20 @@ namespace amr
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
+            if constexpr (sumsParticleCurrent)
+            {
+                currentBorderSumRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        sumJ_.name(), info->modelCurrent, nullptr, sumJ_.name(),
+                        std::make_shared<
+                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
+
+                chargeBorderSumRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        sumField_.name(), info->modelChargeHalf, nullptr, sumField_.name(),
+                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+            }
+
             assert(info->maxBorderFields.size() == 1); // charge density
             for (auto const& field : info->maxBorderFields)
                 ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
@@ -1007,6 +1078,7 @@ namespace amr
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
         FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+        VecFieldT sumJ_{"PHARE_sumJ", core::HybridQuantity::Vector::J}; // fully kinetic only
 
 
 
@@ -1044,6 +1116,10 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
+
+        //! += particle current and half step charge density (fully kinetic only)
+        std::vector<VecFieldGhostSumRefinerPool> currentBorderSumRefiners_;
+        std::vector<FieldGhostSumRefinerPool> chargeBorderSumRefiners_;
 
         std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
