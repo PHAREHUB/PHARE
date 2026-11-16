@@ -21,7 +21,8 @@ charge conserving currents; B_x, B_y stay flat, and so does 1D. Cause under inve
 - 2D, this setup: +3.3e-3 total, +2.7e-3 after step 100; B_z grows 6.7e-5 per unit time
   (2.0e-5 at t = 0.2, 1.4e-4 at t = 2), the kinetic energy +1.5e-3
 - 2D, this setup with --half-dt: +3.5e-3, +2.8e-3; B_z grows 6.3e-5 per unit time
-Usage: energy.py [--1d] [--half-dt] [seed ...] (--1d: 64 cells, a check of the script itself)
+Usage: energy.py [--1d] [--half-dt] [--order=N] [seed ...] (--1d: 64 cells, a check of the
+script itself; --order: interpolation order, 1 if omitted)
 """
 
 import sys
@@ -40,6 +41,7 @@ ppc = 64
 substeps = 2 if "--half-dt" in sys.argv else 1
 time_step = time_step / substeps
 nsteps = 1000 * substeps
+interp_order = next((int(a[8:]) for a in sys.argv if a.startswith("--order=")), 1)
 sample_every = 100 * substeps
 # (|v| + 3 v_th,e) / c = 0.27, below the 0.3 guard of the setup checks
 Te = mass_e * 0.9**2
@@ -53,7 +55,8 @@ def times(steps):
 
 
 def run(seed):
-    diag_dir = f"phare_outputs/fully_kinetic_energy/seed_{seed}"
+    order = "" if interp_order == 1 else f"_order_{interp_order}"
+    diag_dir = f"phare_outputs/fully_kinetic_energy{order}/seed_{seed}"
     samples = list(range(0, nsteps + 1, sample_every))
     field_times = times(sorted(set(samples + [s + 1 for s in samples])))
     ph.global_vars.sim = None
@@ -62,7 +65,7 @@ def run(seed):
         time_step_nbr=nsteps + 1,
         cells=list(cells),
         dl=[dl] * len(cells),
-        interp_order=1,
+        interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
         diag_options={
