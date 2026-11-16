@@ -145,6 +145,27 @@ class TestFullyKineticChecks(unittest.TestCase):
                 model_options=["HybridModel"], c_over_va=None, current_filter_passes=1
             )
 
+    def test_divergence_cleaning_is_off_by_default(self):
+        self.assertEqual(make_sim().divergence_cleaning, 0.0)
+
+    def test_divergence_cleaning_is_kept(self):
+        self.assertEqual(make_sim(divergence_cleaning=0.5).divergence_cleaning, 0.5)
+        global_vars.sim = None
+        self.assertEqual(make_sim(divergence_cleaning=1).divergence_cleaning, 1.0)
+
+    def test_divergence_cleaning_must_be_in_the_stable_range(self):
+        # s = d dt sum_i 2 / dx_i^2 > 1 grows the grid scale mode of div E - c^2 rho
+        for s in [-0.1, 1.01, True, "0.5"]:
+            global_vars.sim = None
+            with self.assertRaisesRegex(ValueError, "divergence_cleaning"):
+                make_sim(divergence_cleaning=s)
+
+    def test_divergence_cleaning_is_only_for_fully_kinetic(self):
+        with self.assertRaisesRegex(ValueError, "only used by FullyKineticModel"):
+            make_sim(
+                model_options=["HybridModel"], c_over_va=None, divergence_cleaning=0.5
+            )
+
     def test_restarts_are_refused(self):
         with self.assertRaisesRegex(ValueError, "restarts"):
             make_sim(

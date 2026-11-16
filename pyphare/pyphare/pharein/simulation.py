@@ -679,6 +679,28 @@ def check_current_filter_passes(**kwargs):
     return passes
 
 
+def check_divergence_cleaning(**kwargs):
+    """Marder divergence cleaning of the fully kinetic E, s = d dt sum_i 2 / dx_i^2 in [0, 1],
+    0 (off) by default"""
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+    s = kwargs.get("divergence_cleaning")
+
+    if "FullyKineticModel" not in model_options:
+        if s is not None:
+            raise ValueError(
+                "Error: divergence_cleaning is only used by FullyKineticModel"
+            )
+        return None
+
+    if s is None:
+        return 0.0
+    if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 <= s <= 1:
+        raise ValueError(
+            f"Error: divergence_cleaning must be a number in [0, 1], got {s!r}"
+        )
+    return float(s)
+
+
 def check_mhd_constants(**kwargs):
     gamma = kwargs.get("gamma", 5.0 / 3.0)
     eta = kwargs.get("eta", 0.0)
@@ -765,6 +787,7 @@ def checker(func):
             "refinement_order",
             "c_over_va",
             "current_filter_passes",
+            "divergence_cleaning",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -866,6 +889,7 @@ def checker(func):
         kwargs["model_options"] = check_model_options(**kwargs)
         kwargs["c_over_va"] = check_c_over_va(**kwargs)
         kwargs["current_filter_passes"] = check_current_filter_passes(**kwargs)
+        kwargs["divergence_cleaning"] = check_divergence_cleaning(**kwargs)
         if "FullyKineticModel" in kwargs["model_options"]:
             fully_kinetic.check_fully_kinetic_simulation(**kwargs)
 
@@ -1179,6 +1203,13 @@ class Simulation:
           t=0, and the one the diagnostics see. The setup stability check is not changed: the
           filter only lowers the plasma response at short wavelengths, the check without it
           stays conservative.
+        * **divergence_cleaning** (``float``), default=0.0 (off), Marder cleaning of E at every
+          step, E += d dt grad(div E - c^2 rho), given as s = d dt sum_i 2 / dx_i^2 in [0, 1]:
+          a mode of the Gauss residual is multiplied each step by
+          1 - 2 s sum_i sin^2(k_i dx_i / 2) / dx_i^2 / sum_i 1 / dx_i^2, s = 0.5 removes the grid
+          scale mode in one step, s > 1 is unstable. rho is the charge density of the particles
+          half a step back, filtered like the current; the correction is a gradient, B is not
+          affected. The residual at t=0 (E starts at zero, not from Poisson) is what it cleans.
 
     **MHD parameters:**
 

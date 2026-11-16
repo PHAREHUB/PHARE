@@ -12,6 +12,7 @@ def populateDict(sim):
     dp.add_bool("simulation/fully_kinetic", True)
     dp.add_double("simulation/c_over_va", sim.c_over_va)
     dp.add_int("simulation/current_filter_passes", sim.current_filter_passes)
+    dp.add_double("simulation/divergence_cleaning", sim.divergence_cleaning)
     dp.add_string("simulation/algo/ion_updater/pusher/name", sim.particle_pusher)
 
     _populate_populations(dp, sim)
