@@ -131,6 +131,7 @@ def run(
     bz=None,
     bx=0.0,
     current_filter_passes=0,
+    divergence_cleaning=0.0,
 ):
     diag_dir = f"{diag_root}/{name}_{interp_order}"
     nsteps = round(final_time / time_step)
@@ -146,6 +147,7 @@ def run(
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
         current_filter_passes=current_filter_passes,
+        divergence_cleaning=divergence_cleaning,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
@@ -236,7 +238,10 @@ def k_over_K(k):
     return 1 / np.sinc(k * dl / 2 / np.pi)
 
 
-def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400):
+def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400, divergence_cleaning=0.0):
+    """divergence_cleaning (Marder, s): must not change the resolved physics. Measured, order 1,
+    seed 0, Debug, C++ at c757493ea: -1.33e-3 without, -1.53e-3 with s = 0.5 (fit error
+    2.6e-5)"""
     cells, mode = 32, 1
     k = 2 * np.pi * mode / (cells * dl)
 
@@ -244,7 +249,9 @@ def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400):
         return v0 * np.sin(k * x)
 
     diag_dir, times = run(
-        "langmuir",
+        f"langmuir_cleaning{divergence_cleaning}"
+        if divergence_cleaning
+        else "langmuir",
         interp_order,
         cells,
         final_time=20 * 2 * np.pi / plasma_frequency(1, 1, mass_e),
@@ -254,6 +261,7 @@ def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400):
                 -1, mass_e, 1.0, Te, vx=vx, ppc=ppc, seed=2 + 10 * seed
             ),
         },
+        divergence_cleaning=divergence_cleaning,
     )
     w_pe, w_pi = plasma_frequency(1, -1, mass_e), plasma_frequency(1, 1, 1.0)
     debye = np.sqrt(Te / mass_e) / w_pe
