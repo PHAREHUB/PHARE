@@ -1,0 +1,8 @@
+add_no_mpi_python3_test(compile_slot test_compile_slot.py ${CMAKE_CURRENT_SOURCE_DIR})
+add_no_mpi_python3_test(cmake_jobs test_jobs.py ${CMAKE_CURRENT_SOURCE_DIR})
+add_no_mpi_python3_test(ninja_progress test_ninja_progress.py ${CMAKE_CURRENT_SOURCE_DIR})
+foreach(_test py3_cmake_jobs py3_ninja_progress)
+  if(TEST ${_test})
+    set_property(TEST ${_test} APPEND PROPERTY ENVIRONMENT "CMAKE_COMMAND=${CMAKE_COMMAND}")
+  endif()
+endforeach()

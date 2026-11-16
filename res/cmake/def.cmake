@@ -59,7 +59,7 @@ if (phare_configurator)
     COMMAND_ERROR_IS_FATAL ANY
   )
   include_directories(${CMAKE_BINARY_DIR}/src) # for generated files
-  include("${PHARE_PROJECT_DIR}/tools/config/local.cmake")
+  include("${CMAKE_BINARY_DIR}/configurator/local.cmake")
 endif(phare_configurator)
 
 # Link Time Optimisation flags - is disabled if coverage is enabled
