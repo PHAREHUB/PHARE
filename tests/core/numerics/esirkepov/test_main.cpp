@@ -169,6 +169,31 @@ TYPED_TEST(Esirkepov1D, borderParticlesDepositInsideGhostBox)
 }
 
 
+// the charge deposit at a shifted position uses the shapes of the moments: same as the
+// Interpolator density deposit of particles moved there, including across cell borders
+TYPED_TEST(Esirkepov1D, chargeShapesAreTheMomentShapes)
+{
+    using Interpolator_t = Interpolator<TestFixture::dim, TestFixture::interp_order>;
+    this->loadRandom(300, 0.9);
+
+    auto const shift = 0.5 * this->dt;
+    this->esirkepov.depositCharge(this->particles, this->rho0, this->layout, 1., shift);
+
+    auto moved = this->particles;
+    for (auto& p : moved)
+    {
+        auto const pos = p.iCell[0] + p.delta[0] + shift * p.v[0] / this->dx;
+        p.iCell[0]     = static_cast<int>(std::floor(pos));
+        p.delta[0]     = pos - p.iCell[0];
+    }
+    UsableVecField<TestFixture::dim> flux{"F", this->layout, HybridQuantity::Vector::V};
+    Interpolator_t{}(moved, this->rho1, flux.super(), this->layout);
+
+    for (std::size_t i = 0; i < this->rho0.size(); ++i)
+        EXPECT_NEAR(this->rho0(i), this->rho1(i), 1e-14) << " at primal node " << i;
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
