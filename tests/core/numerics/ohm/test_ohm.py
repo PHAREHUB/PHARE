@@ -78,7 +78,8 @@ def _recenter(a, src, dst, sizes, off):
     return a
 
 
-def ideal_antisymmetric(tv, layout, n, F, B, J):
+def ideal_antisymmetric(tv, layout, n, F, B, J, F_on_E_nodes=True):
+    """F is the ion current on the E nodes (default), or the charge flux on the moment nodes"""
     dim = n.ndim
     sizes = {
         c: [layout.allocSize(tv.interpOrder, c, tv.nbrCells[d]) for d in range(dim)]
@@ -94,7 +95,8 @@ def ideal_antisymmetric(tv, layout, n, F, B, J):
     def P(a, src, dst):
         return _recenter(a, src, dst, sizes, off)
 
-    G = [P(F[i], Mc, Ec[i]) - J[i] for i in range(3)]
+    Fc = Ec if F_on_E_nodes else [Mc] * 3
+    G = [P(F[i], Fc[i], Ec[i]) - J[i] for i in range(3)]
     w = [B[i] / P(n, Mc, Bc[i]) for i in range(3)]
 
     def term(b, g):  # P_{B_b -> E}(w_b P_{E_g -> B_b} G_g), returned before the last P
@@ -105,6 +107,15 @@ def ideal_antisymmetric(tv, layout, n, F, B, J):
     Ey = P(term(Z, X), Bc[Z], Ec[Y]) - P(term(X, Z), Bc[X], Ec[Y])
     Ez = -P(term(Y, X), Bc[Y], Ec[Z]) + P(term(X, Y), Bc[X], Ec[Z])
     return Ex, Ey, Ez
+
+
+def on_nodes(fn, k, centering, coords):
+    """product over directions of fn(k x_d) at the nodes of centering; coords[d] = (primal, dual)"""
+    out = np.ones(())
+    for d, (primal, dual) in enumerate(coords):
+        x = primal if centering[d] == "primal" else dual
+        out = np.multiply.outer(out, fn(k * x))
+    return out
 
 
 def set_ideal_on_physical_box(tv, layout, ideals, values):
@@ -221,12 +232,17 @@ def test_ohm_yee1D(path):
     Jy = np.tanh(0.3 * x_primal)
     Jz = np.tanh(0.4 * x_primal)
 
-    # ideal term, F = (Vx, Vy, Vz) is the ion charge flux here
+    # ideal term, Ji = ion current on the E nodes, same profiles as V on the E centerings
+    coords = [(x_primal, x_dual)]
+    Ji = [
+        on_nodes(np.sinh, k, c[:1], coords)
+        for k, c in zip((0.2, 0.3, 0.4), (tv.ExCentering, tv.EyCentering, tv.EzCentering))
+    ]
     set_ideal_on_physical_box(
         tv,
         layout,
         (idealx, idealy, idealz),
-        ideal_antisymmetric(tv, layout, n, (Vx, Vy, Vz), (Bx, By, Bz), (Jx, Jy, Jz)),
+        ideal_antisymmetric(tv, layout, n, Ji, (Bx, By, Bz), (Jx, Jy, Jz)),
     )
 
     # pressure term
@@ -426,12 +442,17 @@ def test_ohm_yee2D(path):
     Jy = np.tensordot(np.tanh(0.3 * x_primal), np.tanh(0.3 * y_dual), axes=0)
     Jz = np.tensordot(np.tanh(0.4 * x_primal), np.tanh(0.4 * y_primal), axes=0)
 
-    # ideal term, F = (Vx, Vy, Vz) is the ion charge flux here
+    # ideal term, Ji = ion current on the E nodes, same profiles as V on the E centerings
+    coords = [(x_primal, x_dual), (y_primal, y_dual)]
+    Ji = [
+        on_nodes(np.sinh, k, c[:2], coords)
+        for k, c in zip((0.2, 0.3, 0.4), (tv.ExCentering, tv.EyCentering, tv.EzCentering))
+    ]
     set_ideal_on_physical_box(
         tv,
         layout,
         (idealx, idealy, idealz),
-        ideal_antisymmetric(tv, layout, n, (Vx, Vy, Vz), (Bx, By, Bz), (Jx, Jy, Jz)),
+        ideal_antisymmetric(tv, layout, n, Ji, (Bx, By, Bz), (Jx, Jy, Jz)),
     )
 
     # pressure term
@@ -715,12 +736,17 @@ def test_ohm_yee3D(path):
         axes=0,
     )
 
-    # ideal term, F = (Vx, Vy, Vz) is the ion charge flux here
+    # ideal term, Ji = ion current on the E nodes, same profiles as V on the E centerings
+    coords = [(x_primal, x_dual), (y_primal, y_dual), (z_primal, z_dual)]
+    Ji = [
+        on_nodes(np.sinh, k, c[:3], coords)
+        for k, c in zip((0.2, 0.3, 0.4), (tv.ExCentering, tv.EyCentering, tv.EzCentering))
+    ]
     set_ideal_on_physical_box(
         tv,
         layout,
         (idealx, idealy, idealz),
-        ideal_antisymmetric(tv, layout, n, (Vx, Vy, Vz), (Bx, By, Bz), (Jx, Jy, Jz)),
+        ideal_antisymmetric(tv, layout, n, Ji, (Bx, By, Bz), (Jx, Jy, Jz)),
     )
 
     # pressure term

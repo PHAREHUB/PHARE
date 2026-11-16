@@ -49,23 +49,27 @@ public:
     {
     }
 
-    // n: ion charge density, F: total ion charge flux sum_s q_s F_s (moment nodes).
-    // pressureTerm: -grad(Pe)/n on the E edges, from the electron pressure closure (see
-    // pressure_term.hpp).
+    // n: ion charge density. Ji: ion current sum_s q_s fluxE_s on the E nodes, deposited with
+    // the weights that gather E to the particles (Ions::chargeFluxE). pressureTerm: -grad(Pe)/n
+    // on the E edges, from the electron pressure closure (see pressure_term.hpp).
     template<typename VecField, typename Field>
-    void operator()(Field const& n, VecField const& F, VecField const& pressureTerm,
+    void operator()(Field const& n, VecField const& Ji, VecField const& pressureTerm,
                     VecField const& B, VecField const& J, VecField& Enew)
     {
         for (auto const c : {Component::X, Component::Y, Component::Z})
+        {
             if (layout_.centering(pressureTerm(c)) != layout_.centering(Enew(c)))
                 throw std::runtime_error("Error - Ohm - the pressure term must be E-centred");
+            if (layout_.centering(Ji(c)) != layout_.centering(Enew(c)))
+                throw std::runtime_error("Error - Ohm - the ion current must be E-centred");
+        }
 
         // lift the resistive / hyper-resistive runtime flags into compile-time tags: the per-cell
         // E_Eq_ branches only via if constexpr, skipping the projection / laplacian when eta or
         // nu is zero without ever testing the flags inside the evalOnBox loop.
         Constexprifier{isResistive(),
                        isHyperResistive()}([&]<bool isResistiveV, bool isHyperResistiveV>() {
-            solve_<isResistiveV, isHyperResistiveV>(n, F, pressureTerm, B, J, Enew);
+            solve_<isResistiveV, isHyperResistiveV>(n, Ji, pressureTerm, B, J, Enew);
         });
     }
 
@@ -73,7 +77,7 @@ private:
     GridLayout layout_;
 
     template<bool isResistive, bool isHyperResistive, typename VecField, typename Field>
-    void solve_(Field const& n, VecField const& F, VecField const& pressureTerm, VecField const& B,
+    void solve_(Field const& n, VecField const& Ji, VecField const& pressureTerm, VecField const& B,
                 VecField const& J, VecField& Enew) const
     {
         using Pack = OhmPack<VecField, Field>;
@@ -82,15 +86,15 @@ private:
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, F, B, J}, pressureTerm(Component::X), args...);
+                Pack{Enew, n, Ji, B, J}, pressureTerm(Component::X), args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, F, B, J}, pressureTerm(Component::Y), args...);
+                Pack{Enew, n, Ji, B, J}, pressureTerm(Component::Y), args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, F, B, J}, pressureTerm(Component::Z), args...);
+                Pack{Enew, n, Ji, B, J}, pressureTerm(Component::Z), args...);
         });
     }
 
@@ -99,7 +103,7 @@ private:
     {
         VecField& Exyz;
         Field const& n;
-        VecField const &F, &B, &J;
+        VecField const &Ji, &B, &J;
     };
 
 
@@ -107,12 +111,12 @@ private:
              typename PressureTerm, typename... IDXs>
     void E_Eq_(OhmPack&& pack, PressureTerm const& pressureTerm, IDXs const&... ijk) const
     {
-        auto const& [E, n, F, B, J]      = pack;
+        auto const& [E, n, Ji, B, J]     = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(n, F, B, J, {ijk...}) + pressureTerm(ijk...);
+        auto E_ = ideal_<Tag>(n, Ji, B, J, {ijk...}) + pressureTerm(ijk...);
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -136,30 +140,23 @@ private:
         return result;
     }
 
-    // The ideal term -Ve x B = -G x B / n, with G = n Ve = F - J the electron flux, written so
+    // The ideal term -Ve x B = -G x B / n, with G = n Ve = Ji - J the electron flux, written so
     // that it does no work on the electrons: sum_i G_i E_i = 0 over the periodic grid (#1577).
-    // G is formed on the E nodes, B/n on the B nodes, and each product is averaged to the B node
-    // and back: E_x = -P_{Bz->Ex}(wz P_{Ey->Bz} Gy) + P_{By->Ex}(wy P_{Ez->By} Gz), w = B/n.
+    // G lives on the E nodes, B/n on the B nodes, and each product is averaged to the B node and
+    // back: E_x = -P_{Bz->Ex}(wz P_{Ey->Bz} Gy) + P_{By->Ex}(wy P_{Ez->By} Gz), w = B/n.
     // The 2-point averages P_{a->b} and P_{b->a} are transposes of each other, so the operator
     // G -> E is antisymmetric. Averaging Ve and B separately to the E node and multiplying there
-    // (the former form) is not, and heats the plasma from particle noise.
-    // Reads F and n one node beyond the box E is computed on.
+    // (the former form) is not, and heats the plasma from particle noise. Ji must be the current
+    // deposited on the E nodes with the gather weights: then the work of E on the ions is
+    // exactly sum Ji.E, and the ions + B energy is conserved up to time integration error.
+    // Reads Ji, J and n one node beyond the box E is computed on.
     template<auto component, typename VecField, typename Field>
-    auto ideal_(Field const& n, VecField const& F, VecField const& B, VecField const& J,
+    auto ideal_(Field const& n, VecField const& Ji, VecField const& B, VecField const& J,
                 MeshIndex<dimension> index) const
     {
-        auto G = [&]<auto c, auto Fq, auto Eq>(auto const& ijk) {
-            return GridLayout::template project<Fq, Eq>(F(c), ijk) - J(c)(ijk);
-        };
-        auto Gx = [&](auto const& ijk) {
-            return G.template operator()<Component::X, Scalar::Vx, Scalar::Ex>(ijk);
-        };
-        auto Gy = [&](auto const& ijk) {
-            return G.template operator()<Component::Y, Scalar::Vy, Scalar::Ey>(ijk);
-        };
-        auto Gz = [&](auto const& ijk) {
-            return G.template operator()<Component::Z, Scalar::Vz, Scalar::Ez>(ijk);
-        };
+        auto Gx = [&](auto const& ijk) { return Ji(Component::X)(ijk) - J(Component::X)(ijk); };
+        auto Gy = [&](auto const& ijk) { return Ji(Component::Y)(ijk) - J(Component::Y)(ijk); };
+        auto Gz = [&](auto const& ijk) { return Ji(Component::Z)(ijk) - J(Component::Z)(ijk); };
 
         // B_c / n on the B_c node, times the electron flux component Gq averaged to it
         auto omegaG = [&]<auto c, auto Bq, auto Eq>(auto&& Gq, auto const& ijk) {

@@ -151,6 +151,7 @@ struct ElectronsTest : public ::testing::Test
     Electromag<VecFieldND> electromag;
 
     UsableVecField<dim> J, F, Ve, Vi, chargeFlux, pressureTerm;
+    UsableVecField<dim> FE, chargeFluxE; // fluxes on the E nodes, unused by the electrons
     UsableTensorField<dim> ionTensor, protonTensor;
 
     GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
@@ -167,24 +168,27 @@ struct ElectronsTest : public ::testing::Test
     auto static _ions(Args&... args)
     {
         auto const& [ionFlux, ionChargeDensity, ionMassDensity, protonParticleDensity,
-                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack]
+                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack, ionFluxE,
+                     chargeFluxE]
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
-            auto const& [V, m, d_c, d_m, c_f] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, d_c, d_m, c_f, c_fE] = ions.getCompileTimeResourcesViewList();
             d_c.setBuffer(&ionChargeDensity);
             d_m.setBuffer(&ionMassDensity);
             Vi.set_on(V);
             chargeFlux.set_on(c_f);
+            chargeFluxE.set_on(c_fE);
             ionTensor.set_on(m);
         }
         auto& pops = ions.getRunTimeResourcesViewList();
         assert(pops.size() == 1);
 
-        auto const& [F, m, Np, Nc, poppack] = pops[0].getCompileTimeResourcesViewList();
+        auto const& [F, m, Np, Nc, poppack, FE] = pops[0].getCompileTimeResourcesViewList();
         Np.setBuffer(&protonParticleDensity);
         Nc.setBuffer(&protonChargeDensity);
         ionFlux.set_on(F);
+        ionFluxE.set_on(FE);
         protonTensor.set_on(m);
         poppack.setBuffer(&pack);
         return ions;
@@ -199,6 +203,8 @@ struct ElectronsTest : public ::testing::Test
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
+        , FE{"protons_fluxE", layout, HybridQuantity::Vector::J}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
@@ -211,7 +217,8 @@ struct ElectronsTest : public ::testing::Test
                               layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , ions{_ions(F, ionChargeDensity, ionMassDensity, protonParticleDensity,
-                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack)}
+                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack, FE,
+                     chargeFluxE)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
@@ -586,6 +593,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     {
         PopulationBuffers(std::string const& name, GridYee const& layout)
             : flux{name + "_flux", layout, HybridQuantity::Vector::V}
+            , fluxE{name + "_fluxE", layout, HybridQuantity::Vector::J}
             , momentumTensor{name + "_momentumTensor", layout, HybridQuantity::Tensor::M}
             , particleDensity{name + "_particleDensity", HybridQuantity::Scalar::rho,
                               layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -596,7 +604,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         {
         }
 
-        UsableVecField<dim> flux;
+        UsableVecField<dim> flux, fluxE;
         UsableTensorField<dim> momentumTensor;
         GridND particleDensity, chargeDensity;
         ParticleArray_t domainParticles;
@@ -621,11 +629,12 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     {
         IonsT ions_{dict["ions"]};
         {
-            auto const& [V, m, d_c, d_m, c_f] = ions_.getCompileTimeResourcesViewList();
+            auto const& [V, m, d_c, d_m, c_f, c_fE] = ions_.getCompileTimeResourcesViewList();
             d_c.setBuffer(&ionChargeDensity);
             d_m.setBuffer(&ionMassDensity);
             Vi.set_on(V);
             chargeFlux.set_on(c_f);
+            chargeFluxE.set_on(c_fE);
             ionTensor.set_on(m);
         }
         auto& populations = ions_.getRunTimeResourcesViewList();
@@ -633,10 +642,12 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         for (std::size_t i = 0; i < nbrPops; ++i)
         {
             auto& buffers                       = popBuffers[i];
-            auto const& [F, m, Np, Nc, poppack] = populations[i].getCompileTimeResourcesViewList();
+            auto const& [F, m, Np, Nc, poppack, FE]
+                = populations[i].getCompileTimeResourcesViewList();
             Np.setBuffer(&buffers.particleDensity);
             Nc.setBuffer(&buffers.chargeDensity);
             buffers.flux.set_on(F);
+            buffers.fluxE.set_on(FE);
             buffers.momentumTensor.set_on(m);
             poppack.setBuffer(&buffers.pack);
         }
@@ -649,6 +660,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
@@ -690,7 +702,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     GridYee layout                     = NDlayout<dim, Base::interp>::create();
     PHARE::initializer::PHAREDict dict = createTwoPopulationDict(pops);
 
-    UsableVecField<dim> J, Ve, Vi, chargeFlux, pressureTerm;
+    UsableVecField<dim> J, Ve, Vi, chargeFlux, chargeFluxE, pressureTerm;
     UsableTensorField<dim> ionTensor;
     GridND ionChargeDensity, ionMassDensity, Pe;
     std::array<PopulationBuffers, nbrPops> popBuffers;

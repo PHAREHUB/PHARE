@@ -54,11 +54,13 @@ public:
         , particleDensity{this->name() + "_particleDensity", layout, HybridQuantity::Scalar::rho}
         , chargeDensity{this->name() + "_chargeDensity", layout, HybridQuantity::Scalar::rho}
         , F{this->name() + "_flux", layout, HybridQuantity::Vector::V}
+        , FE{this->name() + "_fluxE", layout, HybridQuantity::Vector::J}
         , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
         , particles{this->name(), layout.AMRBox()}
     {
-        auto&& [_F, _M, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
+        auto&& [_F, _M, _pd, _cd, _particles, _FE] = Super::getCompileTimeResourcesViewList();
         F.set_on(_F);
+        FE.set_on(_FE);
         M.set_on(_M);
         _pd.setBuffer(&particleDensity);
         _cd.setBuffer(&chargeDensity);
@@ -72,7 +74,7 @@ public:
     auto& operator*() const { return view(); }
 
     _defaults::Grid_t particleDensity, chargeDensity;
-    _defaults::UsableVecField_t F;
+    _defaults::UsableVecField_t F, FE;
     _defaults::UsableTensorField_t M;
     UsableParticlesPopulation<ParticleArray_t> particles;
 };
@@ -112,11 +114,13 @@ public:
         , chargeDensity{"chargeDensity", layout, HybridQuantity::Scalar::rho}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
     {
-        auto&& [_bV, _M, _cd, _md, _cF] = Super::getCompileTimeResourcesViewList();
+        auto&& [_bV, _M, _cd, _md, _cF, _cFE] = Super::getCompileTimeResourcesViewList();
         Vi.set_on(_bV);
         chargeFlux.set_on(_cF);
+        chargeFluxE.set_on(_cFE);
         M.set_on(_M);
         _cd.setBuffer(&chargeDensity);
         _md.setBuffer(&massDensity);
@@ -139,7 +143,7 @@ public:
     auto& operator*() const { return view(); }
 
     _defaults::Grid_t massDensity, chargeDensity;
-    _defaults::UsableVecField_t Vi, chargeFlux;
+    _defaults::UsableVecField_t Vi, chargeFlux, chargeFluxE;
     _defaults::UsableTensorField_t M;
     std::vector<UsableIonsPopulation<_defaults>> populations;
 };

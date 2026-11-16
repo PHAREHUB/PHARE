@@ -392,6 +392,9 @@ namespace amr
             assert(popFluxBorderSumRefiners_.size() == ions.size());
             for (auto& refiner : popFluxBorderSumRefiners_)
                 refiner.fill(level.getLevelNumber(), fillTime);
+            assert(popFluxEBorderSumRefiners_.size() == ions.size());
+            for (auto& refiner : popFluxEBorderSumRefiners_)
+                refiner.fill(level.getLevelNumber(), fillTime);
         }
 
         void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) override
@@ -436,6 +439,7 @@ namespace amr
                 {
                     auto& particleDensity = pop.particleDensity();
                     auto& flux            = pop.flux();
+                    auto& fluxE           = pop.fluxE();
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
@@ -444,9 +448,10 @@ namespace amr
                         auto const& ownership = levelGhostOwnership_.at(level.getLevelNumber())
                                                     .at(patch->getGlobalId());
                         core::depositOwned(interpolate_, pop.levelGhostParticlesOld(),
-                                           particleDensity, flux, layout, ownership, 1. - alpha);
+                                           particleDensity, flux, fluxE, layout, ownership,
+                                           1. - alpha);
                         core::depositOwned(interpolate_, pop.levelGhostParticlesNew(),
-                                           particleDensity, flux, layout, ownership, alpha);
+                                           particleDensity, flux, fluxE, layout, ownership, alpha);
                     }
                 }
             }
@@ -645,6 +650,7 @@ namespace amr
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
             chargeDensityPatchGhostsRefiners_.fill(levelNumber, time);
+            chargeFluxEPatchGhostsRefiners_.fill(levelNumber, time);
         }
 
     private:
@@ -685,8 +691,11 @@ namespace amr
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
+            chargeFluxEPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
             for (auto& refiner : popFluxBorderSumRefiners_)
+                refiner.registerLevel(hierarchy, level);
+            for (auto& refiner : popFluxEBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
             for (auto& refiner : popDensityBorderSumRefiners_)
@@ -839,6 +848,9 @@ namespace amr
             chargeDensityPatchGhostsRefiners_.addStaticRefiner(
                 info->modelIonDensity, fieldRefineOp_, info->modelIonDensity,
                 nonOverwriteInteriorFieldFillPattern);
+            chargeFluxEPatchGhostsRefiners_.addStaticRefiner(
+                info->modelIonChargeFluxE, EfieldRefineOp_, info->modelIonChargeFluxE,
+                nonOverwriteInteriorTFfillPattern);
         }
 
 
@@ -884,6 +896,13 @@ namespace amr
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
+            for (auto const& vecfield : info->ghostFluxE)
+                popFluxEBorderSumRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        vecfield, nullptr, vecfield,
+                        std::make_shared<
+                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
+
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
@@ -898,10 +917,15 @@ namespace amr
             electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric);
 
-            // no patch ghost refill after sync for the charge flux: the electron velocity
-            // is only computed and used on the physical box
+            // no patch ghost refill after sync for the charge flux on the moment nodes: the
+            // electron velocity is only computed and used on the physical box
             ionChargeFluxSynchronizers_.add(info->modelIonChargeFlux, vecFieldMomentsCoarseningOp_,
                                             info->modelIonChargeFlux);
+
+            // the charge flux on the E nodes is coarsened like E. Ohm reads it one node beyond
+            // the box E is computed on, so its patch ghosts are refilled after sync
+            ionChargeFluxSynchronizers_.add(info->modelIonChargeFluxE, electricFieldCoarseningOp_,
+                                            info->modelIonChargeFluxE);
 
             chargeDensitySynchronizers_.add(info->modelIonDensity, fieldMomentsCoarseningOp_,
                                             info->modelIonDensity);
@@ -1028,6 +1052,7 @@ namespace amr
 
         //! += flux on ghost box overlap incomplete population moment nodes
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
+        std::vector<VecFieldGhostSumRefinerPool> popFluxEBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
 
@@ -1071,6 +1096,7 @@ namespace amr
         // multiple point operator.
 
         PatchGhostRefinerPool chargeDensityPatchGhostsRefiners_{resourcesManager_};
+        PatchGhostRefinerPool chargeFluxEPatchGhostsRefiners_{resourcesManager_};
 
         // pool of refiners for interior particles of each population
         // and the associated refinement operator

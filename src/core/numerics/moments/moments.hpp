@@ -18,19 +18,20 @@ namespace core
         {
             pop.particleDensity().zero();
             pop.flux().zero();
+            pop.fluxE().zero();
         }
     }
 
 
     // deposits those of `particles` that are in cells owned by `ownership`
     // (a LevelGhostOwnership, see level_ghost_ownership.hpp)
-    void depositOwned(auto& interpolate, auto& particles, auto& density, auto& flux,
+    void depositOwned(auto& interpolate, auto& particles, auto& density, auto& flux, auto& fluxE,
                       auto const& layout, auto const& ownership, double const coef = 1.)
     {
         auto owned = particles | std::views::filter([&](auto const& particle) {
                          return ownership.owns(particle.iCell);
                      });
-        interpolate(owned, density, flux, layout, coef);
+        interpolate(owned, density, flux, fluxE, layout, coef);
     }
 
 
@@ -52,15 +53,16 @@ namespace core
         {
             auto& particleDensity = pop.particleDensity();
             auto& flux            = pop.flux();
+            auto& fluxE           = pop.fluxE();
 
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
             {
                 auto& partArray = pop.domainParticles();
-                interpolate(partArray, particleDensity, flux, layout);
+                interpolate(partArray, particleDensity, flux, fluxE, layout);
             }
             else // LevelGhostDeposit
                 depositOwned(interpolate, pop.levelGhostParticlesOld(), particleDensity, flux,
-                             layout, tag.ownership);
+                             fluxE, layout, tag.ownership);
         }
     }
 

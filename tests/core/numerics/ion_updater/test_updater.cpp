@@ -228,6 +228,7 @@ struct IonsBuffers
     Grid alphaChargeDensity;
 
     UsableVecFieldND protonF, alphaF, Vi, chargeFlux;
+    UsableVecFieldND protonFE, alphaFE, chargeFluxE; // fluxes on the E nodes
     UsableTensorField<dim> M, alpha_M, protons_M;
 
     static constexpr int ghostSafeMapLayer
@@ -266,6 +267,9 @@ struct IonsBuffers
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , protonFE{"protons_fluxE", layout, HybridQuantity::Vector::J}
+        , alphaFE{"alpha_fluxE", layout, HybridQuantity::Vector::J}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -304,6 +308,9 @@ struct IonsBuffers
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , protonFE{"protons_fluxE", layout, HybridQuantity::Vector::J}
+        , alphaFE{"alpha_fluxE", layout, HybridQuantity::Vector::J}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -334,14 +341,18 @@ struct IonsBuffers
         alphaF.copyData(source.alphaF);
         Vi.copyData(source.Vi);
         chargeFlux.copyData(source.chargeFlux);
+        protonFE.copyData(source.protonFE);
+        alphaFE.copyData(source.alphaFE);
+        chargeFluxE.copyData(source.chargeFluxE);
     }
 
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, cd, md, cf] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, cd, md, cf, cfE] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
             chargeFlux.set_on(cf);
+            chargeFluxE.set_on(cfE);
             M.set_on(m);
             cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
@@ -349,20 +360,22 @@ struct IonsBuffers
 
         auto& pops = ions.getRunTimeResourcesViewList();
         {
-            auto const& [F, M, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
+            auto const& [F, M, d, c, particles, FE] = pops[0].getCompileTimeResourcesViewList();
             d.setBuffer(&protonParticleDensity);
             c.setBuffer(&protonChargeDensity);
             protons_M.set_on(M);
             protonF.set_on(F);
+            protonFE.set_on(FE);
             particles.setBuffer(&protonPack);
         }
 
         {
-            auto const& [F, M, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
+            auto const& [F, M, d, c, particles, FE] = pops[1].getCompileTimeResourcesViewList();
             d.setBuffer(&alphaParticleDensity);
             c.setBuffer(&alphaChargeDensity);
             alpha_M.set_on(M);
             alphaF.set_on(F);
+            alphaFE.set_on(FE);
             particles.setBuffer(&alphaPack);
         }
     }
@@ -561,12 +574,12 @@ struct IonUpdaterTest : public ::testing::Test
         {
             double alpha = 0.5;
             interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.particleDensity(),
-                        pop.flux(), layout,
+                        pop.flux(), pop.fluxE(), layout,
                         /*coef = */ alpha);
 
 
             interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.particleDensity(),
-                        pop.flux(), layout,
+                        pop.flux(), pop.fluxE(), layout,
                         /*coef = */ (1. - alpha));
         }
     }

@@ -78,6 +78,7 @@ struct OhmTest : public ::testing::Test
 
     Grid_t n;
     UsableVecFieldND V, B, J, Enew, pressureTerm;
+    UsableVecFieldND Ji; // ion current on the E nodes, the input of Ohm's ideal term
 
     OhmInfo ohm_info;
 
@@ -88,6 +89,7 @@ struct OhmTest : public ::testing::Test
         , J{"J", layout, HybridQuantity::Vector::J}
         , Enew{"Enew", layout, HybridQuantity::Vector::E}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
+        , Ji{"Ji", layout, HybridQuantity::Vector::J}
         , ohm_info{OhmInfo::FROM(createDict())}
     {
         auto const& [Bx, By, Bz]          = B();
@@ -276,6 +278,21 @@ struct OhmTest : public ::testing::Test
                 }
             }
         }
+
+        // Ji: the profiles of V, on the E nodes (as test_ohm.py)
+        double const k[3] = {0.2, 0.3, 0.4};
+        for (std::uint8_t c = 0; c < 3; ++c)
+        {
+            auto& field = Ji[c];
+            layout.evalOnGhostBox(field, [&](auto const&... ijk) {
+                auto const point = layout.fieldNodeCoordinates(
+                    field, layout.localToAMR(Point{ijk...}.as_signed()));
+                double value = 1.;
+                for (std::size_t d = 0; d < dim; ++d)
+                    value *= std::sinh(k[c] * point[d]);
+                field(ijk...) = value;
+            });
+        }
     }
 
     ~OhmTest() {}
@@ -367,8 +384,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
     // the reference values (test_ohm.py) use the isothermal pressure term, so build it the same way
     IsothermalPressureTerm<typename TestFixture::GridYee>{TestFixture::Te}(layout, this->n,
                                                                            this->pressureTerm);
-    // V stands for the ion charge flux F here
-    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
+    Ohm_t{this->ohm_info, layout}(this->n, this->Ji, this->pressureTerm, this->B, this->J,
                                   this->Enew);
 
 
@@ -518,7 +534,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
 
 // Ohm adds the pressure term it is given, whatever the closure that computed it: with
-// V = B = J = 0 and no resistivity, E is the pressure term, value for value
+// Ji = B = J = 0 and no resistivity, E is the pressure term, value for value
 TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
 {
     using Ohm_t = TestFixture::Ohm_t;
@@ -527,7 +543,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
     auto const zero = [&](auto& field) {
         layout.evalOnGhostBox(field, [&](auto const&... ijk) { field(ijk...) = 0.; });
     };
-    for (auto* vecfield : {&this->V, &this->B, &this->J})
+    for (auto* vecfield : {&this->Ji, &this->B, &this->J})
         for (auto const component : {Component::X, Component::Y, Component::Z})
             zero((*vecfield)(component));
 
@@ -547,7 +563,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
         dict["hyper_resistivity"] = 0.0;
         return dict;
     }();
-    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
+    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->Ji, this->pressureTerm, this->B, this->J,
                                        this->Enew);
 
     for (auto const c : {Component::X, Component::Y, Component::Z})
@@ -560,12 +576,12 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
 
 
 // ---------------------------------------------------------------------------------------------
-// The ideal term does no work on the electrons (#1577). With G = F - J the electron flux on the E
-// nodes, E = -G x B / n must give sum_i G_i E_i = 0 over a periodic grid, for any n > 0, F, J, B.
-// The fields are periodic noise of the AMR index (period = number of cells), so the ghost nodes
-// are periodic copies. G is built here with the test's own averaging, not Ohm's. The former
-// stencil ("average Ve and B to the E node, then multiply") is run in the same harness and must
-// fail, so the test can tell the two apart.
+// The ideal term does no work on the electrons (#1577). With G = Ji - J the electron flux on the E
+// nodes, E = -G x B / n must give sum_i G_i E_i = 0 over a periodic grid, for any n > 0, Ji, J,
+// B. The fields are periodic noise of the AMR index (period = number of cells), so the ghost
+// nodes are periodic copies. The former stencil ("Ve = (F - Proj(J))/n on the moment nodes,
+// Ve and B averaged to the E node, then multiplied") is run in the same harness, with G = Avg(F)
+// - J built by the test's own averaging, and must fail, so the test can tell the two apart.
 // ---------------------------------------------------------------------------------------------
 
 template<typename TypeInfo>
@@ -588,6 +604,7 @@ struct OhmWorkTest : public ::testing::Test
     Grid_t Vey{"Vey", Scalar::Vy, layout.allocSize(Scalar::Vy)};
     Grid_t Vez{"Vez", Scalar::Vz, layout.allocSize(Scalar::Vz)};
     UsableVecField<dim> F{"F", layout, HybridQuantity::Vector::V};
+    UsableVecField<dim> Ji{"Ji", layout, HybridQuantity::Vector::J};
     UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
     UsableVecField<dim> J{"J", layout, HybridQuantity::Vector::J};
     UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
@@ -623,16 +640,21 @@ struct OhmWorkTest : public ::testing::Test
         {
             fill(B[c], 10 + c, [&](double u) { return Bmean[c] + u; });
             fill(F[c], 20 + c, [&](double u) { return Fmean[c] + u; });
+            fill(Ji[c], 60 + c, [&](double u) { return Fmean[c] + u; });
             fill(J[c], 30 + c, [](double u) { return u; });
             fill(pressureTerm[c], 40 + c, [](double) { return 0.; });
             fill(E[c], 50 + c, [](double) { return 0.; });
         }
     }
 
-    // G_c on the E_c nodes, from the test's own averaging: E_c is dual along c (if c < dim) and
-    // primal elsewhere, as are the moments; dual node i sits between primal nodes i and i + 1
+    // G_c on the E_c nodes: Ji - J, or for the former stencil Avg(F) - J with the test's own
+    // averaging: E_c is dual along c (if c < dim) and primal elsewhere, as are the moments;
+    // dual node i sits between primal nodes i and i + 1
+    bool former = false;
     double G(std::uint8_t c, auto const& lcl) const
     {
+        if (!former)
+            return Ji[c](lcl) - J[c](lcl);
         auto f = F[c](lcl);
         if (c < dim)
         {
@@ -664,6 +686,7 @@ struct OhmWorkTest : public ::testing::Test
     // separately to each E node and multiplied there
     void formerIdealTerm()
     {
+        former            = true;
         auto const shrink = for_N_make_array<dim>([](auto) { return std::uint32_t{1}; });
         layout.evalOnShrinkedGhostBox(n, shrink, [&](auto const&... args) {
             auto const i = MeshIndex<dim>{args...};
@@ -718,7 +741,7 @@ TYPED_TEST(OhmWorkTest, ThatTheIdealTermDoesNoWorkOnTheElectrons)
         return dict;
     }();
 
-    Ohm_t{OhmInfo::FROM(dict), this->layout}(this->n, this->F, this->pressureTerm, this->B,
+    Ohm_t{OhmInfo::FROM(dict), this->layout}(this->n, this->Ji, this->pressureTerm, this->B,
                                              this->J, this->E);
     auto const [sum, scale] = this->work();
     EXPECT_GT(scale, 0.);
