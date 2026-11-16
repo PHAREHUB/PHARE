@@ -1,10 +1,11 @@
-// The fully kinetic J ghost fill copies every ghost node from the patch that owns it, corners
-// and edges included: the current filter reads them all.
+// The fully kinetic J and rho ghost fills copy every ghost node from the patch that owns it,
+// corners and edges included: the filter reads them all.
 
 #include "phare_mpi.hpp"
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "core/data/field/field_traits.hpp"
 
 #include "tests/simulator/per_test.hpp"
 
@@ -22,15 +23,26 @@ using FKModel     = solver::PHARE_Types<opts>::FK::Model_t;
 using GridLayout  = FKModel::gridlayout_type;
 
 
-TEST(FullyKineticCurrentGhosts, areCopiedFromTheirOwnerIncludingCorners)
+// the components of a vector field, or the field itself
+template<typename Resource>
+auto components(Resource& resource)
 {
-    Simulator_t sim;
-    auto& model     = *sim.getFKModel();
-    auto& rm        = *model.resourcesManager;
-    auto& J         = model.state.J;
-    auto& level     = *sim.hierarchy->getPatchLevel(0);
-    auto& messenger = dynamic_cast<amr::HybridMessenger<FKModel>&>(
-        sim.getMultiPhysicsIntegrator()->messenger(0));
+    if constexpr (core::IsField<Resource>)
+        return std::array{&resource};
+    else
+        return std::array{&resource[0], &resource[1], &resource[2]};
+}
+
+
+// sets the physical nodes of each component to a periodic function and the ghosts to NaN,
+// fills the ghosts, then every ghost node must hold the function, corners included
+template<typename Resource, typename FillGhosts>
+void checkGhostsAreCopiedFromTheirOwner(Simulator_t& sim, Resource& resource,
+                                        FillGhosts&& fillGhosts)
+{
+    auto& model = *sim.getFKModel();
+    auto& rm    = *model.resourcesManager;
+    auto& level = *sim.hierarchy->getPatchLevel(0);
 
     double constexpr L = 16 * 0.04;
     double constexpr k = 2 * std::numbers::pi / L;
@@ -41,65 +53,89 @@ TEST(FullyKineticCurrentGhosts, areCopiedFromTheirOwnerIncludingCorners)
         return std::sin(k * r[0] + c) * std::cos(k * r[1] - 0.3 * c) + c;
     };
 
-    auto const isPhysical = [](auto const& layout, auto const& Jc, auto const&... ijk) {
+    auto const isPhysical = [](auto const& layout, auto const& field, auto const&... ijk) {
         std::array<std::uint32_t, 2> const index{static_cast<std::uint32_t>(ijk)...};
         for (std::size_t d = 0; d < 2; ++d)
         {
             auto const direction = static_cast<core::Direction>(d);
-            if (index[d] < layout.physicalStartIndex(Jc, direction)
-                or index[d] > layout.physicalEndIndex(Jc, direction))
+            if (index[d] < layout.physicalStartIndex(field, direction)
+                or index[d] > layout.physicalEndIndex(field, direction))
                 return false;
         }
         return true;
     };
 
-    auto const position = [](auto const& layout, auto const& Jc, auto const&... ijk) {
+    auto const position = [](auto const& layout, auto const& field, auto const&... ijk) {
         return layout.fieldNodeCoordinates(
-            Jc, layout.localToAMR(core::Point{static_cast<std::uint32_t>(ijk)...}.as_signed()));
+            field, layout.localToAMR(core::Point{static_cast<std::uint32_t>(ijk)...}.as_signed()));
     };
 
     std::size_t nbrPatches = 0;
-    for (auto& patch : rm.enumerate(level, J))
+    for (auto& patch : rm.enumerate(level, resource))
     {
         ++nbrPatches;
         auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-        for (std::size_t c = 0; c < 3; ++c)
+        std::size_t c     = 0;
+        for (auto* field : components(resource))
         {
-            auto& Jc = J[c];
-            layout.evalOnGhostBox(Jc, [&](auto const&... ijk) {
-                Jc(ijk...)
-                    = isPhysical(layout, Jc, ijk...) ? f(c, position(layout, Jc, ijk...)) : nan;
+            layout.evalOnGhostBox(*field, [&](auto const&... ijk) {
+                (*field)(ijk...) = isPhysical(layout, *field, ijk...)
+                                       ? f(c, position(layout, *field, ijk...))
+                                       : nan;
             });
+            ++c;
         }
     }
     ASSERT_EQ(nbrPatches, 4u);
 
-    messenger.fillCurrentGhosts(J, level, 0.);
+    fillGhosts(level);
 
     std::size_t corners = 0;
-    for (auto& patch : rm.enumerate(level, J))
+    for (auto& patch : rm.enumerate(level, resource))
     {
         auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-        for (std::size_t c = 0; c < 3; ++c)
+        std::size_t c     = 0;
+        for (auto* field : components(resource))
         {
-            auto& Jc = J[c];
-            layout.evalOnGhostBox(Jc, [&](auto const&... ijk) {
-                auto const expected = f(c, position(layout, Jc, ijk...));
-                EXPECT_NEAR(Jc(ijk...), expected, 1e-14) << "component " << c;
+            layout.evalOnGhostBox(*field, [&](auto const&... ijk) {
+                auto const expected = f(c, position(layout, *field, ijk...));
+                EXPECT_NEAR((*field)(ijk...), expected, 1e-14) << field->name();
 
                 std::array<std::uint32_t, 2> const index{static_cast<std::uint32_t>(ijk)...};
                 std::size_t outside = 0;
                 for (std::size_t d = 0; d < 2; ++d)
                 {
                     auto const direction = static_cast<core::Direction>(d);
-                    outside += index[d] < layout.physicalStartIndex(Jc, direction)
-                               or index[d] > layout.physicalEndIndex(Jc, direction);
+                    outside += index[d] < layout.physicalStartIndex(*field, direction)
+                               or index[d] > layout.physicalEndIndex(*field, direction);
                 }
                 corners += outside == 2;
             });
+            ++c;
         }
     }
     EXPECT_GT(corners, 0u);
+}
+
+
+auto& messengerOf(Simulator_t& sim)
+{
+    return dynamic_cast<amr::HybridMessenger<FKModel>&>(
+        sim.getMultiPhysicsIntegrator()->messenger(0));
+}
+
+
+TEST(FullyKineticGhosts, currentAndChargeDensityGhostsAreCopiedFromTheirOwnerWithCorners)
+{
+    Simulator_t sim;
+    auto& state     = sim.getFKModel()->state;
+    auto& messenger = messengerOf(sim);
+
+    checkGhostsAreCopiedFromTheirOwner(
+        sim, state.J, [&](auto& level) { messenger.fillCurrentGhosts(state.J, level, 0.); });
+    checkGhostsAreCopiedFromTheirOwner(sim, state.rho, [&](auto& level) {
+        messenger.fillChargeDensityGhosts(state.rho, level, 0.);
+    });
 }
 
 
