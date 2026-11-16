@@ -69,8 +69,8 @@ def leapfrog(omega):
 
 
 def uniform(value):
-    def fn(x):
-        return value + 0.0 * x
+    def fn(*xyz):
+        return value + 0.0 * xyz[0]
 
     return fn
 
@@ -95,12 +95,14 @@ def maxwellian(charge, mass, density, T, vx=None, ppc=200, seed=0):
 def run(name, interp_order, cells, final_time, populations, by=None, bz=None, bx=0.0):
     diag_dir = f"{diag_root}/{name}_{interp_order}"
     nsteps = round(final_time / time_step)
+    cells = list(np.atleast_1d(cells))
+    ndim = len(cells)
     ph.global_vars.sim = None
     sim = ph.Simulation(
         time_step=time_step,
         time_step_nbr=nsteps,
         cells=cells,
-        dl=dl,
+        dl=[dl] * ndim,
         interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
@@ -122,8 +124,10 @@ def run(name, interp_order, cells, final_time, populations, by=None, bz=None, bx
 
 
 def mode_amplitude(diag_dir, quantity, component, times, cells, mode):
-    """complex Fourier coefficient of a field component at k = 2 pi mode / L, per time"""
-    L = cells * dl
+    """complex Fourier coefficient of a field component at k = 2 pi mode / L, per time.
+    cells and mode are numbers in 1D, sequences of one value per direction otherwise."""
+    L = np.atleast_1d(cells) * dl
+    k = 2 * np.pi * np.atleast_1d(mode) / L
     amplitude = []
     for time in times:
         hier = hierarchy_from(
@@ -132,11 +136,18 @@ def mode_amplitude(diag_dir, quantity, component, times, cells, mode):
         values = {}
         for patch in hier.level(0, time).patches:
             pdata = patch.patch_datas[f"{quantity}{component}"]
-            for x, v in zip(pdata.x, pdata.dataset[:]):
-                if -1e-6 < x < L - 1e-6:
-                    values[round(2 * x / dl)] = (x, v)
-        x, v = np.array([values[k] for k in sorted(values)]).T
-        amplitude.append(np.mean(v * np.exp(-2j * np.pi * mode * x / L)))
+            mesh = pdata.meshgrid()
+            inside = np.all(
+                [(x > -1e-6) & (x < length - 1e-6) for x, length in zip(mesh, L)],
+                axis=0,
+            )
+            positions = np.stack([x[inside] for x in mesh], axis=1)
+            keys = np.round(2 * positions / dl).astype(int)
+            for key, position, v in zip(keys, positions, pdata.dataset[:][inside]):
+                values[tuple(key)] = (position, v)
+        position = np.array([values[key][0] for key in sorted(values)])
+        v = np.array([values[key][1] for key in sorted(values)])
+        amplitude.append(np.mean(v * np.exp(-1j * position @ k)))
     return np.array(amplitude)
 
 
@@ -297,11 +308,15 @@ def two_stream(interp_order, seed=0):
         },
     )
     amplitude = np.abs(mode_amplitude(diag_dir, "E", "x", times, cells, mode))
+    # the velocity-only seed still projects onto the eigenmode in the first e-foldings:
+    # amplitude x155 in the first 2, the decaying root is gone after
+    return exponential_growth(times, amplitude, expected, start_efolds=3), expected
 
-    # linear phase: from 3 e-foldings after t=0 (the velocity-only seed still projects onto the
-    # eigenmode before: amplitude x155 in the first 2 e-foldings, the decaying root is gone
-    # after) until the amplitude first exceeds 30% of saturation. Saturation is the first
-    # approach to the maximum: later bounces can exceed it.
+
+def exponential_growth(times, amplitude, expected, start_efolds):
+    """growth rate fitted on the linear phase of |amplitude|: from start_efolds / expected
+    until the amplitude first exceeds 30% of saturation. Saturation is the first approach to
+    the maximum: later bounces can exceed it."""
     peak = np.argmax(amplitude)
     saturation = amplitude[peak]
     assert peak < len(amplitude) - 10, (
@@ -309,20 +324,18 @@ def two_stream(interp_order, seed=0):
     )
     assert amplitude[peak:].min() < 0.8 * saturation, "no saturation, still growing"
     end = np.argmax(amplitude > 0.3 * saturation)
-    window = slice(np.argmax(times > 3 / expected), end)
+    window = slice(np.argmax(times > start_efolds / expected), end)
     t, log_a = times[window], np.log(amplitude[window])
     assert len(t) >= 8, f"linear phase too short ({len(t)} dumps)"
     measured = np.polyfit(t, log_a, 1)[0]
     half = len(t) // 2
     lower = np.polyfit(t[:half], log_a[:half], 1)[0]
     upper = np.polyfit(t[half:], log_a[half:], 1)[0]
-    print(
-        f"two-stream growth on the lower/upper half of the window: {lower:.3f} / {upper:.3f}"
-    )
+    print(f"growth on the lower/upper half of the window: {lower:.3f} / {upper:.3f}")
     assert abs(upper - lower) / measured < MAX_WINDOW_CURVATURE, (
         "window is not exponential"
     )
-    return measured, expected
+    return measured
 
 
 def main():
