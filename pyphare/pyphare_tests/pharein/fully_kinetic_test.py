@@ -119,7 +119,7 @@ class TestFullyKineticChecks(unittest.TestCase):
     def test_net_charge_is_refused(self):
         sim = make_sim()
         make_model(electron_density=0.9)
-        with self.assertRaisesRegex(ValueError, "net charge"):
+        with self.assertRaisesRegex(ValueError, "frozen background"):
             check_fully_kinetic(sim)
 
     def test_light_and_plasma_limits_combine(self):
@@ -175,6 +175,21 @@ class TestFullyKineticChecks(unittest.TestCase):
         sim = make_sim(strict=True)
         make_model(Te=0.16)
         with self.assertRaisesRegex(RuntimeError, "speed of light"):
+            check_fully_kinetic(sim)
+
+    def test_local_charge_separation_is_refused(self):
+        # globally neutral, but the ions are modulated and the electrons are not
+        sim = make_sim()
+        protons = pop(1, 1.0, 1.0, 0.01)
+        protons["density"] = lambda x: 1.0 + 0.1 * np.cos(2 * np.pi * x / L)
+        MaxwellianFluidModel(
+            bx=uniform(1.0),
+            by=uniform(0.0),
+            bz=uniform(0.0),
+            protons=protons,
+            electrons=pop(-1, 0.04, 1.0, 0.04),
+        )
+        with self.assertRaisesRegex(ValueError, "frozen background"):
             check_fully_kinetic(sim)
 
     def test_unstable_plasma_period_is_refused(self):

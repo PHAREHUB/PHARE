@@ -79,14 +79,18 @@ def check_fully_kinetic(sim):
         name: {k: sample(pop[f"vth{k}"]) for k in "xyz"} for name, pop in pops.items()
     }
 
+    # E starts at zero, so the Gauss residual div E - c^2 rho stays at -c^2 rho(t=0): a charge
+    # density present at t=0 is invisible to the fields, a frozen neutralizing background.
+    # Until E^0 can be initialized (Poisson), refuse a local charge separation.
     charge_density = sum(pop["charge"] * density[name] for name, pop in pops.items())
     abs_charge_density = sum(
         abs(pop["charge"]) * density[name] for name, pop in pops.items()
     )
-    net = abs(charge_density.sum()) / abs_charge_density.sum()
-    if net > net_charge_tolerance:
+    separation = np.abs(charge_density).max() / abs_charge_density.max()
+    if separation > net_charge_tolerance:
         raise ValueError(
-            f"Error: net charge {net:.3g} (relative), Gauss's law has no periodic solution"
+            f"Error: charge density {separation:.3g} (relative): E^0 = 0, an initial charge"
+            " density would act as a frozen background"
         )
 
     def plasma_frequency2(name):
