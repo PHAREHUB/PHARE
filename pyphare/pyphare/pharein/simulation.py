@@ -201,6 +201,7 @@ def check_path(**kwargs):
 # ------------------------------------------------------------------------------
 
 
+
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
 # This should match possibleSimulators() in meta_utilities.h
 valid_refined_particle_nbr = {
@@ -782,8 +783,8 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["periodicities"], kwargs["domain_boundaries"] = (
-            boundary.resolve_boundaries(ndim, **kwargs)
+        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
+            ndim, **kwargs
         )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
