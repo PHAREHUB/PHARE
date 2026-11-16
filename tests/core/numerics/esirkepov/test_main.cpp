@@ -18,24 +18,50 @@
 using namespace PHARE::core;
 
 
-template<typename InterpOrder>
-class Esirkepov1D : public ::testing::Test
+// the cells and mesh sizes differ in every direction, so that an exchanged direction shows,
+// and the patch does not start at AMR index 0, so that the local index arithmetic is checked
+template<std::size_t dim_, std::size_t interp_order_>
+struct EsirkepovSetup
 {
-protected:
-    static constexpr std::size_t dim          = 1;
-    static constexpr std::size_t interp_order = InterpOrder::value;
+    static constexpr std::size_t dim          = dim_;
+    static constexpr std::size_t interp_order = interp_order_;
+
     using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
     using Grid_t       = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using Particle_t   = Particle<dim>;
     using Esirkepov_t  = Esirkepov<dim, interp_order>;
+    using Index_t      = std::array<std::uint32_t, dim>;
 
-    static constexpr std::size_t nCells = 20;
-    static constexpr double dx          = 0.1;
-    static constexpr double dt          = 0.01;
-    static constexpr double charge      = -1.;
-    static constexpr double weight      = 0.01;
+    static constexpr std::array<double, 3> allMeshSizes{0.1, 0.13, 0.07};
+    static constexpr std::array<std::uint32_t, 3> allCells{20, 17, 13};
+    static constexpr std::array<int, 3> allLower{37, -12, 5};
 
-    GridLayout_t layout{{{dx}}, {{nCells}}, Point{0.}};
+    static constexpr double dt     = 0.01;
+    static constexpr double charge = -1.;
+    static constexpr double weight = 0.01;
+
+    static auto sub(auto const& all)
+    {
+        std::array<typename std::decay_t<decltype(all)>::value_type, dim> a;
+        std::copy_n(all.begin(), dim, a.begin());
+        return a;
+    }
+
+    static GridLayout_t makeLayout()
+    {
+        auto const cells = sub(allCells);
+        auto const lower = sub(allLower);
+        std::array<int, dim> upper;
+        for (std::size_t d = 0; d < dim; ++d)
+            upper[d] = lower[d] + static_cast<int>(cells[d]) - 1;
+        Point<double, dim> origin;
+        for (std::size_t d = 0; d < dim; ++d)
+            origin[d] = lower[d] * allMeshSizes[d];
+        return GridLayout_t{sub(allMeshSizes), cells, origin, Box<int, dim>{lower, upper}};
+    }
+
+    std::array<double, dim> const dl = sub(allMeshSizes);
+    GridLayout_t layout              = makeLayout();
     UsableVecField<dim> J{"J", layout, HybridQuantity::Vector::J};
     Grid_t rho0{"rho0", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho),
                 0.};
@@ -46,25 +72,43 @@ protected:
 
     Esirkepov_t esirkepov;
 
-    // random particles anywhere in the domain, |vx| dt < maxCourant dx
-    void loadRandom(std::size_t n, double maxCourant)
+    // random particles anywhere in the domain, |v_d| dt < maxCourant dl_d in every direction
+    void loadRandom(std::size_t n, double maxCourant, std::uint64_t seed = 1234)
     {
-        std::mt19937_64 gen{1234};
-        std::uniform_int_distribution<int> cell{0, static_cast<int>(nCells) - 1};
+        std::mt19937_64 gen{seed};
         std::uniform_real_distribution<double> unit{0., 1.};
-        auto const vmax = maxCourant * dx / dt;
         for (std::size_t i = 0; i < n; ++i)
-            particles.emplace_back(
-                weight, std::array<int, 1>{cell(gen)}, std::array<double, 1>{unit(gen)},
-                std::array<double, 3>{vmax * (2 * unit(gen) - 1), vmax * (2 * unit(gen) - 1),
-                                      vmax * (2 * unit(gen) - 1)});
+        {
+            std::array<int, dim> iCell;
+            std::array<double, dim> delta;
+            std::array<double, 3> v;
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                std::uniform_int_distribution<int> cell{allLower[d],
+                                                        allLower[d] + int(allCells[d]) - 1};
+                iCell[d] = cell(gen);
+                delta[d] = unit(gen);
+            }
+            for (std::size_t c = 0; c < 3; ++c)
+                v[c] = maxCourant * allMeshSizes[c] / dt * (2 * unit(gen) - 1);
+            particles.emplace_back(weight, iCell, delta, v);
+        }
     }
 
-    void depositAll()
+    void reset()
     {
-        esirkepov.depositCharge(particles, rho0, layout, charge, -dt / 2);
-        esirkepov.depositCharge(particles, rho1, layout, charge, +dt / 2);
-        esirkepov(particles, J.super(), layout, charge, dt);
+        for (auto& Jc : J)
+            Jc.zero();
+        rho0.zero();
+        rho1.zero();
+    }
+
+    // rho at the two ends of the segment, and the current over it
+    void depositAll(double const back = 1., double const front = 1.)
+    {
+        esirkepov.depositCharge(particles, rho0, layout, charge, -back * dt / 2);
+        esirkepov.depositCharge(particles, rho1, layout, charge, +front * dt / 2);
+        esirkepov(particles, J.super(), layout, charge, dt, back, front);
     }
 
     static double sum(auto const& field)
@@ -82,40 +126,138 @@ protected:
             m = std::max(m, std::abs(field.data()[i]));
         return m;
     }
+
+    // calls fn(index) on every node of an array of the given shape
+    static void forEachNode(Index_t const& shape, auto&& fn)
+    {
+        Index_t idx{};
+        while (true)
+        {
+            fn(idx);
+            std::size_t d = dim;
+            while (d-- > 0)
+            {
+                if (++idx[d] < shape[d])
+                    break;
+                idx[d] = 0;
+            }
+            if (d > dim) // wrapped around in the first direction
+                return;
+        }
+    }
+
+    // largest |d rho / dt + div J| on the primal nodes where every dual neighbour exists,
+    // with dual node i between primal nodes i and i+1 in its direction
+    double maxContinuityResidual(double const duration) const
+    {
+        double residual = 0;
+        forEachNode(rho0.shape(), [&](Index_t const& idx) {
+            double divJ = 0;
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                auto const& Jd = J[d];
+                if (idx[d] == 0 or idx[d] >= Jd.shape()[d])
+                    return;
+                auto left = idx;
+                --left[d];
+                divJ += (Jd(idx) - Jd(left)) / dl[d];
+            }
+            residual = std::max(residual, std::abs((rho1(idx) - rho0(idx)) / duration + divJ));
+        });
+        return residual;
+    }
 };
 
-using InterpOrders = ::testing::Types<std::integral_constant<std::size_t, 1>,
-                                      std::integral_constant<std::size_t, 2>,
-                                      std::integral_constant<std::size_t, 3>>;
-TYPED_TEST_SUITE(Esirkepov1D, InterpOrders);
+
+template<std::size_t dim_, std::size_t interp_order_>
+struct Case
+{
+    static constexpr std::size_t dim          = dim_;
+    static constexpr std::size_t interp_order = interp_order_;
+};
+
+template<typename Case_t>
+class EsirkepovTest : public ::testing::Test,
+                      public EsirkepovSetup<Case_t::dim, Case_t::interp_order>
+{
+};
+
+using Cases = ::testing::Types<Case<1, 1>, Case<1, 2>, Case<1, 3>, Case<2, 1>, Case<2, 2>,
+                               Case<2, 3>, Case<3, 1>, Case<3, 2>, Case<3, 3>>;
+TYPED_TEST_SUITE(EsirkepovTest, Cases);
 
 
 
-// (rho^{n+1/2} - rho^{n-1/2}) / dt + d(Jx)/dx = 0 on every primal node, to round-off.
-// dual node i sits between primal nodes i and i+1.
-TYPED_TEST(Esirkepov1D, continuityToRoundOff)
+TYPED_TEST(EsirkepovTest, currentIsYeeCentered)
+{
+    for (std::size_t c = 0; c < 3; ++c)
+        for (std::size_t d = 0; d < TestFixture::dim; ++d)
+            EXPECT_EQ(this->J[c].shape()[d] + (c == d ? 1 : 0), this->rho0.shape()[d])
+                << " component " << c << " direction " << d;
+}
+
+
+// (rho^{n+1/2} - rho^{n-1/2}) / dt + div J = 0 on every primal node, to round-off,
+// for the leapfrog segment (back = front = 1) and for the start-up one (back = 1, front = 0)
+TYPED_TEST(EsirkepovTest, continuityToRoundOff)
 {
     this->loadRandom(1000, 0.9);
-    this->depositAll();
 
-    auto const& Jx  = this->J(Component::X);
-    auto const tol  = 1e-12 * this->maxAbs(this->rho0) / this->dt;
-    auto const nRho = this->rho0.size();
-    ASSERT_EQ(Jx.size() + 1, nRho);
-
-    for (std::uint32_t i = 1; i + 1 < nRho; ++i)
+    for (auto const [back, front] : {std::pair{1., 1.}, std::pair{1., 0.}})
     {
-        auto const drhodt = (this->rho1(i) - this->rho0(i)) / this->dt;
-        auto const divJ   = (Jx(i) - Jx(i - 1)) / this->dx;
-        EXPECT_NEAR(drhodt + divJ, 0., tol) << " at primal node " << i;
+        this->reset();
+        this->depositAll(back, front);
+
+        auto const duration = (back + front) * this->dt / 2;
+        auto const tol      = 1e-12 * this->maxAbs(this->rho0) / duration;
+        EXPECT_LT(this->maxContinuityResidual(duration), tol)
+            << " back " << back << " front " << front;
     }
 }
 
 
-TYPED_TEST(Esirkepov1D, restParticleHasNoCurrent)
+// one particle at a time, starting near the cell borders and the cell middles (where the start
+// index changes at order 2), moving across zero, one, two or three of them in every direction
+TYPED_TEST(EsirkepovTest, continuityOfEachCrossingParticle)
 {
-    this->particles.emplace_back(this->weight, std::array<int, 1>{7}, std::array<double, 1>{0.3},
-                                 std::array<double, 3>{0., 0., 0.});
+    constexpr auto dim = TestFixture::dim;
+    std::array<double, 4> const deltas{0.02, 0.48, 0.52, 0.98};
+    std::array<double, 3> const courants{-0.9, 0., 0.9};
+
+    std::array<std::uint32_t, dim> choices;
+    choices.fill(deltas.size() * courants.size());
+
+    TestFixture::forEachNode(choices, [&](auto const& choice) {
+        std::array<int, dim> iCell;
+        std::array<double, dim> delta;
+        std::array<double, 3> v{0.3, -0.2, 0.1};
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            iCell[d] = this->allLower[d] + 5;
+            delta[d] = deltas[choice[d] % deltas.size()];
+            v[d]     = courants[choice[d] / deltas.size()] * this->dl[d] / this->dt;
+        }
+        this->particles = {typename TestFixture::Particle_t{this->weight, iCell, delta, v}};
+        this->reset();
+        this->depositAll();
+
+        auto const tol = 1e-12 * this->maxAbs(this->rho0) / this->dt;
+        EXPECT_LT(this->maxContinuityResidual(this->dt), tol)
+            << " delta " << delta[0] << " v " << v[0] << " " << v[1] << " " << v[2];
+    });
+}
+
+
+TYPED_TEST(EsirkepovTest, restParticleHasNoCurrent)
+{
+    std::array<int, TestFixture::dim> iCell;
+    std::array<double, TestFixture::dim> delta;
+    for (std::size_t d = 0; d < TestFixture::dim; ++d)
+    {
+        iCell[d] = this->allLower[d] + 7;
+        delta[d] = 0.3;
+    }
+    this->particles.emplace_back(this->weight, iCell, delta, std::array<double, 3>{0., 0., 0.});
     this->depositAll();
 
     for (auto const& Jc : this->J)
@@ -123,8 +265,8 @@ TYPED_TEST(Esirkepov1D, restParticleHasNoCurrent)
 }
 
 
-// sum over nodes of Jx is q w vx summed over particles: Esirkepov conserves the first moment
-TYPED_TEST(Esirkepov1D, totalCurrentIsParticleMoment)
+// sum over nodes of J is q w v summed over particles: Esirkepov conserves the first moment
+TYPED_TEST(EsirkepovTest, totalCurrentIsParticleMoment)
 {
     this->loadRandom(200, 0.9);
     this->depositAll();
@@ -134,46 +276,87 @@ TYPED_TEST(Esirkepov1D, totalCurrentIsParticleMoment)
         double expected = 0;
         for (auto const& p : this->particles)
             expected += this->charge * p.weight * p.v[c];
-        EXPECT_NEAR(this->sum(this->J[c]), expected, 1e-12 * std::abs(expected) + 1e-14);
+        EXPECT_NEAR(this->sum(this->J[c]), expected, 1e-12 * std::abs(expected) + 1e-14)
+            << " component " << c;
     }
 }
 
 
-TYPED_TEST(Esirkepov1D, fastParticleThrows)
+// a displacement of one cell or more in any direction of the grid throws, but not along an
+// invariant direction
+TYPED_TEST(EsirkepovTest, fastParticleThrows)
 {
-    auto const v = 1.01 * this->dx / this->dt;
-    this->particles.emplace_back(this->weight, std::array<int, 1>{7}, std::array<double, 1>{0.3},
-                                 std::array<double, 3>{-v, 0., 0.});
-    EXPECT_THROW(
-        this->esirkepov(this->particles, this->J.super(), this->layout, this->charge, this->dt),
-        DictionaryException);
+    constexpr auto dim = TestFixture::dim;
+    std::array<int, dim> iCell;
+    std::array<double, dim> delta;
+    for (std::size_t d = 0; d < dim; ++d)
+    {
+        iCell[d] = this->allLower[d] + 7;
+        delta[d] = 0.3;
+    }
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        std::array<double, 3> v{0., 0., 0.};
+        v[c]            = -1.01 * this->allMeshSizes[c] / this->dt;
+        this->particles = {typename TestFixture::Particle_t{this->weight, iCell, delta, v}};
+        if (c < dim)
+            EXPECT_THROW(this->esirkepov(this->particles, this->J.super(), this->layout,
+                                         this->charge, this->dt),
+                         DictionaryException)
+                << " direction " << c;
+        else
+            EXPECT_NO_THROW(this->esirkepov(this->particles, this->J.super(), this->layout,
+                                            this->charge, this->dt))
+                << " direction " << c;
+    }
 }
 
 
-// particles in the first and last domain cells moving outward at the maximum displacement:
-// the whole charge and current must land inside the field arrays
-TYPED_TEST(Esirkepov1D, borderParticlesDepositInsideGhostBox)
+// particles in the corner cells of the domain moving outward at the maximum displacement:
+// the whole charge and current must land inside the field arrays (checked by the asserts of
+// a debug build)
+TYPED_TEST(EsirkepovTest, cornerParticlesDepositInsideGhostBox)
 {
-    auto const v    = 0.99 * this->dx / this->dt;
-    auto const last = static_cast<int>(this->nCells) - 1;
-    this->particles.emplace_back(this->weight, std::array<int, 1>{0}, std::array<double, 1>{0.},
-                                 std::array<double, 3>{-v, -v, -v});
-    this->particles.emplace_back(this->weight, std::array<int, 1>{last},
-                                 std::array<double, 1>{0.999999}, std::array<double, 3>{v, v, v});
+    constexpr auto dim = TestFixture::dim;
+    std::array<std::uint32_t, dim> corners;
+    corners.fill(2);
+
+    TestFixture::forEachNode(corners, [&](auto const& corner) {
+        std::array<int, dim> iCell;
+        std::array<double, dim> delta;
+        std::array<double, 3> v{0.5, -0.5, 0.5};
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            auto const upper = corner[d] == 1;
+            iCell[d] = this->allLower[d] + (upper ? int(this->allCells[d]) - 1 : 0);
+            delta[d] = upper ? 0.999999 : 0.;
+            v[d]     = (upper ? 0.99 : -0.99) * this->dl[d] / this->dt;
+        }
+        this->particles.emplace_back(this->weight, iCell, delta, v);
+    });
     this->depositAll();
 
-    auto const totalCharge = 2 * this->charge * this->weight;
+    auto const totalCharge = this->particles.size() * this->charge * this->weight;
     EXPECT_NEAR(this->sum(this->rho0), totalCharge, 1e-14);
     EXPECT_NEAR(this->sum(this->rho1), totalCharge, 1e-14);
-    EXPECT_NEAR(this->sum(this->J(Component::X)), 0., 1e-12);
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        double expected = 0;
+        for (auto const& p : this->particles)
+            expected += this->charge * p.weight * p.v[c];
+        EXPECT_NEAR(this->sum(this->J[c]), expected, 1e-12 * std::abs(expected) + 1e-14)
+            << " component " << c;
+    }
 }
 
 
 // the charge deposit at a shifted position uses the shapes of the moments: same as the
 // Interpolator density deposit of particles moved there, including across cell borders
-TYPED_TEST(Esirkepov1D, chargeShapesAreTheMomentShapes)
+TYPED_TEST(EsirkepovTest, chargeShapesAreTheMomentShapes)
 {
-    using Interpolator_t = Interpolator<TestFixture::dim, TestFixture::interp_order>;
+    constexpr auto dim   = TestFixture::dim;
+    using Interpolator_t = Interpolator<dim, TestFixture::interp_order>;
     this->loadRandom(300, 0.9);
 
     auto const shift = 0.5 * this->dt;
@@ -181,17 +364,80 @@ TYPED_TEST(Esirkepov1D, chargeShapesAreTheMomentShapes)
 
     auto moved = this->particles;
     for (auto& p : moved)
-    {
-        auto const pos = p.iCell[0] + p.delta[0] + shift * p.v[0] / this->dx;
-        p.iCell[0]     = static_cast<int>(std::floor(pos));
-        p.delta[0]     = pos - p.iCell[0];
-    }
-    UsableVecField<TestFixture::dim> flux{"F", this->layout, HybridQuantity::Vector::V};
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            auto const pos = p.iCell[d] + p.delta[d] + shift * p.v[d] / this->dl[d];
+            p.iCell[d]     = static_cast<int>(std::floor(pos));
+            p.delta[d]     = pos - p.iCell[d];
+        }
+    UsableVecField<dim> flux{"F", this->layout, HybridQuantity::Vector::V};
     Interpolator_t{}(moved, this->rho1, flux.super(), this->layout);
 
-    for (std::size_t i = 0; i < this->rho0.size(); ++i)
-        EXPECT_NEAR(this->rho0(i), this->rho1(i), 1e-14) << " at primal node " << i;
+    TestFixture::forEachNode(this->rho0.shape(), [&](auto const& idx) {
+        EXPECT_NEAR(this->rho0(idx), this->rho1(idx), 1e-14) << " at primal node " << idx[0];
+    });
 }
+
+
+
+// The current along a direction the grid does not resolve is the current of the next dimension
+// summed along that direction: the 1D Jy and Jz are the 2D ones summed over y, the 2D Jz is the
+// 3D one summed over z. The current along the resolved directions is fixed by the continuity
+// equation, this checks the weights of the others.
+template<typename InterpOrder>
+class EsirkepovProjection : public ::testing::Test
+{
+protected:
+    static constexpr std::size_t interp_order = InterpOrder::value;
+
+    // the higher dimensional current summed along its last direction, against the lower one
+    template<std::size_t dim>
+    static void checkProjection(std::size_t const component)
+    {
+        EsirkepovSetup<dim, interp_order> low;
+        EsirkepovSetup<dim + 1, interp_order> high;
+
+        high.loadRandom(200, 0.9);
+        for (auto const& p : high.particles)
+        {
+            std::array<int, dim> iCell;
+            std::array<double, dim> delta;
+            std::copy_n(p.iCell.begin(), dim, iCell.begin());
+            std::copy_n(p.delta.begin(), dim, delta.begin());
+            low.particles.emplace_back(p.weight, iCell, delta, p.v);
+        }
+        low.depositAll();
+        high.depositAll();
+
+        auto const& Jlow  = low.J[component];
+        auto const& Jhigh = high.J[component];
+        auto const tol    = 1e-13 * low.maxAbs(Jlow);
+
+        EsirkepovSetup<dim, interp_order>::forEachNode(Jlow.shape(), [&](auto const& idx) {
+            std::array<std::uint32_t, dim + 1> hidx;
+            std::copy_n(idx.begin(), dim, hidx.begin());
+            double summed = 0;
+            for (hidx[dim] = 0; hidx[dim] < Jhigh.shape()[dim]; ++hidx[dim])
+                summed += Jhigh(hidx);
+            EXPECT_NEAR(Jlow(idx), summed, tol)
+                << " component " << component << " at " << idx[0] << " in " << dim << "D";
+        });
+    }
+};
+
+using InterpOrders = ::testing::Types<std::integral_constant<std::size_t, 1>,
+                                      std::integral_constant<std::size_t, 2>,
+                                      std::integral_constant<std::size_t, 3>>;
+TYPED_TEST_SUITE(EsirkepovProjection, InterpOrders);
+
+
+TYPED_TEST(EsirkepovProjection, invariantDirectionCurrentIsSummedCurrent)
+{
+    TestFixture::template checkProjection<1>(1); // 1D Jy
+    TestFixture::template checkProjection<1>(2); // 1D Jz
+    TestFixture::template checkProjection<2>(2); // 2D Jz
+}
+
 
 
 int main(int argc, char** argv)
