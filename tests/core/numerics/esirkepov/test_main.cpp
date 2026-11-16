@@ -12,6 +12,7 @@
 #include <cmath>
 #include <optional>
 #include <random>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 
@@ -388,6 +389,151 @@ TYPED_TEST(EsirkepovTest, chargeShapesAreTheMomentShapes)
     TestFixture::forEachNode(this->rho0.shape(), [&](auto const& idx) {
         EXPECT_NEAR(this->rho0(idx), this->rho1(idx), 1e-14) << " at primal node " << idx[0];
     });
+}
+
+
+
+// b-spline of order p at a distance d of the particle, in cells: the shapes of the moments
+double bspline(std::size_t const order, double const distance)
+{
+    auto const d = std::abs(distance);
+    if (order == 1)
+        return std::max(0., 1. - d);
+    if (order == 2)
+        return d < 0.5 ? 0.75 - d * d : (d < 1.5 ? 0.5 * (1.5 - d) * (1.5 - d) : 0.);
+    return d < 1. ? 2. / 3. - d * d + 0.5 * d * d * d
+                  : (d < 2. ? (2. - d) * (2. - d) * (2. - d) / 6. : 0.);
+}
+
+
+// Esirkepov 2001 written as published, independently of Esirkepov<dim, order>: shapes S0 and S1
+// at the two ends of the segment on every primal node of the patch, the W decomposition
+//   1D  W1 = S1x - S0x
+//   2D  W1 = (S1x - S0x)(S0y + S1y) / 2, W2 = (S1y - S0y)(S0x + S1x) / 2
+//   3D  W1 = S1x S1y S1z / 3 - S0x S1y S1z / 3 + S1x S0y S1z / 6 - S0x S0y S1z / 6
+//          + S1x S1y S0z / 6 - S0x S1y S0z / 6 + S1x S0y S0z / 3 - S0x S0y S0z / 3,
+//       W2, W3 by circular permutation,
+// J_d(i + 1/2) - J_d(i - 1/2) = -q w dl_d / duration W_d(i), summed from the first node of the
+// patch, and the current along an invariant direction
+//   1D  J = q w v (S0x + S1x) / 2
+//   2D  J = q w v (S1x S1y / 3 + S1x S0y / 6 + S0x S1y / 6 + S0x S0y / 3)
+template<typename Setup>
+void publishedEsirkepov(Setup const& s, UsableVecField<Setup::dim>& Jref, double const back,
+                        double const front)
+{
+    constexpr auto dim  = Setup::dim;
+    using Index_t       = Setup::Index_t;
+    using Grid_t        = Setup::Grid_t;
+    auto const& layout  = s.layout;
+    auto const duration = (back + front) * s.dt / 2;
+    auto const primal   = layout.allocSize(HybridQuantity::Scalar::rho);
+
+    // W_d and the invariant direction currents, on the primal nodes
+    std::array<Grid_t, 3> W{Grid_t{"W1", HybridQuantity::Scalar::rho, primal, 0.},
+                            Grid_t{"W2", HybridQuantity::Scalar::rho, primal, 0.},
+                            Grid_t{"W3", HybridQuantity::Scalar::rho, primal, 0.}};
+
+    for (auto const& p : s.particles)
+    {
+        std::array<double, dim> x0, x1;
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            auto const local = p.iCell[d] - layout.AMRBox().lower[d]
+                               + static_cast<int>(layout.physicalStartIndex(
+                                   QtyCentering::primal, static_cast<Direction>(d)));
+            x0[d] = local + p.delta[d] - back * s.dt / 2 * p.v[d] / s.dl[d];
+            x1[d] = local + p.delta[d] + front * s.dt / 2 * p.v[d] / s.dl[d];
+        }
+        auto const qw = s.charge * p.weight;
+
+        Setup::forEachNode(primal, [&](Index_t const& idx) {
+            std::array<double, 3> S0{1., 1., 1.}, S1{1., 1., 1.};
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                S0[d] = bspline(Setup::interp_order, idx[d] - x0[d]);
+                S1[d] = bspline(Setup::interp_order, idx[d] - x1[d]);
+            }
+            auto const& [S0x, S0y, S0z] = S0;
+            auto const& [S1x, S1y, S1z] = S1;
+
+            std::array<double, 3> w{};
+            if constexpr (dim == 1)
+            {
+                w[0] = S1x - S0x;
+                w[1] = p.v[1] * (S0x + S1x) / 2;
+                w[2] = p.v[2] * (S0x + S1x) / 2;
+            }
+            else if constexpr (dim == 2)
+            {
+                w[0] = (S1x - S0x) * (S0y + S1y) / 2;
+                w[1] = (S1y - S0y) * (S0x + S1x) / 2;
+                w[2] = p.v[2] * (S1x * S1y / 3 + S1x * S0y / 6 + S0x * S1y / 6 + S0x * S0y / 3);
+            }
+            else
+            {
+                w[0] = S1x * S1y * S1z / 3 - S0x * S1y * S1z / 3 + S1x * S0y * S1z / 6
+                       - S0x * S0y * S1z / 6 + S1x * S1y * S0z / 6 - S0x * S1y * S0z / 6
+                       + S1x * S0y * S0z / 3 - S0x * S0y * S0z / 3;
+                w[1] = S1y * S1z * S1x / 3 - S0y * S1z * S1x / 3 + S1y * S0z * S1x / 6
+                       - S0y * S0z * S1x / 6 + S1y * S1z * S0x / 6 - S0y * S1z * S0x / 6
+                       + S1y * S0z * S0x / 3 - S0y * S0z * S0x / 3;
+                w[2] = S1z * S1x * S1y / 3 - S0z * S1x * S1y / 3 + S1z * S0x * S1y / 6
+                       - S0z * S0x * S1y / 6 + S1z * S1x * S0y / 6 - S0z * S1x * S0y / 6
+                       + S1z * S0x * S0y / 3 - S0z * S0x * S0y / 3;
+            }
+            for (std::size_t c = 0; c < 3; ++c)
+                W[c](idx) += c < dim ? -qw * s.dl[c] / duration * w[c] : qw * w[c];
+        });
+    }
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto& Jc = Jref[c];
+        Setup::forEachNode(Jc.shape(), [&](Index_t const& idx) {
+            if (c >= dim)
+            {
+                Jc(idx) = W[c](idx);
+                return;
+            }
+            double running = 0.;
+            auto node      = idx;
+            for (node[c] = 0; node[c] <= idx[c]; ++node[c])
+                running += W[c](node);
+            Jc(idx) = running;
+        });
+    }
+}
+
+
+// the rotational part of the current is fixed by neither continuity nor the moments: compare
+// with the published formulas node by node
+TYPED_TEST(EsirkepovTest, sameAsPublishedEsirkepov)
+{
+    this->loadRandom(TestFixture::dim == 3 ? 50 : 200, 0.9);
+
+    for (auto const [back, front] : {std::pair{1., 1.}, std::pair{1., 0.}})
+    {
+        this->reset();
+        this->esirkepov(this->particles, this->J.super(), this->layout, this->charge, this->dt,
+                        back, front);
+        UsableVecField<TestFixture::dim> Jref{"Jref", this->layout, HybridQuantity::Vector::J};
+        publishedEsirkepov(*this, Jref, back, front);
+
+        for (std::size_t c = 0; c < 3; ++c)
+        {
+            double maxDiff = 0.;
+            TestFixture::forEachNode(this->J[c].shape(), [&](auto const& idx) {
+                maxDiff = std::max(maxDiff, std::abs(this->J[c](idx) - Jref[c](idx)));
+            });
+            auto const relative = maxDiff / this->maxAbs(Jref[c]);
+            ::testing::Test::RecordProperty(
+                "J" + std::to_string(c) + "_back" + std::to_string(int(back)) + "_front"
+                    + std::to_string(int(front)),
+                (std::ostringstream{} << std::scientific << relative).str());
+            EXPECT_LT(relative, 1e-14)
+                << " component " << c << " back " << back << " front " << front;
+        }
+    }
 }
 
 
