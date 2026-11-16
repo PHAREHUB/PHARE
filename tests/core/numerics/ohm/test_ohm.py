@@ -51,6 +51,79 @@ def pressure_term(n, axis, dl):
 
 
 # ------------------------------------------------------------------------------
+# ideal term, antisymmetric form (#1577): G = Avg(F) - J on the E nodes, w = B / Avg(n)
+# on the B nodes, E_x = -P_{Bz->Ex}(wz P_{Ey->Bz} Gy) + P_{By->Ex}(wy P_{Ez->By} Gz), ...
+# P is the 2-point average between primal and dual nodes. Arrays are whole ghost boxes;
+# nodes the stencil cannot reach are NaN and must stay outside the physical box.
+# ------------------------------------------------------------------------------
+
+
+def _avg_along(a, axis, src, dst, size_out, off):
+    """average a from centering src to dst along axis; off = nbrGhosts primal - dual"""
+    if src == dst:
+        return a
+    a = np.moveaxis(a, axis, 0)
+    out = np.full((size_out,) + a.shape[1:], np.nan)
+    i0 = off if src == "primal" else -off - 1  # out[k] = (a[k + i0] + a[k + i0 + 1]) / 2
+    for k in range(size_out):
+        j = k + i0
+        if 0 <= j and j + 1 < a.shape[0]:
+            out[k] = 0.5 * (a[j] + a[j + 1])
+    return np.moveaxis(out, 0, axis)
+
+
+def _recenter(a, src, dst, sizes, off):
+    for axis, (s, d) in enumerate(zip(src, dst)):
+        a = _avg_along(a, axis, s, d, sizes[d][axis], off)
+    return a
+
+
+def ideal_antisymmetric(tv, layout, n, F, B, J):
+    dim = n.ndim
+    sizes = {
+        c: [layout.allocSize(tv.interpOrder, c, tv.nbrCells[d]) for d in range(dim)]
+        for c in ("primal", "dual")
+    }
+    off = layout.nbrGhosts(tv.interpOrder, "primal") - layout.nbrGhosts(
+        tv.interpOrder, "dual"
+    )
+    Ec = [c[:dim] for c in (tv.ExCentering, tv.EyCentering, tv.EzCentering)]
+    Bc = [c[:dim] for c in (tv.BxCentering, tv.ByCentering, tv.BzCentering)]
+    Mc = tv.MomentsCentering[:dim]
+
+    def P(a, src, dst):
+        return _recenter(a, src, dst, sizes, off)
+
+    G = [P(F[i], Mc, Ec[i]) - J[i] for i in range(3)]
+    w = [B[i] / P(n, Mc, Bc[i]) for i in range(3)]
+
+    def term(b, g):  # P_{B_b -> E}(w_b P_{E_g -> B_b} G_g), returned before the last P
+        return w[b] * P(G[g], Ec[g], Bc[b])
+
+    X, Y, Z = 0, 1, 2
+    Ex = -P(term(Z, Y), Bc[Z], Ec[X]) + P(term(Y, Z), Bc[Y], Ec[X])
+    Ey = P(term(Z, X), Bc[Z], Ec[Y]) - P(term(X, Z), Bc[X], Ec[Y])
+    Ez = -P(term(Y, X), Bc[Y], Ec[Z]) + P(term(X, Y), Bc[X], Ec[Z])
+    return Ex, Ey, Ez
+
+
+def set_ideal_on_physical_box(tv, layout, ideals, values):
+    for arr, val, cen in zip(
+        ideals, values, (tv.ExCentering, tv.EyCentering, tv.EzCentering)
+    ):
+        sl = tuple(
+            slice(
+                layout.physicalStartIndex(tv.interpOrder, cen[d]),
+                layout.physicalEndIndex(tv.interpOrder, cen[d], tv.nbrCells[d]) + 1,
+            )
+            for d in range(arr.ndim)
+        )
+        assert not np.isnan(val[sl]).any(), "ideal term stencil leaves the ghost box"
+        arr[sl] = val[sl]
+
+
+
+# ------------------------------------------------------------------------------
 # since the derivative is tested for all interporders
 # we don't do ohm for all interporders, only for interporder=1
 # ------------------------------------------------------------------------------
@@ -148,27 +221,12 @@ def test_ohm_yee1D(path):
     Jy = np.tanh(0.3 * x_primal)
     Jz = np.tanh(0.4 * x_primal)
 
-    # ideal term
-    idealx[psi_d_X : pei_d_X + 1] = (
-        0.5
-        * (Vz[psi_p_X:pei_p_X] + Vz[psi_p_X + 1 : pei_p_X + 1])
-        * By[psi_d_X : pei_d_X + 1]
-        - 0.5
-        * (Vy[psi_p_X:pei_p_X] + Vy[psi_p_X + 1 : pei_p_X + 1])
-        * Bz[psi_d_X : pei_d_X + 1]
-    )
-
-    idealy[psi_p_X : pei_p_X + 1] = (
-        0.5
-        * Vx[psi_p_X : pei_p_X + 1]
-        * (Bz[psi_d_X - 1 : pei_d_X + 1] + Bz[psi_d_X : pei_d_X + 2])
-        - Vz[psi_p_X : pei_p_X + 1] * Bx[psi_p_X : pei_p_X + 1]
-    )
-
-    idealz[psi_p_X : pei_p_X + 1] = Vy[psi_p_X : pei_p_X + 1] * Bx[
-        psi_p_X : pei_p_X + 1
-    ] - 0.5 * Vx[psi_p_X : pei_p_X + 1] * (
-        By[psi_d_X - 1 : pei_d_X + 1] + By[psi_d_X : pei_d_X + 2]
+    # ideal term, F = (Vx, Vy, Vz) is the ion charge flux here
+    set_ideal_on_physical_box(
+        tv,
+        layout,
+        (idealx, idealy, idealz),
+        ideal_antisymmetric(tv, layout, n, (Vx, Vy, Vz), (Bx, By, Bz), (Jx, Jy, Jz)),
     )
 
     # pressure term
@@ -368,46 +426,12 @@ def test_ohm_yee2D(path):
     Jy = np.tensordot(np.tanh(0.3 * x_primal), np.tanh(0.3 * y_dual), axes=0)
     Jz = np.tensordot(np.tanh(0.4 * x_primal), np.tanh(0.4 * y_primal), axes=0)
 
-    # ideal term
-    idealx[psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1] = (
-        -0.25
-        * (
-            Vy[psi_p_X:pei_p_X, psi_p_Y : pei_p_Y + 1]
-            + Vy[psi_p_X + 1 : pei_p_X + 1, psi_p_Y : pei_p_Y + 1]
-        )
-        * (
-            Bz[psi_d_X : pei_d_X + 1, psi_d_Y - 1 : pei_d_Y + 1]
-            + Bz[psi_d_X : pei_d_X + 1, psi_d_Y : pei_d_Y + 2]
-        )
-        + 0.5
-        * (
-            Vz[psi_p_X:pei_p_X, psi_p_Y : pei_p_Y + 1]
-            + Vz[psi_p_X + 1 : pei_p_X + 1, psi_p_Y : pei_p_Y + 1]
-        )
-        * By[psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1]
-    )
-
-    idealy[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1] = -0.5 * (
-        Vz[psi_p_X : pei_p_X + 1, psi_p_Y:pei_p_Y]
-        + Vz[psi_p_X : pei_p_X + 1, psi_p_Y + 1 : pei_p_Y + 1]
-    ) * (Bx[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1]) + 0.25 * (
-        Vx[psi_p_X : pei_p_X + 1, psi_p_Y:pei_p_Y]
-        + Vx[psi_p_X : pei_p_X + 1, psi_p_Y + 1 : pei_p_Y + 1]
-    ) * (
-        Bz[psi_d_X - 1 : pei_d_X + 1, psi_d_Y : pei_d_Y + 1]
-        + Bz[psi_d_X : pei_d_X + 2, psi_d_Y : pei_d_Y + 1]
-    )
-
-    idealz[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1] = -0.5 * Vx[
-        psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1
-    ] * (
-        By[psi_d_X - 1 : pei_d_X + 1, psi_p_Y : pei_p_Y + 1]
-        + By[psi_d_X : pei_d_X + 2, psi_p_Y : pei_p_Y + 1]
-    ) + 0.5 * Vy[
-        psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1
-    ] * (
-        Bx[psi_p_X : pei_p_X + 1, psi_d_Y - 1 : pei_d_Y + 1]
-        + Bx[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 2]
+    # ideal term, F = (Vx, Vy, Vz) is the ion charge flux here
+    set_ideal_on_physical_box(
+        tv,
+        layout,
+        (idealx, idealy, idealz),
+        ideal_antisymmetric(tv, layout, n, (Vx, Vy, Vz), (Bx, By, Bz), (Jx, Jy, Jz)),
     )
 
     # pressure term
@@ -691,53 +715,12 @@ def test_ohm_yee3D(path):
         axes=0,
     )
 
-    # ideal term
-    idealx[
-        psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1
-    ] = -0.25 * (
-        Vy[psi_p_X:pei_p_X, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1]
-        + Vy[psi_p_X + 1 : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1]
-    ) * (
-        Bz[psi_d_X : pei_d_X + 1, psi_d_Y - 1 : pei_d_Y + 1, psi_p_Z : pei_p_Z + 1]
-        + Bz[psi_d_X : pei_d_X + 1, psi_d_Y : pei_d_Y + 2, psi_p_Z : pei_p_Z + 1]
-    ) + 0.25 * (
-        Vz[psi_p_X:pei_p_X, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1]
-        + Vz[psi_p_X + 1 : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1]
-    ) * (
-        By[psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1, psi_d_Z - 1 : pei_d_Z + 1]
-        + By[psi_d_X : pei_d_X + 1, psi_p_Y : pei_p_Y + 1, psi_d_Z : pei_d_Z + 2]
-    )
-
-    idealy[
-        psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1, psi_p_Z : pei_p_Z + 1
-    ] = -0.25 * (
-        Vz[psi_p_X : pei_p_X + 1, psi_p_Y:pei_p_Y, psi_p_Z : pei_p_Z + 1]
-        + Vz[psi_p_X : pei_p_X + 1, psi_p_Y + 1 : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1]
-    ) * (
-        Bx[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1, psi_d_Z - 1 : pei_d_Z + 1]
-        + Bx[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 1, psi_d_Z : pei_d_Z + 2]
-    ) + 0.25 * (
-        Vx[psi_p_X : pei_p_X + 1, psi_p_Y:pei_p_Y, psi_p_Z : pei_p_Z + 1]
-        + Vx[psi_p_X : pei_p_X + 1, psi_p_Y + 1 : pei_p_Y + 1, psi_p_Z : pei_p_Z + 1]
-    ) * (
-        Bz[psi_d_X - 1 : pei_d_X + 1, psi_d_Y : pei_d_Y + 1, psi_p_Z : pei_p_Z + 1]
-        + Bz[psi_d_X : pei_d_X + 2, psi_d_Y : pei_d_Y + 1, psi_p_Z : pei_p_Z + 1]
-    )
-
-    idealz[
-        psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_d_Z : pei_d_Z + 1
-    ] = -0.25 * (
-        Vx[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z:pei_p_Z]
-        + Vx[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z + 1 : pei_p_Z + 1]
-    ) * (
-        By[psi_d_X - 1 : pei_d_X + 1, psi_p_Y : pei_p_Y + 1, psi_d_Z : pei_d_Z + 1]
-        + By[psi_d_X : pei_d_X + 2, psi_p_Y : pei_p_Y + 1, psi_d_Z : pei_d_Z + 1]
-    ) + 0.25 * (
-        Vy[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z:pei_p_Z]
-        + Vy[psi_p_X : pei_p_X + 1, psi_p_Y : pei_p_Y + 1, psi_p_Z + 1 : pei_p_Z + 1]
-    ) * (
-        Bx[psi_p_X : pei_p_X + 1, psi_d_Y - 1 : pei_d_Y + 1, psi_d_Z : pei_d_Z + 1]
-        + Bx[psi_p_X : pei_p_X + 1, psi_d_Y : pei_d_Y + 2, psi_d_Z : pei_d_Z + 1]
+    # ideal term, F = (Vx, Vy, Vz) is the ion charge flux here
+    set_ideal_on_physical_box(
+        tv,
+        layout,
+        (idealx, idealy, idealz),
+        ideal_antisymmetric(tv, layout, n, (Vx, Vy, Vz), (Bx, By, Bz), (Jx, Jy, Jz)),
     )
 
     # pressure term

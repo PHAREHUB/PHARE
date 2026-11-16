@@ -646,17 +646,21 @@ namespace core
 
 
 
-        template<auto src, auto dst, typename Field>
-        NO_DISCARD static Field::type project(Field const& field, MeshIndex<dimension> index)
-            requires(HasPhysicalQuantity<Field>)
+        // values: a field, checked in debug builds to be centred like src, or anything that
+        // gives a value at a mesh index (see core::project)
+        template<auto src, auto dst, typename Values>
+        NO_DISCARD static auto project(Values const& values, MeshIndex<dimension> index)
         {
-            PHARE_DEBUG_DO(
-                constexpr auto expected = centering(src);
-                if (centering(field) != expected) throw std::runtime_error(
-                    "GridLayout::project: field centering does not match the source quantity: "
-                    + field.name());)
+            if constexpr (HasPhysicalQuantity<Values>)
+            {
+                PHARE_DEBUG_DO(
+                    constexpr auto expected = centering(src);
+                    if (centering(values) != expected) throw std::runtime_error(
+                        "GridLayout::project: field centering does not match the source quantity: "
+                        + values.name());)
+            }
 
-            return core::project<centering(src), centering(dst)>(field, index);
+            return core::project<centering(src), centering(dst)>(values, index);
         }
 
 
