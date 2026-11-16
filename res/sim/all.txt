@@ -35,6 +35,12 @@
 1,1,2,FK
 1,2,2,FK
 1,3,2,FK
+2,1,4,FK
+2,2,4,FK
+2,3,4,FK
+3,1,6,FK
+3,2,6,FK
+3,3,6,FK
 # --- MHD-only builds (dim,reconstruction,limiter,riemann,hall) ---
 # --- one line per single-run functional test ---
 # mhd_harris (higher-order, kept)
