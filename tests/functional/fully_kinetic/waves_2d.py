@@ -18,13 +18,19 @@ derivative along d acts as K_d = (2/dx) sin(k_d dx / 2).
   two-stream. Warm in the plane (v_th = 0.72: dx / lambda_D = 2.8), cold along z. Kinetic
   dispersion of the transverse mode E_z, for a purely growing w = i gamma:
     -gamma^2 - c^2 K^2 - S^2 w_p^2 + S^2 sum_s w_ps^2 A_s (1 - sqrt(pi) y_s erfcx(y_s)) = 0,
-    y_s = gamma / (sqrt(2) |k| v_th,s), A_s = (<v_z^2>_s) / v_th,s^2,
-  which reduces to the cold w^4 - (w_p^2 + c^2 k^2) w^2 - w_pe^2 k^2 v0^2 = 0. In a 16^2 box
+    y_s = gamma / (sqrt(2) kK v_th,s), A_s = (<v_z^2>_s) / v_th,s^2, kK = sqrt(sum_d k_d K_d)
+  (the particles respond to k, the Yee curl to K: -0.3% on gamma at (1, 0) here),
+  which reduces to the cold w^4 - (w_p^2 + c^2 K^2) w^2 - w_pe^2 kK^2 v0^2 = 0. In a 16^2 box
   only modes (1, 0), (0, 1) (gamma = 5.1) and (1, +-1) (gamma = 1.7) are unstable: no faster
   mode grows from the noise. Measured on (1, 0) and (0, 1) together, from the noise.
-  Not a test yet (--weibel): measured in 1D with the same 16k particles per beam, noise
-  2e-4 to 1e-3 and saturation 0.09 leave a ~2.8 e-folding window where the fitted gamma moves
-  by -6% to +11% with the window bounds.
+  Not a test (--weibel only, not registered): the growth starts from the particle noise.
+  Measured in 1D with the same 16k particles per beam, noise 2e-4 to 1e-3 and saturation 0.09
+  leave a ~2.8 e-folding window where the fitted gamma moves by -6% to +11% with the window;
+  the cold 32^2 design has no clean window either (4.5 e-folds). A seed cannot fix it, it must
+  sit far below saturation. It needs a quiet start, mirrored beams sharing their positions,
+  which the loader cannot do: each population draws from its own generator, keyed by its name
+  (maxwellian_particle_initializer.hpp:49-51). The P2 test of the out of plane current and the
+  in-plane B is the out of plane light wave.
 """
 
 import sys
@@ -176,7 +182,8 @@ def weibel_growth(k, interp_order):
     from scipy.special import erfcx
 
     S2 = shape_factor2(k, interp_order)
-    k_norm = np.linalg.norm(k)
+    yee = 2 / dl * np.sin(np.asarray(k) * dl / 2)
+    k_norm = np.sqrt(np.dot(k, yee))
     w_pe2 = plasma_frequency(1, -1, mass_e) ** 2
     w_pi2 = plasma_frequency(1, 1, 1.0) ** 2
     anisotropy = (weibel_v0**2 + weibel_vth_z**2) / weibel_vth_plane**2
