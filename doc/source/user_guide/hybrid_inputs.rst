@@ -258,6 +258,10 @@ units.
 Common mistakes
 ---------------
 
+* ``AttributeError: 'NoneType' object has no attribute 'model_dict'`` (from
+  ``Simulator.setup()``) — the script has no ``ph.MaxwellianFluidModel(...)``
+  block. Add it after ``ph.Simulation(...)``.
+
 * **Forgetting** ``vthx``, ``vthy``, ``vthz``. The default thermal velocity is
   **1**, the Alfvén speed: a hot plasma (:math:`\beta_i = 2` for density 1 and
   B = 1). Always give them.

@@ -240,6 +240,11 @@ Give exactly two of the three. ``time_step`` can also be a dictionary:
    (written to the log file, the terminal only shows an MPI abort). Use a
    fixed ``time_step`` for hybrid runs.
 
+   In an MHD run, use the adaptive time step on a single level only: with
+   refinement (``refinement_boxes`` or ``"tagging"``) the levels stop
+   conserving mass and energy (see :doc:`amr`). Use a fixed ``time_step``
+   there.
+
 Hybrid numerics
 ~~~~~~~~~~~~~~~
 

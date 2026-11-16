@@ -68,9 +68,11 @@ Which one?
    * - Fluid outputs
      - ``FluidDiagnostics`` (ion moments)
      - ``MHDDiagnostics``
+   * - Field outputs (``ElectromagDiagnostics``)
+     - E and B
+     - B only (asking for E stops the run, see :doc:`mhd_inputs`)
 
-Both models write the electromagnetic field with ``ElectromagDiagnostics``,
-use the same :doc:`normalized units </theory/normalization>` and the same
+Both models use the same :doc:`normalized units </theory/normalization>` and the same
 adaptive mesh refinement (:doc:`amr`).
 
 

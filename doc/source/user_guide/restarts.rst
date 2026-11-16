@@ -89,7 +89,7 @@ simulation, continued.
        time_step=0.01,
        final_time=50.0,           # was 25.0: now run up to t = 50
        diag_options={"format": "phareh5",
-                     "options": {"dir": "first_run"}},   # no "mode": see below
+                     "options": {"dir": "first_run"}},   # no "mode": see the warning below
        restart_options={"dir": "restarts",
                         "mode": "conserve",
                         "restart_time": 25.0},           # read the restart at t = 25
@@ -102,6 +102,13 @@ simulation, continued.
 Run ``python3 run2.py``. It starts at t = 25, not at t = 0, and stops at
 t = 50. Afterwards ``first_run/EM_B.h5`` holds the times 0, 25 and 50: t = 0
 and 25 from the first run, and t = 50 from the second.
+
+.. warning::
+
+   Remove ``"mode": "overwrite"`` from ``diag_options`` in the script that
+   restarts. If you keep it, the diagnostics files of the first run are emptied
+   when the second run starts, without any message: ``EM_B.h5`` then holds only
+   t = 25 and 50. Details in `Constraints`_.
 
 .. plot::
    :include-source: False
@@ -129,4 +136,132 @@ and 25 from the first run, and t = 50 from the second.
        mark(a, "dual", t*s, 0.55, color=c, size=9)
    finish(fig, [a])
 
+
+
+How it works
+------------
+
+* **Writing.** At each time in ``timestamps`` PHARE writes a folder named after
+  that time (``restarts/00025.00000``, five digits, a dot, five decimals).
+  ``restart_options`` needs a ``mode``; without it PHARE stops.
+* **Reading.** If ``restart_options`` contains ``restart_time``, PHARE loads
+  the particles and fields saved at that time and goes on from there. Keep the model and electron
+  blocks in the script: it is the same simulation, continued.
+* **Check at start.** The new script must describe the same grid as the one
+  that wrote the restart: ``cells``, ``dl`` and ``max_nbr_levels`` are compared,
+  and PHARE stops if one differs. Nothing else is compared: keep every other
+  setting identical too (model, populations, ``interp_order``, scheme options,
+  ``time_step``); only ``final_time`` (or ``time_step_nbr``), the diagnostics
+  and the restart options should change.
+* Give ``timestamps`` as multiples of ``time_step`` (the simulation only
+  passes through multiples of ``time_step``), in ascending order, between the
+  start time and ``final_time``.
+
+
+Options
+-------
+
+All keys go in the ``restart_options`` dictionary of
+:class:`~pyphare.pharein.Simulation`. Any other key is rejected.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 60 20
+
+   * - Option
+     - Meaning
+     - Default
+   * - ``mode``
+     - ``"conserve"`` or ``"overwrite"``. With ``"conserve"``, a restart time
+       for which a folder already exists is skipped (not written again). With
+       ``"overwrite"``, existing restart files are replaced.
+     - none: **required**
+   * - ``dir``
+     - Folder holding the restart folders, for writing and for reading.
+       **Always set it** when you use ``"auto"`` or ``keep_last``: without
+       ``dir``, those two look in the current folder, not in ``phare_outputs``,
+       so ``"auto"`` never finds a restart and ``keep_last`` deletes nothing.
+     - ``"phare_outputs"``
+   * - ``timestamps``
+     - Simulation times at which to write a restart. A list or a numpy array.
+     - none: no restart is written
+   * - ``elapsed_timestamps``
+     - List of *wall-clock* times since the run started (seconds or
+       ``datetime.timedelta``), ascending; one restart at each.
+       Can be combined with ``timestamps``.
+     - none
+   * - ``restart_time``
+     - Simulation time of the restart to read, or ``"auto"`` for the latest
+       one in ``dir``. If ``"auto"`` finds nothing, the run starts from
+       scratch.
+     - none: normal start
+   * - ``keep_last``
+     - Keep only the ``N`` most recent restart folders in ``dir``; older ones
+       are deleted as new ones are written.
+     - none: keep all
+
+.. tip::
+
+   On a cluster you rarely know which simulation time the job will have
+   reached when it is killed. Prefer ``elapsed_timestamps`` (for example 10 h
+   and 23 h, as ``datetime.timedelta(hours=10)``) so that a restart is written
+   in time, whatever the speed of the run. Folders are still named after the
+   *simulation* time at which the restart was written (for instance
+   ``00011.46000``).
+
+.. tip::
+
+   One script for every job: give ``restart_time="auto"``, a ``dir``, and a
+   ``timestamps`` or ``elapsed_timestamps`` list. The first job finds no restart and starts
+   from scratch; each later job continues from the latest one. Add
+   ``keep_last=2`` to limit the disk used.
+
+
+Constraints
+-----------
+
+**Same number of MPI ranks.** The restart is written as one file per rank,
+inside a folder named after the number of ranks (``nodes.0000001`` for one
+rank, ``nodes.0000002`` for two, see ``restarts/00025.00000/restore.000000/``).
+A restart written with N ranks can only be read with N ranks.
+
+**Restart folder and diagnostics folder have different default names.** If you
+give no ``dir``, restarts go to ``phare_outputs`` and diagnostics go to
+``phare_output`` (no ``s``) when no ``options`` dictionary is given in
+``diag_options``. Setting both ``dir`` entries explicitly avoids any confusion.
+
+**Diagnostics files when restarting.** The ``mode`` of ``diag_options["options"]``
+only accepts ``"overwrite"``. If you leave it out, existing diagnostics files
+are opened and the new times are added at the end, which is what you want in a
+restart. If you keep ``"overwrite"`` in the second script, the files written by
+the first run are wiped at the start: for example, ``EM_B.h5`` then held only
+t = 25 and 50, the t = 0 snapshot was lost. Remove ``"mode": "overwrite"`` (or
+use another ``dir``) in the script that restarts.
+
+
+Common mistakes
+---------------
+
+* ``ValueError: Restart mode not set, valid modes are ['conserve', 'overwrite']``
+  — ``restart_options`` has no ``mode``. Add ``"mode": "conserve"``.
+* ``ValueError: invalid option (mod), valid options are ['dir', 'elapsed_timestamps', 'timestamps', 'mode', 'restart_time', 'keep_last']``
+  — a typo in a key name (here ``mod`` for ``mode``).
+* ``ValueError: PHARE restart file not found for time 30.0`` — there is no
+  folder ``restarts/00030.00000``. Look at what is in ``dir``, or use
+  ``"restart_time": "auto"``.
+* ``ERROR: Simulation not restartable - variable mismatch`` then
+  ``cells current([100]) ne previous([200])`` and
+  ``ValueError: deserialized Restart simulation is incompatible with configured simulation parameters``
+  — the script changed ``cells`` (or ``dl`` or ``max_nbr_levels``). Use the
+  values of the run that wrote the restart.
+* ``RuntimeError: Unable to open file restarts/00025.00000/restore.000000/nodes.0000002/proc.0000000 (File accessibility) Unable to open file``
+  (together with an HDF5 ``No such file or directory`` message) — you started
+  with ``mpirun -n 2`` a restart written with one rank. Use the same number of
+  ranks as in the first run.
+
+
+Next
+----
+
+:doc:`running` explains how to launch a simulation, including with MPI. How
 this works inside: :doc:`/dev/diagnostics_restarts`.

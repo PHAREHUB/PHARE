@@ -153,6 +153,12 @@ that for the coarsest level, for any quantity:
 Here the run is small and has a single patch, but the same code works for any
 number of patches.
 
+Without ``merged=True``, ``GetB`` first moves the three components of B to the
+cell corners (x = 0, 0.5, ..., 100), so that they share the same points as the
+density. ``merged=True`` (used in :doc:`first_simulation`) keeps By where PHARE
+stores it, at the cell centres (x = 0.25, 0.75, ...). Compare the two only on the
+same points. Details: the ``all_primal`` option in :doc:`/data_analysis/reading_data`.
+
 What you should see in ``first_result.png``:
 
 * **Top:** ``-Vy`` lies on top of ``By``. In an Alfvén wave going along

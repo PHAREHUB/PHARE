@@ -19,7 +19,7 @@ their output in the folder where you start them):
 .. code-block:: bash
 
    export PHARE=/path/to/PHARE
-   export BUILD=/path/to/PHARE/build
+   export BUILD=/path/to/build
    mkdir -p my_run && cd my_run
    PYTHONPATH=$BUILD:$PHARE/pyphare:$PHARE \
        mpirun -n 4 python3 $PHARE/tests/functional/<name>/<script>.py

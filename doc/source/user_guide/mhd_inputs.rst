@@ -45,6 +45,8 @@ folder (see :doc:`/getting_started/first_simulation`). Save this as
        limiter="VanLeer",
        riemann="Rusanov",
        mhd_timestepper="TVDRK2",
+       domain_boundaries={"xlower": {"type": "open"},   # outflow on both sides
+                          "xupper": {"type": "open"}},  # (the default is periodic)
        diag_options={"format": "phareh5",
                      "options": {"dir": "mhd_run", "mode": "overwrite"}},
    )
@@ -52,7 +54,7 @@ folder (see :doc:`/getting_started/first_simulation`). Save this as
    # 2. The initial fluid: left and right states
    ph.MHDModel(
        density=lambda x: np.where(x < x0, 1.0, 0.125),
-       vx=0.0,
+       vx=0.0,                     # the default is 1, not 0: see below
        bx=0.75,
        by=lambda x: np.where(x < x0, 1.0, -1.0),
        p=lambda x: np.where(x < x0, 1.0, 0.1),
@@ -70,8 +72,9 @@ folder (see :doc:`/getting_started/first_simulation`). Save this as
 Run it with ``python3 shock.py``. It takes a few seconds and writes
 ``rho.png``. You should see the density profile of the shock tube after
 t = 40: flat plateaus separated by several waves that left the initial jump,
-some going left and some going right. The box is periodic, so the box edges
-are also a jump, and waves leave them too.
+some going left and some going right. The two ``open`` sides let them leave
+the box. Without ``domain_boundaries`` the box would be periodic: its edges would
+then be a second jump, with waves leaving it too.
 
 .. plot::
    :caption: The initial state of this example, drawn from the formulas (not
@@ -155,4 +158,208 @@ choices you make in :py:class:`~pyphare.pharein.Simulation`:
    text(c, 2.5, 2.25, "F3 - F2", color=C["ok"])
    finish(fig, [a, b, c], max_h=1.7)
 
+* the **reconstruction** (with its **limiter**) estimates the fluid on the two
+  sides of every cell face;
+* the **Riemann solver** turns those two states into a flux through the face;
+* the **time stepper** combines the fluxes into a new state.
+
+How these work is described in :doc:`/numerics/mhd_finite_volume`.
+
+Units
+^^^^^
+
+MHD uses the same :doc:`/theory/normalization` as the hybrid model. Lengths are
+in the proton inertial length, times in the inverse proton gyro-frequency,
+the magnetic field in a reference field :math:`B_0`, the mass density in
+:math:`m_p n_0`, and the pressure in :math:`B_0^2/\mu_0`. ``p`` is the thermal
+pressure of the fluid only (the magnetic pressure is not included in it), and
+``gamma`` links it to the internal energy: :math:`e = p/(\gamma - 1)`.
+
+
+Describing the initial fluid
+----------------------------
+
+:py:class:`~pyphare.pharein.MHDModel` takes one profile per quantity. Each is
+either a number (uniform) or a function of the coordinates: ``f(x)`` in 1D,
+``f(x, y)`` in 2D, ``f(x, y, z)`` in 3D. The function must return an array of the
+same size as its input (use ``np.where``, or ``0 * x + value``).
+
+.. list-table::
+   :header-rows: 1
+
+   * - Option
+     - Meaning
+     - Default
+   * - ``density``
+     - mass density
+     - 1
+   * - ``vx``, ``vy``, ``vz``
+     - velocity components
+     - 1, 0, 0
+   * - ``bx``, ``by``, ``bz``
+     - magnetic field components
+     - 1, 0, 0
+   * - ``p``
+     - thermal pressure
+     - 1
+
+.. warning::
+
+   The defaults are not at rest: ``vx`` is 1 and ``bx`` is 1 unless you say
+   otherwise. This is why the example above gives ``vx=0.0``: without that
+   line the whole shock tube is carried along x at speed 1, with no message.
+
+Only one model can be created per simulation, and it must come after
+:py:class:`~pyphare.pharein.Simulation`.
+
+The magnetic field you give should have no divergence (:math:`\nabla\cdot B = 0`);
+a uniform component, as above, is always safe.
+
+
+More on the scheme options
+--------------------------
+
+* ``reconstruction``, ``limiter`` and ``riemann`` have no default (an empty
+  name) and are **case-sensitive**: write them exactly as in the list above.
+  ``mhd_timestepper`` accepts any letter case.
+* In an MHD run the hyper-resistivity is ``nu`` and the resistivity ``eta``. The
+  hybrid options ``resistivity`` and ``hyper_resistivity`` are accepted in an
+  MHD run and have no effect.
+* ``max_mhd_level`` is meant for a future run mixing MHD and hybrid
+  :term:`levels <level>`, which does not work yet: leave it at its default.
+* Which combinations of ``reconstruction``, ``limiter``, ``riemann``, ``hall``
+  and dimension are built by default: :ref:`which-combinations`. To see what
+  your own build contains, run
+  ``python3 -c "from pyphare import cpp; print(cpp.built_simulator_ids())"``
+  (MHD entries read ``<dim>_<reconstruction>_<limiter>_<riemann>_<hall>``).
+
+
+Domain boundaries
+-----------------
+
+By default the box is periodic. Walls, outflow and inflow are set with
+``domain_boundaries``, which only MHD supports: see
+:doc:`/user_guide/boundary_conditions`. The example above uses two ``open``
+(outflow) sides.
+
+
+Diagnostics
+-----------
+
+``MHDDiagnostics`` writes ``rho``, ``V``, ``P``, ``rhoV`` and ``Etot``; the
+magnetic field is written with ``ElectromagDiagnostics(quantity="B", ...)``
+(see :doc:`diagnostics`). The electric field is **not** written in an MHD run:
+``ElectromagDiagnostics(quantity="E", ...)`` stops the run at the start (see
+below).
+
+They are read with ``run.GetMHDrho``, ``GetMHDV``, ``GetMHDP``, ``GetMHDrhoV``,
+``GetMHDEtot`` and ``run.GetB`` (see :doc:`/data_analysis/reading_data`).
+
+
+Common mistakes
+---------------
+
+* **Combination not built** (a typo, wrong letter case, or a valid scheme that
+  was not compiled). Wrong case, for instance ``reconstruction="linear"``,
+  gives:
+
+  .. code-block:: text
+
+     ModuleNotFoundError: No module named 'pybindlibs.cpp_1_linear_VanLeer_Rusanov_false'.
+     This run needs the build permutation
+         1,linear,VanLeer,Rusanov,false
+     Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.
+     Permutations currently built:
+         ...
+
+  Fix: use the exact names above, and a combination that is built. The Python
+  side does not check the names, so the same message appears for
+  ``riemann="rusanov"``, or for a limiter with a non-Linear reconstruction such
+  as ``reconstruction="WENOZ", limiter="VanLeer"``
+  (``1,WENOZ,VanLeer,Rusanov,false``). Leaving ``limiter`` out gives the same
+  message with an empty name: write ``limiter="None"`` for the schemes that
+  take no limiter.
+
+* **No** ``ph.MHDModel(...)`` **block**: ``AttributeError: 'NoneType' object has
+  no attribute 'model_dict'`` from ``Simulator.setup()``. Add the block after
+  ``ph.Simulation(...)``.
+
+* **Forgetting** ``vx`` (or ``bx``): the defaults are 1, not 0 (see the warning
+  above). The run works, with a flow you did not ask for.
+
+* **Asking for E**:
+
+  .. code-block:: text
+
+     RuntimeError: E not currently available in MHD diagnostics
+
+  followed by ``Error in Simulator.initialize()``. Fix: in an MHD run write
+  only ``ElectromagDiagnostics(quantity="B", ...)``.
+
+* ``nu`` **without the Hall term**:
+
+  .. code-block:: text
+
+     RuntimeError: Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled
+
+  Fix: add ``hall=True`` (and a combination built with ``hall`` true, such as
+  1D ``Linear``/``VanLeer``/``Rusanov``), or set ``nu=0``.
+
+* ``resistivity`` **or** ``hyper_resistivity`` **in an MHD run.** Both are hybrid
+  options: an MHD run accepts them and ignores them. Use ``eta`` and ``nu``.
+
+* **No time stepper**:
+
+  .. code-block:: text
+
+     ValueError: Error: MHDModel requires a non-empty mhd_timestepper
+
+* **Unknown time stepper**, for example ``"rk4"``:
+
+  .. code-block:: text
+
+     ValueError: TimeIntegratorType: unknown value 'rk4', expected one of ['euler', 'tvdrk2', 'tvdrk3', 'ssprk4_5']
+
+* ``gamma`` **of 1 or less**:
+
+  .. code-block:: text
+
+     ValueError: 'gamma' must be a scalar greater than 1, got 1.0
+
+* ``max_mhd_level`` **too large**:
+
+  .. code-block:: text
+
+     ValueError: Error: max_mhd_level(3) should be less or equal to max_nbr_levels(1)
+
+* **Using the hybrid model in an MHD run.** ``MaxwellianFluidModel`` belongs to the
+  hybrid model. In a run declared with ``model_options=["MHDModel"]`` it fails
+  with an unhelpful message as soon as it is declared:
+
+  .. code-block:: text
+
+     ValueError: HybridGridLayoutFor: interp_order is 0 (no hybrid model) and no explicit ghosts_nbr was given
+
+  Fix: use :py:class:`~pyphare.pharein.MHDModel`.
+
+* **Hybrid options in an MHD run.** ``interp_order`` is accepted by Python, but
+  it asks for a hybrid+MHD module that is not built: the run stops with
+  ``No module named 'pybindlibs.cpp_1_1_2_Linear_VanLeer_Rusanov_false'``.
+  ``refined_particle_nbr`` alone is rejected at once: ``Error:
+  refined_particle_nbr is meaningless without a hybrid model (no interp_order
+  given), it should be omitted``. Leave both out.
+
+
+Going further
+-------------
+
+* :doc:`/user_guide/boundary_conditions`: open, reflective and inflow boundaries.
+* :doc:`/user_guide/diagnostics`: choosing what to write and when.
+* :doc:`/numerics/mhd_finite_volume`: how the scheme works.
 * :doc:`/theory/mhd`: the equations.
+
+
+Reference
+---------
+
+.. autoclass:: pyphare.pharein.MHDModel

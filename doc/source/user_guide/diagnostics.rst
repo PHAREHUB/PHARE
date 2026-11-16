@@ -103,7 +103,8 @@ Electromagnetic fields
      - Meaning
      - File
    * - ``"E"``
-     - electric field
+     - electric field (hybrid runs only: an MHD run stops at the start with
+       ``E not currently available in MHD diagnostics``)
      - ``EM_E.h5``
    * - ``"B"``
      - magnetic field
@@ -162,6 +163,13 @@ For one population, give ``population_name="protons"`` (the name used in
 
 ``density`` and ``flux`` require ``population_name``; ``charge_flux`` is only
 for the ions as a whole.
+
+A shortcut for pressures: ``quantity="pressure_tensor"`` is not written as such,
+it asks for the three files needed to compute a pressure. For the ions as a
+whole (no ``population_name``): ``mass_density``, ``bulkVelocity`` and
+``momentum_tensor``, read with ``run.GetPi``. For one population: ``density``,
+``flux`` and ``momentum_tensor``, read with ``run.GetPressure`` (see
+:doc:`/data_analysis/reading_data`).
 
 Particles
 ~~~~~~~~~
@@ -309,9 +317,20 @@ diagnostics blocks themselves.
    * - ``options["allow_emergency_dumps"]``
      - ``True`` or ``False``: dump everything if the run stops on an error
      - ``False``
+   * - ``options["fine_dump_lvl_max"]``
+     - an integer N: in addition to the regular outputs, write every
+       diagnostic of the refined levels 1 to N at the end of each of their
+       sub-steps that does not end a level-0 step (3 times per level-0 step on
+       level 1, 15 on level 2). Off if not set or 0. Files grow fast.
+     - not set
 
 * Without ``mode``, an existing file is opened and kept, and new data is
   added to it (useful when restarting). With ``"overwrite"`` it starts empty.
+* ``fine_dump_lvl_max`` follows the fast time scale of a refined region.
+  The extra times hold only the refined levels (no level 0): for example, in a
+  1D run with ``time_step=0.005``, one refined level and
+  ``fine_dump_lvl_max=1``, ``EM_B.h5`` holds level 1 at t = 0.00125, 0.0025,
+  0.00375, ... and level 0 only at the ``write_timestamps``.
 * An *emergency dump* writes all diagnostics of all refinement levels, outside
   the schedule, at the current time, when the run stops on an error in the
   particle update, in the initialisation of the hybrid levels, or in the MHD
@@ -321,10 +340,9 @@ diagnostics blocks themselves.
 
 .. important::
 
-   The file format is chosen only with ``diag_options["format"]``. The
-   ``Simulation`` reference (:doc:`simulation`) also lists a ``diag_export_format`` argument,
-   but ``Simulation`` does not accept it: passing it stops the script with
-   ``ValueError: Error: invalid arguments - diag_export_format``.
+   The file format is chosen only with ``diag_options["format"]``. There is no
+   ``diag_export_format`` argument (some old scripts have one): passing it stops
+   the script with ``ValueError: Error: invalid arguments - diag_export_format``.
 
 .. admonition:: File formats: phareh5 vs pharevtkhdf
 

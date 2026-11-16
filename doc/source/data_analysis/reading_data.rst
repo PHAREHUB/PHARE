@@ -17,12 +17,15 @@ Setting up
 ----------
 
 The data produced by PHARE is read with the ``pharesee`` Python package, part
-of ``pyphare``. Make sure your ``PYTHONPATH`` includes the folder where
-``pyphare`` is located.
+of ``pyphare``. Use the same ``PYTHONPATH`` line as for running (see
+:doc:`/getting_started/build`):
 
 .. code-block:: bash
 
-    export PYTHONPATH=$PYTHONPATH:/path/to/PHARE/pyphare
+    export PYTHONPATH=/path/to/PHARE/pyphare:/path/to/build:$PYTHONPATH
+
+Reading data needs only the first folder, so you can also analyse a run on a
+machine where PHARE is not built.
 
 Importing ``pharesee`` should then work:
 
@@ -73,6 +76,11 @@ one at which the quantity was written: any other time gives a ``KeyError``
 (``Unable to synchronously open object (object '7.0000000000' doesn't
 exist)``). Use ``run.times("B")`` to list the available times of a quantity.
 ``run.all_times()`` gives them for every file, in a dictionary.
+
+.. note:: The times come in the order of their names in the file, not in
+   numerical order: ``[0, 10, 5]`` for outputs at t = 0, 5 and 10. Use
+   ``np.sort(run.times("B"))`` when the order matters (a loop that plots in
+   time order, a time derivative).
 
 
 What it does
@@ -192,6 +200,50 @@ takes 2D arrays: use ``X, Y = numpy.meshgrid(x, y, indexing="ij")`` then
    hierarchy). The last point of the merged grid lies half a cell past the box
    (`#1553 <https://github.com/PHAREHUB/PHARE/issues/1553>`_, merged coordinates
    overshoot), so its value is extrapolated.
+
+
+Reconnection rate (2D)
+----------------------
+
+Three methods of ``Run`` measure magnetic reconnection in a 2D run. They read
+``EM_B.h5`` (``ElectromagDiagnostics("B")``) and work on the finest level,
+interpolated over the whole box.
+
+.. code-block:: python
+
+    import numpy as np
+
+    times = np.sort(run.times("B"))          # sorted NumPy array, not a list
+    tc, rate, flux, xpoint = run.GetReconnectionRate(times)
+
+* ``run.GetMagneticFlux(t)`` returns ``Az, (x, y)``: the flux function
+  :math:`A_z`, with :math:`B_x = \partial A_z/\partial y` and
+  :math:`B_y = -\partial A_z/\partial x`, on the nodes of the finest grid
+  (from 0 to the box size included), with :math:`A_z = 0` at the origin.
+* ``run.FindPrimaryXPoint(Az, x, y)`` returns ``x_X, y_X, index``: among the
+  5 % of nodes where :math:`|\nabla A_z|` is smallest, the saddle point of
+  :math:`A_z` with the most negative Hessian determinant.
+* ``run.GetReconnectionRate(times)`` does both at each time and returns the
+  mid-times ``tc`` (one fewer than ``times``), the rate
+  :math:`\mathrm{d}A_z/\mathrm{d}t` at the X point between two outputs, the
+  flux ``flux`` at the X point at each time, and the X-point positions
+  ``xpoint`` (an array of shape ``(len(times), 2)``).
+
+The rate is in code units, :math:`B_0 v_A`, that is the reconnection electric
+field normalized to the field and Alfvén speed of the normalization (see
+:doc:`/theory/normalization`); its sign follows the orientation of
+:math:`A_z`.
+
+.. warning::
+
+   The X point is searched over the whole box, at each time separately. With
+   several X points, for example the two current sheets of a periodic Harris
+   setup, it can jump from one to another between outputs, and the rate then
+   mixes them. Check ``xpoint`` before trusting ``rate``. These methods are not
+   covered by PHARE's tests.
+
+``times`` must be a NumPy array: a Python list stops with ``TypeError:
+unsupported operand type(s) for /: 'list' and 'int'``.
 
 
 Options

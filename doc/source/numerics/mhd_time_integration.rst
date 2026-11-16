@@ -174,6 +174,13 @@ also offers an *adaptive* step, recomputed at every step (and once at start-up):
 
    time_step={"mode": "adaptive", "cfl_wave": 0.8}
 
+.. warning::
+
+   Use the adaptive step on a single level only. With refined levels the number of fine
+   sub-steps varies and the coarse level is no longer corrected consistently: mass and energy
+   are not conserved across levels (known issue, see :doc:`amr`). With refinement, give a
+   fixed ``time_step``.
+
 On each level, PHARE computes the smallest over the cells of
 
 .. math::

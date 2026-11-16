@@ -243,7 +243,9 @@ exactly.
 **merged=True.** PHARE stores its data in pieces of grid called *patches*
 (see :doc:`/data_analysis/patch_hierarchy`). ``merged=True`` puts them back
 together and gives you ``By`` as a function you can evaluate at the grid
-points ``x``.
+points ``x``. These are the points where PHARE stores By: the cell centres
+(x = 0.25, 0.75, ..., 100.25, the last one half a cell past the box). Other
+quantities sit on other points, see :doc:`/numerics/grid`.
 
 
 What each setting does
@@ -298,10 +300,13 @@ Each change below takes one edit and one run.
   the run takes about 5 times longer.
 * **Wave going left:** change the signs of ``vy`` and ``vz``. The crest now
   moves to the left.
-* **A shorter wave:** set ``L / 4`` as the wavelength (``k = 2 * np.pi / (L / 4)``).
-  Four crests now fit in the box, and the wave is about 10% slower than
-  speed 1: at t = 50 the crest that started at x = 0 is near x = 45, not 50.
-  The wave speed now depends on the wavelength: this is dispersion.
+* **A shorter wave:** set ``L / 4`` as the wavelength (``k = 2 * np.pi / (L / 4)``),
+  and write B more often: ``write_timestamps=[0.0, 4.0, 8.0]``. Four crests
+  now fit in the box, and the wave is about 10% slower than speed 1: at t = 8
+  the crest that started at x = 0 is near x = 7, not 8. The wave speed now
+  depends on the wavelength: this is dispersion. Keep the output times close:
+  with the original times, 25 apart, each crest moves almost one wavelength
+  (25) between two outputs, and the curves seem to drift slowly to the left.
 * **Also write E:** add ``ph.ElectromagDiagnostics(quantity="E", write_timestamps=[0.0, 25.0, 50.0])``
   and read it with ``run.GetE(t, merged=True)``.
 
@@ -321,6 +326,9 @@ Common mistakes
   profiles do not repeat exactly across the box (for example a wavelength that
   does not divide the box length). The run goes on, but the jump at the box
   edge can launch waves you did not ask for.
+* ``KeyError: 'B'`` in the plot script, at ``run.times("B")`` — ``Run`` did not
+  find ``first_run/EM_B.h5``: the folder name is wrong, or you started the plot
+  script from another folder.
 * Python ``from pyphare...`` works in one terminal but not in another — the
   ``export PYTHONPATH=...`` line only holds in the terminal where you typed it.
   Put it in your shell start-up file (for example ``~/.bashrc``) to keep it.
