@@ -27,11 +27,12 @@ ph.NO_GUI()
 ndim = int((parse_cli_args() or ["1"])[0])
 
 # cells per direction, the patch size of the tiled run (4, 16 and 8 patches: in 2D and 3D,
-# nodes shared by 4 and 8 patches), particles per cell and species, interpolation orders
+# nodes shared by 4 and 8 patches), particles per cell and species, interpolation orders,
+# time steps. 3D is cut to stay in the PR tier: 4 ppc and 40 steps took 26.8 s (Debug)
 CASES = {
-    1: {"cells": 64, "tiled": 16, "ppc": 50, "orders": [1, 2, 3]},
-    2: {"cells": 32, "tiled": 8, "ppc": 8, "orders": [1, 2, 3]},
-    3: {"cells": 16, "tiled": 8, "ppc": 4, "orders": [1]},
+    1: {"cells": 64, "tiled": 16, "ppc": 50, "orders": [1, 2, 3], "steps": 40},
+    2: {"cells": 32, "tiled": 8, "ppc": 8, "orders": [1, 2, 3], "steps": 40},
+    3: {"cells": 16, "tiled": 8, "ppc": 2, "orders": [1], "steps": 20},
 }
 cells = CASES[ndim]["cells"]
 interp_orders = CASES[ndim]["orders"]
@@ -41,7 +42,7 @@ c_over_va = 10.0
 mass_e = 0.04  # m_i / m_e = 25
 T = 0.03  # dx = 2.3 Debye lengths, 3 v_th,e / c = 0.27: no setup warning under strict
 time_step = 0.002  # omega_pe dt = 0.1, c dt / dx = 0.5
-time_step_nbr = 40
+time_step_nbr = CASES[ndim]["steps"]
 diag_dir = f"phare_outputs/fully_kinetic_{ndim}d"
 
 # relative difference of the tiled and single patch fields, and Gauss residual drift
