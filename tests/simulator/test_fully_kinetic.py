@@ -91,9 +91,13 @@ SAMPLE_EVERY = time_step_nbr // 5
 # 8.6e-8 (2D, N=1), 1.2e-7 (2D, N=2), 8.2e-8 (3D, N=1), serial and on 3 ranks
 MAX_TILING_DIFFERENCE = 1e-6
 MAX_GAUSS_DRIFT = 1e-6
-# with cleaning: |F(n) - G^n F(0)| / max |F(0)|, and the final over the initial norm of F
+# with cleaning: |F(n) - G^n F(0)| / max |F(0)|, and the final over the initial norm of F.
+# Measured, s = 0.5, C++ at c757493ea, Debug: error <= 3.3e-8 (1D), 3.3e-8 (2D), 1.2e-7 (2D,
+# N=1), 3.0e-8 (3D order 1, not registered); norm after 40 steps 0.026, 0.034, 0.043 (1D orders
+# 1-3), 0.019 (2D), 0.071 (2D, N=1: the filter already took most of the grid scale residual),
+# 0.024 after 20 steps (3D); slowest mode g^n to 6 digits
 MAX_CLEANING_ERROR = 1e-6
-MAX_CLEANED_FRACTION = 1.0  # TODO measured
+MAX_CLEANED_FRACTION = 0.1
 
 
 def uniform(value):
