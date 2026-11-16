@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+# fully kinetic, 2D, 16^2 cells in 8^2 patches: every patch has corner neighbors (periodic)
+
+import numpy as np
+
+import pyphare.pharein as ph
+
+ph.Simulation(
+    time_step=0.002,
+    time_step_nbr=1,
+    cells=(16, 16),
+    dl=(0.04, 0.04),
+    interp_order=1,
+    model_options=["FullyKineticModel"],
+    c_over_va=10.0,
+    smallest_patch_size=8,
+    largest_patch_size=8,
+)
+
+
+def uniform(value):
+    return lambda x, y: value + 0.0 * x
+
+
+def species(charge, mass, temperature):
+    vth = uniform(np.sqrt(temperature / mass))
+    return {
+        "charge": charge,
+        "mass": mass,
+        "density": uniform(1.0),
+        "vbulkx": uniform(0.0),
+        "vbulky": uniform(0.0),
+        "vbulkz": uniform(0.0),
+        "vthx": vth,
+        "vthy": vth,
+        "vthz": vth,
+        "nbr_part_per_cell": 2,
+        "init": {"seed": 1},
+    }
+
+
+ph.MaxwellianFluidModel(
+    bx=uniform(1.0),
+    by=uniform(0.0),
+    bz=uniform(0.0),
+    protons=species(1, 1.0, 0.01),
+    electrons=species(-1, 0.04, 0.03),
+)

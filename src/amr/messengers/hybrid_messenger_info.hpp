@@ -45,6 +45,9 @@ namespace amr
         // fully kinetic model only: the particle current, deposited by particles and summed on
         // patch borders
         std::string modelCurrent;
+        // fully kinetic model only: the currents whose patch ghosts are copied from neighbor
+        // patches (the current filter reads them)
+        std::vector<std::string> ghostCurrent;
 
         // store names of vector fields that need to be initialized by refinement
         // moments are initialized by particles so only EM fields need to be init.

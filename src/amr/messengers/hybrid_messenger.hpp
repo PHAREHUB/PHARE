@@ -347,6 +347,11 @@ namespace amr
             strat_->fillCurrentBorders(J, level, fillTime);
         }
 
+        void fillCurrentGhosts(VecFieldT& J, level_t& level, double const fillTime)
+        {
+            strat_->fillCurrentGhosts(J, level, fillTime);
+        }
+
 
         /* -------------------------------------------------------------------------
                             End HybridMessenger Interface

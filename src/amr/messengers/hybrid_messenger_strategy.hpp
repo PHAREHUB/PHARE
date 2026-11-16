@@ -127,6 +127,12 @@ namespace amr
             throw std::runtime_error(stratname_ + " does not sum current borders");
         }
 
+        virtual void fillCurrentGhosts(VecFieldT& /*J*/, level_t& /*level*/,
+                                       double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not fill current ghosts");
+        }
+
 
         std::string name() const { return stratname_; }
 

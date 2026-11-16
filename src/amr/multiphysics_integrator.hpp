@@ -257,6 +257,8 @@ namespace solver
             return messenger.name();
         }
 
+        NO_DISCARD auto& messenger(int const iLevel) { return getMessengerWithCoarser_(iLevel); }
+
 
 
         // -----------------------------------------------------------------------------------------------

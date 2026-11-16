@@ -125,6 +125,7 @@ public:
         auto& fkInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
         amr::fillParticleModelMessengerInfo(state, fkInfo);
         fkInfo.modelCurrent = state.J.name();
+        fkInfo.ghostCurrent.emplace_back(state.J.name());
     }
 
 
