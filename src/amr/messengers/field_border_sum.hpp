@@ -38,10 +38,11 @@ namespace PHARE::amr
  * them, and every patch holding it needs the sum of these deposits. Floating point addition is
  * not associative: added in the order the transactions of a schedule run, which differs from one
  * holder to another, the holders of a node with three contributions or more disagree in the last
- * bits. Here the contributions to a node are added in one order, the same on every holder: that
- * of the contributing patch boxes (lower, then upper corner, lexicographic), seen from the node.
- * Two holders see the same contributing boxes, up to one common periodic shift, which does not
- * change their order.
+ * bits. Here the contributions to a node are added in one order: that of the contributing patch
+ * boxes (lower, then upper corner, lexicographic), seen from the node, identical boxes of distinct
+ * patches ordered by patch id. The holders of a node in a patch domain see the same contributing
+ * boxes, up to one common periodic shift, which does not change their order: they get identical
+ * bits.
  *
  * The transactions of the schedule store the contribution they carry instead of adding it, and
  * BorderSums::fold, once the schedule has run, adds them up in that order on each patch, in place.
@@ -136,8 +137,8 @@ public:
 
         auto const size = detail::streamSize(*typedOverlap);
         // src_node is the periodic image of the contributing patch if the overlap is shifted
-        contributions_.push_back(
-            {phare_box_from<dimension>(src_node), typedOverlap, storeSize_, size});
+        contributions_.push_back({phare_box_from<dimension>(src_node), src_node.getGlobalId(),
+                                  typedOverlap, storeSize_, size});
         storeSize_ += size;
 
         destinationOf_(dst_node, dataId).contributions.push_back(contributions_.size() - 1);
@@ -155,23 +156,30 @@ public:
             SAMRAI::hier::Box const& patchBox = boxOf(destination.patch);
             auto const own                    = ownOverlap_(destination, patchBox.getDim());
             auto const size                   = detail::streamSize(*own);
-            contributions_.push_back({phare_box_from<dimension>(patchBox), own, storeSize_, size});
+            contributions_.push_back(
+                {phare_box_from<dimension>(patchBox), destination.patch, own, storeSize_, size});
             storeSize_ += size;
             destination.own = contributions_.size() - 1;
             destination.contributions.push_back(destination.own);
 
             std::ranges::sort(destination.contributions, [&](auto const a, auto const b) {
-                return core::lexicographicLess(contributions_[a].source, contributions_[b].source);
+                auto const& ca = contributions_[a];
+                auto const& cb = contributions_[b];
+                if (!(ca.source == cb.source))
+                    return core::lexicographicLess(ca.source, cb.source);
+                return ca.patch < cb.patch;
             });
 
-            // one contribution per contributing patch or periodic image: an equal key would add
-            // the same deposit twice
+            // one contribution per contributing patch or periodic image: an equal box and patch id
+            // would add the same deposit twice
             auto const sameSource = [&](auto const a, auto const b) {
-                return contributions_[a].source == contributions_[b].source;
+                auto const& ca = contributions_[a];
+                auto const& cb = contributions_[b];
+                return ca.source == cb.source && ca.patch == cb.patch;
             };
             auto const& sorted = destination.contributions;
             if (std::ranges::adjacent_find(sorted, sameSource) != sorted.end())
-                throw std::runtime_error("BorderSums: two contributions from one patch box");
+                throw std::runtime_error("BorderSums: two contributions from one patch");
         }
         store_.resize(storeSize_);
         finalized_ = true;
@@ -208,7 +216,8 @@ public:
 private:
     struct Contribution
     {
-        Box_t source; // contributing patch box, in the destination index space
+        Box_t source;                 // contributing patch box, in the destination index space
+        SAMRAI::hier::GlobalId patch; // contributing patch, also for a periodic image
         std::shared_ptr<Overlap_t const> overlap;
         std::size_t offset; // of its values in the store
         std::size_t size;
