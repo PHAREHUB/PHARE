@@ -58,7 +58,6 @@ def check_fully_kinetic(sim):
     dt = sim.time_stepper.time_step
     c = sim.c_over_va
     dl = np.asarray(sim.dl)
-    dx = dl.min()
 
     def sample(fn):
         return np.asarray(fn(*coords), dtype=float) * np.ones_like(coords[0])
@@ -142,19 +141,22 @@ def check_fully_kinetic(sim):
                 " the pusher is not relativistic, compare with the speed of light"
             )
 
-    # finite grid heating is driven by the lightest species
+    # finite grid heating is driven by the lightest species, in each simulated direction
+    # by the thermal speed along it
     lightest = min(pop["mass"] for pop in pops.values())
-    inverse_debye2 = sum(
-        plasma_frequency2(name) / vth[name]["x"] ** 2
-        for name, pop in pops.items()
-        if pop["mass"] == lightest
-    )
-    debye = 1 / np.sqrt(inverse_debye2.max())
-    if dx > max_dx_over_debye * debye:
-        problems.append(
-            f"Debye length {debye:.3g} of the lightest species: dx / lambda_D ="
-            f" {dx / debye:.1f} > {max_dx_over_debye:g}, expect numerical heating"
+    for d, k in enumerate(directions):
+        inverse_debye2 = sum(
+            plasma_frequency2(name) / vth[name][k] ** 2
+            for name, pop in pops.items()
+            if pop["mass"] == lightest
         )
+        debye = 1 / np.sqrt(inverse_debye2.max())
+        if dl[d] > max_dx_over_debye * debye:
+            problems.append(
+                f"Debye length {debye:.3g} of the lightest species along {k}: d{k} /"
+                f" lambda_D = {dl[d] / debye:.1f} > {max_dx_over_debye:g},"
+                " expect numerical heating"
+            )
 
     for problem in problems:
         if sim.strict:

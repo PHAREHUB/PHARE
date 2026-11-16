@@ -47,6 +47,27 @@ def pop(charge, mass, density, T, vx=0.0):
     }
 
 
+def uniform_nd(value):
+    def fn(*xyz):
+        return value + 0.0 * xyz[0]
+
+    return fn
+
+
+def anisotropic_pop(charge, mass, Tx, Ty):
+    return {
+        "charge": charge,
+        "mass": mass,
+        "density": uniform_nd(1.0),
+        "vbulkx": uniform_nd(0.0),
+        "vbulky": uniform_nd(0.0),
+        "vbulkz": uniform_nd(0.0),
+        "vthx": uniform_nd(np.sqrt(Tx / mass)),
+        "vthy": uniform_nd(np.sqrt(Ty / mass)),
+        "vthz": uniform_nd(np.sqrt(Tx / mass)),
+    }
+
+
 def make_model(
     electron_density=1.0,
     electron_charge=-1,
@@ -215,6 +236,36 @@ class TestFullyKineticChecks(unittest.TestCase):
         messages = " ".join(str(w.message) for w in caught.warnings)
         for word in ["plasma frequency", "cyclotron", "Debye"]:
             self.assertIn(word, messages)
+
+    def test_debye_length_uses_the_coldest_simulated_direction(self):
+        # 2D, v_th,x = sqrt(0.02 / 0.04) = 0.71: dx / lambda_D,x = 2.8 < 3,
+        # v_th,y = sqrt(1e-5 / 0.04) = 0.016: dy / lambda_D,y = 127
+        sim = make_sim(cells=(32, 32), dl=(dl, dl))
+        electrons = anisotropic_pop(-1, 0.04, Tx=0.02, Ty=1e-5)
+        MaxwellianFluidModel(
+            bx=uniform_nd(1.0),
+            by=uniform_nd(0.0),
+            bz=uniform_nd(0.0),
+            protons=anisotropic_pop(1, 1.0, Tx=0.01, Ty=0.01),
+            electrons=electrons,
+        )
+        with self.assertWarns(UserWarning) as caught:
+            check_fully_kinetic(sim)
+        self.assertIn("Debye", " ".join(str(w.message) for w in caught.warnings))
+
+    def test_debye_length_ignores_directions_not_simulated(self):
+        # 1D: a cold y direction is not resolved by the grid, no heating warning
+        sim = make_sim()
+        MaxwellianFluidModel(
+            bx=uniform(1.0),
+            by=uniform(0.0),
+            bz=uniform(0.0),
+            protons=anisotropic_pop(1, 1.0, Tx=0.01, Ty=0.01),
+            electrons=anisotropic_pop(-1, 0.04, Tx=0.02, Ty=1e-5),
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            check_fully_kinetic(sim)
 
     def test_fast_thermal_electrons_warn(self):
         # 4 v_th,e dt = 4 * sqrt(4 / 0.04) * 0.002 = 0.08 > dx
