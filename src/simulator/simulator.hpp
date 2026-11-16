@@ -74,7 +74,7 @@ public:
     }
 
 
-    NO_DISCARD double restartTime() override { return restartTime_; }
+    NO_DISCARD double startTime() override { return startTime_; }
     NO_DISCARD double endTime() override { return finalTime_; }
     NO_DISCARD double timeStep() override { return dt_; }
     NO_DISCARD double currentTime() override { return currentTime_; }
@@ -171,7 +171,7 @@ private:
     double cflWave_                  = 0;
     double cflDiffusive_             = 0;
     int timeStepNbr_                 = 0;
-    double restartTime_              = 0;
+    double startTime_                = 0;
     double finalTime_                = 0;
     double currentTime_              = 0;
     std::size_t fineDumpLvlMax       = 0;
@@ -301,9 +301,9 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
                                                loadBalancer, finalTime_, lb_info, lbm_id);
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
-    restartTime_ = integrator_->currentTime();
-    currentTime_ = restartTime_;
-    multiphysInteg_->setRestartTime(restartTime_);
+    startTime_   = integrator_->currentTime();
+    currentTime_ = startTime_;
+    multiphysInteg_->setRestartTime(startTime_);
 }
 
 
@@ -578,7 +578,7 @@ double Simulator<opts>::advance()
             dt_ = std::min(dt, finalTime_ - currentTime_);
         }
 
-        auto next = restartTime_ + ((*timeStamper) += dt_);
+        auto next = startTime_ + ((*timeStamper) += dt_);
         if (next > finalTime_ or finalTime_ - next < 1e-6 * dt_)
             next = finalTime_;
 

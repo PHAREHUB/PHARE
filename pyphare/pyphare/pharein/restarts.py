@@ -28,7 +28,7 @@ def try_delete_obsolete_restarts(simulator):
         return  # nothing to do
 
     keep_last = restart_options["keep_last"]
-    directory = restart_options.get("dir", ".")
+    directory = restart_dir(restart_options)
 
     dirs = []
     for path_object in Path(directory).iterdir():
@@ -54,33 +54,47 @@ def try_delete_obsolete_restarts(simulator):
             warnings.warn(f"Failed to remove restart directory {dirs[i]}: {e}")
 
 
+def restart_dir(restart_options):
+    return restart_options.get("dir", "phare_outputs")
+
+
 def restart_time(restart_options):
-    if "restart_time" not in restart_options:
-        return None
-    requested = restart_options["restart_time"]
-    if requested == "auto":
-        requested = find_latest_time_from_restarts(restart_options)
-    if requested is None:
-        return None
-    return restored_time(restart_options.get("dir", "phare_outputs"), requested)
+    if "restart_time" in restart_options:
+        if restart_options["restart_time"] == "auto":
+            return find_latest_time_from_restarts(restart_options)
+        return restart_options["restart_time"]
+    return None
 
 
-def restored_time(directory, requested):
+def restored_time(restart_options):
+    restart_options = restart_options or {}
+    label = restart_options.get("restart_time")
+    if label is None:
+        return 0
+
     import h5py
 
-    from pyphare.cpp import cpp_etc_lib
+    from pyphare import cpp
 
-    folder = Path(cpp_etc_lib().restart_path_for_time(directory, requested))
-    for path in sorted(folder.glob("restore.*/nodes.*/proc.*")):
-        with h5py.File(path, "r") as f:
-            return float(
-                np.ravel(f["TimeRefinementIntegrator/d_integrator_time"][()])[0]
-            )
-    return requested
+    folder = cpp.cpp_etc_lib().restart_path_for_time(
+        restart_dir(restart_options), label
+    )
+    if cpp.mpi_initialized():
+        files = [Path(cpp.cpp_etc_lib().samrai_restart_file(folder))]
+    else:
+        files = sorted(Path(folder).glob("restore.*/nodes.*/proc.*"))
+
+    for path in files:
+        if path.exists():
+            with h5py.File(path, "r") as f:
+                return float(f["phare"].attrs.get("time", label))
+    return label
 
 
 def find_latest_time_from_restarts(restart_options):
-    directory = restart_options.get("dir", ".")
+    directory = restart_dir(restart_options)
+    if not Path(directory).is_dir():
+        return None
 
     dirs = []
     for path_object in Path(directory).iterdir():
@@ -113,18 +127,22 @@ def validate(sim):
             )
 
     if "timestamps" in restart_options:
-        restart_options["timestamps"] = phare_utilities.np_array_ify(
-            restart_options["timestamps"]
-        )
         init_time = sim.start_time()
+        final_time = sim.time_stepper.final_time
+        timestamps = phare_utilities.snap_to(
+            phare_utilities.np_array_ify(restart_options["timestamps"]),
+            init_time,
+            final_time,
+        )
+        if sim.is_from_restart():
+            timestamps = timestamps[timestamps != init_time]
+        restart_options["timestamps"] = timestamps
 
-        timestamps = restart_options["timestamps"]
         if np.any(timestamps < init_time):
             raise RuntimeError(
                 f"Error: timestamp({timestamps[timestamps < init_time]}) "
                 f"cannot be less than simulation.init_time({init_time}))"
             )
-        final_time = sim.time_stepper.final_time
         if np.any(timestamps > final_time):
             raise RuntimeError(
                 f"Error: timestamp({timestamps[timestamps > final_time]}) "

@@ -59,6 +59,7 @@ class RecordingTest(SimulatorTest):
         restart_options,
         diag_dir="diags",
         diags=False,
+        diag_timestamps=None,
         advance_past_end=False,
         **time_kwargs,
     ):
@@ -94,6 +95,8 @@ class RecordingTest(SimulatorTest):
             ph.MHDDiagnostics(
                 quantity="rho", write_timestamps=all_timestamps(ph.global_vars.sim)
             )
+        if diag_timestamps is not None:
+            ph.MHDDiagnostics(quantity="rho", write_timestamps=diag_timestamps)
 
         simulator.exit_on_exception = False
         try:
@@ -104,7 +107,9 @@ class RecordingTest(SimulatorTest):
                 self.simulator.advance()
                 times.append(self.simulator.currentTime())
             if advance_past_end:
-                self.simulator.advance()
+                self.assertEqual(self.simulator.currentTime(), end_time)
+                with self.assertRaisesRegex(RuntimeError, "already at its final time"):
+                    self.simulator.advance()
         finally:
             simulator.exit_on_exception = True
             if self.simulator is not None:
@@ -184,6 +189,36 @@ class RestartTimeTest(RecordingTest):
         tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
         tB = self.run_recording(dict(restart_time=0.3), time_step=0.1, time_step_nbr=0)
         self.assertEqual(tB, [tA[3]])
+
+    def test_typed_restart_time_dumps_at_the_restored_time(self):
+        tA = self.run_recording(
+            dict(timestamps=[0.009]), time_step=0.001, time_step_nbr=9
+        )
+        self.assertNotEqual(tA[9], 0.009)
+        tB = self.run_recording(
+            dict(restart_time=0.009),
+            diag_dir="diag_B",
+            diag_timestamps=[0.009],
+            time_step=0.001,
+            final_time=0.009,
+        )
+        self.assertEqual(tB, [tA[9]])
+        from pyphare import cpp
+
+        if cpp.mpi_rank() == 0:
+            self.assertEqual(len(self.diag_times("diag_B")), 1)
+
+    def test_typed_restart_timestamps_at_the_restored_time(self):
+        tA = self.run_recording(
+            dict(timestamps=[0.009]), time_step=0.001, time_step_nbr=9
+        )
+        tB = self.run_recording(
+            dict(restart_time=0.009, timestamps=[0.009, 0.012]),
+            time_step=0.001,
+            time_step_nbr=3,
+        )
+        self.assertEqual(tB[0], tA[9])
+        self.assertEqual(len(tB), 4)
 
     def test_constant_restart_dumps_on_the_uninterrupted_steps(self):
         dt = 1.0 / 30.0

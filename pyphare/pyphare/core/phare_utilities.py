@@ -94,6 +94,15 @@ def fp_equal(a, b, atol=1e-6):
     return math.isclose(a, b, abs_tol=atol)
 
 
+def snap_to(times, *instants, rel_tol=1e-12):
+    times = np.asarray(times, dtype=float)
+    for instant in instants:
+        times = np.where(
+            np.isclose(times, instant, rtol=rel_tol, atol=0), instant, times
+        )
+    return times
+
+
 def fp_less_equal(a, b, atol=1e-6):
     return fp_equal(a, b, atol=atol) or a < b
 

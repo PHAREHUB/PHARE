@@ -83,14 +83,16 @@ def validate_timestamps(clazz, key, **kwargs):
     sim = global_vars.sim
 
     init_time = sim.start_time()
+    final_time = sim.time_stepper.final_time
 
-    timestamps = phare_utilities.np_array_ify(kwargs.get(key, []))
+    timestamps = phare_utilities.snap_to(
+        phare_utilities.np_array_ify(kwargs.get(key, [])), init_time, final_time
+    )
 
     if np.any(timestamps < init_time):
         timestamps = timestamps[timestamps >= init_time]
         print(f"Warning: some timestamps below ({init_time}) are filtered")
 
-    final_time = sim.time_stepper.final_time
     if np.any(timestamps > final_time):
         raise RuntimeError(
             f"Error: timestamp({timestamps[timestamps > final_time]}) "
