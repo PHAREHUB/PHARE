@@ -31,8 +31,8 @@ time_step_nbr = 4
 center, width = 2.0, 0.8
 
 
-def config(ndim, interp, hyper_mode, diag_dir):
-    sim = ph.Simulation(
+def config(simulation, ndim, interp, hyper_mode):
+    sim = simulation(
         cells=[cells] * ndim,
         dl=[dl] * ndim,
         time_step=time_step,
@@ -45,7 +45,10 @@ def config(ndim, interp, hyper_mode, diag_dir):
         hyper_mode=hyper_mode,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
+            "options": {
+                "dir": "phare_outputs/hybrid_shared_fields",
+                "mode": "overwrite",
+            },
         },
     )
 
@@ -92,9 +95,9 @@ class HybridSharedFieldsTest(SimulatorTest):
     )
     @unpack
     def test_level0_E_and_B_copies_agree(self, ndim, interp, hyper_mode):
-        diag_dir = f"phare_outputs/hybrid_shared_fields/{ndim}_{interp}_{hyper_mode}"
-        self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(config(ndim, interp, hyper_mode, diag_dir)).run().reset()
+        sim = config(self.simulation, ndim, interp, hyper_mode)
+        diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
         if cpp.mpi_rank() > 0:
             return
 
@@ -105,12 +108,13 @@ class HybridSharedFieldsTest(SimulatorTest):
                 self.assertGreater(len(overlaps), 0)
                 for overlap in overlaps:
                     box, offsets = overlap["box"], overlap["offset"]
+                    pd0, pd1 = overlap["pdatas"]
                     values = [
                         boxm.select(
                             pd.dataset,
                             boxm.amr_to_local(box, boxm.shift(pd.ghost_box, offset)),
                         )
-                        for pd, offset in zip(overlap["pdatas"], offsets)
+                        for pd, offset in zip((pd0, pd1), offsets)
                     ]
                     np.testing.assert_array_equal(
                         *values,
