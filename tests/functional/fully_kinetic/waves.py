@@ -27,6 +27,11 @@ The scheme is compared with:
 Neglected: higher thermal terms (~1e-4) and the nonlinear Langmuir shift, which grows as v0^2
 (measured -0.49% +- 0.14% at v0 = 0.3, -0.18% +- 0.14% at v0 = 0.15). The dumped E is half a step
 behind its time label; frequencies and growth rates do not depend on it.
+
+Measured numbers: Debug builds, recorded with the code of these commits: S(k) order errors
+86fdc49b2; 5-seed tolerances, nonlinear Langmuir shift, the +0.08% and +0.12% corrections and
+the x155 seed projection ea8a5f97e; light start (0.064 / 0.015), light damping and window
+curvature 524f91e6d.
 """
 
 import sys
@@ -61,7 +66,25 @@ def plasma_frequency(n, q, m):
 
 
 def shape_factor2(k, interp_order):
-    return np.sinc(k * dl / 2 / np.pi) ** (2 * (interp_order + 1))
+    """S(k)^2 of the particle shape (deposit and gather), product over the directions of k
+    (a number in 1D, one component per direction otherwise)"""
+    return np.prod(
+        np.sinc(np.atleast_1d(k) * dl / 2 / np.pi) ** (2 * (interp_order + 1))
+    )
+
+
+def yee_k(k):
+    """K_d = (2/dx) sin(k_d dx / 2), the wavenumber a Yee derivative sees, per direction"""
+    return 2 / dl * np.sin(np.atleast_1d(k) * dl / 2)
+
+
+def yee_k2(k):
+    return np.sum(yee_k(k) ** 2)
+
+
+def wavevector(cells, mode):
+    """k = 2 pi mode / L, per direction"""
+    return 2 * np.pi * np.atleast_1d(mode) / (np.atleast_1d(cells) * dl)
 
 
 def leapfrog(omega):
@@ -249,11 +272,10 @@ def light(interp_order, seed=0, b=0.05, Te=0.04, ppc=100, density=1.0):
     diag_dir, times = run(
         "light", interp_order, cells, final_time=1.0, populations=populations, bz=bz
     )
-    k_grid = 2 / dl * np.sin(k * dl / 2)
     w_pe2 = plasma_frequency(density, -1, mass_e) ** 2
     w_p2 = w_pe2 + plasma_frequency(density, 1, 1.0) ** 2
     S2 = shape_factor2(k, interp_order)
-    cold2 = S2 * w_p2 + (c_over_va * k_grid) ** 2
+    cold2 = S2 * w_p2 + c_over_va**2 * yee_k2(k)
     # warm transverse wave: w_pe^2 -> w_pe^2 (1 + k^2 v_th,x^2 / w^2)
     warm2 = S2 * w_pe2 * k**2 * (Te / mass_e) / cold2
     expected = leapfrog(np.sqrt(cold2 + warm2))

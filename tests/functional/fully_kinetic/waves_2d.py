@@ -25,7 +25,7 @@ derivative along d acts as K_d = (2/dx) sin(k_d dx / 2).
   only modes (1, 0), (0, 1) (gamma = 5.1) and (1, +-1) (gamma = 1.7) are unstable: no faster
   mode grows from the noise. Measured on (1, 0) and (0, 1) together, from the noise.
   Not a test (--weibel only, not registered): the growth starts from the particle noise.
-  Measured in 1D with the same 16k particles per beam, noise 2e-4 to 1e-3 and saturation 0.09
+  Measured (Debug, C++ 524f91e6d or a15c436cc) in 1D with the same 16k particles per beam, noise 2e-4 to 1e-3 and saturation 0.09
   leave a ~2.8 e-folding window where the fitted gamma moves by -6% to +11% with the window;
   the cold 32^2 design has no clean window either (4.5 e-folds). A seed cannot fix it, it must
   sit far below saturation. It needs a quiet start, mirrored beams sharing their positions,
@@ -34,6 +34,7 @@ derivative along d acts as K_d = (2/dx) sin(k_d dx / 2).
   in-plane B is the out of plane light wave.
 """
 
+import argparse
 import sys
 
 import numpy as np
@@ -41,7 +42,6 @@ import waves
 from waves import (
     c_over_va,
     check,
-    dl,
     exponential_growth,
     k_over_K,
     leapfrog,
@@ -50,24 +50,18 @@ from waves import (
     mode_amplitude,
     plasma_frequency,
     run,
+    shape_factor2,
     standing_fit,
+    wavevector,
+    yee_k,
+    yee_k2,
 )
 
-# 1D values (waves.py), to be recalibrated over 5 seeds in 2D
+# 1D values (waves.py), to be recalibrated over 5 seeds in 2D. Order 1, seed 0, Debug, C++ at
+# a15c436cc: langmuir 1.9e-4, light 6.6e-5, light out of plane 5.4e-4 (light damping / w
+# 1.2e-4 and 5.4e-5)
 TOLERANCES = {"langmuir": 7e-3, "light": 4e-3, "weibel": 5e-2}
 MAX_LIGHT_DAMPING = waves.MAX_LIGHT_DAMPING
-
-
-def shape_factor2(k, interp_order):
-    return np.prod([waves.shape_factor2(kd, interp_order) for kd in k])
-
-
-def yee_k2(k):
-    return np.sum((2 / dl * np.sin(np.asarray(k) * dl / 2)) ** 2)
-
-
-def wavevector(cells, mode):
-    return 2 * np.pi * np.asarray(mode) / (np.asarray(cells) * dl)
 
 
 def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=16):
@@ -183,8 +177,7 @@ def weibel_growth(k, interp_order):
     from scipy.special import erfcx
 
     S2 = shape_factor2(k, interp_order)
-    yee = 2 / dl * np.sin(np.asarray(k) * dl / 2)
-    k_norm = np.sqrt(np.dot(k, yee))
+    k_norm = np.sqrt(np.dot(k, yee_k(k)))
     w_pe2 = plasma_frequency(1, -1, mass_e) ** 2
     w_pi2 = plasma_frequency(1, 1, 1.0) ** 2
     anisotropy = (weibel_v0**2 + weibel_vth_z**2) / weibel_vth_plane**2
@@ -248,11 +241,28 @@ def weibel(interp_order, seed=0, ppc_beam=64, ppc_ions=32, ndim=2):
     return exponential_growth(times, amplitude, expected, start_efolds=3), expected
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="FullyKineticModel 2D physics checks")
+    parser.add_argument(
+        "orders",
+        nargs="*",
+        type=int,
+        choices=[1, 2, 3],
+        default=[1, 2, 3],
+        help="interpolation orders to run (all if omitted)",
+    )
+    parser.add_argument(
+        "--weibel",
+        action="store_true",
+        help="also measure the Weibel growth (noise-limited, not a test)",
+    )
+    return parser.parse_args()
+
+
 def main():
-    with_weibel = "--weibel" in sys.argv
-    interp_orders = [int(arg) for arg in sys.argv[1:] if arg != "--weibel"] or [1, 2, 3]
+    args = parse_args()
     results = []
-    for order in interp_orders:
+    for order in args.orders:
         for name, case in (
             ("langmuir", langmuir),
             ("light", light),
@@ -274,7 +284,7 @@ def main():
                     f" {'ok' if ok else 'FAILED'}"
                 )
                 results.append(ok)
-        if with_weibel:
+        if args.weibel:
             measured, expected = weibel(order)
             results.append(
                 check(
