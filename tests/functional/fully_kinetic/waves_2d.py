@@ -8,9 +8,10 @@ derivative along d acts as K_d = (2/dx) sin(k_d dx / 2).
 - langmuir: oblique, k = (1, 1) 2 pi / L, electron velocity v0 k/|k| sin(k.x),
   w^2 = (k_x / K_x) S^2 (w_pe^2 (1 + 3 |k|^2 lambda_De^2) + w_pi^2): with k_x = k_y, the
   Esirkepov current of a displacement along d carries k_d / K_d in each direction alike
-- light: oblique, both polarizations with the same dispersion,
-  w^2 = S^2 w_p^2 + c^2 sum_d K_d^2 (+ warm transverse term as in 1D), canonical start
-  v = -(q/m) A:
+- light: oblique, both polarizations, w^2 = S^2 w_p^2 + c^2 sum_d K_d^2 (+ warm transverse term
+  as in 1D), and S^2 -> (k_x / K_x) S^2 in plane: the in-plane current comes from the Esirkepov
+  running sums like the longitudinal one, the out of plane current does not (+0.028% on w).
+  Canonical start v = -(q/m) A:
   "in plane": B_z = b cos(k.x), in-plane E and current, A = (b / |k|^2) (-k_y, k_x) sin(k.x)
   "out of plane": B = b (k_y, -k_x) / |k| cos(k.x), E_z and J_z, A_z = (b / |k|) sin(k.x):
   the current deposited out of the plane and both in-plane B components
@@ -150,7 +151,7 @@ def light(interp_order, seed=0, b=0.05, Te=0.04, ppc=16, polarization="in plane"
     )
     w_pe2 = plasma_frequency(1, -1, mass_e) ** 2
     w_p2 = w_pe2 + plasma_frequency(1, 1, 1.0) ** 2
-    S2 = shape_factor2(k, interp_order)
+    S2 = shape_factor2(k, interp_order) * (k_over_K(k[0]) if in_plane else 1.0)
     cold2 = S2 * w_p2 + c_over_va**2 * yee_k2(k)
     warm2 = S2 * w_pe2 * k2 * (Te / mass_e) / cold2
     expected = leapfrog(np.sqrt(cold2 + warm2))
