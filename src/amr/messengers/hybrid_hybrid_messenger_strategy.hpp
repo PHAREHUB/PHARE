@@ -475,6 +475,37 @@ namespace amr
                 HybridMessengerStrategy<HybridModel>::fillCurrentGhosts(J, level, fillTime);
         }
 
+        // same as the current: copy, sum, copy back, through sumField_ (primal like rho, a
+        // scratch the population densities only use inside fillDensityBorders)
+        void fillChargeDensityBorders(FieldT& rho, level_t& level, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                using value_type = FieldT::value_type;
+                assert(chargeDensityBorderSumRefiners_.size() == 1);
+
+                for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
+                    std::memcpy(sumField_.data(), rho.data(), rho.size() * sizeof(value_type));
+
+                chargeDensityBorderSumRefiners_[0].fill(level.getLevelNumber(), fillTime);
+
+                for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
+                    std::memcpy(rho.data(), sumField_.data(), rho.size() * sizeof(value_type));
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::fillChargeDensityBorders(rho, level,
+                                                                               fillTime);
+        }
+
+        // copies the ghost nodes of rho from the patches that own them, after the border sum
+        void fillChargeDensityGhosts(FieldT& rho, level_t& level, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+                chargeDensityGhostsRefiners_.fill(rho, level.getLevelNumber(), fillTime);
+            else
+                HybridMessengerStrategy<HybridModel>::fillChargeDensityGhosts(rho, level, fillTime);
+        }
+
         void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
         {
             assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
@@ -723,7 +754,10 @@ namespace amr
                 elecGhostsRefiners_.registerLevel(hierarchy, level);
                 magGhostsRefiners_.registerLevel(hierarchy, level);
                 if constexpr (sumsParticleCurrent)
+                {
                     currentGhostsRefiners_.registerLevel(hierarchy, level);
+                    chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
+                }
             }
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
@@ -736,6 +770,9 @@ namespace amr
                 refiner.registerLevel(hierarchy, level);
 
             for (auto& refiner : currentBorderSumRefiners_)
+                refiner.registerLevel(hierarchy, level);
+
+            for (auto& refiner : chargeDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
             for (auto& refiner : ionFluxBorderMaxRefiners_)
@@ -753,7 +790,10 @@ namespace amr
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
             if constexpr (sumsParticleCurrent)
+            {
                 currentGhostsRefiners_.registerLevel(hierarchy, level);
+                chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
+            }
 
             // refluxing
             auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
@@ -796,7 +836,10 @@ namespace amr
             elecGhostsRefiners_.removeLevel(levelNumber);
             magGhostsRefiners_.removeLevel(levelNumber);
             if constexpr (sumsParticleCurrent)
+            {
                 currentGhostsRefiners_.removeLevel(levelNumber);
+                chargeDensityGhostsRefiners_.removeLevel(levelNumber);
+            }
             lvlGhostPartNewRefiners_.removeLevel(levelNumber);
             electroSynchronizers_.removeLevel(levelNumber);
             chargeDensitySynchronizers_.removeLevel(levelNumber);
@@ -848,10 +891,16 @@ namespace amr
             // kind, levels and fill pattern, J being Yee centered like E. Static for now (one
             // level: ghosts copied from the neighbor patches at the same time); with refinement
             // it becomes a time refiner between an old and a new J, as E above.
+            // the charge density of the divergence cleaning: the same, primal scalar
             if constexpr (sumsParticleCurrent)
+            {
                 currentGhostsRefiners_.addStaticRefiners(info->ghostCurrent, EfieldRefineOp_,
                                                          info->ghostCurrent,
                                                          nonOverwriteInteriorTFfillPattern);
+                chargeDensityGhostsRefiners_.addStaticRefiners(
+                    info->ghostChargeDensity, fieldRefineOp_, info->ghostChargeDensity,
+                    nonOverwriteInteriorFieldFillPattern);
+            }
 
 
             // we need a separate patch strategy for each refiner so that each one can register
@@ -957,6 +1006,10 @@ namespace amr
                         sumJ_.name(), info->modelCurrent, nullptr, sumJ_.name(),
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
+                chargeDensityBorderSumRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        sumField_.name(), info->modelChargeDensity, nullptr, sumField_.name(),
+                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
             }
 
             assert(info->maxBorderFields.size() == 1); // charge density
@@ -1116,6 +1169,8 @@ namespace amr
 
         //! += particle current (fully kinetic only)
         std::vector<VecFieldGhostSumRefinerPool> currentBorderSumRefiners_;
+        //! += charge density of the divergence cleaning (fully kinetic only)
+        std::vector<FieldGhostSumRefinerPool> chargeDensityBorderSumRefiners_;
 
         std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
@@ -1150,6 +1205,8 @@ namespace amr
 
         //! fully kinetic only: J ghosts, after the border sum (current filter)
         GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
+        //! fully kinetic only: rho ghosts, after the border sum (filter of the cleaning rho)
+        GhostRefinerPool chargeDensityGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
         // There is no level ghost refiner for the moments: on level ghost nodes they come

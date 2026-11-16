@@ -26,6 +26,12 @@ namespace PHARE::solver
  * never two passes on one fill. (A ghost width of 2, order 1, could serve 2 passes per fill:
  * a later optimization keeping this loop.) The solver and the level initializer both deposit
  * here, so the E half step back of t=0 sees the filtered current too.
+ *
+ * With model.divergence_cleaning > 0, the same particles also deposit the charge density rho at
+ * the start of their segment, x - back (dt/2) v: the charge Gauss's law pairs with the E before
+ * this J updates it (E^{n-1/2} in the solver, E^{-1/2} in the initializer). rho is summed on
+ * patch borders and filtered like J, the filter commuting with the Yee divergence. Without
+ * cleaning rho is not deposited.
  */
 template<typename FKModel, typename Messenger>
 void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
@@ -39,13 +45,18 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
     auto& rm   = *model.resourcesManager;
     auto& ions = model.state.ions;
     auto& J    = model.state.J;
+    auto& rho  = model.state.rho;
+
+    bool const cleaning = model.divergence_cleaning > 0.;
 
     try
     {
-        for (auto& patch : rm.enumerate(level, ions, J))
+        for (auto& patch : rm.enumerate(level, ions, J, rho))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             J.zero();
+            if (cleaning)
+                rho.zero();
             for (auto const& pop : ions)
             {
                 try
@@ -56,6 +67,9 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
                 {
                     throw ex("population", pop.name());
                 }
+                if (cleaning)
+                    esirkepov.depositCharge(pop.domainParticles(), rho, layout, pop.charge(),
+                                            -back * 0.5 * dt);
             }
         }
     }
@@ -66,14 +80,25 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
     if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "depositFKCurrent");
 
+    // fill then filter, every pass
+    auto const filter = [&](auto& field, auto&& fillGhosts) {
+        for (std::size_t pass = 0; pass < model.current_filter_passes; ++pass)
+        {
+            fillGhosts();
+            for (auto& patch : rm.enumerate(level, field))
+                core::BinomialFilter{amr::layoutFromPatch<GridLayout>(*patch)}(field);
+        }
+    };
+
     TimeSetter{level, model, time}(J);
     messenger.fillCurrentBorders(J, level, time);
+    filter(J, [&]() { messenger.fillCurrentGhosts(J, level, time); });
 
-    for (std::size_t pass = 0; pass < model.current_filter_passes; ++pass)
+    if (cleaning)
     {
-        messenger.fillCurrentGhosts(J, level, time);
-        for (auto& patch : rm.enumerate(level, J))
-            core::BinomialFilter{amr::layoutFromPatch<GridLayout>(*patch)}(J);
+        TimeSetter{level, model, time}(rho);
+        messenger.fillChargeDensityBorders(rho, level, time);
+        filter(rho, [&]() { messenger.fillChargeDensityGhosts(rho, level, time); });
     }
 }
 

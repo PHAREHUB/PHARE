@@ -58,6 +58,9 @@ public:
     double const c_over_va; // speed of light over the Alfven speed
     // binomial filter passes on the deposited current, 0: no filter
     std::size_t const current_filter_passes;
+    // Marder cleaning, s = d dt sum_i 2 / dx_i^2 in [0, 1], 0: no cleaning. The solver derives d
+    // from s on each level, with its own mesh size and time step
+    double const divergence_cleaning;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
 
@@ -69,8 +72,11 @@ public:
         , c_over_va{dict["c_over_va"].template to<double>()}
         , current_filter_passes{static_cast<std::size_t>(
               cppdict::get_value(dict, "current_filter_passes", 0))}
+        , divergence_cleaning{cppdict::get_value(dict, "divergence_cleaning", 0.)}
         , resourcesManager{_resourcesManager}
     {
+        if (!(divergence_cleaning >= 0. and divergence_cleaning <= 1.))
+            throw std::runtime_error("FullyKineticModel: divergence_cleaning must be in [0, 1]");
         // periodic only: no particle boundary conditions yet, and the Esirkepov segment would
         // need to be folded at a physical boundary. The messenger still needs a manager.
         if (dict.contains("grid"))
@@ -122,7 +128,8 @@ public:
 
     /**
      * @brief fillMessengerInfo declares the same quantities as the hybrid model, plus the
-     * particle current that is summed on patch borders.
+     * particle current and the charge density of the divergence cleaning, summed on patch
+     * borders, and their ghosts (filters).
      */
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
     {
@@ -130,6 +137,8 @@ public:
         amr::fillParticleModelMessengerInfo(state, fkInfo);
         fkInfo.modelCurrent = state.J.name();
         fkInfo.ghostCurrent.emplace_back(state.J.name());
+        fkInfo.modelChargeDensity = state.rho.name();
+        fkInfo.ghostChargeDensity.emplace_back(state.rho.name());
     }
 
 

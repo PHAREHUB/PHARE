@@ -48,6 +48,11 @@ namespace amr
         // fully kinetic model only: the currents whose patch ghosts are copied from neighbor
         // patches (the current filter reads them)
         std::vector<std::string> ghostCurrent;
+        // fully kinetic model only, with divergence cleaning: the charge density, deposited by
+        // particles and summed on patch borders, and those whose patch ghosts are copied from
+        // neighbor patches (the filter reads them)
+        std::string modelChargeDensity;
+        std::vector<std::string> ghostChargeDensity;
 
         // store names of vector fields that need to be initialized by refinement
         // moments are initialized by particles so only EM fields need to be init.

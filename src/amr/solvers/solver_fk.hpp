@@ -6,6 +6,7 @@
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/ampere/ampere_maxwell.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/marder/marder.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "mpi/mpi_utils.hpp"
 
@@ -35,8 +36,10 @@ namespace PHARE::solver
  * B are known at integer times, E at half integer times. One step from n to n+1 is
  *
  *  1. J^n by Esirkepov over x^n - (dt/2)v^n -> x^n + (dt/2)v^n, deposited by owned domain
- *     particles and summed on patch borders
- *  2. E^{n+1/2} = E^{n-1/2} + dt c^2 (curl B^n - J^n)
+ *     particles and summed on patch borders; with divergence cleaning, also rho^{n-1/2} at
+ *     x^n - (dt/2)v^n
+ *  2. with divergence cleaning, E^{n-1/2} += d dt grad(div E^{n-1/2} - c^2 rho^{n-1/2}) (Marder),
+ *     then E^{n+1/2} = E^{n-1/2} + dt c^2 (curl B^n - J^n)
  *  3. B^{n+1/2} = B^n - (dt/2) curl E^{n+1/2}
  *  4. Boris push with E^{n+1/2} and B^{n+1/2}
  *  5. B^{n+1} = B^n - dt curl E^{n+1/2}
@@ -44,6 +47,12 @@ namespace PHARE::solver
  * The model E is labelled with its own time t_{n+1/2}, J with the time of the particles it
  * comes from, t_n. The deposit only depends on the
  * particles at time n, so anything that changes particles between two steps is accounted for.
+ * The cleaning reads one ghost layer of E^{n-1/2}, filled at the end of the previous step's
+ * Ampere update (or by the level initializer), and writes its physical nodes; Ampere only reads
+ * E on the nodes it writes, and its ghost fill covers both. Charge conservation keeps the Gauss
+ * residual between two cleanings: each cleaning multiplies its mode k by
+ * 1 - d dt sum_i 4/dx_i^2 sin^2(k_i dx_i / 2). The level initializer does not clean: the
+ * residual of E^{-1/2} (E starts at zero) is what the first step cleans.
  * Single level only for now.
  */
 template<typename FKModel, typename AMR_Types>
@@ -214,7 +223,17 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     // 1. J^n from the particles at time n
     depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., currentTime);
 
-    // 2. E^{n-1/2} -> E^{n+1/2}
+    // 2. E^{n-1/2} cleaned, d from s = d dt sum_i 2/dx_i^2 on this level, then -> E^{n+1/2}
+    if (model.divergence_cleaning > 0.)
+        for (auto& patch : rm.enumerate(level, model.state.rho, E))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            double sum        = 0.;
+            for (auto const dl : layout.meshSize())
+                sum += 2. / (dl * dl);
+            auto const d = model.divergence_cleaning / (dt * sum);
+            core::Marder{layout, model.c2(), d}(E, model.state.rho, dt);
+        }
     for (auto& patch : rm.enumerate(level, B, model.state.J, E))
     {
         auto const layout = amr::layoutFromPatch<GridLayout>(*patch);

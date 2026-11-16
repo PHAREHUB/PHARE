@@ -23,6 +23,7 @@ namespace amr
     {
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
+        using FieldT         = VecFieldT::field_type;
         using IPhysicalModel = HybridModel::Interface;
         using amr_types      = HybridModel::amr_types;
         using patch_t        = amr_types::patch_t;
@@ -131,6 +132,19 @@ namespace amr
                                        double const /*fillTime*/)
         {
             throw std::runtime_error(stratname_ + " does not fill current ghosts");
+        }
+
+        // fully kinetic only: the same for the charge density of the divergence cleaning
+        virtual void fillChargeDensityBorders(FieldT& /*rho*/, level_t& /*level*/,
+                                              double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not sum charge density borders");
+        }
+
+        virtual void fillChargeDensityGhosts(FieldT& /*rho*/, level_t& /*level*/,
+                                             double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not fill charge density ghosts");
         }
 
 
