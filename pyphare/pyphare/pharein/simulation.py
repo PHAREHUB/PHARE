@@ -6,7 +6,7 @@ import numpy as np
 from ..core import box as boxm
 from ..core import phare_utilities
 from ..core.box import Box
-from . import boundary, global_vars, timestepper
+from . import boundary, fully_kinetic, global_vars, timestepper
 
 # ------------------------------------------------------------------------------
 
@@ -843,6 +843,8 @@ def checker(func):
 
         kwargs["model_options"] = check_model_options(**kwargs)
         kwargs["c_over_va"] = check_c_over_va(**kwargs)
+        if "FullyKineticModel" in kwargs["model_options"]:
+            fully_kinetic.check_fully_kinetic_simulation(**kwargs)
 
         kwargs["refinement_order"] = check_refinement_operator(**kwargs)
 

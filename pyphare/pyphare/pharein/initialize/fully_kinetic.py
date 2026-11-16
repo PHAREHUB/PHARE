@@ -1,3 +1,4 @@
+from ..fully_kinetic import check_fully_kinetic
 from .dict_populator import DictPopulator
 from .hybrid import _populate_electromagnetic, _populate_populations
 
@@ -5,6 +6,7 @@ from .hybrid import _populate_electromagnetic, _populate_populations
 def populateDict(sim):
     """all species, electrons included, are populations of the MaxwellianFluidModel;
     there is no ElectronModel and no Ohm's law"""
+    check_fully_kinetic(sim)
     dp = DictPopulator()
 
     dp.add_bool("simulation/fully_kinetic", True)
