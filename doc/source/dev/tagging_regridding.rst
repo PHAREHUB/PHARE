@@ -212,14 +212,17 @@ SAMRAI MPI module, according to the code comment (issue :issue:`604`).
 **Fix.** ``regrid`` uses ``fillTransient`` only
 (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L281`).
 
-Some nodes are not copied correctly by SAMRAI
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nodes on a ghost box border after a regrid (fixed in SAMRAI)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** Per the comment, a SAMRAI bug may leave wrong nodes on the ghost box
-border where it touches an old-level patch (SAMRAI pull request 293).
+**Problem.** SAMRAI used to skip some overlaps of border data, so after a regrid a few
+nodes on a ghost box border touching an old-level patch were not copied.
 
-**Fix.** None; the code only carries the warning
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L284-L287`).
+**Fix.** In SAMRAI itself
+(`SAMRAI pull request 312 <https://github.com/LLNL/SAMRAI/pull/312>`_, which replaced
+`pull request 293 <https://github.com/LLNL/SAMRAI/pull/293>`_). The SAMRAI that PHARE
+downloads (``develop`` branch) contains it, so PHARE has no workaround; the comment at
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L284-L287` is a leftover.
 
 Schedules built once per regrid
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
