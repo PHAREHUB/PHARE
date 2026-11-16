@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 
 #include <numeric>
+#include <utility>
 #include <algorithm>
 
 
@@ -538,9 +539,9 @@ struct IonUpdaterTest : public ::testing::Test
 
 
         // a single patch: it owns its whole level ghost region
-        auto const ownership
-            = makeLevelGhostOwnership(layout.AMRBox(), std::vector<Box<int, dim>>{},
-                                      GridLayout::options.particle_ghost_width);
+        auto const ownership = makeLevelGhostOwnership(layout.AMRBox(), 0,
+                                                       std::vector<std::pair<Box<int, dim>, int>>{},
+                                                       GridLayout::options.particle_ghost_width);
         depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                          LevelGhostDeposit{ownership});
 
@@ -1221,8 +1222,8 @@ TYPED_TEST(IonUpdaterOwnershipTest, levelGhostDepositIsRestrictedToOwnedCells)
     auto constexpr ghosts = TestFixture::GridLayout::options.particle_ghost_width;
     auto const lower      = this->layout.AMRBox().lower[0];
     auto const outerCell  = lower - ghosts;
-    std::vector const neighbours{TestFixture::box(lower - 20, outerCell - ghosts)};
-    auto const ownership = makeLevelGhostOwnership(this->layout.AMRBox(), neighbours, ghosts);
+    std::vector const neighbours{std::pair{TestFixture::box(lower - 20, outerCell - ghosts), 1}};
+    auto const ownership = makeLevelGhostOwnership(this->layout.AMRBox(), 0, neighbours, ghosts);
 
     resetMoments(this->ions);
     depositParticles(this->ions, this->layout, Interpolator<1, TestFixture::interp_order>{},

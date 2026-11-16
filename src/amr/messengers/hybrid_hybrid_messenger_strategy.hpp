@@ -452,11 +452,12 @@ namespace amr
         /**
          * @brief fillIonPopMomentGhosts works on moment ghost nodes
          *
-         * level border nodes are completed by the deposition
+         * level border nodes receive the deposition
          * of level ghost [old,new] particles for all populations, linear time interpolation
          * is used to get the contribution of old/new particles.
          * Each patch deposits the level ghost particles it owns only, so this is called before
-         * the border sums, which add these deposits to the other patches.
+         * the border sums, which add these deposits to the other patches and complete the
+         * border nodes.
          */
         void fillIonPopMomentGhosts(IonsT& ions, level_t& level,
                                     double const afterPushTime) override

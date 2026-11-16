@@ -28,6 +28,7 @@
 
 #include <vector>
 #include <sstream>
+#include <utility>
 #include <iterator>
 #include <algorithm>
 #include <stdexcept>
@@ -309,14 +310,17 @@ namespace amr
         auto constexpr dimension = GridLayoutT::dimension;
         auto constexpr ghosts    = static_cast<int>(GridLayoutT::options.particle_ghost_width);
         auto const neighbours    = core::generate_from(
-            [](auto const& box) { return phare_box_from<dimension>(box); },
+            [](auto const& neighbox) {
+                return std::make_pair(phare_box_from<dimension>(neighbox), neighbox.getGlobalId());
+            },
             neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber()));
-        return core::makeLevelGhostOwnership(phare_box_from<dimension>(patch.getBox()), neighbours,
-                                             ghosts);
+        return core::makeLevelGhostOwnership(phare_box_from<dimension>(patch.getBox()),
+                                             patch.getGlobalId(), neighbours, ghosts);
     }
 
 
-    // all boxes of `level`, from every rank (MPI collective), and their periodic images
+    // all boxes of `level`, from every rank (MPI collective), and their periodic images, each with
+    // the GlobalId of its patch
     template<std::size_t dimension>
     NO_DISCARD auto periodicImagesOfLevelBoxes(SAMRAI::hier::PatchHierarchy const& hierarchy,
                                                SAMRAI::hier::PatchLevel const& level)
@@ -326,7 +330,7 @@ namespace amr
             = hierarchy.getGridGeometry()->getPeriodicShift(level.getRatioToLevelZero());
         std::size_t constexpr nbrShifts = dimension == 1 ? 3 : dimension == 2 ? 9 : 27; // 3^dim
 
-        std::vector<core::Box<int, dimension>> images;
+        std::vector<std::pair<core::Box<int, dimension>, SAMRAI::hier::GlobalId>> images;
         for (auto const& box : level.getBoxLevel()->getGlobalizedVersion().getGlobalBoxes())
         {
             if (box.isPeriodicImage())
@@ -345,7 +349,7 @@ namespace amr
                     shift[d]    = s * period[d];
                 }
                 if (valid)
-                    images.push_back(core::shift(real, shift));
+                    images.emplace_back(core::shift(real, shift), box.getGlobalId());
             }
         }
         return images;
@@ -353,21 +357,25 @@ namespace amr
 
 
     // Throws unless every level ghost cell of `patchBox` is owned by exactly one of `boxes` and
-    // the ownership in use, `inUse`, is the one built from `boxes`. `boxes`: all same-level boxes
-    // whose ghost box overlaps that of `patchBox`, periodic images included.
-    template<std::size_t dimension>
-    void checkLevelGhostOwnershipOf(core::Box<int, dimension> const& patchBox, auto const& inUse,
-                                    std::vector<core::Box<int, dimension>> const& boxes,
-                                    int const ghosts)
+    // the ownership in use, `inUse`, is the one built from `boxes`. `boxes`: (box, id) pairs of all
+    // same-level patches whose ghost box overlaps that of `patchBox`, periodic images included.
+    template<std::size_t dimension, typename Id_t>
+    void checkLevelGhostOwnershipOf(
+        core::Box<int, dimension> const& patchBox, Id_t const& patchId, auto const& inUse,
+        std::vector<std::pair<core::Box<int, dimension>, Id_t>> const& boxes, int const ghosts)
     {
         auto const ghostBox = core::grow(patchBox, ghosts);
         auto const holders  = core::generate_from(
-            [&](auto const& box) { return core::makeLevelGhostOwnership(box, boxes, ghosts); },
+            [&](auto const& entry) {
+                return core::makeLevelGhostOwnership(entry.first, entry.second, boxes, ghosts);
+            },
             boxes);
-        auto const reference = core::makeLevelGhostOwnership(patchBox, boxes, ghosts);
+        auto const reference = core::makeLevelGhostOwnership(patchBox, patchId, boxes, ghosts);
+        auto const plainBoxes
+            = core::generate_from([](auto const& entry) { return entry.first; }, boxes);
 
         core::for_each_point(ghostBox, [&](auto const& cell) {
-            if (core::isIn(cell, boxes))
+            if (core::isIn(cell, plainBoxes))
                 return; // not a level ghost cell
             std::size_t owners = 0;
             for (auto const& holder : holders)
@@ -399,10 +407,12 @@ namespace amr
         {
             auto const patchBox = phare_box_from<dimension>(patch->getBox());
             auto const reach    = core::grow(patchBox, core::levelGhostNeighbourWidth(ghosts));
-            std::vector<core::Box<int, dimension>> nearby;
-            std::ranges::copy_if(all, std::back_inserter(nearby),
-                                 [&](auto const& box) { return (box * reach).has_value(); });
-            checkLevelGhostOwnershipOf(patchBox, ownershipOf(*patch), nearby, ghosts);
+            std::vector<std::pair<core::Box<int, dimension>, SAMRAI::hier::GlobalId>> nearby;
+            std::ranges::copy_if(all, std::back_inserter(nearby), [&](auto const& entry) {
+                return (entry.first * reach).has_value();
+            });
+            checkLevelGhostOwnershipOf(patchBox, patch->getGlobalId(), ownershipOf(*patch), nearby,
+                                       ghosts);
         }
     }
 

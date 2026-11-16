@@ -19,6 +19,7 @@
 #include <string>
 #include <cstddef>
 #include <sstream>
+#include <utility>
 
 using namespace PHARE::core;
 
@@ -70,16 +71,18 @@ std::string checkPartition(std::vector<Box_t<dim>> const& patches,
 
     auto const allBoxes = generate_from([](auto const& image) { return image.box; }, images);
 
-    // what each patch builds from the neighbours a connector of `neighbourWidth` gives it
+    // what each patch builds from the neighbours a connector of `neighbourWidth` gives it, the id
+    // of a patch being its index in `patches`
     std::vector<LevelGhostOwnership<dim>> ownership;
-    for (auto const& patch : patches)
+    for (std::size_t ip = 0; ip < patches.size(); ++ip)
     {
-        auto const reach = grow(patch, neighbourWidth);
-        std::vector<Box_t<dim>> neighbours;
-        for (auto const& box : allBoxes)
-            if (!(box == patch) and (box * reach))
-                neighbours.push_back(box);
-        ownership.push_back(makeLevelGhostOwnership(patch, neighbours, w));
+        auto const& patch = patches[ip];
+        auto const reach  = grow(patch, neighbourWidth);
+        std::vector<std::pair<Box_t<dim>, std::size_t>> neighbours;
+        for (auto const& image : images)
+            if (!(image.real == ip and image.box == patch) and (image.box * reach))
+                neighbours.emplace_back(image.box, image.real);
+        ownership.push_back(makeLevelGhostOwnership(patch, ip, neighbours, w));
     }
 
     std::string failure;
@@ -226,6 +229,34 @@ TEST_P(LevelGhostOwnershipTest, isAPartitionAcrossPeriodicBoundaries)
             EXPECT_TRUE(failure1D.empty())
                 << "1D w=" << w << " g=" << g << " h=" << h << ": " << failure1D;
         }
+}
+
+// distinct patches with identical boxes (SAMRAI can produce them), first and last in id order,
+// with other patches at gap h, without and with periodicity along x
+TEST_P(LevelGhostOwnershipTest, isAPartitionWithIdenticalBoxes)
+{
+    auto const w = GetParam();
+    for (int h = 0; h <= 2 * w + 1; ++h)
+    {
+        int const L = 5 + h + 5 + h; // period along x
+        for (int const period : {0, L})
+        {
+            std::vector<Box_t<1>> line{Box_t<1>{{0}, {4}}, Box_t<1>{{5 + h}, {9 + h}},
+                                       Box_t<1>{{0}, {4}}};
+            auto const failure1D
+                = checkPartition<1>(line, {period}, w, levelGhostNeighbourWidth(w));
+            EXPECT_TRUE(failure1D.empty())
+                << "1D w=" << w << " h=" << h << " period=" << period << ": " << failure1D;
+
+            std::vector<Box_t<2>> patches{
+                Box_t<2>{{0, 0}, {4, 4}}, Box_t<2>{{5 + h, 0}, {9 + h, 4}},
+                Box_t<2>{{0, 5 + h}, {4, 9 + h}}, Box_t<2>{{0, 0}, {4, 4}}};
+            auto const failure
+                = checkPartition<2>(patches, {period, 0}, w, levelGhostNeighbourWidth(w));
+            EXPECT_TRUE(failure.empty())
+                << "2D w=" << w << " h=" << h << " period=" << period << ": " << failure;
+        }
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(ParticleGhostWidth, LevelGhostOwnershipTest, ::testing::Values(1, 2));
