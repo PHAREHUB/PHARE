@@ -249,7 +249,11 @@ class FullyKineticTest(SimulatorTest):
             .level(0, 0.0)
             .patches
         )
-        self.assertEqual(nbr_patches, (cells // CASES[ndim]["tiled"]) ** ndim)
+        # at least the requested tiling: with MPI the box splitting can cut more patches
+        # (1D, 3 ranks: 6), which only adds borders. The single patch run is not one patch
+        # either then, the check still compares two tilings.
+        self.assertGreaterEqual(nbr_patches, (cells // CASES[ndim]["tiled"]) ** ndim)
+        print(f"{ndim}D order {interp_order}: {nbr_patches} patches in the tiled run")
 
         for quantity in ["E", "B"]:
             for component in ["x", "y", "z"]:
