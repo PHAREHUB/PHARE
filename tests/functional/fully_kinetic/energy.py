@@ -43,6 +43,8 @@ time_step = time_step / substeps
 nsteps = 1000 * substeps
 interp_order = next((int(a[8:]) for a in sys.argv if a.startswith("--order=")), 1)
 sample_every = 100 * substeps
+# one output directory per variant: runs never overwrite each other
+variant = f"{len(cells)}d_order{interp_order}_dt_over_{substeps}"
 # (|v| + 3 v_th,e) / c = 0.27, below the 0.3 guard of the setup checks
 Te = mass_e * 0.9**2
 Ti = Te
@@ -55,8 +57,7 @@ def times(steps):
 
 
 def run(seed):
-    order = "" if interp_order == 1 else f"_order_{interp_order}"
-    diag_dir = f"phare_outputs/fully_kinetic_energy{order}/seed_{seed}"
+    diag_dir = f"phare_outputs/fully_kinetic_energy/{variant}/seed_{seed}"
     samples = list(range(0, nsteps + 1, sample_every))
     field_times = times(sorted(set(samples + [s + 1 for s in samples])))
     ph.global_vars.sim = None
