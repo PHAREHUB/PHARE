@@ -43,6 +43,7 @@ from waves import (
     c_over_va,
     check,
     exponential_growth,
+    filter_transfer,
     k_over_K,
     leapfrog,
     mass_e,
@@ -59,12 +60,19 @@ from waves import (
 
 # 1D values (waves.py), to be recalibrated over 5 seeds in 2D. Order 1, seed 0, Debug, C++ at
 # a15c436cc: langmuir 1.9e-4, light 6.6e-5, light out of plane 5.4e-4 (light damping / w
-# 1.2e-4 and 5.4e-5)
-TOLERANCES = {"langmuir": 7e-3, "light": 4e-3, "weibel": 5e-2}
+# 1.2e-4 and 5.4e-5). Langmuir with one current filter pass, order 1, seed 0, Debug, C++ at
+# a7e231319: 1.0e-4 with the transfer T = 0.9809, 9.7e-3 without it (88 s): its own tolerance,
+# well between the two
+TOLERANCES = {
+    "langmuir": 7e-3,
+    "langmuir filtered": 3e-3,
+    "light": 4e-3,
+    "weibel": 5e-2,
+}
 MAX_LIGHT_DAMPING = waves.MAX_LIGHT_DAMPING
 
 
-def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=16):
+def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=16, filter_passes=0):
     cells, mode = (32, 32), (1, 1)
     k = wavevector(cells, mode)
     unit = k / np.linalg.norm(k)
@@ -78,7 +86,7 @@ def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=16):
     electrons = maxwellian(-1, mass_e, 1.0, Te, ppc=ppc, seed=2 + 10 * seed)
     electrons["vbulkx"], electrons["vbulky"] = velocity(0), velocity(1)
     diag_dir, times = run(
-        "langmuir_2d",
+        f"langmuir_2d_filter{filter_passes}",
         interp_order,
         cells,
         final_time=10 * 2 * np.pi / plasma_frequency(1, 1, mass_e),
@@ -86,10 +94,15 @@ def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=16):
             "protons": maxwellian(1, 1.0, 1.0, 0.01, ppc=ppc, seed=1 + 10 * seed),
             "electrons": electrons,
         },
+        current_filter_passes=filter_passes,
     )
     w_pe, w_pi = plasma_frequency(1, -1, mass_e), plasma_frequency(1, 1, 1.0)
     debye = np.sqrt(Te / mass_e) / w_pe
-    S2 = shape_factor2(k, interp_order) * k_over_K(k[0])
+    S2 = (
+        shape_factor2(k, interp_order)
+        * k_over_K(k[0])
+        * filter_transfer(k, filter_passes)
+    )
     k2 = np.sum(k**2)
     expected = leapfrog(np.sqrt(S2 * (w_pe**2 * (1 + 3 * k2 * debye**2) + w_pi**2)))
 
@@ -100,6 +113,12 @@ def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=16):
         times, unit[0] * Ex + unit[1] * Ey, guess=expected
     )
     return measured, error, damping, expected
+
+
+def langmuir_filtered(interp_order, seed=0):
+    """one pass of the current filter: w_p^2 -> T w_p^2, T = 0.9809 here (-0.97% on w,
+    about 50 times the unfiltered error)"""
+    return langmuir(interp_order, seed, filter_passes=1)
 
 
 def light(interp_order, seed=0, b=0.05, Te=0.04, ppc=16, polarization="in plane"):
@@ -265,6 +284,7 @@ def main():
     for order in args.orders:
         for name, case in (
             ("langmuir", langmuir),
+            ("langmuir filtered", langmuir_filtered),
             ("light", light),
             ("light out of plane", light_out_of_plane),
         ):
@@ -273,7 +293,7 @@ def main():
                 f"{name} 2D order {order}: fit error {error / expected:.1e},"
                 f" damping {damping:.3g}"
             )
-            tolerance = TOLERANCES[name.split()[0]]
+            tolerance = TOLERANCES.get(name, TOLERANCES[name.split()[0]])
             results.append(
                 check(f"{name} 2D order {order}", measured, expected, tolerance)
             )

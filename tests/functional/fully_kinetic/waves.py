@@ -82,6 +82,12 @@ def yee_k2(k):
     return np.sum(yee_k(k) ** 2)
 
 
+def filter_transfer(k, passes):
+    """transfer of the binomial current filter, prod_d cos^2(k_d dx / 2) per pass: it
+    multiplies the plasma response (the current is filtered, the gather is not)"""
+    return np.prod(np.cos(np.atleast_1d(k) * dl / 2) ** (2 * passes))
+
+
 def wavevector(cells, mode):
     """k = 2 pi mode / L, per direction"""
     return 2 * np.pi * np.atleast_1d(mode) / (np.atleast_1d(cells) * dl)
@@ -115,7 +121,17 @@ def maxwellian(charge, mass, density, T, vx=None, ppc=200, seed=0):
     }
 
 
-def run(name, interp_order, cells, final_time, populations, by=None, bz=None, bx=0.0):
+def run(
+    name,
+    interp_order,
+    cells,
+    final_time,
+    populations,
+    by=None,
+    bz=None,
+    bx=0.0,
+    current_filter_passes=0,
+):
     diag_dir = f"{diag_root}/{name}_{interp_order}"
     nsteps = round(final_time / time_step)
     cells = list(np.atleast_1d(cells))
@@ -129,6 +145,7 @@ def run(name, interp_order, cells, final_time, populations, by=None, bz=None, bx
         interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
+        current_filter_passes=current_filter_passes,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
