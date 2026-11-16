@@ -227,9 +227,10 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // After being pushed, some patch ghost particles may enter the domain. These need to be
         // copied into the domain array so they are transfered to the neighbor patch
         // ghost array and contribute to moments there too.
-        // On the contrary level ghost particles entering the domain here do not need to be copied
-        // since they contribute to nodes that are not shared with neighbor patches an since
-        // level border nodes will receive contributions from levelghost old and new particles
+        // On the contrary level ghost particles entering the domain here do not need to be copied:
+        // this pass only computes moments, they are deposited and the particle arrays are left
+        // as they are. Level border nodes also receive the contributions of levelghost old and
+        // new particles.
 
         if (pop.levelGhostParticles().size())
             pushAndAccumulateGhosts(pop.levelGhostParticles());

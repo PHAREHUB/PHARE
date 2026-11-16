@@ -1222,6 +1222,8 @@ TYPED_TEST(IonUpdaterNeighbourDomainTest, levelGhostEnteringNeighbourDomainIsDro
     this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::all);
 }
 
+// the moments only pass deposits a level ghost particle only where it enters the patch's own
+// domain, with or without the drop rule: this test keeps it so
 TYPED_TEST(IonUpdaterNeighbourDomainTest,
            levelGhostEnteringNeighbourDomainIsNotDepositedMomentsOnly)
 {
