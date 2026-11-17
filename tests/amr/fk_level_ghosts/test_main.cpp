@@ -313,6 +313,105 @@ TEST(FullyKineticLevelGhosts, levelGhostParticlesDepositOnceAfterTheBorderSum)
 }
 
 
+// T7a. E time labels (P4 plan D1, D8). The coarse E holds a + b tau, a and b linear in x and y, at
+// three times: Eold_ (the messenger's copy, prepareStep) at t - Dt/2, the model E at t + Dt/2, the
+// E one step ahead (the solver's) at t + 3 Dt/2. Eold_ must take E's own label. The fine level
+// ghost band filled at t - Dt/4, t + Dt/4 (between Eold_ and E) and t + 3 Dt/4 (between E and the
+// ahead E) must then hold a + b tau exactly: the linear refinement and time interpolation are exact
+// on it.
+TEST(FullyKineticLevelGhosts, fineElectricGhostsInterpolateBetweenTheThreeCoarseElectricFields)
+{
+    using VecField = FKModel::vecfield_type;
+    auto& model    = *simulator().getFKModel();
+    auto& rm       = *model.resourcesManager;
+    auto& coarse   = *simulator().hierarchy->getPatchLevel(0);
+    auto& fine     = level();
+    auto& E        = model.state.electromag.E;
+
+    // the messenger's and the solver's fields, by name
+    VecField Eold{"FullyKineticModel-FullyKineticModel_Eold", core::HybridQuantity::Vector::E};
+    VecField Eahead{"FK_Eahead", core::HybridQuantity::Vector::E};
+
+    double constexpr t = 0., Dt = 0.002;
+    auto const value = [](std::size_t c, auto const& r, double const tau) {
+        auto const a = 1. + c + 2.1 * r[0] - 1.3 * r[1];
+        auto const b = 400. * (1. + c + 0.7 * r[0] + 0.4 * r[1]);
+        return a + b * tau;
+    };
+    auto const set = [&](auto& field, double const tau) {
+        for (auto& patch : rm.enumerate(coarse, field))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            for (std::size_t c = 0; c < 3; ++c)
+                layout.evalOnGhostBox(field[c], [&](auto i, auto j) {
+                    field[c](i, j) = value(
+                        c,
+                        layout.fieldNodeCoordinates(
+                            field[c], layout.localToAMR(core::Point{static_cast<std::uint32_t>(i),
+                                                                    static_cast<std::uint32_t>(j)}
+                                                            .as_signed())),
+                        tau);
+                });
+            rm.setTime(field, *patch, tau);
+        }
+    };
+
+    // the band: fine ghost nodes no fine patch owns
+    std::array<std::set<Key>, 3> owned;
+    for (auto& patch : rm.enumerate(fine, E))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        for (std::size_t c = 0; c < 3; ++c)
+            layout.evalOnGhostBox(E[c], [&](auto i, auto j) {
+                if (within(layout, E[c], 0, i, j))
+                    owned[c].insert(amrIndex(layout, i, j));
+            });
+    }
+    auto const checkBand = [&](double const tau) {
+        messenger().fillElectricGhosts(E, fine, tau);
+        double maxError = 0, scale = 0;
+        std::size_t band = 0;
+        for (auto& patch : rm.enumerate(fine, E))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            for (std::size_t c = 0; c < 3; ++c)
+                layout.evalOnGhostBox(E[c], [&](auto i, auto j) {
+                    if (owned[c].contains(amrIndex(layout, i, j)))
+                        return;
+                    auto const expected = value(
+                        c,
+                        layout.fieldNodeCoordinates(
+                            E[c], layout.localToAMR(core::Point{static_cast<std::uint32_t>(i),
+                                                                static_cast<std::uint32_t>(j)}
+                                                        .as_signed())),
+                        tau);
+                    maxError = std::max(maxError, std::abs(E[c](i, j) - expected));
+                    scale    = std::max(scale, std::abs(expected));
+                    ++band;
+                });
+        }
+        std::cout << "fine E band filled at t + " << (tau - t) / Dt << " Dt: " << band
+                  << " nodes, max error " << maxError / scale << " of max |E|\n";
+        EXPECT_GT(band, 0u);
+        EXPECT_LT(maxError, 1e-12 * scale);
+    };
+
+    set(E, t - 0.5 * Dt);
+    messenger().prepareStep(model, coarse, t);
+    for (auto& patch : rm.enumerate(coarse, Eold))
+        for (auto const time : rm.getTimes(Eold, *patch))
+            EXPECT_EQ(time, t - 0.5 * Dt); // E's own label (D8), not currentTime
+
+    set(E, t + 0.5 * Dt);
+    messenger().firstStep(model, fine, t, t, t + Dt);
+    checkBand(t - 0.25 * Dt);
+    checkBand(t + 0.25 * Dt);
+
+    set(Eahead, t + 1.5 * Dt);
+    checkBand(t + 0.75 * Dt);
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
