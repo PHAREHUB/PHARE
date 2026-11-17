@@ -27,3 +27,8 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
+
+add_executable(test-cell-deposit test_cell_deposit.cpp)
+target_include_directories(test-cell-deposit PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-cell-deposit PRIVATE phare_core ${GTEST_LIBS})
+add_no_mpi_phare_test(test-cell-deposit ${CMAKE_CURRENT_BINARY_DIR})

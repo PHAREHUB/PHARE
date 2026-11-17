@@ -207,6 +207,7 @@ namespace core
             for (auto& pop : populations_)
             {
                 auto& particles = pop.domainParticles();
+                particles.compact(); // sorted (bags): the range is [0, size)
                 auto range      = makeIndexRange(particles);
                 auto const kept = particles.partition(
                     range, [&](auto const& cell) { return !isIn(Point{cell}, boxes); });

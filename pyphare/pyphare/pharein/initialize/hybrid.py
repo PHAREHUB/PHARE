@@ -8,6 +8,8 @@ def populateDict(sim):
         dp.add_string("simulation/AMR/refinement/tagging/hybrid_method", "default")
 
     dp.add_string("simulation/algo/ion_updater/pusher/name", sim.particle_pusher)
+    if sim.particle_sort is not None:  # else the C++ default (IonUpdater)
+        dp.add_bool("simulation/algo/ion_updater/particle_sort", sim.particle_sort)
 
     dp.add_double("simulation/algo/ohm/resistivity", sim.resistivity)
     dp.add_double("simulation/algo/ohm/hyper_resistivity", sim.hyper_resistivity)

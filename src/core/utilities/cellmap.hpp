@@ -157,6 +157,14 @@ public:
     void update(Array& items, std::size_t itemIndex, CellIndex const& oldCell,
                 CellExtractor extract = default_extractor);
 
+    // same as update, with the new cell given instead of read from the item
+    template<typename CellIndex>
+    void update(std::size_t itemIndex, CellIndex const& oldCell, CellIndex const& newCell)
+    {
+        cellIndexes_(local_(oldCell)).remove(itemIndex);
+        addToCell(newCell, itemIndex);
+    }
+
 
     // re-orders the array so that elements satisfying the predicate are found first
     // and element not satisfying after. Returns the pivot index, which is the first
@@ -385,13 +393,9 @@ template<typename Array, typename CellIndex, typename CellExtractor>
 inline void CellMap<dim, cell_index_t>::update(Array& items, std::size_t itemIndex,
                                                CellIndex const& oldCell, CellExtractor /*extract*/)
 {
-    // we want to check first if the particle is in the map
-    // already. if is, needs to remove it before inserting it again
-    // with at its right cell.
-    // It could not be in the map at 'oldCell', in that case we want to add it.
-    auto& oldList = cellIndexes_(local_(oldCell));
-    if (oldList.is_indexed(itemIndex))
-        oldList.remove(itemIndex);
+    // remove the item from 'oldCell' if it is indexed there (it may not be, in which case
+    // it is only added), then add it at its new cell.
+    cellIndexes_(local_(oldCell)).remove(itemIndex);
     add(items, itemIndex);
 }
 

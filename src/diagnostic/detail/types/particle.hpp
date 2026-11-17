@@ -87,6 +87,7 @@ void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& d
         std::string active{tree + pType};
         if (diagnostic.quantity == active)
         {
+            ps.compact(); // bags: dense array for the writer
             std::size_t part_idx = 0;
             core::apply(Packer::empty(), [&](auto const& arg) {
                 attr[pType][Packer::keys()[part_idx++]]
@@ -170,6 +171,8 @@ void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
         std::string active{tree + pType};
+        if (diagnostic.quantity == active)
+            ps.compact(); // bags: dense array for the writer
         if (diagnostic.quantity == active && ps.size() > 0)
             hdf5::ParticleWriter::write(this->h5FileForQuantity(diagnostic), ps,
                                         h5Writer.patchPath() + "/");

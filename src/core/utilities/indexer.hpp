@@ -31,14 +31,15 @@ public:
     Indexer& operator=(Indexer&& other)      = default;
 
     void add(std::size_t itemIndex) { indexes_.push_back(itemIndex); }
-    void remove(std::size_t itemIndex)
+    // erase itemIndex, keeping the order of the others; returns whether it was indexed
+    bool remove(std::size_t itemIndex)
     {
-        auto it = std::find(std::begin(indexes_), std::end(indexes_), itemIndex);
-        if (it != std::end(indexes_))
-        {
+        auto it          = std::find(std::begin(indexes_), std::end(indexes_), itemIndex);
+        bool const found = it != std::end(indexes_);
+        if (found)
             indexes_.erase(it);
-        }
         assert(!is_indexed(itemIndex));
+        return found;
     }
     NO_DISCARD bool is_indexed(std::size_t itemIndex)
     {

@@ -990,7 +990,9 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
         for (auto& pop : this->ions)
         {
             auto const& domain = pop.domainParticles();
-            EXPECT_EQ(domain.size(), nbrDomain[ipop] + (withNonOwned ? 0 : nbrEntering[ipop]));
+            // a domain array sorted by the updater (particle_sort) has free slots in its rows:
+            // size() is its storage, liveSize() its number of particles
+            EXPECT_EQ(domain.liveSize(), nbrDomain[ipop] + (withNonOwned ? 0 : nbrEntering[ipop]));
             EXPECT_EQ(count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell); }), 0u);
             ++ipop;
         }
@@ -1091,7 +1093,7 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
         auto const& domain     = pop.domainParticles();
         auto const& patchGhost = pop.patchGhostParticles();
 
-        EXPECT_EQ(domain.size(), nbrDomain[ipop] - nbrCrossing[ipop]);
+        EXPECT_EQ(domain.liveSize(), nbrDomain[ipop] - nbrCrossing[ipop]);
         EXPECT_EQ(
             TestFixture::count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell); }),
             0u);
