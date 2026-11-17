@@ -21,28 +21,39 @@
 namespace PHARE::amr::tagging
 {
 /**
- * @brief Read the names and thresholds of the tagged quantities from the config dict.
+ * @brief The threshold of a tagged quantity, along with its config dict, from which the criterion
+ * reads its per-quantity parameters.
+ */
+struct QuantitySpec
+{
+    double threshold;                  ///< the criterion's threshold for this quantity
+    initializer::PHAREDict parameters; ///< the quantity's config dict, empty for the fallback on B
+};
+
+/**
+ * @brief Read the names, thresholds and config dicts of the tagged quantities from the config dict.
  *
- * The quantities are the entries "Q0" to "Q<nbr_quantities - 1>", each with a "name" and a
- * "threshold", as written by pharein. Without "nbr_quantities", B is tagged with the threshold
- * "threshold" (default 0.1).
+ * The quantities are the entries "Q0" to "Q<nbr_quantities - 1>", each with a "name", a
+ * "threshold" and the per-quantity parameters of the criterion, as written by pharein. Without
+ * "nbr_quantities", B is tagged with the threshold "threshold" (default 0.1) and no parameter.
  *
  * @param dict Config dict at path "simulation/AMR/refinement/tagging"
- * @return The threshold of each quantity, keyed by quantity name
+ * @return The threshold and config dict of each quantity, keyed by quantity name
  * @throws std::runtime_error if a quantity name is given more than once
  */
-inline std::map<std::string, double> parseQuantities(initializer::PHAREDict const& dict)
+inline std::map<std::string, QuantitySpec> parseQuantities(initializer::PHAREDict const& dict)
 {
     if (!dict.contains("nbr_quantities"))
-        return {{"B", cppdict::get_value(dict, "threshold", 0.1)}};
+        return {{"B", QuantitySpec{cppdict::get_value(dict, "threshold", 0.1), {}}}};
 
-    std::map<std::string, double> quantities;
+    std::map<std::string, QuantitySpec> quantities;
     auto const nbrQuantities = dict["nbr_quantities"].template to<int>();
     for (int i = 0; i < nbrQuantities; ++i)
     {
         auto const& quantity = dict["Q" + std::to_string(i)];
         auto const name      = quantity["name"].template to<std::string>();
-        if (!quantities.emplace(name, quantity["threshold"].template to<double>()).second)
+        QuantitySpec spec{quantity["threshold"].template to<double>(), quantity};
+        if (!quantities.emplace(name, std::move(spec)).second)
             throw std::runtime_error("tagging quantity '" + name + "' is given more than once");
     }
     return quantities;
@@ -94,20 +105,6 @@ using tagged_component_t = tagged_field_t<Model>;
  */
 template<typename Model>
 using quantity_accessor_t = std::vector<tagged_component_t<Model>> (*)(Model&);
-
-
-/**
- * @brief A tagged quantity, resolved from its name: how to get its components from
- * the model, along with its threshold.
- *
- * @tparam Model The physical model
- */
-template<typename Model>
-struct TaggedQuantityAccessor
-{
-    quantity_accessor_t<Model> components; ///< the components of the quantity on the current patch
-    double threshold;                      ///< the criterion's threshold for this quantity
-};
 
 
 /**
@@ -226,38 +223,6 @@ quantity_accessor_t<Model> resolveQuantity(std::string const& name)
                              + "' is unknown for this model, allowed: " + allowed);
 }
 
-
-/**
- * @brief Resolve each quantity name to the accessor to its components, keeping its threshold.
- *
- * @tparam Model The physical model
- * @param quantities The threshold of each quantity, keyed by quantity name
- * @return the accessor and threshold of each quantity, in name order
- * @throws std::runtime_error as resolveQuantity() does
- */
-template<typename Model>
-std::vector<TaggedQuantityAccessor<Model>>
-resolveQuantities(std::map<std::string, double> const& quantities)
-{
-    std::vector<TaggedQuantityAccessor<Model>> resolved;
-    for (auto const& [name, threshold] : quantities)
-        resolved.emplace_back(resolveQuantity<Model>(name), threshold);
-    return resolved;
-}
-
-/**
- * @brief Read the tagged quantities from the config dict and resolve them.
- *
- * @tparam Model The physical model
- * @param dict config dict at path "simulation/AMR/refinement/tagging"
- * @return the accessor and threshold of each quantity, in name order
- * @throws std::runtime_error as parseQuantities() and resolveQuantity() do
- */
-template<typename Model>
-std::vector<TaggedQuantityAccessor<Model>> resolveQuantities(initializer::PHAREDict const& dict)
-{
-    return resolveQuantities<Model>(parseQuantities(dict));
-}
 
 } // namespace PHARE::amr::tagging
 

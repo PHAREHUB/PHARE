@@ -3,6 +3,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include "lohner_parameters.hpp"
 #include "per_quantity_tagger_strategy.hpp"
 
 #include <array>
@@ -24,9 +25,11 @@ namespace PHARE::amr
  */
 template<typename Model>
 class LohnerCrossDerivativesTaggerStrategy
-    : public PerQuantityTaggerStrategy<LohnerCrossDerivativesTaggerStrategy<Model>, Model>
+    : public PerQuantityTaggerStrategy<LohnerCrossDerivativesTaggerStrategy<Model>, Model,
+                                       LohnerParameters>
 {
-    using Super = PerQuantityTaggerStrategy<LohnerCrossDerivativesTaggerStrategy<Model>, Model>;
+    using Super = PerQuantityTaggerStrategy<LohnerCrossDerivativesTaggerStrategy<Model>, Model,
+                                            LohnerParameters>;
 
 public:
     using recentered_field_type = Super::recentered_field_type;
@@ -41,8 +44,6 @@ public:
      */
     explicit LohnerCrossDerivativesTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
-        , reltol_{cppdict::get_value(dict, "params/reltol", 0.01)}
-        , abstol_{cppdict::get_value(dict, "params/abstol", 1e-8)}
     {
     }
 
@@ -52,11 +53,12 @@ public:
      * @param components The components of the quantity, viewed at cell centres
      * @param cell The index of the cell in the field arrays
      * @param layout The layout of the patch
+     * @param parameters The quantity's reltol and ref_magnitude
      * @return Lohner's indicator with cross derivatives
      */
     double indicator(std::span<recentered_field_type const> components,
                      std::array<std::uint32_t, dimension> const& cell,
-                     Model::gridlayout_type const& layout) const
+                     Model::gridlayout_type const& layout, LohnerParameters const& parameters) const
     {
         auto const& meshSize = layout.meshSize();
         auto const shifted   = [&](std::size_t p, int offsetP, std::size_t q, int offsetQ) {
@@ -102,18 +104,14 @@ public:
                                     + std::sqrt(upperDown2) + std::sqrt(lowerDown2);
                 auto const weight = 1. / (meshSize[p] * meshSize[q]);
                 auto const n      = weight * std::sqrt(change);
-                auto const D
-                    = weight
-                      * (std::sqrt(slopeUp2) + std::sqrt(slopeDown2) + reltol_ * filter + abstol_);
+                auto const D      = weight
+                               * (std::sqrt(slopeUp2) + std::sqrt(slopeDown2)
+                                  + parameters.reltol * filter + parameters.refMagnitude);
                 numerator += n * n;
                 denominator += D * D;
             }
         return denominator > 0. ? std::sqrt(numerator / denominator) : 0.;
     }
-
-private:
-    double reltol_; ///< weight of the noise filter, relative to the local values
-    double abstol_; ///< absolute floor added to the denominator of each pair of directions
 };
 
 } // namespace PHARE::amr

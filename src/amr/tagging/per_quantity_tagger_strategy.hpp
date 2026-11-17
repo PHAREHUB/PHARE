@@ -15,29 +15,54 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace PHARE::amr
 {
 /**
+ * @brief The per-quantity parameters of a criterion that has none.
+ */
+struct NoQuantityParameters
+{
+    /// Nothing to read, see PerQuantityTaggerStrategy for the interface of the parameters.
+    static NoQuantityParameters read(initializer::PHAREDict const&, std::string const&)
+    {
+        return {};
+    }
+};
+
+/**
  * @brief CRTP base for tagging based on a single criterion applied to a list of quantities.
  *
  * The criterion is made of an indicator function (the same for all quantities), and a per-quantity
- * threshold. The criterion is met in a cell if at least one quantity has its indicator exceeding
- * its threshold.
+ * threshold and set of parameters. The criterion is met in a cell if at least one quantity has its
+ * indicator exceeding its threshold.
  *
  * This class expects its child to implement the indicator with the following interface:
  *
  * @code
  * double indicator(std::span<recentered_field_type const> components,
  *                  std::array<std::uint32_t, dimension> const& cell,
- *                  gridlayout_type const& layout) const;
+ *                  gridlayout_type const& layout,
+ *                  Parameters const& parameters) const;
  * @endcode
  *
  * where `components` are the components of one quantity, in component order (a single one for a
  * scalar quantity), each viewed at cell centres, `cell` the index of the cell in the field arrays,
- * the first ghost cell having index 0, and `layout` the layout of the patch being tagged. The
- * indicator returns a single value for the quantity, compared to the quantity's threshold.
+ * the first ghost cell having index 0, `layout` the layout of the patch being tagged, and
+ * `parameters` the parameters of the quantity. The indicator returns a single value for the
+ * quantity, compared to the quantity's threshold.
+ *
+ * The parameters are read once per quantity at construction, by
+ *
+ * @code
+ * static Parameters Parameters::read(initializer::PHAREDict const& quantity,
+ *                                    std::string const& name);
+ * @endcode
+ *
+ * where `quantity` is the config dict of the quantity (path "Q<i>", empty when B is tagged by
+ * default) and `name` the quantity's name, for error messages.
  *
  * The CRTP child is also expected to provide a `static constexpr std::uint32_t stencil_reach`, the
  * largest number of cells the indicator reads away from `cell`, to avoid out-of-bounds access in
@@ -46,13 +71,15 @@ namespace PHARE::amr
  *
  * @tparam Derived The CRTP child class
  * @tparam Model The physical model
+ * @tparam Parameters The per-quantity parameters of the criterion
  */
-template<typename Derived, typename Model>
+template<typename Derived, typename Model, typename Parameters = NoQuantityParameters>
 class PerQuantityTaggerStrategy : public TaggerStrategy<Model>
 {
 public:
     using gridlayout_type       = Model::gridlayout_type;
     using recentered_field_type = core::RecenteredField<tagging::tagged_field_t<Model>>;
+    using parameters_type       = Parameters;
 
     static constexpr auto dimension = Model::dimension;
 
@@ -60,10 +87,15 @@ public:
      * @brief Constructor
      *
      * @param dict config dict at path "simulation/AMR/refinement/tagging"
+     * @throws std::runtime_error if a quantity is unknown or given twice, or if its parameters are
+     * invalid
      */
     explicit PerQuantityTaggerStrategy(initializer::PHAREDict const& dict)
-        : quantities_{tagging::resolveQuantities<Model>(dict)}
     {
+        for (auto const& [name, spec] : tagging::parseQuantities(dict))
+            quantities_.emplace_back(tagging::resolveQuantity<Model>(name), spec.threshold,
+                                     Parameters::read(spec.parameters, name));
+
         auto constexpr reach  = Derived::stencil_reach;
         auto constexpr ghosts = ghostWidth_();
         if constexpr (reach > ghosts)
@@ -86,12 +118,23 @@ public:
     void tag(Model& model, gridlayout_type const& layout, int* tags) const final;
 
 private:
-    /// Bundles the components' recentered views of a single quantity, along with its threshold.
+    /// A tagged quantity, resolved from its name: how to get its components from the model, along
+    /// with its threshold and parameters.
+    struct TaggedQuantity
+    {
+        tagging::quantity_accessor_t<Model> components; ///< the components on the current patch
+        double threshold;                               ///< the criterion's threshold
+        Parameters parameters;                          ///< the criterion's parameters
+    };
+
+    /// Bundles the components' recentered views of a single quantity, along with its threshold and
+    /// parameters.
     struct TaggedQuantityRecenteredComponents
     {
         std::vector<recentered_field_type>
-            recenteredFields; ///< recentered views of the components' fields.
-        double threshold;     ///< the criterion's threshold for this quantity.
+            recenteredFields;         ///< recentered views of the components' fields.
+        double threshold;             ///< the criterion's threshold for this quantity.
+        Parameters const* parameters; ///< the criterion's parameters for this quantity.
     };
 
     /// Retrieve the ghost layer width
@@ -112,23 +155,25 @@ private:
     /// CRTP downcast helper.
     Derived const& derived_() const { return static_cast<Derived const&>(*this); }
 
-    /// The list of each quantity's model accessor (also contains the threshold)
-    std::vector<tagging::TaggedQuantityAccessor<Model>> quantities_;
+    /// The tagged quantities, in name order
+    std::vector<TaggedQuantity> quantities_;
 };
 
 
-template<typename Derived, typename Model>
-void PerQuantityTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_type const& layout,
-                                                    int* tags) const
+template<typename Derived, typename Model, typename Parameters>
+void PerQuantityTaggerStrategy<Derived, Model, Parameters>::tag(Model& model,
+                                                                gridlayout_type const& layout,
+                                                                int* tags) const
 {
     auto const allDual = core::ConstArray<core::QtyCentering, dimension>(core::QtyCentering::dual);
 
     // build the recentered views of all quantities' components
     std::vector<TaggedQuantityRecenteredComponents> quantities;
-    for (auto const& [components, threshold] : quantities_)
+    for (auto const& [components, threshold, parameters] : quantities_)
     {
-        auto& quantity     = quantities.emplace_back();
-        quantity.threshold = threshold;
+        auto& quantity      = quantities.emplace_back();
+        quantity.threshold  = threshold;
+        quantity.parameters = &parameters;
         for (auto const& component : components(model))
             quantity.recenteredFields.emplace_back(component, allDual, layout);
     }
@@ -161,9 +206,9 @@ void PerQuantityTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_typ
 
         // lambda expressing the tagging criterion for a single tagged quantity
         auto const passes = [&](auto const& quantity) {
-            auto const& [recenteredFields, threshold] = quantity;
+            auto const& [recenteredFields, threshold, parameters] = quantity;
             return derived_().indicator(std::span<recentered_field_type const>(recenteredFields),
-                                        cellId, layout)
+                                        cellId, layout, *parameters)
                    > threshold;
         };
 

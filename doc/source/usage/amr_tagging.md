@@ -46,21 +46,32 @@ ph.Simulation(
     max_nbr_levels=3,
     tagging={
         "method": "lohner-per-direction",
-        "quantities": {"B": 0.5, "rho": 0.5},
-        "params": {"reltol": 0.01, "abstol": 1e-8},
+        "quantities": {"B": {"threshold": 0.5, "reltol": 0.02}, "rho": 0.5},
     },
 )
 ```
 
 - `method` is the criterion: `"default"` (the default), `"lohner-per-direction"` (Löhner's estimator
-  in the form of PLUTO) or `"lohner-cross-derivatives"` (Löhner's estimator in the form of FLASH,
-  with cross derivatives).
-- `quantities` is a `dict` mapping each tagged quantity to its threshold. A cell is tagged if the
-  criterion is met for at least one quantity, each quantity being compared to its own threshold.
-  Without `quantities`, the magnetic field is tagged with threshold `tagging_threshold`. A list of
-  `(name, threshold)` pairs is also accepted, a name given twice being an error.
-- `params` holds the parameters of the method. Both Löhner methods accept `reltol` (default $0.01$)
-  and `abstol` (default $10^{-8}$), `"default"` has none. An unknown parameter is an error.
+  in the form of PLUTO), `"lohner-cross-derivatives"` (Löhner's estimator in the form of FLASH, with
+  cross derivatives) or `"gradient-scale"` (cell size over the gradient length of the quantity).
+- `quantities` maps each tagged quantity to its threshold and the parameters of the method for this
+  quantity, as a dict `{"threshold": ..., <parameter>: ...}`. A number alone is the threshold, the
+  parameters then taking their defaults. A cell is tagged if the criterion is met for at least one
+  quantity, each quantity being compared to its own threshold. Without `quantities`, the magnetic
+  field is tagged with threshold `tagging_threshold`, except with `"gradient-scale"`, whose required
+  `ref_magnitude` needs explicit quantities. A list of `(name, threshold or dict)` pairs is also
+  accepted, a name given twice being an error.
+
+The parameters of each method, given per quantity next to its threshold:
+
+| Method              | Parameter       | Default   | Meaning                                                |
+| ------------------- | --------------- | --------- | ------------------------------------------------------ |
+| `"default"`         |                 |           | no parameter                                           |
+| both Löhner methods | `reltol`        | $0.01$    | weight of the noise filter, $\geq 0$                   |
+| both Löhner methods | `ref_magnitude` | $10^{-8}$ | reference magnitude added to the denominator, $\geq 0$ |
+| `"gradient-scale"`  | `ref_magnitude` | required  | reference magnitude added to the magnitude, $> 0$      |
+
+`ref_magnitude` is in the units of the quantity. An unknown parameter is an error.
 
 Giving `tagging` without `refinement="tagging"` is an error.
 
@@ -78,14 +89,6 @@ Giving `tagging` without `refinement="tagging"` is an error.
 The electric field, the current density, the velocities, the pressures and the hybrid ion densities
 are not available for tagging yet: they are rejected with an error.
 
-Both Löhner methods treat a vector quantity such as `B` or `rhoV` as a whole: they use the magnitudes
-of the vector and of its variations, so a small component on top of a strong field does not trigger
-refinement, while a change of direction does. The default method tests the components separately
-with the quantity's threshold, the cell being tagged if any of them meets the criterion, except in
-1D where it combines the components before comparing them with the threshold. Giving components
-separately tags each of them on its own, with a threshold of its own, for instance
-`{"Bx": 0.3, "Bz": 0.1}`.
-
 ### Choosing a threshold
 
 The criteria are not on the same scale, so a threshold does not carry over from one method to
@@ -95,6 +98,13 @@ another.
   $1/(1 + \mathrm{reltol})$. Their thresholds are typically a few tenths.
 - `"default"` measures the variations of the quantity in code units, absolutely when they are small
   compared with 1 and relatively when they are large.
+- `"gradient-scale"` is the cell size over the gradient length of the quantity, so its threshold is
+  the target ratio $\Delta x / L$. A smooth profile of length $L$ gives
+  $\Delta x / L \cdot \|\vb{u}\| / (\|\vb{u}\| + u_\mathrm{ref})$, $u_\mathrm{ref}$ being
+  `ref_magnitude`, and a jump $\Delta u$ over one cell gives
+  $\Delta u / (2(\|\vb{u}\| + u_\mathrm{ref}))$ on both sides of it. Where the quantity is small
+  compared with `ref_magnitude`, its variations are measured relative to `ref_magnitude` instead of
+  its magnitude, which keeps noise around nulls from being refined.
 
 {ref}`tagging-for-refinement` provides the definition of the criteria.
 
@@ -120,5 +130,23 @@ ph.Simulation(
     refinement="tagging",
     max_nbr_levels=4,
     tagging={"method": "lohner-per-direction", "quantities": {"rho": 0.4, "Bz": 0.3}},
+)
+```
+
+Gradient scale on the magnetic field and the density of an MHD run, each with a reference magnitude
+in its own units:
+
+```python
+ph.Simulation(
+    # ...
+    refinement="tagging",
+    max_nbr_levels=3,
+    tagging={
+        "method": "gradient-scale",
+        "quantities": {
+            "B": {"threshold": 0.1, "ref_magnitude": 0.01},
+            "rho": {"threshold": 0.2, "ref_magnitude": 0.05},
+        },
+    },
 )
 ```
