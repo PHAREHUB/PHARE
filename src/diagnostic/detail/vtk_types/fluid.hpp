@@ -193,7 +193,8 @@ void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& 
     if (isActiveDiag(diagnostic, tree, "charge_density")
         or isActiveDiag(diagnostic, tree, "mass_density"))
         modelView.requestTmpField();
-    else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
+    else if (isActiveDiag(diagnostic, tree, "bulkVelocity")
+             or isActiveDiag(diagnostic, tree, "charge_flux"))
         modelView.requestTmpVecField();
 
     for (auto& pop : modelView.getIons())
