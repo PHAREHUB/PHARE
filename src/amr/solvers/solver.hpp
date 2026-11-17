@@ -136,6 +136,17 @@ namespace solver
                                        CFLNumbers const& cflNumbers) = 0;
 
 
+        /**
+         * @brief maxFinerLevelDt returns the largest time step of a level solved by this solver,
+         * refined by ratio from a coarser level advancing with coarseDt. Default: whistler waves
+         * need dt ~ dx^2, so dividing the mesh size by ratio divides dt by ratio^2.
+         */
+        NO_DISCARD virtual double maxFinerLevelDt(double const coarseDt, int const ratio) const
+        {
+            return coarseDt / (ratio * ratio);
+        }
+
+
         virtual void onRegrid() {} // do what you need to do on regrid
 
 

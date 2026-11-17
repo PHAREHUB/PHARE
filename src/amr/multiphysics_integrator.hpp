@@ -419,14 +419,10 @@ namespace solver
         }
 
 
-        double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
+        double getMaxFinerLevelDt(int const finerLevelNumber, double const coarseDt,
                                   SAMRAI::hier::IntVector const& ratio) override
         {
-            // whistler waves require the dt ~ dx^2
-            // so dividing the mesh size by ratio means dt
-            // needs to be divided by ratio^2.
-            // we multiply that by a constant < 1 for safety.
-            return coarseDt / (ratio.max() * ratio.max()) /** 0.4*/;
+            return getSolver_(finerLevelNumber).maxFinerLevelDt(coarseDt, ratio.max());
         }
 
 
@@ -551,11 +547,7 @@ namespace solver
             // If we are on the finest level, we cannot do the accumulation in the
             // standardLevelSynchronization, so we need to do it per substep here
             if (iLevel != 0 && !hierarchy->finerLevelExists(iLevel))
-            {
-                auto ratio = (level->getRatioToCoarserLevel()).max();
-                auto coef  = 1. / (ratio * ratio);
-                solver.accumulateFluxSum(model, *level, coef);
-            }
+                solver.accumulateFluxSum(model, *level, substepWeight_(iLevel));
 
             load_balancer_manager_->estimate(*level, model);
 
@@ -595,11 +587,8 @@ namespace solver
                 // next coarser reflux.
                 // It is not needed to do this accumulation on the coarsest level.
                 if (iCoarseLevel != 0)
-                {
-                    auto ratio = (coarseLevel.getRatioToCoarserLevel()).max();
-                    auto coef  = 1. / (ratio * ratio);
-                    coarseSolver.accumulateFluxSum(coarseModel, coarseLevel, coef);
-                }
+                    coarseSolver.accumulateFluxSum(coarseModel, coarseLevel,
+                                                   substepWeight_(iCoarseLevel));
 
                 // recopy (patch) ghosts
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);
@@ -657,6 +646,18 @@ namespace solver
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
         std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
+
+
+        // weight of the last substep of iLevel in the step of its coarser level: dt_f / dt_c,
+        // 1/r^2 for the hybrid, 1/r for the fully kinetic model
+        double substepWeight_(int const iLevel) const
+        {
+            auto const coarseDuration
+                = subcycleEndTimes_.at(iLevel - 1) - subcycleStartTimes_.at(iLevel - 1);
+            if (!(coarseDuration > 0.))
+                return 0.;
+            return (subcycleEndTimes_.at(iLevel) - subcycleStartTimes_.at(iLevel)) / coarseDuration;
+        }
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)

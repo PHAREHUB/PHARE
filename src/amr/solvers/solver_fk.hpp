@@ -160,6 +160,12 @@ public:
         throw std::runtime_error("SolverFK: adaptive time stepping is not supported");
     }
 
+    // the light CFL c dt / dx is the same on every level with dt / ratio
+    NO_DISCARD double maxFinerLevelDt(double const coarseDt, int const ratio) const override
+    {
+        return coarseDt / ratio;
+    }
+
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
                       IMessenger& fromCoarserMessenger, double const currentTime,
                       double const newTime) override;
