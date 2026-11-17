@@ -33,4 +33,8 @@ if(HighFive)
   # orders 1 and 3, lambda = 32 and 16 fine cells (~40 s, Debug)
   phare_python3_exec(10 test-fully-kinetic-pulse-amr pulse.py ${CMAKE_CURRENT_BINARY_DIR} --check)
   phare_test_labels(test-fully-kinetic-pulse-amr physics)
+  # the boundary node of a 1D fine level: no sawtooth between the band renewals (sawtooth fix),
+  # order 1, 1600 particles per cell, 100 steps (165 s Debug, 1.9 GB of dumps)
+  phare_python3_exec(10 test-fully-kinetic-sawtooth-gate sawtooth_gate.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_test_labels(test-fully-kinetic-sawtooth-gate physics)
 endif()
