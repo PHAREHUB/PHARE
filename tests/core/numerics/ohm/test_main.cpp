@@ -367,7 +367,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
     // the reference values (test_ohm.py) use the isothermal pressure term, so build it the same way
     IsothermalPressureTerm<typename TestFixture::GridYee>{TestFixture::Te}(layout, this->n,
                                                                            this->pressureTerm);
-    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
+    Ohm_t{this->ohm_info, layout}(*this->n, this->V, this->pressureTerm, this->B, this->J,
                                   this->Enew);
 
 
@@ -546,7 +546,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
         dict["hyper_resistivity"] = 0.0;
         return dict;
     }();
-    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
+    Ohm_t{OhmInfo::FROM(dict), layout}(*this->n, this->V, this->pressureTerm, this->B, this->J,
                                        this->Enew);
 
     for (auto const c : {Component::X, Component::Y, Component::Z})
