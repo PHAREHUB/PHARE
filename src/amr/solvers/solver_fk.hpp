@@ -71,6 +71,14 @@ namespace PHARE::solver
  * ratio 2). Interpolated in time towards the predicted coarse B^{n+1} instead, the ghost read a
  * value the reflux then replaced, and the interface grew. Outside the finer level the result is
  * the former interpolation; the half step ghosts of the push keep the interpolation.
+ *
+ * With boundary_cleaning_mask, the cleanings of steps 2 and 6 skip (F = 0) the nodes on the edge of
+ * a refined level and on the edge of the cells the finer level covered at the last
+ * synchronization of E^{n-1/2} (fk_electric.hpp, regionEdgeNodes). That region is the finer
+ * level's at the end of the previous step, kept across a regrid, which comes after the
+ * synchronization: none on a level whose finer level is new, the old one for one more step on a
+ * level whose finer level was removed. The skipped nodes are built when the level, or the kept
+ * region, changes. Without the option nothing is built and nothing skipped.
  */
 template<typename FKModel, typename AMR_Types>
 class SolverFK : public ISolver<AMR_Types>
@@ -262,8 +270,26 @@ private:
     void moveParticles_(level_t& level, FKModel& model, Messenger& messenger,
                         double const currentTime, double const newTime);
 
+    PatchBoxes<dimension> const& skippedNodes_(hierarchy_t const& hierarchy, int const levelNumber,
+                                               FKModel const& model);
+    void keepCoveredRegion_(hierarchy_t const& hierarchy, int const levelNumber,
+                            FKModel const& model);
+
 
     ParticleLevelBoxings<IonUpdater_t, GridLayout, AMR_Types> boxing;
+
+    // the nodes the cleaning skips on a level (boundary_cleaning_mask): those of the level object
+    // they were built for, from the cells the finer level covered (`covered`, per patch) at the
+    // end of the last step, taken from the level `finer`
+    struct CleaningMask
+    {
+        std::weak_ptr<level_t> level;
+        std::weak_ptr<level_t> finer;
+        PatchBoxes<dimension> covered;
+        PatchBoxes<dimension> skipped;
+        bool stale = true;
+    };
+    std::unordered_map<int, CleaningMask> cleaningMasks_;
 };
 
 
@@ -304,8 +330,11 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
         messenger.fillMagneticGhosts(B, level, currentTime);
     }
 
+    // the nodes the cleanings of this step skip (none without boundary_cleaning_mask)
+    auto const& skipped = skippedNodes_(hierarchy, levelNumber, model);
+
     // 1. and 2.
-    advanceFKElectric(level, model, messenger, E, dt, currentTime);
+    advanceFKElectric(level, model, messenger, E, dt, currentTime, skipped);
     TimeSetter{level, model, halfTime}(E);
     messenger.fillElectricGhosts(E, level, halfTime);
 
@@ -331,9 +360,60 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     {
         for (auto& patch : rm.enumerate(level, E, Eahead_))
             Eahead_.copyData(E); // with its ghosts, read by the cleaning
-        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime);
+        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime, skipped);
         TimeSetter{level, model, newTime + 0.5 * dt}(Eahead_);
     }
+
+    // the cells the finer level synchronizes at the end of this step, for the next step's mask
+    keepCoveredRegion_(hierarchy, levelNumber, model);
+}
+
+
+
+// built once per level object and kept region; the level identity as in ParticleLevelBoxings
+template<typename FKModel, typename AMR_Types>
+auto SolverFK<FKModel, AMR_Types>::skippedNodes_(hierarchy_t const& hierarchy,
+                                                 int const levelNumber, FKModel const& model)
+    -> PatchBoxes<dimension> const&
+{
+    static PatchBoxes<dimension> const none;
+    if (!model.boundary_cleaning_mask)
+        return none;
+
+    auto const level = hierarchy.getPatchLevel(levelNumber);
+    auto& mask       = cleaningMasks_[levelNumber];
+    if (mask.level.lock() != level)
+    {
+        mask       = CleaningMask{}; // a new level object: no synchronization on it yet
+        mask.level = level;
+    }
+    if (mask.stale)
+    {
+        mask.skipped = cleaningSkippedNodes<GridLayout>(hierarchy, levelNumber, mask.covered);
+        mask.stale   = false;
+    }
+    return mask.skipped;
+}
+
+
+
+// at the end of advanceLevel: the finer level advanced next is the one synchronized
+template<typename FKModel, typename AMR_Types>
+void SolverFK<FKModel, AMR_Types>::keepCoveredRegion_(hierarchy_t const& hierarchy,
+                                                      int const levelNumber, FKModel const& model)
+{
+    if (!model.boundary_cleaning_mask)
+        return;
+
+    auto& mask       = cleaningMasks_[levelNumber];
+    auto const finer = hierarchy.finerLevelExists(levelNumber)
+                           ? hierarchy.getPatchLevel(levelNumber + 1)
+                           : std::shared_ptr<level_t>{};
+    if (mask.finer.lock() == finer and (finer or mask.covered.empty()))
+        return;
+    mask.finer   = finer;
+    mask.covered = finerLevelCoverage<dimension>(hierarchy, levelNumber);
+    mask.stale   = true;
 }
 
 
