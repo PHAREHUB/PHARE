@@ -1,8 +1,8 @@
 """
 The live data reader (pharesee.hierarchy.fromsim) must take the field ghost count the C++ layout
 reports (PatchData.nGhosts, python3/patch_data.hpp), not the hybrid table of the interpolation
-order: the fully kinetic layout has 4, 6, 6 field ghosts where the hybrid has 2, 4, 4 (P4).
-Fake simulator and data wrangler objects stand for the C++ ones.
+order: the fully kinetic layout has 4, 6, 6 field ghosts where the hybrid has 2, 4, 4 (P4). The
+same for particles: 3, 3, 4 ghost cells where the hybrid has 1, 2, 2. Fake simulator and data wrangler objects stand for the C++ ones.
 """
 
 import unittest
@@ -29,12 +29,33 @@ class FakePatchData:
         self.data = np.arange(CELLS + 2 * ghosts, dtype=float)
 
 
+class FakeParticlePatchData:
+    """a particle PatchData of the data wrangler: two domain particles of one 1D patch, flat
+    arrays as ContiguousParticles packs them"""
+
+    class Data:
+        iCell = [2, 7]
+        delta = [0.25, 0.5]
+        weight = [0.1, 0.2]
+        v = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+
+    def __init__(self, ghosts):
+        self.lower = np.array([0])
+        self.upper = np.array([CELLS - 1])
+        self.origin = " 0.000000"
+        self.nGhosts = ghosts
+        self.data = self.Data()
+
+
 class FakePatchLevel:
     def __init__(self, patch):
         self.patch = patch
 
     def __getattr__(self, getter):  # getEx, getBx, getDensity, ...
         return lambda *args: [self.patch]
+
+    def getParticles(self, pop):
+        return {pop: {"domain": [self.patch]}}
 
 
 class FakeWrangler:
@@ -104,6 +125,19 @@ class FromSimTest(unittest.TestCase):
         physical = pdata[pdata.box]
         self.assertEqual(physical.shape, (CELLS, 6))
         self.assertEqual(physical[0, 0], GHOSTS * shape[1] + GHOSTS)
+
+    def test_particles_take_the_reported_ghosts(self):
+        PARTICLE_GHOSTS = 3  # fully kinetic, order 1; the hybrid table says 1
+        hier = hierarchy_from_sim(
+            FakeSimulator(FakeParticlePatchData(PARTICLE_GHOSTS)), "particles", pop="protons"
+        )
+        pdata = hier.level(0).patches[0].patch_datas["protons_particles"]
+        self.assertEqual(list(pdata.ghosts_nbr), [PARTICLE_GHOSTS])
+        self.assertEqual(pdata.ghost_box, Box([-PARTICLE_GHOSTS], [CELLS - 1 + PARTICLE_GHOSTS]))
+        particles = pdata.dataset
+        np.testing.assert_array_equal(particles.iCells, [[2], [7]])
+        np.testing.assert_allclose(particles.x, [0.225, 0.75])  # (iCell + delta) dx
+        np.testing.assert_array_equal(particles.v, [[1, 2, 3], [4, 5, 6]])
 
     def test_hierarchy_from_sim_reads_the_physical_nodes(self):
         hier = hierarchy_from_sim(FakeSimulator(FakePatchData(GHOSTS)), "EM_E_x")

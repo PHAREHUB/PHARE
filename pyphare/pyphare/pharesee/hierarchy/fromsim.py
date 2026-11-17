@@ -19,13 +19,27 @@ def make_layout_for(simulator, patch, qty, dl):
         origin = np.array([float(x) for x in origin.split(",")])
     if model == "hybrid":
         # fields: the ghost count the C++ layout reports (fully kinetic layouts have more than
-        # the hybrid table, P4). Particle patch data reports none, ParticleData sets its own.
+        # the hybrid table, P4). Particles take theirs in ParticleData.
         ghosts_nbr = [patch.nGhosts] * box.ndim if isFieldQty(qty) else None
         return gridlayout.HybridGridLayoutFor(
             box, origin, dl, simulator.interp_order(), ghosts_nbr=ghosts_nbr
         )
     return gridlayout.MHDGridLayoutFor(
         box, origin, dl, simulator.simulation.reconstruction
+    )
+
+
+def particles_from(patch, dl):
+    """the flat arrays of C++ ContiguousParticles, one row per particle"""
+    data = patch.data
+    ndim = len(patch.lower)
+    icells = np.asarray(data.iCell).reshape(-1, ndim)
+    return Particles(
+        icells=icells,
+        deltas=np.asarray(data.delta).reshape(-1, ndim),
+        v=np.asarray(data.v).reshape(-1, 3),
+        weights=np.asarray(data.weight),
+        dl=np.zeros(icells.shape) + dl,
     )
 
 
@@ -74,17 +88,12 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                 patch_datas = {}
 
                 layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
-                v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
-
-                domain_particles = Particles(
-                    icells=np.asarray(patch.data.iCell),
-                    deltas=np.asarray(patch.data.delta),
-                    v=v,
-                    weights=np.asarray(patch.data.weight),
-                )
-
+                # the particle ghost width of the C++ layout (fully kinetic 3, 3, 4, hybrid 1, 2, 2)
                 patch_datas[pop + "_particles"] = ParticleData(
-                    layout, domain_particles, pop
+                    layout,
+                    particles_from(patch, lvl_cell_width),
+                    pop,
+                    ghosts_nbr=[patch.nGhosts] * layout.box.ndim,
                 )
                 patches[ilvl].append(Patch(patch_datas))
 
@@ -97,16 +106,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for ghostParticles in ["levelGhost"]:
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
-                        v = np.asarray(dwpatch.data.v)
-                        s = v.size
-                        v = v[:].reshape(int(s / 3), 3)
-
-                        patchGhost_part = Particles(
-                            icells=np.asarray(dwpatch.data.iCell),
-                            deltas=np.asarray(dwpatch.data.delta),
-                            v=v,
-                            weights=np.asarray(dwpatch.data.weight),
-                        )
+                        patchGhost_part = particles_from(dwpatch, lvl_cell_width)
 
                         box = Box(dwpatch.lower, dwpatch.upper)
 

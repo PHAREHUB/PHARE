@@ -269,6 +269,7 @@ public:
 
             auto& patch_data = inner[key].emplace_back(particles.size());
             setPatchDataFromGrid(patch_data, grid, patchID);
+            patch_data.nGhosts = GridLayout::options.particle_ghost_width;
             core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
         };
 

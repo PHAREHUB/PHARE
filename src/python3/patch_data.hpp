@@ -18,7 +18,7 @@ struct __attribute__((visibility("hidden"))) PatchData
     std::string origin;
     py_array_t<std::size_t> lower{dim};
     py_array_t<std::size_t> upper{dim};
-    std::size_t nGhosts;
+    std::size_t nGhosts = 0; // the field or particle ghost width of the layout
     Data data;
 
     PatchData() = default;

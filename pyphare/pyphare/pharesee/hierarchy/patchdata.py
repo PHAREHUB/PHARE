@@ -235,10 +235,12 @@ class ParticleData(PatchData):
     Concrete type of PatchData representing particles in a region
     """
 
-    def __init__(self, layout, data, pop_name):
+    def __init__(self, layout, data, pop_name, ghosts_nbr=None):
         """
         :param layout: A GridLayout object representing the domain in which particles are
         :param data: dataset containing particles
+        :param ghosts_nbr: the particle ghost width per direction the C++ layout reports, else
+                           the hybrid one of the interpolation order
         """
         super().__init__(layout, "particles")
         self.dataset = data
@@ -247,7 +249,10 @@ class ParticleData(PatchData):
         self.ndim = layout.box.ndim
 
         self.pop_name = pop_name
-        if layout.interp_order == 1:
+        if ghosts_nbr is not None:
+            self.ghosts_nbr = np.array(ghosts_nbr)
+            assert (self.ghosts_nbr > 0).all(), "the C++ particle ghost width is never 0"
+        elif layout.interp_order == 1:
             self.ghosts_nbr = np.array([1] * layout.box.ndim)
         elif layout.interp_order == 2 or layout.interp_order == 3:
             self.ghosts_nbr = np.array([2] * layout.box.ndim)
