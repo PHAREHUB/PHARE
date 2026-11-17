@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+# T6 (P4 plan): the E one coarse step ahead against the next step's E. 2D order 1, 32^2 root cells
+# in 8^2 patches, one refined box over root cells 12 to 19 (the T2 box), one filter pass and Marder
+# s = 0.5 (the refined runs' operating point). Case @T6_CASE@:
+#   wave32, wave16: near vacuum (n = 1e-6, 4 particles per cell and species, pulse.py), a standing
+#     light wave B_z = 0.1 cos(k x), E^0 = 0, of 32 or 16 fine cells (2 or 4 periods over the
+#     domain), crossing the box's x faces: the smooth part of the pre-sync error
+#   thermal: the T2 plasma (n = 1, 8 particles per cell, T = 0.03, small B and electron velocity
+#     waves): the noise part
+
+import numpy as np
+
+import pyphare.pharein as ph
+
+case = "@T6_CASE@"
+cells, dl = 32, 0.04
+L = cells * dl
+
+ph.Simulation(
+    time_step=0.002,
+    time_step_nbr=20,
+    cells=(cells, cells),
+    dl=(dl, dl),
+    interp_order=1,
+    model_options=["FullyKineticModel"],
+    c_over_va=10.0,
+    current_filter_passes=1,
+    divergence_cleaning=0.5,
+    smallest_patch_size=8,
+    largest_patch_size=8,
+    refinement_boxes={"L0": {"B0": [(12, 12), (19, 19)]}},
+    strict=True,
+)
+
+
+def uniform(value):
+    return lambda x, y: value + 0.0 * x
+
+
+def sine(amplitude, direction):
+    return lambda x, y: amplitude * np.sin(2 * np.pi * (x, y)[direction] / L)
+
+
+def species(charge, mass, density, temperature, ppc, seed, drift=None):
+    vth = uniform(np.sqrt(temperature / mass))
+    bulk = drift or {}
+    return {
+        "charge": charge,
+        "mass": mass,
+        "density": uniform(density),
+        "vbulkx": bulk.get("x", uniform(0.0)),
+        "vbulky": bulk.get("y", uniform(0.0)),
+        "vbulkz": uniform(0.0),
+        "vthx": vth,
+        "vthy": vth,
+        "vthz": vth,
+        "nbr_part_per_cell": ppc,
+        "init": {"seed": seed},
+    }
+
+
+if case.startswith("wave"):
+    k = 2 * np.pi / (int(case[4:]) * dl / 2)  # wavelength in fine cells
+    ph.MaxwellianFluidModel(
+        bx=uniform(0.0),
+        by=uniform(0.0),
+        bz=lambda x, y: 0.1 * np.cos(k * x) + 0.0 * y,
+        protons=species(1, 1.0, 1e-6, 0.01, 4, 1),
+        electrons=species(-1, 0.04, 1e-6, 0.04, 4, 2),
+    )
+else:
+    ph.MaxwellianFluidModel(
+        bx=uniform(1.0),
+        by=sine(0.1, 0),
+        bz=sine(0.1, 1),
+        protons=species(1, 1.0, 1.0, 0.03, 8, 2026),
+        electrons=species(
+            -1, 0.04, 1.0, 0.03, 8, 2027, {"x": sine(0.05, 0), "y": sine(0.05, 1)}
+        ),
+    )
