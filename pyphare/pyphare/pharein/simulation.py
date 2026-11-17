@@ -681,7 +681,7 @@ def check_current_filter_passes(**kwargs):
 
 def check_divergence_cleaning(**kwargs):
     """Marder divergence cleaning of the fully kinetic E, s = d dt sum_i 2 / dx_i^2 in [0, 1],
-    0 (off) by default"""
+    0 (off) by default on one level, to be given with refinement"""
     model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
     s = kwargs.get("divergence_cleaning")
 
@@ -693,7 +693,7 @@ def check_divergence_cleaning(**kwargs):
         return None
 
     if s is None:
-        return 0.0
+        return fully_kinetic.default_divergence_cleaning(kwargs["max_nbr_levels"])
     if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 <= s <= 1:
         raise ValueError(
             f"Error: divergence_cleaning must be a number in [0, 1], got {s!r}"
@@ -1203,7 +1203,8 @@ class Simulation:
           t=0, and the one the diagnostics see. The setup stability check is not changed: the
           filter only lowers the plasma response at short wavelengths, the check without it
           stays conservative.
-        * **divergence_cleaning** (``float``), default=0.0 (off), Marder cleaning of E at every
+        * **divergence_cleaning** (``float``), default=0.0 (off) on one level, required with
+          refinement (0 allowed, 0.5 recommended), Marder cleaning of E at every
           step, E += d dt grad(div E - c^2 rho), given as s = d dt sum_i 2 / dx_i^2 in [0, 1]:
           a mode of the Gauss residual is multiplied each step by
           1 - 2 s sum_i sin^2(k_i dx_i / 2) / dx_i^2 / sum_i 1 / dx_i^2, s = 0.5 removes the grid

@@ -122,7 +122,7 @@ class TestFullyKineticChecks(unittest.TestCase):
 
     def test_tagging_is_refused(self):
         with self.assertRaisesRegex(ValueError, "tagging"):
-            make_sim(refinement="tagging", max_nbr_levels=2)
+            make_sim(refinement="tagging", max_nbr_levels=2, divergence_cleaning=0.5)
 
     def test_refinement_boxes_are_accepted(self):
         sim = make_sim(

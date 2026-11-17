@@ -46,6 +46,18 @@ def check_fully_kinetic_simulation(**kwargs):
         raise ValueError("Error: FullyKineticModel does not support restarts yet")
 
 
+def default_divergence_cleaning(max_nbr_levels):
+    """divergence_cleaning when the user gives none: off on one level. With refinement Gauss's
+    law breaks at the level boundary (level ghost particles swapped every coarse step, particles
+    erased when they leave, split at level creation), so the user must choose, 0 included."""
+    if max_nbr_levels > 1:
+        raise ValueError(
+            "Error: FullyKineticModel: divergence_cleaning must be set with refinement,"
+            " 0.5 recommended"
+        )
+    return 0.0
+
+
 def _cell_centers(sim):
     axes = [(np.arange(n) + 0.5) * d for n, d in zip(sim.cells, sim.dl)]
     return np.meshgrid(*axes, indexing="ij")
