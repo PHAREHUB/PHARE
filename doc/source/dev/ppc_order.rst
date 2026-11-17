@@ -70,10 +70,11 @@ One step, four stages
 * Average: E, B at n+½ = (n + predicted)/2; E ghosts filled at t+Δt/2
   (``average_``, :src:`src/amr/solvers/solver_ppc.hpp#L534-L562`).
 * Push 1 / push 2: ``moveIons_`` in mode ``domain_only`` / ``all``
-  (:src:`src/amr/solvers/solver_ppc.hpp#L590-L666`).
+  (:src:`src/amr/solvers/solver_ppc.hpp#L590-L663`).
 * Predictor 2 uses the predicted moments; corrector uses those of push 2
   (``predictor2_``, ``corrector_``, :src:`src/amr/solvers/solver_ppc.hpp#L448-L531`).
-* After each push: border sums, level ghost Old/New, totals (:doc:`/dev/moments`);
+* After each push: owned level ghosts Old/New, then the border sums, then the
+  totals (:src:`src/amr/solvers/solver_ppc.hpp#L620-L632`, :doc:`/dev/moments`);
   after push 2 only: neighbours grab the leavers (:doc:`/dev/grabbing_particles`).
 
 The tricks
@@ -85,7 +86,7 @@ Push 1 works on copies
 **Problem.** Moving the real particles in push 1 would start push 2 from the
 wrong place.
 **Fix.** ``updateAndDepositDomain_`` pushes a copy in ``tmp_particles_``
-(:src:`src/core/numerics/ion_updater/ion_updater.hpp#L184-L235`); its memory is
+(:src:`src/core/numerics/ion_updater/ion_updater.hpp#L186-L238`); its memory is
 released at regrid (``onRegrid``, :src:`src/amr/solvers/solver_ppc.hpp#L115-L119`).
 
 Every particle gets both half pushes
@@ -102,14 +103,14 @@ Particles change patch only in push 2
 **Problem.** Exchanging particles in push 1, whose particles are thrown away,
 would waste communication.
 **Fix.** The grab and the single-owner clean-up run only in mode ``all``
-(:src:`src/amr/solvers/solver_ppc.hpp#L633-L656`); moments are exchanged after
+(:src:`src/amr/solvers/solver_ppc.hpp#L634-L657`); moments are exchanged after
 both pushes.
 
 Level ghost entrants of push 1
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Copies of level ghost particles entering the domain in push 1 are deposited,
-not kept (comment at :src:`src/core/numerics/ion_updater/ion_updater.hpp#L223-L230`).
+not kept (comment at :src:`src/core/numerics/ion_updater/ion_updater.hpp#L225-L233`).
 
 Go deeper
 ---------

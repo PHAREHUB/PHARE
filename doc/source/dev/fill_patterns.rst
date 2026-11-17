@@ -58,7 +58,12 @@ may write. Look at node 8: only the init/regrid and moment-sum patterns touch it
    * - same, ``overwrite_interior = true``
      - B on a new level (``BalgoInit``) and after regrid (``BregridAlgo``)
    * - ``FieldGhostInterpOverlapFillPattern`` (and ``Tensor...``)
-     - summing, then equalizing, moments across borders (:doc:`/dev/moments`)
+     - border sums of the population moments (:doc:`/dev/moments`); B on
+       level 0, one maximum at initialization (:doc:`/dev/ghost_cells`).
+       Overlap = intersection of the two patches' ghost field boxes, per
+       component with its own centering; none with the patch itself (its periodic
+       image counts as another patch)
+       (:src:`src/amr/data/field/field_variable_fill_pattern.hpp#L297-L345`)
    * - ``NoOverlapFillPattern``
      - MHD E: only physical-boundary ghosts are set
 
@@ -66,8 +71,8 @@ may write. Look at node 8: only the init/regrid and moment-sum patterns touch it
   compile-time setting instead
   (:src:`src/amr/data/field/field_variable_fill_pattern.hpp#L140-L153`).
 * Registrations: hybrid
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L159-L201`,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L846-L908`;
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L161-L203`,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L849-L894`;
   MHD E :src:`src/amr/messengers/mhd_messenger.hpp#L523-L536`.
 
 
@@ -96,7 +101,7 @@ Look at the hatched cells: both patches hold them; only id 1 keeps particles the
   :src:`src/amr/wrappers/hierarchy.hpp#L356-L361`).
 * Owner = smallest ``GlobalId``; each patch finds its non-owned cells locally,
   no communication; periodic copies carry their patch's id
-  (``makeNonOwnedBoxes``, :src:`src/amr/resources_manager/amr_utils.hpp#L244-L280`).
+  (``makeNonOwnedBoxes``, :src:`src/amr/resources_manager/amr_utils.hpp#L252-L288`).
 * The hybrid solver builds these boxes once per level
   (``SolverPPC::make_boxes``, :src:`src/amr/solvers/solver_ppc.hpp#L158-L171`)
   and keeps domain particles only in owned cells (:doc:`/dev/grabbing_particles`).
@@ -119,8 +124,8 @@ in ``calculateOverlap`` via the field geometry for copies
 ``computeFillBoxesOverlap`` for refined values
 (:src:`src/amr/data/field/field_variable_fill_pattern.hpp#L155-L194`). New
 levels use ``true``, since they have no values yet
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L850-L851`,
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L180-L181`).
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L852-L853`,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L182-L183`).
 
 The setting is a type, not a value
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
