@@ -42,7 +42,7 @@ ONE_PATCH = 32
 # orders 1 to 3) and aborts in BoxUtilities::fixBadCutPointsForDirection when a box cannot be cut
 # into pieces between that and the largest patch size (with 6 and 8: 9 to 11 cells). Measured on
 # 3 ranks, 2D: orders 2 and 3 abort with tiles of 8, order 2 runs with 12, order 1 with 8. Tiles of
-# 8 at order 1, 12 above: a tile still ends on the level boundary (fine box 16..47).
+# 8 at order 1, 12 above: a tile still ends on the level boundary (fine box 16..47). P4 plan pitfall 26.
 TILED = {1: 8, 2: 12, 3: 12}
 FIELD_ULPS = 4
 

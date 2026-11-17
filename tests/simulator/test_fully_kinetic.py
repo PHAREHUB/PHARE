@@ -65,6 +65,8 @@ cleaning = cli.cleaning
 # nodes shared by 4 and 8 patches), particles per cell and species, interpolation orders,
 # time steps. 3D is cut for the PR tier: 4 ppc and 40 steps took 26.8 s at order 1 (Debug), now
 # 11.7 s; orders 2 and 3 add 29 s (registered apart)
+# Tiles of 8 at orders 2 and 3 are serial only: on several ranks SAMRAI aborts cutting them (field
+# ghosts 6, P4 plan pitfall 26); tests/functional/fully_kinetic/compare_runs.py tiles them by 12.
 CASES = {
     1: {"cells": 64, "tiled": 16, "ppc": 50, "orders": [1, 2, 3], "steps": 40},
     2: {"cells": 32, "tiled": 8, "ppc": 8, "orders": [1, 2, 3], "steps": 40},
