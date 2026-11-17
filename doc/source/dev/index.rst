@@ -75,6 +75,7 @@ How to use this guide
       **Input/output and performance**
 
       - :doc:`diagnostics_restarts`
+      - :doc:`pharesee_reader`
       - :doc:`load_balancing`
       - :doc:`hpc_internals`
 
@@ -118,6 +119,7 @@ How to use this guide
    electromagnetic
    mhd_solver
    diagnostics_restarts
+   pharesee_reader
    load_balancing
    hpc_internals
    working_on_phare

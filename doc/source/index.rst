@@ -70,6 +70,7 @@ Where to start
    data_analysis/patch_hierarchy
    data_analysis/plotting_fields
    data_analysis/distributions
+   data_analysis/amr_reader
 
 
 .. toctree::

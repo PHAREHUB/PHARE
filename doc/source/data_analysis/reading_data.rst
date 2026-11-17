@@ -72,15 +72,11 @@ that the simulation wrote (the ``dir`` of ``diag_options``):
 
 Every data getter has the same form, ``run.GetXXX(time)``, where ``XXX`` is the
 name of a physical quantity and ``time`` is the time you want. The time must be
-one at which the quantity was written: any other time gives a ``KeyError``
-(``Unable to synchronously open object (object '7.0000000000' doesn't
-exist)``). Use ``run.times("B")`` to list the available times of a quantity.
-``run.all_times()`` gives them for every file, in a dictionary.
-
-.. note:: The times come in the order of their names in the file, not in
-   numerical order: ``[0, 10, 5]`` for outputs at t = 0, 5 and 10. Use
-   ``np.sort(run.times("B"))`` when the order matters (a loop that plots in
-   time order, a time derivative).
+one at which the quantity was written: any other time raises a
+``TimeNotFoundError`` (a kind of ``KeyError``) whose message lists the nearest
+written times. Use ``run.times("B")`` to list the available times of a
+quantity, sorted. ``run.all_times()`` gives them for every file, in a
+dictionary.
 
 
 What it does
@@ -90,6 +86,12 @@ A getter opens the one file that holds the quantity (written by a
 :doc:`diagnostics </user_guide/diagnostics>` block), reads the requested time,
 and returns a Python object: a :doc:`patch hierarchy <patch_hierarchy>` by
 default, or an interpolator and its grid with ``merged=True``.
+
+The default getters go through the AMR reader (:doc:`amr_reader`): the
+hierarchy reads its patches only when you use them, and a getter also accepts
+``box=`` to read part of the domain. ``merged=True``, ``all_primal=False``,
+particles and pressure tensors are still read by the previous reader; the
+:doc:`amr_reader` page lists what differs between the two.
 
 Which getter reads which file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -242,8 +244,9 @@ field normalized to the field and Alfvén speed of the normalization (see
    mixes them. Check ``xpoint`` before trusting ``rate``. These methods are not
    covered by PHARE's tests.
 
-``times`` must be a NumPy array: a Python list stops with ``TypeError:
-unsupported operand type(s) for /: 'list' and 'int'``.
+``times`` can be a list or a NumPy array. With the previous reader
+(``Run(path, legacy=True)``) it must be a NumPy array: a Python list stops with
+``TypeError: unsupported operand type(s) for /: 'list' and 'int'``.
 
 
 Options
@@ -268,8 +271,14 @@ These options are shared by most getters.
    * - ``interp``
      - interpolation used by ``merged=True``. 1D: any ``kind`` of
        ``scipy.interpolate.interp1d`` (for example ``"nearest"``, ``"linear"``);
-       2D: ``"nearest"`` or ``"bilinear"``
+       2D: ``"nearest"`` or ``"bilinear"``. Without ``merged=True`` it raises
+       ``TypeError``
      - ``"nearest"``
+   * - ``box``
+     - read only the patches meeting this box, in physical units:
+       ``box=dict(x=(10.0, 30.0))`` (add ``y=``, ``z=`` in 2D and 3D). Not with
+       ``merged=True`` or ``all_primal=False``
+     - the whole domain
    * - ``all_primal``
      - for ``GetB``, ``GetE``, ``GetJ`` and the MHD getters: move all
        components to the same grid points (primal nodes, the cell corners).
@@ -289,16 +298,19 @@ Common mistakes
   not requested. Use the population names of your input script.
 * ``FileNotFoundError: ... 'first_run/ions_pop_protons_momentum_tensor.h5' ...``
   — ``GetPressure`` needs a per-population ``momentum_tensor`` diagnostic.
-* ``KeyError: "Unable to synchronously open object (object '7.0000000000'
-  doesn't exist)"`` — time 7.0 was not written. List the times with
+* ``TimeNotFoundError: first_run/EM_B.h5: no data at time 7.0; nearest times:
+  0.0, 25.0, 50.0 ...`` — time 7.0 was not written. List the times with
   ``run.times("B")``.
-* ``ValueError: divB is 0 by construction in 1D`` — ``GetDivB`` only makes
-  sense in 2D and 3D.
-* In 1D, ``GetJ(t)`` stops with ``KeyError: 'Jx'``, and ``GetPressure`` and
-  ``GetPi`` with an ``AssertionError``. They work in 2D. ``GetJ(t, all_primal=False)``
-  works in 1D.
-* ``Run`` only looks at ``*.h5`` files in the folder. Use the ``phareh5``
-  format for analysis with ``pharesee``.
+* In 1D, ``GetDivB`` returns zeros, and NaN next to a coarse-fine boundary:
+  divB is 0 by construction (the previous
+  reader, ``legacy=True``, stops with ``ValueError``).
+* In 1D, ``GetPressure`` and ``GetPi`` stop with an ``AssertionError``. They
+  work in 2D.
+* ``TypeError`` naming an unexpected keyword — a typo in a getter keyword; the
+  message lists the accepted ones.
+* ``Run`` reads the ``*.h5`` (``phareh5``) and ``*.vtkhdf`` (``pharevtkhdf``)
+  files of the folder. Particles, pressure tensors and ``merged=True`` need
+  ``phareh5`` files.
 
 .. note:: Diagnostics are written in single precision, so fields carry about
    7 significant digits, unless PHARE was built with ``-DPHARE_DIAG_DOUBLES=1``

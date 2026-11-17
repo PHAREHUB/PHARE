@@ -620,15 +620,19 @@ class Run(LegacyRun):
 
     ``Run(path, default_time=None, *, legacy=None, format=None)``
 
-    path     the diagnostics directory
-    legacy   None: the environment variable ``PHARESEE_LEGACY`` if set, else False;
-             False: the new reader (``pyphare.pharesee.amr``) reads ``.h5`` files, and
-             what it does not provide (``merged=True``, particles, pressure tensors, tags,
-             ranks, particle counts, ``all_primal=False``) is served by master's reader
-             (``LegacyRun``) automatically; True: master's reader for every ``.h5`` file
-             (raises ValueError when the selected files are ``.vtkhdf``, which it cannot read)
-    format   None, "h5" or "vtkhdf": which files to use when a quantity exists in both
-             formats (without it such a quantity raises ValueError asking for it)
+    path
+        the diagnostics directory
+    legacy
+        None: the environment variable ``PHARESEE_LEGACY`` if set, else False;
+        False: the new reader (``pyphare.pharesee.amr``) reads ``.h5`` files, and
+        what it does not provide (``merged=True``, particles, pressure tensors, tags,
+        ranks, particle counts, ``all_primal=False``) is served by master's reader
+        (``LegacyRun``) automatically; True: master's reader for every ``.h5`` file
+        (raises ValueError when the selected files are ``.vtkhdf``, which it cannot read)
+    format
+        None, "h5" or "vtkhdf": which files to use when a quantity exists in both
+        formats (without it such a quantity raises ValueError asking for it)
+
     The reader is chosen once, here; ``repr(run)`` says which. ``.vtkhdf`` files always go
     to the new reader.
 
@@ -1367,9 +1371,11 @@ class Run(LegacyRun):
     def plan(self, qty, time, box=None):
         """What reading ``qty`` at ``time`` (on ``box``) would touch, without reading it.
 
-        qty : a stored quantity ("B", "EM_B", "Ni", "ions_pop_protons_density", ...) or "J",
-              "divB" (B on the box widened by the stencil's halo: what ``GetJ(t)`` and
-              ``GetDivB(t, stencil="node")`` read)
+        qty
+            a stored quantity ("B", "EM_B", "Ni", "ions_pop_protons_density", ...) or "J",
+            "divB" (B on the box widened by the stencil's halo: what ``GetJ(t)`` and
+            ``GetDivB(t, stencil="node")`` read)
+
         Returns a ``RunPlan`` (bytes read from the file, patches per time and level). Reads only the index
         tables. ValueError when the quantity is served by the legacy reader.
         """
