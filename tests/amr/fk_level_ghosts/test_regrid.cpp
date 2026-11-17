@@ -129,6 +129,16 @@ std::shared_ptr<SAMRAI::hier::PatchLevel> replaceFineLevel(Index2 const lower, I
 
     hierarchy.removePatchLevel(fineLevel);
     hierarchy.makeNewPatchLevel(fineLevel, boxLevel);
+
+    // the new<==>coarser Connectors SAMRAI's regrid caches for the new level
+    // (GriddingAlgorithm::regridFinerLevel_createAndInstallNewLevel): the regrid schedules, from
+    // the old level not in the hierarchy, connect the new level to the coarser one through them
+    auto const newLevel = hierarchy.getPatchLevel(fineLevel);
+    newLevel->findConnectorWithTranspose(
+        *hierarchy.getPatchLevel(fineLevel - 1),
+        hierarchy.getRequiredConnectorWidth(fineLevel, fineLevel - 1, true),
+        hierarchy.getRequiredConnectorWidth(fineLevel - 1, fineLevel, true),
+        SAMRAI::hier::CONNECTOR_IMPLICIT_CREATION_RULE, true);
     return oldLevel;
 }
 
