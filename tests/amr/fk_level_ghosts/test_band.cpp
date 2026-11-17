@@ -10,7 +10,7 @@
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
-#include "amr/solvers/fk_current_deposit.hpp"
+#include "amr/solvers/fk_electric.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
 #include "core/data/field/field_traits.hpp"
 

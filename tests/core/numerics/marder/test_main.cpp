@@ -66,10 +66,7 @@ protected:
         // d such that d dt sum_i 2/dl_i^2 = s
         double coefficient(double const s, double const dt) const
         {
-            double sum = 0.;
-            for (auto const dl : layout.meshSize())
-                sum += 2. / (dl * dl);
-            return s / (dt * sum);
+            return marderCoefficient(layout, s, dt);
         }
     };
 

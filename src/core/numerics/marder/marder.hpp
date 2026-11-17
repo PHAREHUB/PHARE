@@ -145,6 +145,21 @@ private:
     double const d_;
 };
 
+
+/**
+ * @brief marderCoefficient returns the coefficient d of Marder from the dimensionless cleaning
+ * strength s = d dt sum_i 2/dl_i^2 on the mesh of the layout (s = 1/2 removes the grid scale
+ * mode in one step, s <= 1 is stable).
+ */
+template<typename GridLayout>
+double marderCoefficient(GridLayout const& layout, double const s, double const dt)
+{
+    double sum = 0.;
+    for (auto const dl : layout.meshSize())
+        sum += 2. / (dl * dl);
+    return s / (dt * sum);
+}
+
 } // namespace PHARE::core
 
 #endif

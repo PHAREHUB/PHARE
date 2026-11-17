@@ -201,17 +201,14 @@ namespace core
         template<typename Boxes>
         void eraseDomainParticlesIn(Boxes const& boxes)
         {
-            if (boxes.empty())
-                return;
+            eraseParticlesIn_(boxes, [](auto& pop) -> auto& { return pop.domainParticles(); });
+        }
 
-            for (auto& pop : populations_)
-            {
-                auto& particles = pop.domainParticles();
-                auto range      = makeIndexRange(particles);
-                auto const kept = particles.partition(
-                    range, [&](auto const& cell) { return !isIn(Point{cell}, boxes); });
-                particles.erase(makeRange(particles, kept.iend(), particles.size()));
-            }
+        // drops the level ghost particles of all populations located in `boxes`
+        template<typename Boxes>
+        void eraseLevelGhostParticlesIn(Boxes const& boxes)
+        {
+            eraseParticlesIn_(boxes, [](auto& pop) -> auto& { return pop.levelGhostParticles(); });
         }
 
 
@@ -292,6 +289,24 @@ namespace core
         auto& operator[](std::size_t const i) { return population(i); }
 
     private:
+        // drops the particles of all populations, in the array arrayOf(population), located in
+        // `boxes`
+        template<typename Boxes, typename ArrayOf>
+        void eraseParticlesIn_(Boxes const& boxes, ArrayOf&& arrayOf)
+        {
+            if (boxes.empty())
+                return;
+
+            for (auto& pop : populations_)
+            {
+                auto& particles = arrayOf(pop);
+                auto range      = makeIndexRange(particles);
+                auto const kept = particles.partition(
+                    range, [&](auto const& cell) { return !isIn(Point{cell}, boxes); });
+                particles.erase(makeRange(particles, kept.iend(), particles.size()));
+            }
+        }
+
         field_type massDensity_;
         field_type chargeDensity_;
         vecfield_type bulkVelocity_;

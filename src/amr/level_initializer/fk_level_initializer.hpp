@@ -11,7 +11,7 @@
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
-#include "amr/solvers/fk_current_deposit.hpp"
+#include "amr/solvers/fk_electric.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 

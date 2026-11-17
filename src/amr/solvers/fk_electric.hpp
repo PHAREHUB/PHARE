@@ -1,10 +1,12 @@
-#ifndef PHARE_AMR_SOLVERS_FK_CURRENT_DEPOSIT_HPP
-#define PHARE_AMR_SOLVERS_FK_CURRENT_DEPOSIT_HPP
+#ifndef PHARE_AMR_SOLVERS_FK_ELECTRIC_HPP
+#define PHARE_AMR_SOLVERS_FK_ELECTRIC_HPP
 
 #include "core/errors.hpp"
 #include "core/logger.hpp"
+#include "core/numerics/ampere/ampere_maxwell.hpp"
 #include "core/numerics/esirkepov/esirkepov.hpp"
 #include "core/numerics/filter/binomial_filter.hpp"
+#include "core/numerics/marder/marder.hpp"
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
@@ -125,6 +127,42 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
     filter(J, [&]() { messenger.fillCurrentGhosts(J, level, time); });
     if (cleaning)
         filter(rho, [&]() { messenger.fillChargeDensityGhosts(rho, level, rhoTime); });
+}
+
+
+
+/**
+ * @brief advanceFKElectric is steps 1 and 2 of SolverFK: J and rho from the particles at time
+ * (depositFKCurrent), then E, at time - dt/2, cleaned (Marder, d from model.divergence_cleaning on
+ * this level's mesh) and advanced to time + dt/2 (Ampere-Maxwell). E is the model E, or the copy of
+ * it the solver advances one step ahead for a finer level (P4 plan D1). E ghosts are read, not
+ * filled; labels are the caller's.
+ */
+template<typename FKModel, typename Messenger, typename VecField>
+void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
+                       VecField& E, double const dt, double const time)
+{
+    using GridLayout = FKModel::gridlayout_type;
+
+    auto& rm  = *model.resourcesManager;
+    auto& B   = model.state.electromag.B;
+    auto& J   = model.state.J;
+    auto& rho = model.state.rho;
+
+    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., time);
+
+    if (model.divergence_cleaning > 0.)
+        for (auto& patch : rm.enumerate(level, rho, E))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            auto const d      = core::marderCoefficient(layout, model.divergence_cleaning, dt);
+            core::Marder{layout, model.c2(), d}(E, rho, dt);
+        }
+    for (auto& patch : rm.enumerate(level, B, J, E))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        core::AmpereMaxwell{layout, model.c2()}(B, J, E, dt);
+    }
 }
 
 } // namespace PHARE::solver

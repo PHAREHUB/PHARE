@@ -6,7 +6,7 @@
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
-#include "amr/solvers/fk_current_deposit.hpp"
+#include "amr/solvers/fk_electric.hpp"
 #include "core/data/field/field_traits.hpp"
 
 #include "tests/simulator/per_test.hpp"

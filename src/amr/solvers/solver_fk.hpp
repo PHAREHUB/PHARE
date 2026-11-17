@@ -4,9 +4,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/errors.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/numerics/ampere/ampere_maxwell.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
-#include "core/numerics/marder/marder.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "mpi/mpi_utils.hpp"
 
@@ -15,7 +13,7 @@
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
-#include "amr/solvers/fk_current_deposit.hpp"
+#include "amr/solvers/fk_electric.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 
@@ -225,9 +223,6 @@ public:
 
 
 private:
-    void advanceElectric_(level_t& level, FKModel& model, Messenger& messenger, VecFieldT& E,
-                          double const dt, double const time);
-
     void moveParticles_(level_t& level, FKModel& model, Messenger& messenger,
                         double const currentTime, double const newTime);
 
@@ -274,7 +269,7 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     }
 
     // 1. and 2.
-    advanceElectric_(level, model, messenger, E, dt, currentTime);
+    advanceFKElectric(level, model, messenger, E, dt, currentTime);
     TimeSetter{level, model, halfTime}(E);
     messenger.fillElectricGhosts(E, level, halfTime);
 
@@ -300,41 +295,8 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     {
         for (auto& patch : rm.enumerate(level, E, Eahead_))
             Eahead_.copyData(E); // with its ghosts, read by the cleaning
-        advanceElectric_(level, model, messenger, Eahead_, dt, newTime);
+        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime);
         TimeSetter{level, model, newTime + 0.5 * dt}(Eahead_);
-    }
-}
-
-
-
-// 1. J and rho from the particles at time, then 2. E (at time - dt/2) cleaned, d from
-// s = d dt sum_i 2/dx_i^2 on this level, and advanced to time + dt/2
-template<typename FKModel, typename AMR_Types>
-void SolverFK<FKModel, AMR_Types>::advanceElectric_(level_t& level, FKModel& model,
-                                                    Messenger& messenger, VecFieldT& E,
-                                                    double const dt, double const time)
-{
-    auto& rm  = *model.resourcesManager;
-    auto& B   = model.state.electromag.B;
-    auto& J   = model.state.J;
-    auto& rho = model.state.rho;
-
-    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., time);
-
-    if (model.divergence_cleaning > 0.)
-        for (auto& patch : rm.enumerate(level, rho, E))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            double sum        = 0.;
-            for (auto const dl : layout.meshSize())
-                sum += 2. / (dl * dl);
-            auto const d = model.divergence_cleaning / (dt * sum);
-            core::Marder{layout, model.c2(), d}(E, rho, dt);
-        }
-    for (auto& patch : rm.enumerate(level, B, J, E))
-    {
-        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-        core::AmpereMaxwell{layout, model.c2()}(B, J, E, dt);
     }
 }
 
@@ -371,18 +333,8 @@ void SolverFK<FKModel, AMR_Types>::moveParticles_(level_t& level, FKModel& model
     // particle now: kept here, it would deposit twice (P4 plan D5: the neighbor's deposit reaches
     // this patch through the border sum) and could later be exported a second time
     for (auto& patch : rm.enumerate(level, ions))
-    {
-        auto const& sameLevelCells
-            = levelBoxing.at(amr::to_string(patch->getGlobalId())).nonLevelGhostBox;
-        for (auto& pop : ions)
-        {
-            auto& particles = pop.levelGhostParticles();
-            auto const kept = particles.partition(makeIndexRange(particles), [&](auto const& cell) {
-                return !isIn(core::Point{cell}, sameLevelCells);
-            });
-            particles.erase(makeRange(particles, kept.iend(), particles.size()));
-        }
-    }
+        ions.eraseLevelGhostParticlesIn(
+            levelBoxing.at(amr::to_string(patch->getGlobalId())).nonLevelGhostBox);
 
     // this needs to be done before calling the messenger
     setTime(ions);
