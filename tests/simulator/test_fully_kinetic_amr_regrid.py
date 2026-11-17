@@ -62,8 +62,10 @@ fk.diag_dir = (
 times = [step * fk.time_step for step in range(STEPS + 1)]
 
 
-def config(refined):
-    sim = ph.Simulation(
+def config(refined, subdir=None, diag_times=None, **simulation):
+    """the run, dumped in fk.diag_dir/subdir (default "refined" or "one_level") at diag_times
+    (default every coarse step); `simulation` adds or replaces Simulation arguments (T16, T17)"""
+    arguments = dict(
         time_step=fk.time_step,
         time_step_nbr=STEPS,
         cells=[fk.cells] * ndim,
@@ -85,12 +87,14 @@ def config(refined):
         diag_options={
             "format": "phareh5",
             "options": {
-                "dir": f"{fk.diag_dir}/{'refined' if refined else 'one_level'}",
+                "dir": f"{fk.diag_dir}/{subdir or ('refined' if refined else 'one_level')}",
                 "mode": "overwrite",
                 "fine_dump_lvl_max": 1,
             },
         },
     )
+    sim = ph.Simulation(**{**arguments, **simulation})
+    diag_times = times if diag_times is None else diag_times
 
     def vth(mass):
         return fk.uniform(np.sqrt(fk.T / mass))
@@ -117,10 +121,10 @@ def config(refined):
         electrons=species(-1, fk.mass_e, 2027),
     )
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=times)
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=diag_times)
     for pop in ["protons", "electrons"]:
         ph.ParticleDiagnostics(
-            quantity="domain", write_timestamps=times, population_name=pop
+            quantity="domain", write_timestamps=diag_times, population_name=pop
         )
     return sim
 
