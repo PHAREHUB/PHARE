@@ -242,6 +242,45 @@ class TestFullyKineticChecks(unittest.TestCase):
                 model_options=["HybridModel"], c_over_va=None, divergence_cleaning=0.5
             )
 
+    def test_boundary_cleaning_mask_is_off_by_default(self):
+        self.assertIs(make_sim(divergence_cleaning=0.5).boundary_cleaning_mask, False)
+
+    def test_boundary_cleaning_mask_is_kept_and_written(self):
+        sim = make_sim(divergence_cleaning=0.5, boundary_cleaning_mask=True)
+        self.assertTrue(sim.boundary_cleaning_mask)
+        make_model()
+        written = {}
+
+        class Recorder:
+            def __getattr__(self, adder):
+                return lambda path, value, *args: written.__setitem__(path, value)
+
+        with patch.object(initialize_fully_kinetic, "DictPopulator", Recorder):
+            initialize_fully_kinetic.populateDict(sim)
+        self.assertIs(written["simulation/boundary_cleaning_mask"], True)
+
+    def test_boundary_cleaning_mask_needs_the_cleaning(self):
+        # the mask is a set of nodes the cleaning skips: without cleaning it means nothing
+        for s in [None, 0]:
+            global_vars.sim = None
+            kwargs = {} if s is None else {"divergence_cleaning": s}
+            with self.assertRaisesRegex(
+                ValueError, "boundary_cleaning_mask needs divergence_cleaning > 0"
+            ):
+                make_sim(boundary_cleaning_mask=True, **kwargs)
+
+    def test_boundary_cleaning_mask_is_a_bool(self):
+        for mask in [1, "yes", 0.0]:
+            global_vars.sim = None
+            with self.assertRaisesRegex(ValueError, "boundary_cleaning_mask must be a bool"):
+                make_sim(divergence_cleaning=0.5, boundary_cleaning_mask=mask)
+
+    def test_boundary_cleaning_mask_is_only_for_fully_kinetic(self):
+        with self.assertRaisesRegex(ValueError, "only used by FullyKineticModel"):
+            make_sim(
+                model_options=["HybridModel"], c_over_va=None, boundary_cleaning_mask=False
+            )
+
     def test_restarts_are_refused(self):
         with self.assertRaisesRegex(ValueError, "restarts"):
             make_sim(
