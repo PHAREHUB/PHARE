@@ -50,12 +50,22 @@ protected:
         return a;
     }
 
-    // the electric field, the charge density and B (for Faraday) on one layout
+    // the electric field, the charge density and B (for Faraday) on one layout, whose AMR box
+    // starts at `lower` (0 by default)
     struct State
     {
-        explicit State(std::array<double, 3> const& meshSizes)
-            : layout{sub(meshSizes), sub(allCells), Point<double, dim>{}}
+        explicit State(std::array<double, 3> const& meshSizes,
+                       std::array<int, dim> const& lower = {})
+            : layout{sub(meshSizes), sub(allCells), Point<double, dim>{}, amrBox(lower)}
         {
+        }
+
+        static Box<int, dim> amrBox(std::array<int, dim> const& lower)
+        {
+            auto upper = lower;
+            for (std::size_t d = 0; d < dim; ++d)
+                upper[d] += static_cast<int>(allCells[d]) - 1;
+            return {Point<int, dim>{lower}, Point<int, dim>{upper}};
         }
 
         GridLayout_t layout;
@@ -343,6 +353,109 @@ TYPED_TEST(MarderTest, stabilityLimit)
         EXPECT_NEAR(g, 1. - 2. * stability, 1e-14);
         this->checkAmplification(s, marder, g, 40);
     }
+}
+
+
+
+// (e) skipped nodes, as the solver skips the level boundary nodes: F = 0 there. A residual on
+// them alone does not move E; with any state, the E nodes away from them are bitwise those of
+// the cleaning without skipped nodes, and the two E nodes next to each skipped node (one per
+// direction and side) differ. Skipped: both faces normal to x, and one interior node. The AMR box
+// does not start at 0, as on a patch: the skipped boxes are AMR indexes, not local ones.
+TYPED_TEST(MarderTest, skippedNodesHaveNoResidual)
+{
+    constexpr auto dim = TestFixture::dim;
+    using Box_t        = Box<int, dim>;
+    typename TestFixture::State s{TestFixture::dyadicMeshSizes, TestFixture::sub(std::array{5, -7, 3})};
+    auto const& layout = s.layout;
+    ASSERT_EQ(layout.AMRBox().lower[0], 5);
+    double const dt    = 1. / 128;
+    Marder<typename TestFixture::GridLayout_t> const marder{layout, this->c2, 1. / 8};
+
+    // AMR indexes of the primal nodes: node i is the lower corner of cell i
+    auto const cells = layout.AMRBox();
+    auto lowFace     = Box_t{cells.lower, cells.upper};
+    for (std::size_t d = 0; d < dim; ++d)
+        lowFace.upper[d] += 1;
+    auto highFace     = lowFace;
+    lowFace.upper[0]  = lowFace.lower[0];
+    highFace.lower[0] = highFace.upper[0];
+    auto interior     = Box_t{cells.lower, cells.lower};
+    for (std::size_t d = 0; d < dim; ++d)
+        interior.lower[d] = interior.upper[d] = cells.lower[d] + 3;
+    std::vector<Box_t> const skipped{lowFace, highFace, interior};
+
+    auto const isSkipped = [&](std::array<std::uint32_t, dim> const& local) {
+        auto const amr = layout.localToAMR(Point<std::uint32_t, dim>{local});
+        return isIn(amr, skipped);
+    };
+    // E_d at local index i (dual node i + 1/2 along d) reads F on the nodes i and i + 1 along d
+    auto const nextToSkipped = [&](std::size_t const d, auto const&... ijk) {
+        std::array<std::uint32_t, dim> left{static_cast<std::uint32_t>(ijk)...};
+        auto right = left;
+        ++right[d];
+        return isSkipped(left) or isSkipped(right);
+    };
+
+    auto snapshot = [](auto const& E) {
+        std::array<std::vector<double>, 3> c;
+        for (std::size_t i = 0; i < 3; ++i)
+            c[i].assign(E[i].data(), E[i].data() + E[i].size());
+        return c;
+    };
+    auto restore = [](auto& E, auto const& c) {
+        for (std::size_t i = 0; i < 3; ++i)
+            std::copy(c[i].begin(), c[i].end(), E[i].data());
+    };
+
+    auto& rho = *s.rho;
+    std::mt19937 gen{3};
+    std::uniform_int_distribution<int> integers{-64, 64};
+
+    // a residual on the skipped nodes only: E = 0, rho on the skipped nodes
+    for (auto& c : s.E)
+        std::fill(c.data(), c.data() + c.size(), 0.);
+    std::fill(rho.data(), rho.data() + rho.size(), 0.);
+    layout.evalOnBox(rho, [&](auto const&... ijk) {
+        if (isSkipped({static_cast<std::uint32_t>(ijk)...}))
+            rho(ijk...) = integers(gen) | 1; // odd: never 0
+    });
+    auto const zero = snapshot(s.E);
+    marder(s.E, rho, dt);
+    EXPECT_NE(snapshot(s.E), zero) << "the residual must move E without skipped nodes";
+    restore(s.E, zero);
+    marder(s.E, rho, dt, skipped);
+    EXPECT_EQ(snapshot(s.E), zero) << "a residual on skipped nodes moved E";
+
+    // any state, multiples of 1/64 (exact arithmetic)
+    for (auto& c : s.E)
+        layout.evalOnGhostBox(c, [&](auto const&... ijk) { c(ijk...) = integers(gen) / 64.; });
+    layout.evalOnGhostBox(rho, [&](auto const&... ijk) { rho(ijk...) = integers(gen) / 64.; });
+    auto const before = snapshot(s.E);
+    marder(s.E, rho, dt);
+    auto const all = snapshot(s.E);
+    restore(s.E, before);
+    marder(s.E, rho, dt, skipped);
+
+    std::size_t near = 0, differ = 0;
+    for (std::size_t d = 0; d < dim; ++d)
+    {
+        auto const& Ed = s.E[d];
+        layout.evalOnBox(Ed, [&](auto const&... ijk) {
+            auto const flat = &Ed(ijk...) - Ed.data();
+            if (nextToSkipped(d, ijk...))
+            {
+                ++near;
+                differ += Ed.data()[flat] != all[d][flat];
+            }
+            else
+                EXPECT_EQ(Ed.data()[flat], all[d][flat]) << Ed.name() << " node " << flat;
+        });
+    }
+    ASSERT_GT(near, 0u);
+    EXPECT_GT(differ, 0u);
+    for (std::size_t c = dim; c < 3; ++c)
+        EXPECT_EQ(std::vector<double>(s.E[c].data(), s.E[c].data() + s.E[c].size()), before[c]);
 }
 
 
