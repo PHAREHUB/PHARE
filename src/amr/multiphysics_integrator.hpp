@@ -345,6 +345,14 @@ namespace solver
             if (isRegridding and not isRegriddingL0)
                 solver.onRegrid();
 
+            // a level (re)created during the run: the coarser level prepares what it is built
+            // from (fully kinetic: its E one step ahead, P5a)
+            if (levelNumber > 0 and !initialTime)
+                getSolver_(levelNumber - 1)
+                    .prepareFinerLevel(*hierarchy, getModel_(levelNumber - 1),
+                                       *hierarchy->getPatchLevel(levelNumber - 1),
+                                       getMessengerWithCoarser_(levelNumber - 1), initDataTime);
+
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
 

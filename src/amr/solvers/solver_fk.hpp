@@ -230,6 +230,26 @@ public:
                        IMessenger& messenger, std::size_t const done, std::size_t const ratio,
                        double const midTime) override;
 
+    // a finer level (re)created at time, after this level's step and synchronization (P5a): step
+    // 6 replayed from the synchronized B^n and the particles at n, E^{n+1/2} one step ahead of
+    // the model E^{n-1/2}. The Eahead_ of the step, if any, predates the synchronization, and a
+    // level that had no finer one has none. With boundary_cleaning_mask the cleaning skips the
+    // level's nodes for the region the finer level synchronized in this step (keepCoveredRegion_)
+    void prepareFinerLevel(hierarchy_t const& hierarchy, IPhysicalModel_t& model, level_t& level,
+                           IMessenger& messenger, double const time) override
+    {
+        auto& fkModel     = dynamic_cast<FKModel&>(model);
+        auto& fkMessenger = dynamic_cast<Messenger&>(messenger);
+        auto& E           = fkModel.state.electromag.E;
+        auto const dt     = time - oldTime_.at(level.getLevelNumber());
+
+        for (auto& patch : fkModel.resourcesManager->enumerate(level, E, Eahead_))
+            Eahead_.copyData(E); // with its ghosts, read by the cleaning
+        advanceFKElectric(level, fkModel, fkMessenger, Eahead_, dt, time,
+                          skippedNodes_(hierarchy, level.getLevelNumber(), fkModel));
+        TimeSetter{level, fkModel, time + 0.5 * dt}(Eahead_);
+    }
+
     double computeStableDt(IPhysicalModel_t& /*model*/, level_t& /*level*/,
                            CFLNumbers const& /*cflNumbers*/) override
     {

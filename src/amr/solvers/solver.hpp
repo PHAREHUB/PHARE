@@ -121,6 +121,19 @@ namespace solver
         }
 
         /**
+         * @brief a finer level is about to be (re)created from this level at time, during the
+         * run: SAMRAI regrids it, or creates it, after this level's step and synchronization.
+         * Fully kinetic: this level's E one step ahead, which the new level's E is interpolated
+         * with (P5a); nothing for other models.
+         */
+        virtual void prepareFinerLevel(hierarchy_t const& /*hierarchy*/,
+                                       IPhysicalModel_t& /*model*/, level_t& /*level*/,
+                                       amr::IMessenger<IPhysicalModel_t>& /*messenger*/,
+                                       double const /*time*/)
+        {
+        }
+
+        /**
          * @brief advanceLevel advances the given level from t to t+dt
          */
         virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
