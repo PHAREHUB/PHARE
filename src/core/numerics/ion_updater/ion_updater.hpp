@@ -298,8 +298,11 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
 
         // fully kinetic: a leaver into the level ghost band stays there as a band particle until
         // the band is renewed from the coarser level (lastStep), or the band deposit misses the
-        // outflux of the fine steps in between (the boundary node's Gauss residual, a sawtooth)
-        if constexpr (keepsBandLeavers)
+        // outflux of the fine steps in between (the boundary node's Gauss residual, a sawtooth).
+        // 1D only for now: in 2D/3D a kept leaver must also be handed to the bands of the other
+        // same-level patches covering its cell, else results depend on the patch layout
+        // (docs/superpowers/specs/p4/sawtooth_fix_spec.md, point 3)
+        if constexpr (keepsBandLeavers and dimension == 1)
         {
             auto const bandLeavers
                 = makeRange(domainParticles, not_level_ghosts.iend(), now_ghosts.iend());
@@ -325,7 +328,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         }
 
         // after the band push: the leavers are at the end of this step already
-        if constexpr (keepsBandLeavers)
+        if constexpr (keepsBandLeavers and dimension == 1)
             for (auto const& particle : tmp_particles_)
                 pop.levelGhostParticles().push_back(particle);
 
