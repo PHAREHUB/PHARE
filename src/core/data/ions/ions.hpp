@@ -163,31 +163,47 @@ namespace core
         }
 
 
-        // sum_s q_s F_s on the moment nodes (electron velocity) and sum_s q_s fluxE_s on the E
-        // nodes (Ohm's law)
+        // sum_s q_s F_s on the moment nodes (outputs) and sum_s q_s fluxE_s on the E nodes (Ohm)
         void computeChargeFlux()
         {
-            auto const sum = [&](auto& total, auto const& popFlux) {
-                total.zero();
-                for (auto const& pop : populations_)
-                {
-                    auto const plusCharge
-                        = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
-
-                    for (std::size_t i = 0; i < total.size(); ++i)
-                    {
-                        auto& c       = total[i];
-                        auto const& f = popFlux(pop)[i];
-                        std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
-                                       plusCharge);
-                    }
-                }
-            };
-            sum(chargeFlux_, [](auto const& pop) -> auto const& { return pop.flux(); });
-            sum(chargeFluxE_, [](auto const& pop) -> auto const& { return pop.fluxE(); });
+            computeChargeFluxOnMomentNodes();
+            computeChargeFluxOnENodes();
         }
 
+        // sum_s q_s F_s on the moment nodes only. The E-node sum is left alone: the time loop
+        // completes it (border sums, coarse-fine ghosts, sync) and Ohm reads it.
+        void computeChargeFluxOnMomentNodes()
+        {
+            sumChargeWeighted_(chargeFlux_,
+                               [](auto const& pop) -> auto const& { return pop.flux(); });
+        }
 
+        void computeChargeFluxOnENodes()
+        {
+            sumChargeWeighted_(chargeFluxE_,
+                               [](auto const& pop) -> auto const& { return pop.fluxE(); });
+        }
+
+    private:
+        void sumChargeWeighted_(auto& total, auto&& popFlux)
+        {
+            total.zero();
+            for (auto const& pop : populations_)
+            {
+                auto const plusCharge
+                    = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
+
+                for (std::size_t i = 0; i < total.size(); ++i)
+                {
+                    auto& c       = total[i];
+                    auto const& f = popFlux(pop)[i];
+                    std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
+                                   plusCharge);
+                }
+            }
+        }
+
+    public:
         void computeFullMomentumTensor()
         {
             momentumTensor_.zero();

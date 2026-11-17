@@ -234,10 +234,11 @@ class AdvanceTestBase(SimulatorTest):
             qties = ["mhdRho"]
 
         else:  # hybrid
-            # the bulk velocity is a diagnostic only and is not coarsened, unlike
-            # the charge flux, which gives the electron velocity
+            # the charge flux on the moment nodes and the bulk velocity are outputs only, computed
+            # from each level's own particles, so they are not coarsened. The charge flux on the
+            # E nodes, which Ohm reads, is coarsened but is not a diagnostic.
             qties = ["rho"]
-            qties += [f"{qty}{xyz}" for qty in ["E", "CF"] for xyz in ["x", "y", "z"]]
+            qties += [f"E{xyz}" for xyz in ["x", "y", "z"]]
 
         lvl_steps = level_time_steps(global_vars.sim)
         print("LEVELSTEPS === ", lvl_steps)

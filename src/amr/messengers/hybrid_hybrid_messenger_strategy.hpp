@@ -1108,7 +1108,8 @@ namespace amr
         VecFieldT FEold_{stratName + "_FEold", core::HybridQuantity::Vector::J};
 
         // scratch fields of the diagnostics, which use them under these names
-        // (diagnostic_model_view.hpp)
+        // (diagnostic_model_view.hpp): the VTK writer converts fields with them, and
+        // HybridLazyMoments uses PHARE_sumField for the population density
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
         FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};

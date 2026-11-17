@@ -12,6 +12,7 @@
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
+#include "amr/physical_models/hybrid_lazy_moments.hpp"
 
 
 #include <string>
@@ -55,6 +56,10 @@ public:
     core::HybridState<Electromag, Ions, Electrons> state;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
+
+    // ion moments only outputs need (fluxes on the moment nodes, momentum tensor), computed when
+    // a diagnostic or the Python data wrangler asks for them; shared by both
+    amr::HybridLazyMoments<resources_manager_type, Ions, GridLayoutT> lazyMoments;
 
 
     void initialize(level_t& level) override;

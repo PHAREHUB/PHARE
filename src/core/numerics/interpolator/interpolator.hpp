@@ -686,7 +686,8 @@ public:
 
         // an E component on the moment nodes (E_z in 2D, E_y and E_z in 1D) has the gather weights
         // of the moment flux: its fluxE is the flux, copied instead of deposited a second time.
-        // This holds because every deposit of the flux also goes through this function.
+        // This holds because every deposit of the flux in the time loop also goes through this
+        // function (the outputs deposit the flux alone, without fluxE: HybridLazyMoments).
         auto const copyIfOnMomentNodes = [&]<auto quantity>(auto& dst, auto const& src) {
             if constexpr (onMomentNodes_<GridLayout, quantity>())
                 std::copy(src.data(), src.data() + src.size(), dst.data());

@@ -403,14 +403,22 @@ class BorderSumRefiner
         }
     };
 
-    LevelSum makeLevelSum_(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level) const
+    std::shared_ptr<SAMRAI::xfer::RefineSchedule>
+    makeSchedule_(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                  std::shared_ptr<BorderSums<Data_t>> const& sums) const
     {
-        auto sums     = std::make_shared<BorderSums<Data_t>>();
         auto schedule = algo_->createSchedule(
             level, patchStrat_.get(),
             std::make_shared<FieldBorderSumTransactionFactory<Data_t>>(sums));
         finalizeBorderSums(*sums, *level);
-        return {level, schedule, sums};
+        return schedule;
+    }
+
+    LevelSum makeLevelSum_(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level) const
+    {
+        auto sums     = std::make_shared<BorderSums<Data_t>>();
+        auto schedule = makeSchedule_(level, sums);
+        return {level, std::move(schedule), std::move(sums)};
     }
 
     std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo_
@@ -452,12 +460,16 @@ public:
         levels_.at(levelNumber).fill(fillTime);
     }
 
-    // builds the schedule for the level, fills once and discards it
+    // builds the schedule for the level, fills once and discards it.
+    // No LevelSum here: copying `level` into a temporary LevelSum makes gcc 15.3 at -O3 report
+    // a false "may be used uninitialized" on that copy, an error with -Werror (#1610).
     void fillTransient(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
                        double const fillTime) const
     {
-        makeLevelSum_(level).fill(fillTime);
+        auto const sums = std::make_shared<BorderSums<Data_t>>();
+        makeSchedule_(level, sums)->fillData(fillTime);
+        foldBorderSums(*sums, *level);
     }
 };
 
