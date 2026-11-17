@@ -29,6 +29,7 @@
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
@@ -39,6 +40,7 @@
 
 #include <memory>
 #include <algorithm>
+#include <limits>
 #include <string>
 #include <vector>
 #include <utility>
@@ -738,9 +740,27 @@ namespace amr
 
             PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber));
 
+            auto& E = hybridModel.state.electromag.E;
+
+            // Fully kinetic, above the root (three levels or more: the level synchronized here
+            // has a coarser one): its E sits at its own half step, time - dt_L/2, not at the
+            // synchronization time. Filled at the synchronization time, the level ghosts would be
+            // interpolated from the coarser level at the wrong time, and from the wrong pair past
+            // the coarser E (the ahead E is only picked by fillElectricGhosts): at the end of the
+            // coarser step, time > its E^{n+1/2}, SAMRAI's time bracket fails. So they are filled
+            // like every other E fill, at E's own label. On the root (no coarser level) the fill
+            // is same-level only and its time is not used, as for the hybrid (E at time there).
+            if constexpr (sumsParticleCurrent)
+                if (levelNumber != rootLevelNumber)
+                {
+                    fillElectricGhosts(E, level, electricTimeOn_(E, level));
+                    chargeDensityPatchGhostsRefiners_.fill(levelNumber, time);
+                    return;
+                }
+
             // this electric schedule should probably only be a patch ghost one
             // since levelghost nodes are not affected by the coarsening
-            elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
+            elecGhostsRefiners_.fill(E, levelNumber, time);
 
             chargeDensityPatchGhostsRefiners_.fill(levelNumber, time);
         }
@@ -1093,6 +1113,28 @@ namespace amr
             }
             else
                 return currentTime;
+        }
+
+        // the label of E on a level, the same on every patch: read on the local ones and agreed
+        // over the ranks, one of which may hold no patch of the level (the fill is collective)
+        double electricTimeOn_(VecFieldT const& E, level_t const& level) const
+        {
+            double local = std::numeric_limits<double>::max(), localMax = -local;
+            for (auto const& patch : level)
+            {
+                // the third argument is the hybrid's currentTime, unused here (fully kinetic)
+                auto const time = electricTime_(E, *patch, local);
+                local           = std::min(local, time);
+                localMax        = std::max(localMax, time);
+            }
+            auto const time = mpi::min(local);
+            // all the patches of all the ranks must agree: min alone would hide a disagreement
+            PHARE_DEBUG_DO({
+                if (-mpi::min(-localMax) != time)
+                    throw std::runtime_error("E labels differ on level "
+                                             + std::to_string(level.getLevelNumber()));
+            })
+            return time;
         }
 
         // fully kinetic: a finer level E ghost fill past the coarse E^{n+1/2}, whose time is the
