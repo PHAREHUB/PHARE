@@ -43,16 +43,27 @@ namespace PHARE::solver
  *  3. B^{n+1/2} = B^n - (dt/2) curl E^{n+1/2}
  *  4. Boris push with E^{n+1/2} and B^{n+1/2}
  *  5. B^{n+1} = B^n - dt curl E^{n+1/2}
+ *  6. on a level with a finer one, E one step ahead: steps 1 and 2 replayed from the particles
+ *     and B at n+1 on a copy of E^{n+1/2}, E^{n+3/2}, the newer end of the time interpolation of
+ *     the finer level E ghosts past E^{n+1/2} (P4 plan D1)
  *
  * The model E is labelled with its own time t_{n+1/2}, J with the time of the particles it
- * comes from, t_n. The deposit only depends on the
+ * comes from, t_n, rho with its own, t_n - dt/2. The deposit only depends on the
  * particles at time n, so anything that changes particles between two steps is accounted for.
  * The cleaning reads one ghost layer of E^{n-1/2}, filled at the end of the previous step's
- * Ampere update (or by the level initializer), and writes its physical nodes; Ampere only reads
- * E on the nodes it writes, and its ghost fill covers both. Charge conservation keeps the Gauss
- * residual between two cleanings: each cleaning multiplies its mode k by
- * 1 - d dt sum_i 4/dx_i^2 sin^2(k_i dx_i / 2). The level initializer does not clean: the
- * residual of E^{-1/2} (E starts at zero) is what the first step cleans.
+ * Ampere update (or by the level initializer on the root), and writes its physical nodes; Ampere
+ * only reads E on the nodes it writes, and its ghost fill covers both. On a refined level the E
+ * ghosts are filled again at t_n - dt/2 before step 2: the level initializer cannot fill them
+ * (no coarse E bracket at t=0), and at the first substep of a coarse step the coarse E has been
+ * synchronized since. Charge conservation keeps the Gauss residual between two cleanings: each
+ * cleaning multiplies its mode k by 1 - d dt sum_i 4/dx_i^2 sin^2(k_i dx_i / 2). The level
+ * initializer does not clean: the residual of E^{-1/2} (E starts at zero) is what the first step
+ * cleans.
+ *
+ * Synchronization with a finer level (P4 plan D4): the messenger coarsens the finer level's time
+ * average of E (the flux sum, at t_{n+1/2}) onto the model E over the covered region, then
+ * reflux recomputes B^{n+1} = B^n - dt curl E^{n+1/2} on the whole level from a copy of B^n:
+ * bitwise step 5 where E did not change. The finer model E, at another time, is not coarsened.
  */
 template<typename FKModel, typename AMR_Types>
 class SolverFK : public ISolver<AMR_Types>
@@ -76,6 +87,13 @@ private:
     Electromag electromagHalf_{"EMHalf"};
 
     VecFieldT fluxSumE_{this->name() + "_fluxSumE", core::HybridQuantity::Vector::E};
+
+    // E^{n+3/2} on a level with a finer one (step 6)
+    VecFieldT Eahead_{this->name() + "_Eahead", core::HybridQuantity::Vector::E};
+
+    // B^n and its time, per level: the start of the reflux Faraday
+    VecFieldT Bold_{this->name() + "_Bold", core::HybridQuantity::Vector::B};
+    std::unordered_map<int, double> oldTime_;
 
     IonUpdater_t ionUpdater_;
 
@@ -106,9 +124,11 @@ public:
         fkInfo.ghostMagnetic.emplace_back(electromagHalf_.B.name());
         fkInfo.initMagnetic.emplace_back(electromagHalf_.B.name());
 
-        // only used with refinement: reflux writes a temporary, never the model E
-        fkInfo.refluxElectric  = electromagHalf_.E.name();
+        // with refinement: the finer level's flux sum is coarsened onto the model E, at the same
+        // time t_{n+1/2} (the model fills its info first, messenger_registration.hpp)
+        fkInfo.refluxElectric  = fkInfo.modelElectric;
         fkInfo.fluxSumElectric = fluxSumE_.name();
+        fkInfo.aheadElectric   = Eahead_.name();
     }
 
     void registerResources(IPhysicalModel_t& model) override
@@ -116,6 +136,8 @@ public:
         auto& rm = *dynamic_cast<FKModel&>(model).resourcesManager;
         rm.registerResources(electromagHalf_);
         rm.registerResources(fluxSumE_);
+        rm.registerResources(Eahead_);
+        rm.registerResources(Bold_);
     }
 
     void allocate(IPhysicalModel_t& model, patch_t& patch, double const allocateTime) const override
@@ -123,12 +145,19 @@ public:
         auto& rm = *dynamic_cast<FKModel&>(model).resourcesManager;
         rm.allocate(electromagHalf_, patch, allocateTime);
         rm.allocate(fluxSumE_, patch, allocateTime);
+        rm.allocate(Eahead_, patch, allocateTime);
+        rm.allocate(Bold_, patch, allocateTime);
     }
 
-    // B^n stays in the model B until the last Faraday of the step, no copy needed
-    void prepareStep(IPhysicalModel_t& /*model*/, level_t& /*level*/,
-                     double const /*currentTime*/) override
+    // B^n for the reflux of a level with a finer one (the step itself keeps B^n in the model B
+    // until its last Faraday)
+    void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime) override
     {
+        auto& fkModel = dynamic_cast<FKModel&>(model);
+        auto& B       = fkModel.state.electromag.B;
+        for (auto& patch : fkModel.resourcesManager->enumerate(level, B, Bold_))
+            Bold_.copyData(B);
+        oldTime_[level.getLevelNumber()] = currentTime;
     }
 
     void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef) override
@@ -147,10 +176,18 @@ public:
             fluxSumE_.zero();
     }
 
-    void reflux(IPhysicalModel_t& /*model*/, level_t& /*level*/, IMessenger& /*messenger*/,
-                double const /*time*/) override
+    // the messenger has coarsened the finer level's flux sum onto the model E^{n+1/2}
+    void reflux(IPhysicalModel_t& model, level_t& level, IMessenger& messenger,
+                double const time) override
     {
-        throw std::runtime_error("SolverFK: refinement is not supported yet");
+        auto& fkModel     = dynamic_cast<FKModel&>(model);
+        auto& fkMessenger = dynamic_cast<Messenger&>(messenger);
+        auto& B           = fkModel.state.electromag.B;
+        auto const dt     = time - oldTime_.at(level.getLevelNumber());
+
+        Faraday_t{level, fkModel}(Bold_, fkModel.state.electromag.E, B, dt);
+        TimeSetter{level, fkModel, time}(B);
+        fkMessenger.fillMagneticGhosts(B, level, time);
     }
 
     double computeStableDt(IPhysicalModel_t& /*model*/, level_t& /*level*/,
@@ -178,16 +215,19 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(electromagHalf_, fluxSumE_);
+        return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(electromagHalf_, fluxSumE_);
+        return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_);
     }
 
 
 private:
+    void advanceElectric_(level_t& level, FKModel& model, Messenger& messenger, VecFieldT& E,
+                          double const dt, double const time);
+
     void moveParticles_(level_t& level, FKModel& model, Messenger& messenger,
                         double const currentTime, double const newTime);
 
@@ -222,25 +262,12 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
 
     auto const halfTime = 0.5 * (currentTime + newTime);
 
-    // 1. J^n from the particles at time n
-    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., currentTime);
+    // E^{n-1/2} level ghosts, from the coarser level's E bracketing t_n - dt/2
+    if (levelNumber > 0)
+        messenger.fillElectricGhosts(E, level, currentTime - 0.5 * dt);
 
-    // 2. E^{n-1/2} cleaned, d from s = d dt sum_i 2/dx_i^2 on this level, then -> E^{n+1/2}
-    if (model.divergence_cleaning > 0.)
-        for (auto& patch : rm.enumerate(level, model.state.rho, E))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            double sum        = 0.;
-            for (auto const dl : layout.meshSize())
-                sum += 2. / (dl * dl);
-            auto const d = model.divergence_cleaning / (dt * sum);
-            core::Marder{layout, model.c2(), d}(E, model.state.rho, dt);
-        }
-    for (auto& patch : rm.enumerate(level, B, model.state.J, E))
-    {
-        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-        core::AmpereMaxwell{layout, model.c2()}(B, model.state.J, E, dt);
-    }
+    // 1. and 2.
+    advanceElectric_(level, model, messenger, E, dt, currentTime);
     TimeSetter{level, model, halfTime}(E);
     messenger.fillElectricGhosts(E, level, halfTime);
 
@@ -259,6 +286,49 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     Faraday_t{level, model}(B, E, B, dt);
     TimeSetter{level, model, newTime}(B);
     messenger.fillMagneticGhosts(B, level, newTime);
+
+    // 6. E^{n+3/2}, before the finer level's substeps (P4 plan D1). On the root it is the next
+    // step's E^{n+3/2} where the synchronization does not change E^{n+1/2} and B^{n+1}
+    if (hierarchy.finerLevelExists(levelNumber))
+    {
+        for (auto& patch : rm.enumerate(level, E, Eahead_))
+            Eahead_.copyData(E); // with its ghosts, read by the cleaning
+        advanceElectric_(level, model, messenger, Eahead_, dt, newTime);
+        TimeSetter{level, model, newTime + 0.5 * dt}(Eahead_);
+    }
+}
+
+
+
+// 1. J and rho from the particles at time, then 2. E (at time - dt/2) cleaned, d from
+// s = d dt sum_i 2/dx_i^2 on this level, and advanced to time + dt/2
+template<typename FKModel, typename AMR_Types>
+void SolverFK<FKModel, AMR_Types>::advanceElectric_(level_t& level, FKModel& model,
+                                                    Messenger& messenger, VecFieldT& E,
+                                                    double const dt, double const time)
+{
+    auto& rm  = *model.resourcesManager;
+    auto& B   = model.state.electromag.B;
+    auto& J   = model.state.J;
+    auto& rho = model.state.rho;
+
+    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., time);
+
+    if (model.divergence_cleaning > 0.)
+        for (auto& patch : rm.enumerate(level, rho, E))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            double sum        = 0.;
+            for (auto const dl : layout.meshSize())
+                sum += 2. / (dl * dl);
+            auto const d = model.divergence_cleaning / (dt * sum);
+            core::Marder{layout, model.c2(), d}(E, rho, dt);
+        }
+    for (auto& patch : rm.enumerate(level, B, J, E))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        core::AmpereMaxwell{layout, model.c2()}(B, J, E, dt);
+    }
 }
 
 
@@ -293,10 +363,12 @@ void SolverFK<FKModel, AMR_Types>::moveParticles_(level_t& level, FKModel& model
     // this needs to be done before calling the messenger
     setTime(ions);
 
-    // the moments at n+1 are diagnostics only, the fields only use the deposit of step 1.
-    // No level ghost moments (fillIonPopMomentGhosts): single level for now
+    // the moments at n+1 are diagnostics only (and coarsened at synchronization), the fields
+    // only use the deposit of step 1. On a refined level the level ghost particles complete them
     messenger.fillFluxBorders(ions, level, newTime);
     messenger.fillDensityBorders(ions, level, newTime);
+    if (level.getLevelNumber() > 0)
+        messenger.fillIonPopMomentGhosts(ions, level, newTime);
 
     // the next deposit relies on domain particles being owned ones
     PHARE_DEBUG_DO({

@@ -30,8 +30,8 @@ namespace PHARE::solver
  * the leapfrog of SolverFK starts with the Gauss residual of t=0 of the level's own particles.
  * dt_l = dt / ratio^l, the fine time step of SolverFK::maxFinerLevelDt.
  * E^0 = 0 holds at t=0 only: a level created later (regrid, P5) needs E from the coarser level
- * (P4 plan D6), so regridding throws. Until the level-ghost particles deposit a current (P4 plan
- * D5), J_back misses the plasma beyond a fine level boundary, next to it.
+ * (P4 plan D6), so regridding throws. The level ghost particles deposit their J_back too (P4 plan
+ * D5), within the particle ghost width.
  */
 template<typename FKModel>
 class FKLevelInitializer : public LevelInitializer<typename FKModel::amr_types>
@@ -132,9 +132,8 @@ public:
         // E is labelled with its own time, half a step before the particles. On a fine level
         // its level ghosts would be interpolated in time between coarse E values that do not
         // bracket t - dt_l/2 (the coarse E^{+dt_c/2} does not exist yet, P4 plan D6), so the
-        // ghosts are left at zero: SolverFK's Ampere update only reads E on the nodes it writes,
-        // then fills the ghosts. TODO P4 M0 part 2: with divergence cleaning the first Marder
-        // pass of a fine level reads these zero ghosts.
+        // ghosts are left at zero, never read: SolverFK fills them at t - dt_l/2 before its
+        // cleaning and Ampere update, once the coarse E^{+dt_c/2} exists (P4 plan D1).
         TimeSetter{level, fkModel, initDataTime - 0.5 * dt}(E);
         if (isRoot)
             fkMessenger.fillElectricGhosts(E, level, initDataTime - 0.5 * dt);

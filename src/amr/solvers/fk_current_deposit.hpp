@@ -97,12 +97,14 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
     }
     deposit([](auto const& pop) -> auto const& { return pop.domainParticles(); });
 
+    // J at the time of the particles, rho at its own, the start of their segments
+    auto const rhoTime = time - back * 0.5 * dt;
     TimeSetter{level, model, time}(J);
     messenger.fillCurrentBorders(J, level, time);
     if (cleaning)
     {
-        TimeSetter{level, model, time}(rho);
-        messenger.fillChargeDensityBorders(rho, level, time);
+        TimeSetter{level, model, rhoTime}(rho);
+        messenger.fillChargeDensityBorders(rho, level, rhoTime);
     }
 
     // after the border sums: every patch holding a copy of a level ghost particle deposits it
@@ -122,7 +124,7 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
 
     filter(J, [&]() { messenger.fillCurrentGhosts(J, level, time); });
     if (cleaning)
-        filter(rho, [&]() { messenger.fillChargeDensityGhosts(rho, level, time); });
+        filter(rho, [&]() { messenger.fillChargeDensityGhosts(rho, level, rhoTime); });
 }
 
 } // namespace PHARE::solver

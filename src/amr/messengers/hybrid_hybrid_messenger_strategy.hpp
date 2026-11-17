@@ -709,8 +709,11 @@ namespace amr
             auto levelNumber = level.getLevelNumber();
             PHARE_LOG_LINE_STR("synchronizing level " + std::to_string(levelNumber));
 
-            // call coarsning schedules...
-            electroSynchronizers_.sync(levelNumber);
+            // call coarsning schedules... The fully kinetic E is synchronized by reflux instead:
+            // the finer model E is at another time (t - dt_f/2), its time average at the coarse E's
+            // (P4 plan D4)
+            if constexpr (!sumsParticleCurrent)
+                electroSynchronizers_.sync(levelNumber);
             chargeDensitySynchronizers_.sync(levelNumber);
             ionChargeFluxSynchronizers_.sync(levelNumber);
         }

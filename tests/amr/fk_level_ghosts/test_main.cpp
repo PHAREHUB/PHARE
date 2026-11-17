@@ -391,7 +391,7 @@ TEST(FullyKineticLevelGhosts, fineElectricGhostsInterpolateBetweenTheThreeCoarse
                 });
         }
         std::cout << "fine E band filled at t + " << (tau - t) / Dt << " Dt: " << band
-                  << " nodes, max error " << maxError / scale << " of max |E|\n";
+                  << " nodes, max error " << maxError / scale << " of max |E|" << std::endl;
         EXPECT_GT(band, 0u);
         EXPECT_LT(maxError, 1e-12 * scale);
     };
