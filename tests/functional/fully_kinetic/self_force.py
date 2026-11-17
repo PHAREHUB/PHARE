@@ -76,6 +76,34 @@ Reading: the self-force is the Yee staggering (charge on primal nodes, field on 
 gathered with the same B-spline), not the Esirkepov averaging: in 1D the field of the segment
 deposit is the Gauss field of the shape at the segment end, and the direct J_y deposit gives the
 same g_p for B_z. The filter divides it by 4 to 6; the cleaning does not change it.
+
+T10 at the refinement boundary (--refinement-box [lo,hi], default 16,48 = half the domain, hi
+excluded; one filter pass and s = 0.5 unless given): the pair in one cell, --outside 4 cells
+before the box edge (case in) or --inside 8 cells inside it (case out), the test charge drifting
++x at 0.01 c through the edge (2640 steps, every step dumped, both levels), and the same run on one
+level. In the box the test charge is its split children (2 per particle in 1D, split_1d.hpp): per
+coarse step the composite force is the children's in the box at both ends, weighted by their
+charge fraction, plus the coarse particle's for the rest; a child entering (a level ghost copy
+pushed in) or erased (pushed out) is a hand-off impulse. Extra force = composite force minus the
+isolated self-force of its carrier (coarse g_p, or the fine cloud: `cloud`), minus the same
+difference in the one-level run: the partner's field, the Marder start-up field (marder_field) and
+the drift of the mean field cancel; in case out the steps where the pair's stencils still overlap
+are left out (split in the box run, coarse in the other). Reported per cell crossed (one carrier),
+and per crossing window (part of the cloud in the box): the net extra momentum (Q steps) and the
+child impulses. Gate (--t10-check, orders 1 to 3, not pinned): extra <= the one-level peak; per
+case, the per-step rows are saved (crossing_<case>_<order>_<tag>.npy).
+Predicted by the two-grid model (docs/superpowers/specs/p4/t10_interface_model.py, the coupling as
+the code does it, x drift: B is zero, the B ghost does not enter), max |extra| / Q, in / out:
+      s      order 1          order 2          order 3       where
+      0.5    0.38 / 0.49      0.33 / 0.43      0.29 / 0.39   cells -2 .. +1 of the edge
+      0      0.034 / 0.030    0.025 / 0.022    0.022 / 0.016 cells -1, 0
+(24-31, 40-52, 180-240 one-level peaks at s = 0.5): the gate will be red. At s = 0.5 the fine
+Marder at the two boundary nodes dominates (their F reads the coarse E ghost; with F = 0 there:
+0.10 / 0.09 at order 1); the coarse Marder under the box (plan D7(iv)) changes nothing; the E
+dual child at the particle adds <= 3e-3 (the 3/4, 1/4 child 4.4e-2 instead of 3.4e-2). Crossing
+windows: net +13 to +27 Q steps (mean 0.1 to 0.2 Q); out, the two child impulses are about
+-125 and +150 Q steps (the children repel each other in the box; the coarse particle has the mean
+velocity) and nearly cancel. Not run in PHARE yet.
 """
 
 import argparse
@@ -215,8 +243,15 @@ def population(charge, mass, density, vx=0.0, vy=0.0):
     return pop
 
 
-def simulate(name, interp_order, steps, populations, dumps, options, fields=("E",)):
+def simulate(
+    name, interp_order, steps, populations, dumps, options, fields=("E",), box=None
+):
+    """box: (lo, hi) coarse cells, hi excluded, one static refined box"""
     diag_dir = f"{diag_root}/{name}_{interp_order}_{options.tag}"
+    refinement = {}
+    if box is not None:
+        diag_dir += f"_box{box[0]}-{box[1]}"
+        refinement = {"refinement_boxes": {"L0": {"B0": [(box[0],), (box[1] - 1,)]}}}
     ph.global_vars.sim = None
     sim = ph.Simulation(
         time_step=time_step,
@@ -233,6 +268,7 @@ def simulate(name, interp_order, steps, populations, dumps, options, fields=("E"
             "options": {"dir": diag_dir, "mode": "overwrite"},
         },
         strict=False,  # a cold two-particle box, not a plasma
+        **refinement,
     )
     ph.MaxwellianFluidModel(
         bx=waves.uniform(0.0),
@@ -455,18 +491,249 @@ def check(options):
             )
 
 
+BOX = (16, 48)  # coarse cells, hi excluded: half the domain
+SPLIT = {
+    1: 0.551569,
+    2: 0.663959,
+    3: 0.752399,
+}  # 1D 2-particle split, fine cells (split_1d.hpp)
+
+
+def cloud(xs, fractions, order, passes):
+    """sum_i f_i E(x_i) / Q of a cloud of charges f_j at x_j (cells of one grid, unit total): the
+    isolated self-force of a split particle, `predicted` for a single charge"""
+    xs, fractions = np.atleast_1d(xs), np.atleast_1d(fractions)
+    nodes = np.arange(
+        int(np.floor(xs.min())) - order - 3 - passes,
+        int(np.floor(xs.max())) + order + 4 + passes,
+    )
+    field = sum(
+        f * (np.cumsum(bspline(nodes - x, order)) - 0.5) for x, f in zip(xs, fractions)
+    )
+    field = filtered(field, passes)
+    return sum(
+        f * np.sum(bspline(nodes + 0.5 - x, order) * field)
+        for x, f in zip(xs, fractions)
+    )
+
+
+def level_particles(diag_dir, pop, level):
+    """per dump, (x in the level's cells, v_x, weight) arrays of a population on a level"""
+    import h5py
+
+    path = f"{diag_dir}/ions_pop_{pop}_domain.h5"
+    out = []
+    with h5py.File(path, "r") as f:
+        for t in times_of(path):
+            x, v, w = [], [], []
+            for patch in f["t"][t].get(f"pl{level}", {}).values():
+                if "iCell" not in patch or patch["iCell"].shape[0] == 0:
+                    continue
+                x.append(patch["iCell"][:, 0] + patch["delta"][:, 0].astype(np.float64))
+                v.append(patch["v"][:, 0].astype(np.float64))
+                w.append(patch["weight"][:].ravel().astype(np.float64))
+            out.append(
+                tuple(np.concatenate(a) if a else np.zeros(0) for a in (x, v, w))
+            )
+    return out
+
+
+def composite(diag_dir, order, passes, refined):
+    """per coarse step: position of the composite particle (coarse cells), its force minus the
+    isolated self-force of what carries it (E / Q), the hand-off impulse (Q steps) and the
+    carrier: "coarse" (no child in the box at either end), "fine" (the whole cloud in the box at
+    both ends), "mixed". Children in the box at both ends of the step are matched by position;
+    the force is theirs, weighted by their charge fraction (child weight / (2 coarse weight)),
+    plus the coarse particle's for the rest; a child entering (a band copy pushed into the box)
+    or erased (pushed out) changes the composite momentum by its fraction times its velocity
+    minus the coarse one: the hand-off impulse"""
+    coarse = level_particles(diag_dir, "test", 0)
+    fine = level_particles(diag_dir, "test", 1) if refined else None
+    u = (
+        VELOCITY * time_step / dl
+    )  # cells per step on either level (fine: dl/2 per dt/2)
+    to_force = mass_e / -1 / time_step / JUMP
+    rows = []
+    for n in range(len(coarse) - 1):
+        (xc, vc, wc), (_, vc1, _) = coarse[n], coarse[n + 1]
+        xc, vc, vc1, wc = xc[0], vc[0], vc1[0], wc[0]
+        kids = list(zip(*fine[n])) if refined else []
+        kids1 = list(zip(*fine[n + 1])) if refined else []
+        kids = [(x, v, w / (2 * wc)) for x, v, w in kids]
+        kids1 = [(x, v, w / (2 * wc)) for x, v, w in kids1]
+        matched = []
+        for x, v, f in kids:
+            gaps = [abs(x1 - x - 2 * u) for x1, _, _ in kids1]
+            if gaps and min(gaps) < 0.1:
+                matched.append((x, v, f, kids1[int(np.argmin(gaps))][1]))
+        share = sum(m[2] for m in matched)
+        force = to_force * (
+            sum(f * (v1 - v) for _, v, f, v1 in matched) + (1 - share) * (vc1 - vc)
+        )
+        momentum = [
+            sum(f * v for _, v, f in k) + (1 - sum(f for *_, f in k)) * c
+            for k, c in ((kids, vc), (kids1, vc1))
+        ]
+        impulse = to_force * (momentum[1] - momentum[0]) - force
+        f0, f1 = sum(f for *_, f in kids), sum(f for *_, f in kids1)
+        X = sum(f * x / 2 for x, _, f in kids) + (1 - f0) * xc
+        half = xc + vc * time_step / dl / 2
+        if f0 == 0 and f1 == 0:
+            carrier, ref = "coarse", predicted(half % 1, order, passes)
+        elif min(f0, f1) > 1 - 1e-6 and len(matched) == len(kids):
+            carrier = "fine"
+            xs = [x for x, *_ in matched]
+            fs = [f for _, _, f, _ in matched]
+            ref = np.mean(
+                [cloud([x + k * u for x in xs], fs, order, passes) for k in (0.5, 1.5)]
+            )
+        else:  # the box share of a cloud split from the coarse particle, the rest coarse
+            carrier = "mixed"
+            d = SPLIT[order]
+            ref = share * cloud([2 * half - d, 2 * half + d], [0.5, 0.5], order, passes)
+            ref += (1 - share) * predicted(half % 1, order, passes)
+        rows.append((X, force - ref, impulse, carrier))
+    return rows
+
+
+def crossing(order, options, box, case, outside, inside):
+    """T10 at the refinement boundary: the pair in one cell, `outside` cells before the box edge
+    (in) or `inside` cells inside it (out), the test charge drifting +x through the edge; the box
+    run against the one-level run. Rows: (position from the edge, extra E / Q, hand-off impulse,
+    carrier, partner overlap)"""
+    lo, hi = box
+    cell = lo - outside if case == "in" else hi - inside
+    steps = int(np.ceil((outside + inside) / (VELOCITY * time_step / dl) * 1.1))
+    runs = {}
+    for refined in (True, False):
+        diag_dir, seconds = simulate(
+            f"crossing_{case}",
+            order,
+            steps,
+            pair(cell, vx=VELOCITY),
+            range(steps + 1),
+            options,
+            box=box if refined else None,
+        )
+        runs[refined] = (composite(diag_dir, order, options.passes, refined), seconds)
+    x_partner = particles(diag_dir, "partner")[0][0, 0]
+    edge = lo if case == "in" else hi
+    # out: the pair starts in the box, split there and coarse in the one-level run: their near
+    # fields differ while the stencils overlap; in: the partner is coarse in both runs
+    overlap = order + 3 + options.passes
+    rows = [
+        (X - edge, d - d1, imp, carrier, case == "out" and abs(X - x_partner) < overlap)
+        for (X, d, imp, carrier), (_, d1, _, _) in zip(runs[True][0], runs[False][0])
+    ]
+    return rows, runs[True][1] + runs[False][1]
+
+
+def crossing_report(order, rows):
+    """max |extra| per cell crossed (one carrier, no partner overlap), and per crossing window
+    (consecutive mixed steps): length, net extra momentum (Q steps), child hand-off impulses"""
+    cells = {}
+    for rel, d, _, carrier, near in rows:
+        if carrier != "mixed" and not near:
+            cells.setdefault(int(np.floor(rel)), []).append(abs(d))
+    per_cell = {c: max(v) for c, v in sorted(cells.items())}
+    windows, i = [], 0
+    while i < len(rows):
+        j = i
+        while j < len(rows) and rows[j][3] == "mixed":
+            j += 1
+        if j > i:
+            kicks = [r[2] for r in rows[i : j + 1] if abs(r[2]) > 1e-6]
+            windows.append((j - i, sum(r[1] + r[2] for r in rows[i:j]), kicks))
+        i = j + 1
+    return per_cell, windows
+
+
+def interface(orders, options, box, cases, outside, inside, gate):
+    failures = []
+    for order in orders:
+        # the one-level self-force peak at these options (PEAKS at the registered ones)
+        peak = max(
+            abs(predicted(d, order, options.passes)) for d in np.linspace(0, 1, 401)
+        )
+        for case in cases:
+            rows, seconds = crossing(order, options, box, case, outside, inside)
+            np.save(
+                f"{diag_root}/crossing_{case}_{order}_{options.tag}.npy",
+                np.array([r[:3] for r in rows]),
+            )
+            per_cell, windows = crossing_report(order, rows)
+            worst = max(per_cell.values())
+            print(
+                f"T10 {options.tag} order {order} {case}: max |extra| / Q {worst:.2e} = "
+                f"{worst / peak:.2f} one-level peak ({peak:.6f}), runs {seconds:.1f} s"
+            )
+            print(
+                "   per cell from the edge: "
+                + " ".join(f"{c:+d}:{v:.1e}" for c, v in per_cell.items())
+            )
+            for n, net, kicks in windows:
+                print(
+                    f"   crossing window {n} steps: net extra momentum {net:+.2f} Q steps "
+                    f"(mean {net / n:+.1e}), child hand-off impulses "
+                    + " ".join(f"{k:+.2f}" for k in kicks)
+                )
+            if worst > peak:
+                failures.append(f"order {order} {case}: {worst / peak:.2f} x the peak")
+    if failures:
+        message = "T10 interface gate (extra <= one-level peak): " + "; ".join(failures)
+        if gate:
+            raise RuntimeError(message)
+        print("report only, " + message)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     parser.add_argument("--order", type=int, choices=[1, 2, 3], default=1)
-    parser.add_argument("--filter-passes", type=int, default=0)
-    parser.add_argument("--cleaning", type=float, default=0.0)
+    parser.add_argument(
+        "--filter-passes",
+        type=int,
+        default=None,
+        help="0, or 1 with --refinement-box",
+    )
+    parser.add_argument(
+        "--cleaning", type=float, default=None, help="0, or 0.5 with --refinement-box"
+    )
     parser.add_argument(
         "--check",
         action="store_true",
         help="x drift, orders 1 to 3, against the model: registered with the default options",
     )
+    parser.add_argument(
+        "--refinement-box",
+        nargs="?",
+        const=f"{BOX[0]},{BOX[1]}",
+        help=f"T10 at the box edge: lo,hi coarse cells, hi excluded (default {BOX[0]},{BOX[1]})",
+    )
+    parser.add_argument("--case", choices=["in", "out", "both"], default="both")
+    parser.add_argument(
+        "--outside", type=int, default=4, help="in: start cells before the edge"
+    )
+    parser.add_argument("--inside", type=int, default=8, help="out: start cells inside")
+    parser.add_argument(
+        "--t10-check",
+        action="store_true",
+        help="orders 1 to 3, assert extra <= the one-level peak (not pinned yet)",
+    )
     args = parser.parse_args()
-    options = Options(args.filter_passes, args.cleaning)
+    refined = args.refinement_box is not None or args.t10_check
+    options = Options(
+        args.filter_passes if args.filter_passes is not None else int(refined),
+        args.cleaning if args.cleaning is not None else 0.5 * refined,
+    )
+    if refined:
+        box = tuple(
+            int(c) for c in (args.refinement_box or f"{BOX[0]},{BOX[1]}").split(",")
+        )
+        cases = ["in", "out"] if args.case == "both" else [args.case]
+        orders = [1, 2, 3] if args.t10_check else [args.order]
+        return interface(
+            orders, options, box, cases, args.outside, args.inside, args.t10_check
+        )
     if args.check:
         return check(options)
     order = args.order
