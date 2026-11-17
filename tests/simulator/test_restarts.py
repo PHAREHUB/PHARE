@@ -418,9 +418,15 @@ class RestartsTest(SimulatorTest):
         simput.update(mhd_timestepper=timestepper, eta=eta, nu=nu)
         for key in ["cells", "dl"]:
             simput[key] = [simput[key]] * ndim
-        simput["refinement_boxes"] = {"L0": {"B0": [[10] * ndim, [19] * ndim]}}
         if levels == 3:
-            simput["refinement_boxes"]["L1"] = {"B0": [[24] * ndim, [35] * ndim]}
+            # refinement boxes on 3 levels regrid differently once restarted (#663), tagging
+            #  does not. The B perturbation is small, so a low threshold makes every level,
+            #  and check_diags fails if one is missing
+            simput.update(
+                refinement="tagging", max_nbr_levels=levels, tagging_threshold=0.001
+            )
+        else:
+            simput["refinement_boxes"] = {"L0": {"B0": [[10] * ndim, [19] * ndim]}}
 
         time_step = simput["time_step"]
         restart_time = time_step * 4
