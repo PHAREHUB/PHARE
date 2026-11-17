@@ -10,10 +10,14 @@ T2), run twice and compared on both levels (P4 tests T3c, T3d):
     --compare A B   two existing diagnostic directories
 
 The arguments after "--" are T2's: dimension, interpolation order, --filter-passes, --cleaning.
-E and B are compared bit for bit on the physical nodes of every patch of both levels at every
-dumped time (single precision dumps), the domain particles of both levels sorted, counts exactly
-and values within --particle-tolerance (the border sums add in an order that depends on the
-tiling: round-off). Exit code 0 when everything matches.
+E and B are compared on the physical nodes of every patch of both levels at every dumped time
+(single precision dumps): per dataset (time, level, component), |a - b| <= FIELD_ULPS float32
+epsilons times the dataset's max |value|, or bit for bit with --exact. The border sums add in an
+order that depends on the tiling, so a near-zero node can land on the other side of a float32
+rounding edge (one value of 200030 at eff6393bf, 1 ulp, 3e-13 of the field scale), while a level
+boundary error is of the order of the field. The domain particles of both levels are sorted,
+counts compared exactly and values within --particle-tolerance. Exit code 0 when everything
+matches.
 
 Measured at d78ea99a8 (Debug), 2D, s = 0.5, 20 coarse steps:
     order 2, no filter: tiling and 3 ranks identical, particles within 8e-15
@@ -34,6 +38,7 @@ import h5py
 import numpy as np
 
 ONE_PATCH, TILED = 32, 8
+FIELD_ULPS = 4
 
 
 def run(patch_size, diag_dir, t2_args):
@@ -106,16 +111,17 @@ def sorted_particles(path, population, time_key, level):
     return array[np.lexsort(array.T[::-1])]
 
 
-def compare(a, b, particle_tolerance):
-    """True when E, B are bitwise equal and the particles match, prints a summary"""
+def compare(a, b, particle_tolerance, exact=False):
+    """True when E, B match (within FIELD_ULPS float32 epsilons of each dataset's max, or
+    bitwise if exact) and the particles match, prints a summary"""
     ok = True
     times = dump_times(a)
     if times != dump_times(b):
         print("dump times differ")
         return False
 
-    values = differ = 0
-    first = None
+    values = differ = beyond = 0
+    worst, first = 0.0, None
     for time in times:
         for level in [0, 1]:
             for quantity in ["E", "B"]:
@@ -123,14 +129,30 @@ def compare(a, b, particle_tolerance):
                 if va.keys() != vb.keys():
                     print(f"t={time} L{level} {quantity}: different nodes")
                     return False
-                for key in va:
-                    values += 1
-                    if va[key] != vb[key]:
-                        differ += 1
-                        first = first or (time, level, quantity, key, va[key], vb[key])
-    print(f"fields: {len(times)} times, {values} values on both levels, {differ} differ")
+                for component in "xyz":
+                    keys = [key for key in va if key[0] == component]
+                    xa = np.array([va[key] for key in keys], dtype=np.float64)
+                    xb = np.array([vb[key] for key in keys], dtype=np.float64)
+                    if not keys:
+                        continue
+                    scale = max(np.abs(xa).max(), np.abs(xb).max())
+                    tolerance = 0.0 if exact else FIELD_ULPS * np.finfo(np.float32).eps * scale
+                    gap = np.abs(xa - xb)
+                    values += gap.size
+                    differ += np.count_nonzero(gap)
+                    if scale > 0:
+                        worst = max(worst, gap.max() / scale)
+                    over = np.flatnonzero(gap > tolerance)
+                    beyond += over.size
+                    if over.size and first is None:
+                        i = over[0]
+                        first = (time, level, quantity, keys[i], xa[i], xb[i], scale)
+    print(f"fields: {len(times)} times, {values} values on both levels, {differ} differ, "
+          f"{beyond} beyond the tolerance ({'bitwise' if exact else f'{FIELD_ULPS} float32 eps x max'}),"
+          f" max |a - b| / max |value| {worst:.2e}")
     if first:
-        print(f"  first: t={first[0]} L{first[1]} {first[2]}{first[3]}: {first[4]} vs {first[5]}")
+        print(f"  first: t={first[0]} L{first[1]} {first[2]}{first[3]}: {first[4]} vs {first[5]}"
+              f" (max {first[6]:.3e})")
         ok = False
 
     sets = count_mismatches = 0
@@ -167,6 +189,7 @@ def main():
     mode.add_argument("--run", nargs=2, metavar=("PATCH_SIZE", "DIR"), help=argparse.SUPPRESS)
     parser.add_argument("--out", default="phare_outputs/compare_runs", help="diagnostics root")
     parser.add_argument("--particle-tolerance", type=float, default=1e-12)
+    parser.add_argument("--exact", action="store_true", help="E and B bit for bit")
     cli = parser.parse_args(argv)
 
     if cli.run:
@@ -184,8 +207,8 @@ def main():
         launch(TILED, a, t2_args)
         launch(TILED, b, t2_args, ranks=cli.ranks)
 
-    same = compare(a, b, cli.particle_tolerance)
-    print("IDENTICAL" if same else "DIFFERENT")
+    same = compare(a, b, cli.particle_tolerance, cli.exact)
+    print(("IDENTICAL" if cli.exact else "MATCH") if same else "DIFFERENT")
     return 0 if same else 1
 
 
