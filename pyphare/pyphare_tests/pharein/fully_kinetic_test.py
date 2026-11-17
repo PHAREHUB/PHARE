@@ -125,8 +125,24 @@ class TestFullyKineticChecks(unittest.TestCase):
             make_sim(refinement="tagging", max_nbr_levels=2)
 
     def test_refinement_boxes_are_accepted(self):
-        sim = make_sim(refinement_boxes={"L0": {"B0": [(10,), (20,)]}})
+        sim = make_sim(
+            refinement_boxes={"L0": {"B0": [(10,), (20,)]}}, divergence_cleaning=0.5
+        )
         self.assertEqual(sim.max_nbr_levels, 2)
+
+    def test_divergence_cleaning_must_be_set_with_refinement(self):
+        # Gauss's law breaks at the level boundary (band swap, erased particles, splitting):
+        # the user chooses the cleaning, 0 included, rather than getting none silently
+        with self.assertRaisesRegex(
+            ValueError, "divergence_cleaning must be set with refinement"
+        ):
+            make_sim(refinement_boxes={"L0": {"B0": [(10,), (20,)]}})
+        for s in [0, 0.5]:
+            global_vars.sim = None
+            sim = make_sim(
+                refinement_boxes={"L0": {"B0": [(10,), (20,)]}}, divergence_cleaning=s
+            )
+            self.assertEqual(sim.divergence_cleaning, float(s))
 
     def test_current_filter_is_off_by_default(self):
         self.assertEqual(make_sim().current_filter_passes, 0)
