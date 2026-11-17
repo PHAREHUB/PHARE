@@ -260,6 +260,14 @@ namespace solver
 
         NO_DISCARD auto& messenger(int const iLevel) { return getMessengerWithCoarser_(iLevel); }
 
+        // the number of times SAMRAI re-initialized the level from an old one (a regrid: its
+        // boxes changed), for tests: a run with static boxes never regrids
+        NO_DISCARD std::size_t regridCount(int const iLevel) const
+        {
+            auto const it = regridCounts_.find(iLevel);
+            return it == regridCounts_.end() ? 0 : it->second;
+        }
+
 
 
         // -----------------------------------------------------------------------------------------------
@@ -307,6 +315,8 @@ namespace solver
 
             bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
+            if (isRegridding)
+                ++regridCounts_[levelNumber];
 
 
             PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding);
@@ -644,6 +654,7 @@ namespace solver
     private:
         bool restartInitialized_ = false;
         int nbrOfLevels_;
+        std::unordered_map<int, std::size_t> regridCounts_;
         std::unordered_map<std::size_t, double> subcycleEndTimes_;
         std::unordered_map<std::size_t, double> subcycleStartTimes_;
         std::unordered_map<std::size_t, bool> lastSubstep_;

@@ -10,9 +10,8 @@ velocity wave) and its command line: dimension, interpolation order, --filter-pa
 
 Checks:
 - no regrid: SAMRAI keeps a level whose user boxes did not change (GriddingAlgorithm.cpp:
-  2916-2937) unless a data-dependent load balancer is set (refused for FK). The FK level
-  initializer throws on a regrid; the run is made to raise instead of exiting, and that throw
-  is turned into a named failure;
+  2916-2937) unless a data-dependent load balancer is set (refused for FK): the regrid count of
+  every level stays 0;
 - T1, fine time step: the fine level takes dt/2 (ratio 2, the light CFL is the same on both
   levels), so with a fine dump on every substep its dump times are k dt/2 (within 1e-12, SAMRAI
   evens out the substeps);
@@ -49,7 +48,6 @@ import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.core.box import Box1D, Box2D
 from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.simulator import simulator
 from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
 
@@ -210,19 +208,14 @@ class FullyKineticAMRTest(SimulatorTest):
     def tearDown(self):
         super().tearDown()
         ph.global_vars.sim = None
-        simulator.exit_on_exception = True
 
     def test_static_box(self):
         ph.global_vars.sim = None
-        simulator.exit_on_exception = False  # an exception raises instead of exiting
-        try:
-            Simulator(config()).run().reset()
-        except RuntimeError as e:
-            if "regridding is not supported" in str(e):
-                self.fail(
-                    "SAMRAI re-initialized the fine level from an old one (regrid)"
-                )
-            raise
+        sim = config()
+        run = Simulator(sim).run()
+        regrids = [run.regrid_count(level) for level in range(sim.max_nbr_levels)]
+        run.reset()
+        self.assertEqual(regrids, [0] * sim.max_nbr_levels, "regrids per level")
 
         if cpp.mpi_rank() != 0:
             return

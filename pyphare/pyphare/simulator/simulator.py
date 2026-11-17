@@ -278,6 +278,12 @@ class Simulator:
         self._check_setup()
         return self.cpp_sim.interp_order  # constexpr static value
 
+    def regrid_count(self, level_number):
+        """how many times SAMRAI re-initialized this level from an old one (a regrid: its boxes
+        changed). A run with static refinement boxes never regrids."""
+        self._check_setup()
+        return self.cpp_sim.regrid_count(level_number)
+
     def cpp_initialize(self):
         # special case to initialize without dumping
         if self.initialized:
