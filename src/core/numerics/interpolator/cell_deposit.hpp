@@ -128,7 +128,12 @@ public:
             for (std::size_t c = 0; c < 3; ++c)
                 vl[c][l] = in.v[c][l];
         }
-        accBlock_<rowL>(rowAcc_, lc, wgt, dl, vl, ol);
+        if (pendN_ != 0 and pendOl_ != ol)
+            applyPending_();
+        pendOl_ = ol;
+        prep_(lc, wgt, dl, vl, pendWs_[pendN_], pendDM_[pendN_]);
+        if (++pendN_ == KB)
+            applyPending_();
     }
 
     /** lane l of `in` (members as in block()) deposited on the grid, depositOne_'s expressions */
@@ -431,13 +436,144 @@ private:
         std::array<int, dim> lc; // local cell of the row, shared by all its particles
         for (std::size_t d = 0; d < dim; ++d)
             lc[d] = cell0[d] + a2l_[d];
-        for (std::size_t i0 = s; i0 < e; i0 += B)
+        std::size_t i0 = s;
+        // KB blocks per pass over the accumulator: one load and store per node and moment
+        for (; i0 + KB * B <= e; i0 += KB * B)
+        {
+            alignas(64) double wgt[KB][B], dl[KB][dim][B], vl[KB][3][B];
+            for (std::size_t k = 0; k < KB; ++k)
+                loadLanes(i0 + k * B, B, wgt[k], dl[k], vl[k]);
+            accBlocks_<KB, rowL>(rowAcc_, lc, wgt, dl, vl, ol);
+        }
+        for (; i0 < e; i0 += B)
         {
             std::size_t const n = std::min(B, e - i0);
-            alignas(64) double wgt[B], dl[dim][B], vl[3][B];
-            loadLanes(i0, n, wgt, dl, vl);
-            accBlock_<rowL>(rowAcc_, lc, wgt, dl, vl, ol);
+            alignas(64) double wgt[1][B], dl[1][dim][B], vl[1][3][B];
+            loadLanes(i0, n, wgt[0], dl[0], vl[0]);
+            accBlocks_<1, rowL>(rowAcc_, lc, wgt, dl, vl, ol);
         }
+    }
+
+    static constexpr std::size_t KB = 2;
+
+    /** weights per union row (ws) and moment weights (dM) of a block of lanes in the local cell lc */
+    [[gnu::always_inline]] inline void prep_(std::array<int, dim> const& lc,
+                                             double const (&wgt)[B], double const (&dl)[dim][B],
+                                             double const (&vl)[3][B], double (&ws)[dim][U][B],
+                                             double (&dM)[4][B])
+    {
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            int const c = lc[d];
+            for (std::size_t l = 0; l < B; ++l)
+            {
+                double const dd = dl[d][l];
+                int const sh    = Interp::template computeStartLeftShift<QtyCentering,
+                                                                         QtyCentering::primal>(dd);
+                int const start = c - sh;
+                double const normalizedPos = c + dd;
+                std::array<double, nbrPts> wl;
+                Weighter<interpOrder>{}.computeWeight(normalizedPos, start, wl);
+                int const off = maxShift - sh;
+                for (int r = 0; r < U; ++r)
+                {
+                    double v = 0.;
+                    for (int q = 0; q < nbrPts; ++q)
+                        v = r - off == q ? wl[q] : v;
+                    ws[d][r][l] = v;
+                }
+            }
+        }
+        for (std::size_t l = 0; l < B; ++l)
+        {
+            dM[0][l] = 1. * wgt[l];
+            dM[1][l] = vl[0][l] * wgt[l];
+            dM[2][l] = vl[1][l] * wgt[l];
+            dM[3][l] = vl[2][l] * wgt[l];
+        }
+    }
+
+    /** K prepared blocks (same offset ol) into the accumulator: each node and moment loaded
+     * once, K fmas in block order (the chain of accBlock_ per lane), stored once */
+    template<std::size_t K, int Wl, typename Acc>
+    [[gnu::always_inline]] inline void applyK_(Acc&& acc, double const (*ws)[dim][U][B],
+                                               double const (*dM)[4][B], int const ol)
+    {
+        if constexpr (dim == 1)
+        {
+            for (int rx = 0; rx < U; ++rx)
+                for (std::size_t m = 0; m < 4; ++m)
+                {
+                    bd a = ld_(acc[m][rx + ol]);
+                    for (std::size_t k = 0; k < K; ++k)
+                        a = xsimd::fma(ld_(dM[k][m]), ld_(ws[k][0][rx]), a);
+                    a.store_unaligned(acc[m][rx + ol]);
+                }
+        }
+        else if constexpr (dim == 2)
+        {
+            for (int rx = 0; rx < U; ++rx)
+                for (std::size_t m = 0; m < 4; ++m)
+                {
+                    bd px[K];
+                    for (std::size_t k = 0; k < K; ++k)
+                        px[k] = ld_(dM[k][m]) * ld_(ws[k][0][rx]);
+                    for (int ry = 0; ry < U; ++ry)
+                    {
+                        bd a = ld_(acc[m][rx * Wl + ry + ol]);
+                        for (std::size_t k = 0; k < K; ++k)
+                            a = xsimd::fma(px[k], ld_(ws[k][1][ry]), a);
+                        a.store_unaligned(acc[m][rx * Wl + ry + ol]);
+                    }
+                }
+        }
+        else
+        {
+            for (int rx = 0; rx < U; ++rx)
+                for (int ry = 0; ry < U; ++ry)
+                    for (std::size_t m = 0; m < 4; ++m)
+                    {
+                        bd pxy[K];
+                        for (std::size_t k = 0; k < K; ++k)
+                            pxy[k] = ld_(dM[k][m]) * ld_(ws[k][0][rx]) * ld_(ws[k][1][ry]);
+                        for (int rz = 0; rz < U; ++rz)
+                        {
+                            bd a = ld_(acc[m][(rx * U + ry) * Wl + rz + ol]);
+                            for (std::size_t k = 0; k < K; ++k)
+                                a = xsimd::fma(pxy[k], ld_(ws[k][2][rz]), a);
+                            a.store_unaligned(acc[m][(rx * U + ry) * Wl + rz + ol]);
+                        }
+                    }
+        }
+    }
+
+    template<std::size_t K, int Wl, typename Acc>
+    [[gnu::always_inline]] inline void accBlocks_(Acc&& acc, std::array<int, dim> const& lc,
+                                                  double const (&wgt)[K][B],
+                                                  double const (&dl)[K][dim][B],
+                                                  double const (&vl)[K][3][B], int const ol)
+    {
+        alignas(64) double ws[K][dim][U][B];
+        alignas(64) double dM[K][4][B];
+        for (std::size_t k = 0; k < K; ++k)
+            prep_(lc, wgt[k], dl[k], vl[k], ws[k], dM[k]);
+        applyK_<K, Wl>(acc, ws, dM, ol);
+    }
+
+    // predictor blocks waiting for KB of them (same row offset) to share one accumulator pass
+    alignas(64) double pendWs_[KB][dim][U][B];
+    alignas(64) double pendDM_[KB][4][B];
+    std::size_t pendN_ = 0;
+    int pendOl_        = 0;
+
+    void applyPending_()
+    {
+        std::size_t k = 0;
+        for (; k + KB <= pendN_; k += KB)
+            applyK_<KB, rowL>(rowAcc_, pendWs_ + k, pendDM_ + k, pendOl_);
+        for (; k < pendN_; ++k)
+            applyK_<1, rowL>(rowAcc_, pendWs_ + k, pendDM_ + k, pendOl_);
+        pendN_ = 0;
     }
 
     static constexpr std::size_t NN_ = dim == 1 ? U : dim == 2 ? U * U : U * U * U;
@@ -543,6 +679,7 @@ private:
 
     void flushRow_()
     {
+        applyPending_();
         if (!rowActive_)
             return;
         rowActive_ = false;
