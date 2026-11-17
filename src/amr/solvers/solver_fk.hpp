@@ -360,6 +360,23 @@ void SolverFK<FKModel, AMR_Types>::moveParticles_(level_t& level, FKModel& model
     if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverFK::moveParticles_");
 
+    // a level ghost copy pushed into a same-level neighbor's domain is that neighbor's domain
+    // particle now: kept here, it would deposit twice (P4 plan D5: the neighbor's deposit reaches
+    // this patch through the border sum) and could later be exported a second time
+    for (auto& patch : rm.enumerate(level, ions))
+    {
+        auto const& sameLevelCells
+            = levelBoxing.at(amr::to_string(patch->getGlobalId())).nonLevelGhostBox;
+        for (auto& pop : ions)
+        {
+            auto& particles = pop.levelGhostParticles();
+            auto const kept = particles.partition(makeIndexRange(particles), [&](auto const& cell) {
+                return !isIn(core::Point{cell}, sameLevelCells);
+            });
+            particles.erase(makeRange(particles, kept.iend(), particles.size()));
+        }
+    }
+
     // this needs to be done before calling the messenger
     setTime(ions);
 
