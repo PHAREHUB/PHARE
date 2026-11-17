@@ -4,10 +4,13 @@
 #include "core/data/field/field_traits.hpp"
 #include "core/data/field/field_scratch.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
 
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <vector>
 
 
 namespace PHARE::core
@@ -28,6 +31,11 @@ namespace PHARE::core
  * reads one ghost layer of E (the dual node before the first primal one); rho is only read on
  * its physical nodes. The E ghosts must be filled again afterwards. F lives in the field scratch
  * buffer, which grows once and is then reused.
+ *
+ * F is set to 0 on the skipped nodes, given as boxes of AMR indexes of the primal nodes (node i is
+ * the lower corner of cell i): their residual is neither removed nor spread, a Dirichlet condition
+ * F = 0. The fully kinetic solver skips the nodes on the edge of its level and of the region a
+ * finer level synchronized (fk_electric.hpp, regionEdgeNodes).
  */
 template<typename GridLayout>
 class Marder
@@ -52,7 +60,8 @@ public:
 
 
     template<typename VecField, IsField Field>
-    void operator()(VecField& E, Field const& rho, double const dt) const
+    void operator()(VecField& E, Field const& rho, double const dt,
+                    std::vector<Box<int, dimension>> const& skipped = {}) const
     {
         constexpr auto pad = 3 - dimension;
         assert(GridLayout::centering(rho.physicalQuantity()) == allPrimal_());
@@ -73,6 +82,9 @@ public:
                 F[n] += (Ed.data()[m] - Ed.data()[m - stride]) * inverse;
             });
         }
+        // no residual on the skipped nodes
+        for (auto const& box : skipped)
+            for_each_point(box, [&](auto const& node) { F[index_(rhoNodes, node)] = 0.; });
 
         // E_d += d dt dF/dx_d, from the primal nodes i and i + 1 around the dual node i. The
         // components along directions the grid does not have are not changed.
@@ -113,6 +125,23 @@ private:
         }
         nodes.strides = {shape[1] * shape[2], shape[2], 1};
         return nodes;
+    }
+
+    // index in the field of the primal node of AMR index `node`, a physical one
+    template<typename Index>
+    std::size_t index_(Nodes const& nodes, Index const& node) const
+    {
+        constexpr auto pad = 3 - dimension;
+        std::size_t n      = 0;
+        for (std::size_t d = 0; d < dimension; ++d)
+        {
+            auto const offset = node[d] - layout_.AMRBox().lower[d];
+            assert(offset >= 0);
+            auto const local = nodes.lo[pad + d] + static_cast<std::size_t>(offset);
+            assert(local <= nodes.hi[pad + d]);
+            n += local * nodes.strides[pad + d];
+        }
+        return n;
     }
 
     // fn(n) on the nodes lo ... hi (inclusive) of a field
