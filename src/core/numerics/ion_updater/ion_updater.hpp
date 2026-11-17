@@ -5,6 +5,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
+#include "core/models/options/hybrid_options.hpp"
 #include "core/numerics/pusher/pusher.hpp"
 #include "core/numerics/moments/moments.hpp"
 #include "core/numerics/pusher/pusher_factory.hpp"
@@ -77,6 +78,14 @@ private:
     template<typename Boxing_t>
     void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
+
+    // fully kinetic: the band is wide enough to hold the domain particles leaving into it
+    // (hybrid_options.hpp)
+    static constexpr bool keepsBandLeavers = isFullyKinetic<GridLayout::options>();
+    // the switch and the band width come from the same trait, the width on the raw options
+    // (hybrid_options.hpp): wide (>= 3) iff fully kinetic. Fails if the wrapped options lose
+    // fully_kinetic, which silently turned the switch off
+    static_assert(keepsBandLeavers == (GridLayout::options.particle_ghost_width >= 3));
 
     // dealloced on regridding/load balancing coarsest
     ParticleArray tmp_particles_{Box{}}; //{std::make_unique<ParticleArray>(Box{})};

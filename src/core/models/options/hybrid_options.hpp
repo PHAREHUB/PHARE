@@ -29,8 +29,9 @@ struct HybridFieldOptions
     using Vector   = Quantity::Vector;
     using Tensor   = Quantity::Tensor;
 
-    auto static constexpr dimension    = opts.dimension;
-    auto static constexpr interp_order = opts.interp_order;
+    auto static constexpr dimension     = opts.dimension;
+    auto static constexpr interp_order  = opts.interp_order;
+    auto static constexpr fully_kinetic = isFullyKinetic<opts>();
     // fully kinetic: the level ghost band holds every particle whose current or charge reaches
     // the first ghost layer of J and rho outside a fine level, which the current filter reads:
     // one layer, the half support and half a cell (segment end, displacement guard), ceil(3/2 +
@@ -53,6 +54,7 @@ struct HybridOptions
     auto static constexpr field_options        = opts;
     auto static constexpr dimension            = opts.dimension;
     auto static constexpr interp_order         = opts.interp_order;
+    auto static constexpr fully_kinetic        = opts.fully_kinetic; // isFullyKinetic<options>
     auto static constexpr field_ghost_width    = opts.field_ghost_width;
     auto static constexpr particle_ghost_width = opts.particle_ghost_width;
 };
