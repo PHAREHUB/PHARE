@@ -164,10 +164,12 @@ struct UpdaterSelectionBoxing
               });
           };
 
-    Selector_t const inGhostLayer
-        = [ghostBox = ghostBox, domainBox = domainBox](auto& particleRange) {
+    // ghost cells outside the level: cells of a same-level neighbour's domain are excluded, a
+    // level ghost particle entering one is that neighbour's (it holds its own copy)
+    Selector_t const inLevelGhostLayer
+        = [ghostBox = ghostBox, nonLevelGhostBox = nonLevelGhostBox](auto& particleRange) {
               return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isIn(cell, ghostBox) and !isIn(cell, domainBox);
+                  return isIn(cell, ghostBox) and !isIn(cell, nonLevelGhostBox);
               });
           };
 
@@ -225,9 +227,10 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // After being pushed, some patch ghost particles may enter the domain. These need to be
         // copied into the domain array so they are transfered to the neighbor patch
         // ghost array and contribute to moments there too.
-        // On the contrary level ghost particles entering the domain here do not need to be copied
-        // since they contribute to nodes that are not shared with neighbor patches an since
-        // level border nodes will receive contributions from levelghost old and new particles
+        // On the contrary level ghost particles entering the domain here do not need to be copied:
+        // this pass only computes moments, they are deposited and the particle arrays are left
+        // as they are. Level border nodes also receive the contributions of levelghost old and
+        // new particles.
 
         if (pop.levelGhostParticles().size())
             pushAndAccumulateGhosts(pop.levelGhostParticles());
@@ -293,7 +296,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
             auto particleRange = makeIndexRange(pop.levelGhostParticles());
             auto inGhostLayerRange
                 = pusher_->move(particleRange, particleRange, em, pop.charge(), pop.mass(),
-                                interpolator_, layout, boxing.inGhostBox, boxing.inGhostLayer);
+                                interpolator_, layout, boxing.inGhostBox, boxing.inLevelGhostLayer);
 
             auto& particleArray = particleRange.array();
             particleArray.export_particles(domainParticles,
