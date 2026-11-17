@@ -13,6 +13,11 @@ filtered N times as the solver does. Relative to the scale of T2: c^2 max |rho_r
 
 Prints, per run, F / scale at distances 0, 3, 6, 10 fine cells from each boundary at the last
 step and at step 20, and saves the whole profile history (fine_gauss_<options>_seed<k>.npz).
+
+The dump phase: a coarse time comes right after the band renewal, while the fine level is also
+dumped one fine step later (mid step, t + dt_f). The boundary node then differs by the charge of
+the domain particles erased in that fine step. The npz also holds the mid step profiles and, from
+step JUMP_FROM on, the jump (coarse time mean - mid step mean) and the two-phase mean.
 """
 
 import argparse
@@ -32,6 +37,7 @@ C_OVER_VA, MASS_E, T = 10.0, 0.04, 0.03
 BOX = (24, 39)  # root cells, both included
 RATIO = 2
 PROBES = (0, 3, 6, 10)
+JUMP_FROM = 10  # coarse step, past the start-up
 diag_root = "phare_outputs/fully_kinetic_fine_gauss"
 
 
@@ -199,10 +205,8 @@ def main():
     parser.add_argument("--vth-factor-electrons", type=float, default=1.0)
     args = parser.parse_args()
 
-    for seed in range(args.first_seed, args.first_seed + args.seeds):
-        diag_dir, times, seconds = simulate(args, seed)
-        s0 = scale(diag_dir, args.order)
-        profiles = (
+    def history(diag_dir, times, s0):
+        return (
             np.array(
                 [
                     fine_residual(diag_dir, t, args.order, args.filter_passes)
@@ -211,12 +215,33 @@ def main():
             )
             / s0
         )
+
+    for seed in range(args.first_seed, args.first_seed + args.seeds):
+        diag_dir, times, seconds = simulate(args, seed)
+        s0 = scale(diag_dir, args.order)
+        profiles = history(diag_dir, times, s0)
+        mid_times = times[:-1] + DT / RATIO
+        mid_profiles = history(diag_dir, mid_times, s0)
+        coarse_mean = profiles[JUMP_FROM:].mean(axis=0)
+        mid_mean = mid_profiles[JUMP_FROM:].mean(axis=0)
+        jump, two_phase = coarse_mean - mid_mean, 0.5 * (coarse_mean + mid_mean)
         np.savez(
             f"{diag_dir}.npz",
             times=times,
             profiles=profiles,
+            mid_times=mid_times,
+            mid_profiles=mid_profiles,
+            jump=jump,
+            two_phase=two_phase,
             scale=s0,
             args=str(vars(args)),
+        )
+        print(
+            f"seed {seed} steps {JUMP_FROM}-{args.steps}: jump (coarse - mid) at the boundary "
+            f"node {jump[0]:+.3f} / {jump[-1]:+.3f}, one cell in {jump[1]:+.3f} / {jump[-2]:+.3f}; "
+            f"two-phase mean {two_phase[0]:+.3f} / {two_phase[-1]:+.3f}, one cell in "
+            f"{two_phase[1]:+.3f} / {two_phase[-2]:+.3f}",
+            flush=True,
         )
         for step in sorted({min(20, args.steps), args.steps}):
             p = profiles[step]
