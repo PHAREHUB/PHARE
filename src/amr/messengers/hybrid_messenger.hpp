@@ -347,6 +347,17 @@ namespace amr
             strat_->fillDensityBorders(ions, level, fillTime);
         }
 
+        void fillIonMomentGhosts(IonsT& ions, level_t& level, double const fillTime)
+        {
+            strat_->fillIonMomentGhosts(ions, level, fillTime);
+        }
+
+        void fillIonMomentGhosts(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                 IonsT& ions, level_t& level, double const fillTime)
+        {
+            strat_->fillIonMomentGhosts(hierarchy, ions, level, fillTime);
+        }
+
         /* -------------------------------------------------------------------------
                             End HybridMessenger Interface
            -------------------------------------------------------------------------*/

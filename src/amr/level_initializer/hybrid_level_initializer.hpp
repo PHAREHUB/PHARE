@@ -122,9 +122,16 @@ namespace solver
                 ions.computeChargeFlux();
             }
 
-            // moments are not time interpolated: their level ghost nodes come from the
-            // deposit of level ghost particles above. Only E and B ghosts are, from the
-            // Bold_ and Eold_ copies saved by prepareStep() (see end of this function).
+            // the level ghost particles above complete the domain nodes, border included, but
+            // not the node beyond the level that Ohm reads: the total density and E-node flux
+            // ghosts are refined from the coarser level in space and time, from the old copies
+            // saved by prepareStep() (see end of this function), like E and B
+            {
+                // the time interpolation weight comes from the destination's time stamp
+                TimeSetter setIonsTime{level, hybridModel, initDataTime};
+                setIonsTime(ions);
+            }
+            hybMessenger.fillIonMomentGhosts(hierarchy, ions, level, initDataTime);
 
 
             // J is never messenger-communicated: compute it locally via Ampere on
