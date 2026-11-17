@@ -59,11 +59,10 @@ class CellDeposit
     // Lane-axis arithmetic as one xsimd batch of the B lanes (same per-lane operations as the
     // lane loops: product, exact fma). With plain lane loops nested in the 4-moment loop, clang
     // unrolls the lane loop and vectorizes the moment loop instead: gather + scatter on the
-    // accumulator at a stride of nodes x lanes (3D order-2 corrector deposit ~7x slower than GCC).
+    // accumulator at a stride of nodes x lanes.
     using bd = hyb::xs::bd;
     static_assert(bd::size == B);
     [[gnu::always_inline]] static inline bd ld_(double const* p) { return bd::load_unaligned(p); }
-    // a = fma(x, y, a) on the B lanes
     [[gnu::always_inline]] static inline void fmaLanes_(double* a, bd const x, bd const y)
     {
         xsimd::fma(x, y, bd::load_unaligned(a)).store_unaligned(a);
@@ -280,7 +279,6 @@ public:
             thi_[d] = std::max(thi_[d], o[d] + ext[d]);
             // lane offsets as doubles (small integers, exact) so the select is a batch compare:
             // as a lane loop GCC emits one data-dependent branch per lane, row and weight
-            // (~1.9 branch mispredictions per particle in the 3D order-2 predictor)
             alignas(64) double off[B];
             for (std::size_t l = 0; l < B; ++l)
                 off[l] = mask[l] ? static_cast<double>(starts[d][l] - lo[d]) : 0.;
@@ -359,7 +357,7 @@ public:
     [[gnu::noinline]] void depositArray(Particles const& particles, Targets const& t,
                                         std::array<int, dim> const& amrToLocal)
     {
-        // unsorted (decayed order): the window gets the predictor's margin of cells
+        // unsorted: the window gets the predictor's margin of cells
         begin(t, amrToLocal, !particles.csrValid());
         auto const n     = particles.size();
         std::size_t done = 0;
@@ -845,8 +843,8 @@ private:
     int nNodes_ = 0;
     bool active_ = false;
     // rowBlock's accumulator: lane-private sums over the unions of the cells rowCell_ to
-    // rowCell_ + rowSpan - 1 along the last dim (zero when inactive); rowHi_: last cell offset used.
-    // The flush cost per row falls with the span (Zen4, 3D: 2 -> 8 -> 16 cells, -5 %, -4 %)
+    // rowCell_ + rowSpan - 1 along the last dim (zero when inactive); rowHi_: last cell offset
+    // used. A longer span means fewer flushes per row.
     static constexpr int rowSpan            = 16;
     static constexpr std::size_t rowL       = U + rowSpan - 1;
     static constexpr std::size_t rowNN      = NN_ / U * rowL;

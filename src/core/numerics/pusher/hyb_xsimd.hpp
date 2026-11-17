@@ -77,7 +77,7 @@ static_assert(bi::size == laneCount);
 {
     return bi(_mm512_cvttpd_epi32(static_cast<__m512d>(v)));
 }
-/** cols[k][l] = base[row[l] + k], k < K <= 4 (the rows4 field gather): lane l loads one
+/** cols[k][l] = base[row[l] + k], k < K <= 4 (the field gather of the push): lane l loads one
  * contiguous row of W = 4 doubles (ymm) at base + row[l], the 8 x W tile is transposed
  * in registers (unpacklo/hi + shuf_f64x2; xsimd 13 has no transpose) and only its first K columns
  * are kept. The values are the ones gather() reads, so the interpolation sums are unchanged.

@@ -1158,8 +1158,8 @@ private:
         bd const ry = coef1 * EB[4];
         bd const rz = coef1 * EB[5];
 
-        // the contractions GCC forms in the AutoVec lane loop (read off its code), made
-        // explicit: every r_i r_j product fused into its sum, rotation rows as
+        // the contractions GCC forms in the AutoVec lane loop, made explicit (bitwise with that
+        // backend): every r_i r_j product fused into its sum, rotation rows as
         // fma(m_z, v_z, fma(m_x, v_x, m_y * v_y))
         using xsimd::fma;
         using xsimd::fms;

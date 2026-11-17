@@ -157,9 +157,8 @@ private:
 
     /** cell kernels for this sorted domain array? Below hyb::cellMinPpc particles per cell on
      * average the blocks of a cell are mostly partial and the kernels walking the rows are
-     * faster (-23 % at 8 particles per cell). The choice is kept in the array, made again every
-     * hyb::cellChoiceEvery correctors and whenever the array is not sorted (new, restarted or
-     * regridded array).
+     * faster. The choice is kept in the array, made again every hyb::cellChoiceEvery correctors
+     * and whenever the array is not sorted (new, restarted or regridded array).
      */
     bool cellKernels_(ParticleArray& domain, GridLayout const& layout, bool const corrector)
     {

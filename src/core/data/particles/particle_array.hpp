@@ -35,8 +35,7 @@ struct ParticleSortScratch
  * non-empty rows, 0 for empty ones; a full row borrows a slot from the nearest row with a free
  * slot within bagRadius rows (cascade), else the whole array is laid out again.
  * The slack is small on purpose: gaps of more than a couple of particles between rows break the
- * hardware prefetch stream of the kernels that walk the rows (measured: 5 % slack costs ~10 %
- * of the 2D interp-1 push, 20 % slack ~50 %).
+ * hardware prefetch stream of the kernels that walk the rows.
  */
 inline constexpr int bagSlots  = 2;
 inline constexpr int bagRadius = 256;
