@@ -1,10 +1,13 @@
 import unittest
 import warnings
+from unittest.mock import patch
 
 import numpy as np
 
 from pyphare.pharein import global_vars, simulation
 from pyphare.pharein.fully_kinetic import check_fully_kinetic
+from pyphare.pharein.initialize import fully_kinetic as initialize_fully_kinetic
+from pyphare.pharein.initialize.general import populate_load_balancer
 from pyphare.pharein.maxwellian_fluid_model import MaxwellianFluidModel
 
 cells = 64
@@ -120,9 +123,36 @@ class TestFullyKineticChecks(unittest.TestCase):
                 final_time=0.02,
             )
 
-    def test_tagging_is_refused(self):
-        with self.assertRaisesRegex(ValueError, "tagging"):
-            make_sim(refinement="tagging", max_nbr_levels=2, divergence_cleaning=0.5)
+    def test_tagging_is_accepted_with_the_regrid_warning(self):
+        # P5-1: the tagger is there, the regrid of the fine levels it creates is not (P5a)
+        with self.assertWarnsRegex(UserWarning, "regrid"):
+            sim = make_sim(
+                refinement="tagging", max_nbr_levels=2, divergence_cleaning=0.5
+            )
+        self.assertEqual(sim.refinement, "tagging")
+
+    def test_tagging_writes_fk_method_and_leaves_load_balancing_off(self):
+        # the C++ tagger factory reads fk_method; tagging turns load balancing on for the
+        # hybrid, which the fully kinetic model does not support yet (P5b)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sim = make_sim(
+                refinement="tagging", max_nbr_levels=2, divergence_cleaning=0.5
+            )
+        make_model()
+        written = {}
+
+        class Recorder:
+            def __getattr__(self, adder):
+                return lambda path, value, *args: written.__setitem__(path, value)
+
+        populate_load_balancer(Recorder(), sim)
+        with patch.object(initialize_fully_kinetic, "DictPopulator", Recorder):
+            initialize_fully_kinetic.populateDict(sim)
+        self.assertEqual(
+            written["simulation/AMR/refinement/tagging/fk_method"], "default"
+        )
+        self.assertFalse(written["simulation/AMR/loadbalancing/active"])
 
     def test_refinement_boxes_are_accepted(self):
         sim = make_sim(
