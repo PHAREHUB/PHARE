@@ -10,6 +10,8 @@ def populateDict(sim):
     dp = DictPopulator()
 
     dp.add_bool("simulation/fully_kinetic", True)
+    if sim.refinement == "tagging":
+        dp.add_string("simulation/AMR/refinement/tagging/fk_method", "default")
     dp.add_double("simulation/c_over_va", sim.c_over_va)
     dp.add_int("simulation/current_filter_passes", sim.current_filter_passes)
     dp.add_double("simulation/divergence_cleaning", sim.divergence_cleaning)

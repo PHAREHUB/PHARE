@@ -11,7 +11,9 @@
 #include "gtest/gtest.h"
 
 #include <cmath>
+#include <vector>
 #include <algorithm>
+#include <string_view>
 
 using namespace PHARE::amr;
 
@@ -283,6 +285,120 @@ TYPED_TEST(TestTagger, scaledAvg)
   */
 }
 
+
+
+// T12 (P4 plan, P5-1): the fully kinetic tagger is the hybrid one, reading B. On the same B, at
+// the same physical nodes, the tags are the same. The only difference comes from the field ghost
+// width: in 1D the hybrid at order 1 (2 ghosts) skips the evaluation of the last patch cell and
+// writes 0 there, every other case evaluates it (default_tagger_strategy.hpp, doLastCell). The
+// fully kinetic ghosts are 4, 6, 6 (hybrid_options.hpp), so it always evaluates it.
+template<std::size_t dim, std::size_t interp, bool fk>
+struct MinimalBModel
+{
+    using gridlayout_type                             = PHARE::core::PHARE_Types<PHARE::SimOpts{
+                                    .dimension = dim, .interp_order = interp, .fully_kinetic = fk}>::Hybrid::GridLayout_t;
+    static constexpr std::size_t dimension            = dim;
+    static constexpr std::string_view model_type_name = fk ? "FullyKineticModel" : "HybridModel";
+    struct
+    {
+        struct
+        {
+            UsableVecField<dimension>& B;
+        } electromag;
+    } state;
+};
+
+static_assert(PHARE::solver::is_fully_kinetic_model_v<MinimalBModel<1, 1, true>>);
+static_assert(PHARE::solver::is_hybrid_model_v<MinimalBModel<1, 1, false>>);
+
+// tags of a B with steep tanh fronts along every direction, sampled on the layout's nodes
+template<typename Model>
+std::vector<int> tagsOn(std::uint32_t const nCells)
+{
+    using GridLayoutT = Model::gridlayout_type;
+    auto layout       = TestGridLayout<GridLayoutT>::make(nCells);
+    UsableVecField<Model::dimension> B{"EM_B", layout, HybridQuantity::Vector::B};
+    for (std::size_t c = 0; c < 3; ++c)
+        layout.evalOnGhostBox(B[c], [&](auto const&... ijk) {
+            auto const amr = layout.localToAMR(
+                PHARE::core::Point{static_cast<std::uint32_t>(ijk)...}.as_signed());
+            auto const r = layout.fieldNodeCoordinates(B[c], amr);
+            double value = 1. + c;
+            for (std::size_t d = 0; d < Model::dimension; ++d)
+                value += std::tanh((r[d] - 0.3 - 0.2 * d - 0.1 * c) / 0.03);
+            B[c](ijk...) = value;
+        });
+
+    Model model{{{B}}};
+    PHARE::initializer::PHAREDict dict;
+    dict["threshold"] = 0.1;
+    DefaultTaggerStrategy<Model> tagger{dict};
+
+    std::vector<int> tags(PHARE::core::product(layout.nbrCells()), -1);
+    tagger.tag(model, layout, tags.data());
+    return tags;
+}
+
+template<std::size_t dim, std::size_t interp>
+void checkFullyKineticTagsAreHybridTags()
+{
+    std::uint32_t constexpr nCells = 20;
+    auto const fk                  = tagsOn<MinimalBModel<dim, interp, true>>(nCells);
+    auto const hybrid              = tagsOn<MinimalBModel<dim, interp, false>>(nCells);
+    ASSERT_EQ(fk.size(), hybrid.size());
+
+    auto const nbrTagged = std::count(fk.begin(), fk.end(), 1);
+    EXPECT_GT(nbrTagged, 0) << dim << "D order " << interp;
+    EXPECT_LT(nbrTagged, static_cast<long>(fk.size())) << dim << "D order " << interp;
+    EXPECT_EQ(std::count(fk.begin(), fk.end(), -1), 0) << "every cell written";
+
+    bool constexpr lastCellSkippedByHybrid
+        = dim == 1
+          and MinimalBModel<dim, interp, false>::gridlayout_type::options.field_ghost_width <= 2;
+    for (std::size_t i = 0; i < fk.size(); ++i)
+    {
+        if (lastCellSkippedByHybrid and i == fk.size() - 1)
+            EXPECT_EQ(hybrid[i], 0) << "the hybrid order 1 does not evaluate its last cell";
+        else
+            EXPECT_EQ(fk[i], hybrid[i]) << dim << "D order " << interp << " cell " << i;
+    }
+}
+
+TEST(test_tagger, fullyKineticTagsAreHybridTags)
+{
+    checkFullyKineticTagsAreHybridTags<1, 1>();
+    checkFullyKineticTagsAreHybridTags<1, 2>();
+    checkFullyKineticTagsAreHybridTags<1, 3>();
+    checkFullyKineticTagsAreHybridTags<2, 1>();
+    checkFullyKineticTagsAreHybridTags<2, 2>();
+    checkFullyKineticTagsAreHybridTags<2, 3>();
+    checkFullyKineticTagsAreHybridTags<3, 1>();
+    checkFullyKineticTagsAreHybridTags<3, 2>();
+    checkFullyKineticTagsAreHybridTags<3, 3>();
+}
+
+TEST(test_tagger, fullyKineticOrder1In1DIsTheHybridWithTheSameGhosts)
+{
+    // the fully kinetic order 1 has 4 field ghosts, as the hybrid at order 2: the same tags,
+    // the last cell included (the tagger does not depend on the interpolation order otherwise)
+    static_assert(MinimalBModel<1, 1, true>::gridlayout_type::options.field_ghost_width
+                  == MinimalBModel<1, 2, false>::gridlayout_type::options.field_ghost_width);
+    std::uint32_t constexpr nCells = 20;
+    EXPECT_EQ((tagsOn<MinimalBModel<1, 1, true>>(nCells)),
+              (tagsOn<MinimalBModel<1, 2, false>>(nCells)));
+}
+
+TEST(test_tagger, fullyKineticFactory)
+{
+    using FKModel = PHARE::solver::PHARE_Types<PHARE::SimOpts{
+        .dimension = 1, .interp_order = 1, .fully_kinetic = true}>::FK::Model_t;
+    PHARE::initializer::PHAREDict dict;
+    dict["fk_method"] = std::string{"default"};
+    dict["threshold"] = 0.1;
+    EXPECT_NE(TaggerFactory<FKModel>::make(dict), nullptr);
+    dict["fk_method"] = std::string{"invalidStrat"};
+    EXPECT_EQ(TaggerFactory<FKModel>::make(dict), nullptr);
+}
 
 
 int main(int argc, char** argv)

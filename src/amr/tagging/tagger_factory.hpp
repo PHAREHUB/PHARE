@@ -5,6 +5,7 @@
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -44,6 +45,13 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
     else if constexpr (solver::is_mhd_model_v<Model>)
     {
         std::string const methodName = dict["mhd_method"];
+
+        if (methodName == "default")
+            return std::make_unique<HT>(std::make_unique<HTS>(dict));
+    }
+    else if constexpr (solver::is_fully_kinetic_model_v<Model>)
+    {
+        std::string const methodName = dict["fk_method"];
 
         if (methodName == "default")
             return std::make_unique<HT>(std::make_unique<HTS>(dict));

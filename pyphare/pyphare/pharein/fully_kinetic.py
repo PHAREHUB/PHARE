@@ -39,8 +39,16 @@ def check_fully_kinetic_simulation(**kwargs):
     # dt / 2^l and dx / 2^l (SolverFK::maxFinerLevelDt), so the light CFL and v dt / dx are the
     # same on every level and every other criterion (omega dt, the leapfrog stability, dx over
     # the Debye length) shrinks.
+    # tagging: the tagger reads B as the hybrid one (P5-1). The fine levels it creates at t=0
+    # start like refinement boxes, but a regrid of a level is not supported yet (P5a): the first
+    # one, after two coarse steps, stops the run
     if kwargs["refinement"] == "tagging":
-        raise ValueError("Error: FullyKineticModel does not support tagging yet")
+        warnings.warn(
+            "FullyKineticModel: tagging creates the refined levels at t=0, but regridding them"
+            " is not supported yet, the first regrid (after 2 coarse steps) stops the run",
+            UserWarning,
+            stacklevel=3,
+        )
 
     if kwargs["restart_options"] is not None:
         raise ValueError("Error: FullyKineticModel does not support restarts yet")

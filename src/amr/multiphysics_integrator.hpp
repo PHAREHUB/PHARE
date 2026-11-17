@@ -902,7 +902,9 @@ namespace solver
         amr::Tagger<AMR_Types> const& getTagger(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
-            if (taggers_[descriptor.taggerIndex] == nullptr)
+            // no tagger registered on the level: the index is NOT_SET (-1), not an index
+            if (descriptor.taggerIndex == LevelDescriptor::NOT_SET
+                or taggers_[descriptor.taggerIndex] == nullptr)
             {
                 throw std::runtime_error("Error - no tagger assigned to level "
                                          + std::to_string(iLevel));
@@ -914,13 +916,8 @@ namespace solver
 
         amr::Tagger<AMR_Types>& getTagger_(int iLevel)
         {
-            auto& descriptor = levelDescriptors_[iLevel];
-            if (taggers_[descriptor.taggerIndex] == nullptr)
-            {
-                throw std::runtime_error("Error - no tagger assigned to level "
-                                         + std::to_string(iLevel));
-            }
-            return *taggers_[descriptor.taggerIndex];
+            return const_cast<amr::Tagger<AMR_Types>&>(
+                const_cast<std::remove_pointer_t<decltype(this)> const*>(this)->getTagger(iLevel));
         }
 
 

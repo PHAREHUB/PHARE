@@ -353,11 +353,8 @@ void Simulator<opts>::fk_init(initializer::PHAREDict const& dict)
     using FKModel  = PHARETypes::FK::Model_t;
     using SolverFK = PHARETypes::FK::Solver_t;
 
-    // static refinement boxes only: no tagging and no restarts
-    if (dict["simulation"]["AMR"]["refinement"].contains("tagging")
-        and dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
-                != "none")
-        throw std::runtime_error("FullyKineticModel: tagging is not supported yet");
+    // no restarts; tagging creates the refined levels, their regrid is not supported yet (P5a,
+    // FKLevelInitializer throws)
     if (dict["simulation"].contains("restarts"))
         throw std::runtime_error("FullyKineticModel: restarts are not supported yet");
 
@@ -368,6 +365,16 @@ void Simulator<opts>::fk_init(initializer::PHAREDict const& dict)
     multiphysInteg_->registerAndInitSolver(0, maxLevelNumber_ - 1,
                                            std::make_unique<SolverFK>(dict["simulation"]));
     multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
+
+    auto const& refinement = dict["simulation"]["AMR"]["refinement"];
+    if (refinement.contains("tagging")
+        and refinement["tagging"]["method"].template to<std::string>() != "none")
+    {
+        auto tagger = amr::TaggerFactory<FKModel>::make(refinement["tagging"]);
+        if (!tagger)
+            throw std::runtime_error("FullyKineticModel: unknown tagging fk_method");
+        multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(tagger));
+    }
 
     if (dict["simulation"].contains("diagnostics"))
         diagnostics_init(dict["simulation"]["diagnostics"], *fk_.model_);

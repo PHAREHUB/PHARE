@@ -13,6 +13,8 @@
 #include <SAMRAI/pdat/CellData.h>
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <stdexcept>
 
@@ -32,7 +34,7 @@ class ConcreteTagger : public Tagger<typename Model::amr_types>
 
 public:
     ConcreteTagger(std::unique_ptr<TaggerStrategy<Model>> strat)
-        : Super{Model::model_name == "HybridModel" ? "HybridTagger" : "MHDTagger"}
+        : Super{taggerName()}
         , strat_{std::move(strat)}
     {
     }
@@ -40,6 +42,15 @@ public:
     void tag(IPhysicalModel& model, patch_t& patch, int tag_index);
 
 private:
+    // HybridModel -> HybridTagger, MHDModel -> MHDTagger, FullyKineticModel -> FullyKineticTagger
+    static std::string taggerName()
+    {
+        constexpr std::string_view suffix = "Model";
+        static_assert(Model::model_type_name.ends_with(suffix));
+        auto const name = Model::model_type_name;
+        return std::string{name.substr(0, name.size() - suffix.size())} + "Tagger";
+    }
+
     std::unique_ptr<TaggerStrategy<Model>> strat_;
 };
 

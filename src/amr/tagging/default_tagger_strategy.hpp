@@ -6,6 +6,7 @@
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/fully_kinetic_model.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -33,7 +34,7 @@ public:
 private:
     auto& getB(auto& model) const
     {
-        if constexpr (solver::is_hybrid_model_v<Model>)
+        if constexpr (solver::is_particle_model_v<Model>) // hybrid and fully kinetic
             return model.state.electromag.B;
         else if constexpr (solver::is_mhd_model_v<Model>)
             return model.state.B;
