@@ -54,9 +54,6 @@ def check_fully_kinetic_simulation(**kwargs):
     # t=0 like refinement boxes, and a level regridded later takes its E from the old level and
     # the coarser one (P5a)
 
-    if kwargs["restart_options"] is not None:
-        raise ValueError("Error: FullyKineticModel does not support restarts yet")
-
 
 def default_divergence_cleaning(max_nbr_levels):
     """divergence_cleaning when the user gives none: off on one level. With refinement Gauss's

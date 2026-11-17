@@ -302,15 +302,15 @@ class TestFullyKineticChecks(unittest.TestCase):
                 model_options=["HybridModel"], c_over_va=None, boundary_cleaning_mask=False
             )
 
-    def test_restarts_are_refused(self):
-        with self.assertRaisesRegex(ValueError, "restarts"):
-            make_sim(
-                restart_options={
-                    "dir": "restarts",
-                    "mode": "overwrite",
-                    "timestamps": [0.01],
-                }
-            )
+    def test_restart_options_are_accepted(self):
+        sim = make_sim(
+            restart_options={
+                "dir": "restarts",
+                "mode": "overwrite",
+                "timestamps": [0.01],
+            }
+        )
+        self.assertEqual(sim.restart_options["timestamps"], [0.01])
 
     def test_net_charge_is_refused(self):
         sim = make_sim()

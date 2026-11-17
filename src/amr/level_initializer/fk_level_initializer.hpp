@@ -88,8 +88,10 @@ public:
         auto const dt     = dt_ / level.getRatioToLevelZero().max();
 
         // SAMRAI also creates a level without an old one during the run (a level that comes
-        // back): its E needs the coarser one too. Restarts (P5d) come through a regrid (SAMRAI
-        // issue 199)
+        // back): its E needs the coarser one too. A restart does not come here: SAMRAI reads the
+        // levels and their data from the file (TimeRefinementIntegrator::initializeHierarchy);
+        // with refinement boxes it may regrid a level later where the first run did not (SAMRAI
+        // issue 199), a regrid like the others
         bool const duringRun = isRegridding or initDataTime > 0.;
 
         if (duringRun)

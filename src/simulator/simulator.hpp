@@ -364,10 +364,6 @@ void Simulator<opts>::fk_init(initializer::PHAREDict const& dict)
     using FKModel  = PHARETypes::FK::Model_t;
     using SolverFK = PHARETypes::FK::Solver_t;
 
-    // no restarts yet (P5d)
-    if (dict["simulation"].contains("restarts"))
-        throw std::runtime_error("FullyKineticModel: restarts are not supported yet");
-
     fk_.model_ = std::make_shared<FKModel>(dict["simulation"], fk_.resman_);
     fk_.resman_->registerResources(fk_.model_->state); // still valid, never moved
 
@@ -510,6 +506,9 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
             using ResMan_t = PHARETypes::FK::Model_t::resources_manager_type;
             fk_.resman_    = std::make_shared<ResMan_t>();
             fk_init(dict);
+            if (dict["simulation"].contains("restarts"))
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *fk_.resman_, dict["simulation"]["restarts"]);
         }
     }
     else
