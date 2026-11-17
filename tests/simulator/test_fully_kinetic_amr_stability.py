@@ -12,17 +12,20 @@ per unit time, 0.09 w_pe) until an electron passed c.
 Checks: on each level of the box run, the growth of max |B_z| after t = 0.3 (its max after over
 its value at t = 0.3) is below MAX_RELATIVE_GROWTH times that of the one level run.
 
-Calibration (Debug, C++ at bd07c2150, 100 particles per cell and species, 600 coarse steps,
-seed s: protons 1 + 10 s, electrons 2 + 10 s; this test is seed 0), growth then ratio:
+Calibration (Debug, 100 particles per cell and species, 600 coarse steps, seed s: protons
+1 + 10 s, electrons 2 + 10 s; this test is seed 0), growth then ratio to the one level run:
 
-    seed   one level   box level 0       box level 1
-    0      1.28        1.86 (1.45)       2.83 (2.21)
-    1      1.28        1.77 (1.38)       1.90 (1.48)
-    2      1.76        1.27 (0.72)       1.35 (0.77)
+    seed   one level   box level 0, 1        box level 0, 1
+                       (bd07c2150)            (B-x partial reflux)
+    0      1.28        1.86 (1.45)  2.83 (2.21)   1.59 (1.24)  2.48 (1.94)
+    1      1.28        1.77 (1.38)  1.90 (1.48)   1.58 (1.23)  1.66 (1.30)
+    2      1.76        1.27 (0.72)  1.35 (0.77)   1.26 (0.72)  1.27 (0.72)
 
-Stale ghosts (at ee59c5225): 9.2 on the box run, ratio above 7. The seed 0 level 1 ratio is above
-the bound: the residual instability of the fixed scheme (vacuum seeded growth rate 1.3, pV's
-linear model 1.43) or the noise of a ratio of maxima, not settled. Unregistered until then.
+Stale ghosts (at ee59c5225): 9.2 on the box run, ratio above 7. With B-x the vacuum seeded run
+decays (test_fully_kinetic_amr_vacuum_stability.py) and pV's reproducer at 400 particles per cell
+grows as one level (gamma 0.02, one level 0.02), but the seed 0 fine ratio stays at 1.94: a ratio
+of maxima at 100 particles per cell is noisy (the fine B_z at t = 0.3 is the lowest of the six).
+Unregistered: the vacuum test is the regression test of the interface instability.
 Runtime about 65 s (box 49 s, one level 16 s).
 
 E and B are dumped at every coarse step on both levels (the mode may flip sign every coarse step),

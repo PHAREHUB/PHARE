@@ -16,7 +16,7 @@ pV's linear model (5 phase sets) and PHARE (this phase set), growth from 0.2 to 
 
     one level            model 0.87 - 1.31    PHARE 0.87 (L0)
     HEAD (before B-x)    model 1.9e3 - 6.7e3  PHARE 5.67e3 (L0), 1.36e4 (L1)
-    B-x partial reflux   model 0.28 - 0.95 (L0), 0.14 - 0.27 (L1)
+    B-x partial reflux   model 0.28 - 0.95 (L0), 0.14 - 0.27 (L1)   PHARE 0.589 (L0), 0.514 (L1)
 
 The bound 2 catches gamma >= ln 2 / 7.8 = 0.09 with a 1.5x margin over the beating of the 9 modes.
 """

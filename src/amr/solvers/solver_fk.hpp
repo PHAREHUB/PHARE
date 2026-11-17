@@ -62,6 +62,15 @@ namespace PHARE::solver
  * average of E (the flux sum, at t_{n+1/2}) onto the model E over the covered region, then
  * reflux recomputes B^{n+1} = B^n - dt curl E^{n+1/2} on the whole level from a copy of B^n:
  * bitwise step 5 where E did not change. The finer model E, at another time, is not coarsened.
+ *
+ * Partial reflux after each finer substep but the last (P4 T9 residual, option B-x,
+ * docs/superpowers/specs/p4/t9_residual.md): the next substep's B ghosts are filled from the
+ * coarse B at its start, B^n - (k+1) dt_f curl E^, where E^ is the coarse E^{n+1/2} outside the
+ * finer level and, on the covered edges, the mean of the finer E of the substeps done,
+ * extrapolated to the coarse E time with the last two (t_n + dt/2: 1.5 E_f^(0) - 0.5 E_f^(-1) at
+ * ratio 2). Interpolated in time towards the predicted coarse B^{n+1} instead, the ghost read a
+ * value the reflux then replaced, and the interface grew. Outside the finer level the result is
+ * the former interpolation; the half step ghosts of the push keep the interpolation.
  */
 template<typename FKModel, typename AMR_Types>
 class SolverFK : public ISolver<AMR_Types>
@@ -91,6 +100,13 @@ private:
 
     // B^n and its time, per level: the start of the reflux Faraday
     VecFieldT Bold_{this->name() + "_Bold", core::HybridQuantity::Vector::B};
+
+    // partial reflux (B-x). Finer level: its E at the start of the substep, then the covered E
+    // coarsened. Coarser level: its E with the covered edges from the finer level, and the B its
+    // Faraday gives at the end of the finer substep, read by the finer level's next B ghosts
+    VecFieldT Epartial_{this->name() + "_Epartial", core::HybridQuantity::Vector::E};
+    VecFieldT Ehat_{this->name() + "_Ehat", core::HybridQuantity::Vector::E};
+    VecFieldT Bmid_{this->name() + "_Bmid", core::HybridQuantity::Vector::B};
     std::unordered_map<int, double> oldTime_;
 
     IonUpdater_t ionUpdater_;
@@ -127,6 +143,10 @@ public:
         fkInfo.refluxElectric  = fkInfo.modelElectric;
         fkInfo.fluxSumElectric = fluxSumE_.name();
         fkInfo.aheadElectric   = Eahead_.name();
+
+        fkInfo.partialFluxElectric = Epartial_.name();
+        fkInfo.partialElectric     = Ehat_.name();
+        fkInfo.midMagnetic         = Bmid_.name();
     }
 
     void registerResources(IPhysicalModel_t& model) override
@@ -136,6 +156,9 @@ public:
         rm.registerResources(fluxSumE_);
         rm.registerResources(Eahead_);
         rm.registerResources(Bold_);
+        rm.registerResources(Epartial_);
+        rm.registerResources(Ehat_);
+        rm.registerResources(Bmid_);
     }
 
     void allocate(IPhysicalModel_t& model, patch_t& patch, double const allocateTime) const override
@@ -145,16 +168,23 @@ public:
         rm.allocate(fluxSumE_, patch, allocateTime);
         rm.allocate(Eahead_, patch, allocateTime);
         rm.allocate(Bold_, patch, allocateTime);
+        rm.allocate(Epartial_, patch, allocateTime);
+        rm.allocate(Ehat_, patch, allocateTime);
+        rm.allocate(Bmid_, patch, allocateTime);
     }
 
     // B^n for the reflux of a level with a finer one (the step itself keeps B^n in the model B
-    // until its last Faraday)
+    // until its last Faraday); on a refined level, E^{n-1/2} for the trend of the partial reflux
     void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime) override
     {
         auto& fkModel = dynamic_cast<FKModel&>(model);
         auto& B       = fkModel.state.electromag.B;
+        auto& E       = fkModel.state.electromag.E;
         for (auto& patch : fkModel.resourcesManager->enumerate(level, B, Bold_))
             Bold_.copyData(B);
+        if (level.getLevelNumber() > 0)
+            for (auto& patch : fkModel.resourcesManager->enumerate(level, E, Epartial_))
+                Epartial_.copyData(E);
         oldTime_[level.getLevelNumber()] = currentTime;
     }
 
@@ -188,6 +218,10 @@ public:
         fkMessenger.fillMagneticGhosts(B, level, time);
     }
 
+    void partialReflux(IPhysicalModel_t& model, level_t& coarseLevel, level_t& fineLevel,
+                       IMessenger& messenger, std::size_t const done, std::size_t const ratio,
+                       double const midTime) override;
+
     double computeStableDt(IPhysicalModel_t& /*model*/, level_t& /*level*/,
                            CFLNumbers const& /*cflNumbers*/) override
     {
@@ -213,12 +247,14 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_);
+        return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_, Epartial_, Ehat_,
+                                     Bmid_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_);
+        return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_, Epartial_, Ehat_,
+                                     Bmid_);
     }
 
 
@@ -298,6 +334,52 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
         advanceFKElectric(level, model, messenger, Eahead_, dt, newTime);
         TimeSetter{level, model, newTime + 0.5 * dt}(Eahead_);
     }
+}
+
+
+
+template<typename FKModel, typename AMR_Types>
+void SolverFK<FKModel, AMR_Types>::partialReflux(IPhysicalModel_t& level_model,
+                                                 level_t& coarseLevel, level_t& fineLevel,
+                                                 IMessenger& fromCoarserMessenger,
+                                                 std::size_t const done, std::size_t const ratio,
+                                                 double const midTime)
+{
+    PHARE_LOG_SCOPE(1, "SolverFK::partialReflux");
+
+    auto& model     = dynamic_cast<FKModel&>(level_model);
+    auto& messenger = dynamic_cast<Messenger&>(fromCoarserMessenger);
+    auto& rm        = *model.resourcesManager;
+    auto& E         = model.state.electromag.E;
+
+    if (done == 0 or done >= ratio)
+        throw std::runtime_error("SolverFK::partialReflux: not after a finer substep but the last");
+
+    // finer level: the mean of its E over the substeps done (the flux sum weighs each 1 / ratio),
+    // at t_n + done dt_f / 2, extrapolated to the coarse E time t_n + ratio dt_f / 2 with the
+    // last two (Epartial_ holds the E of the substep start). Ghosts included, as the flux sum
+    auto const mean  = static_cast<double>(ratio) / static_cast<double>(done);
+    auto const trend = 0.5 * static_cast<double>(ratio - done);
+    for (auto& patch : rm.enumerate(fineLevel, E, fluxSumE_, Epartial_))
+        for (std::size_t c = 0; c < Epartial_.size(); ++c)
+        {
+            auto* partial    = Epartial_[c].data();
+            auto const* sum  = fluxSumE_[c].data();
+            auto const* last = E[c].data();
+            for (std::size_t i = 0; i < Epartial_[c].size(); ++i)
+                partial[i] = mean * sum[i] + trend * (last[i] - partial[i]);
+        }
+
+    // coarser level: its E^{n+1/2}, the covered edges from the finer level
+    for (auto& patch : rm.enumerate(coarseLevel, E, Ehat_))
+        Ehat_.copyData(E);
+    messenger.partialReflux(coarseLevel.getLevelNumber(), fineLevel.getLevelNumber(), midTime);
+
+    // the coarse B at midTime, from B^n (one coarsening, one Faraday, no ghost fill: the finer
+    // level's B ghosts read it through the coarse interpolation of their fill)
+    auto const dt = midTime - oldTime_.at(coarseLevel.getLevelNumber());
+    Faraday_t{coarseLevel, model}(Bold_, Ehat_, Bmid_, dt);
+    TimeSetter{coarseLevel, model, midTime}(Bmid_);
 }
 
 

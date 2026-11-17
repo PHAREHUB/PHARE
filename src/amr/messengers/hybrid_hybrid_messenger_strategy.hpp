@@ -40,6 +40,7 @@
 
 #include <memory>
 #include <algorithm>
+#include <iterator>
 #include <limits>
 #include <string>
 #include <vector>
@@ -210,6 +211,21 @@ namespace amr
                                                   EfieldRefineOp_,
                                                   nonOverwriteInteriorTFfillPattern);
 
+            // fully kinetic partial reflux (B-x): the same coarsening and patch ghost fill as the
+            // reflux, from the finer level's extrapolated covered E onto a copy of the coarse E
+            if constexpr (sumsParticleCurrent)
+                if (!hybridInfo->partialElectric.empty())
+                {
+                    auto&& [e_partial_id, e_partial_flux_id] = resourcesManager_->getIDsList(
+                        hybridInfo->partialElectric, hybridInfo->partialFluxElectric);
+                    PartialRefluxAlgo.registerCoarsen(e_partial_id, e_partial_flux_id,
+                                                      electricFieldCoarseningOp_);
+                    PatchGhostPartialAlgo.registerRefine(e_partial_id, e_partial_id, e_partial_id,
+                                                         EfieldRefineOp_,
+                                                         nonOverwriteInteriorTFfillPattern);
+                    partialReflux_ = true;
+                }
+
             registerGhostComms_(hybridInfo);
             registerInitComms(hybridInfo);
             registerSyncComms(hybridInfo);
@@ -365,7 +381,11 @@ namespace amr
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts");
 
             setNaNsOnVecfieldGhosts(B, level);
-            magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);
+            auto const levelNumber = level.getLevelNumber();
+            if constexpr (sumsParticleCurrent)
+                if (fillsMid_(B, levelNumber, fillTime))
+                    return magGhostsMidRefiners_.fill(B, levelNumber, fillTime);
+            magGhostsRefiners_.fill(B, levelNumber, fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime) override
@@ -729,6 +749,25 @@ namespace amr
             patchGhostRefluxedSchedules.at(coarserLevelNumber)->fillData(syncTime);
         }
 
+        // fully kinetic (B-x): coarsens the finer level's covered E, extrapolated to the coarse E
+        // time by the solver, onto the coarser level's copy of its E, and refills that copy's
+        // patch ghosts, as reflux does for the model E. The solver then builds the coarse B at
+        // midTime, from which the finer level's B ghosts are filled at that time
+        void partialReflux(int const coarserLevelNumber, int const fineLevelNumber,
+                           double const midTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                if (!partialReflux_)
+                    throw std::runtime_error("partialReflux: no partial reflux registered");
+                partialRefluxSchedules.at(fineLevelNumber)->coarsenData();
+                patchGhostPartialSchedules.at(coarserLevelNumber)->fillData(midTime);
+                midMagneticTime_[fineLevelNumber] = midTime;
+            }
+            else
+                throw std::runtime_error("partialReflux: fully kinetic only");
+        }
+
         // after coarsening, domain nodes have been updated and therefore patch ghost nodes
         // will probably stop having the exact same value as their overlapped neighbor
         // note that NONE of the refiners used here overwrite interior nodes
@@ -777,6 +816,9 @@ namespace amr
 
             // technically not needed for finest as refluxing is not done onto it.
             patchGhostRefluxedSchedules[levelNumber] = PatchGhostRefluxedAlgo.createSchedule(level);
+            if (partialReflux_)
+                patchGhostPartialSchedules[levelNumber]
+                    = PatchGhostPartialAlgo.createSchedule(level);
 
             // on the root level there is no coarser source, so these are same-level schedules
             if (levelNumber == rootLevelNumber)
@@ -820,10 +862,14 @@ namespace amr
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             elecGhostsAheadRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
+            magGhostsMidRefiners_.registerLevel(hierarchy, level);
 
             // refluxing
             auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
             refluxSchedules[levelNumber] = RefluxAlgo.createSchedule(coarseLevel, level);
+            if (partialReflux_)
+                partialRefluxSchedules[levelNumber]
+                    = PartialRefluxAlgo.createSchedule(coarseLevel, level);
 
             lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
@@ -862,11 +908,14 @@ namespace amr
             elecGhostsRefiners_.removeLevel(levelNumber);
             elecGhostsAheadRefiners_.removeLevel(levelNumber);
             magGhostsRefiners_.removeLevel(levelNumber);
+            magGhostsMidRefiners_.removeLevel(levelNumber);
             lvlGhostPartNewRefiners_.removeLevel(levelNumber);
             electroSynchronizers_.removeLevel(levelNumber);
             chargeDensitySynchronizers_.removeLevel(levelNumber);
             ionChargeFluxSynchronizers_.removeLevel(levelNumber);
             refluxSchedules.erase(levelNumber);
+            partialRefluxSchedules.erase(levelNumber);
+            midMagneticTime_.erase(levelNumber);
         }
 
         // Select the field-refinement operators once at construction. The composite runtime
@@ -969,6 +1018,23 @@ namespace amr
                     vecFieldTimeOp_, info->ghostMagnetic[i], nonOverwriteInteriorTFfillPattern,
                     magneticPatchStratPerGhostRefiner_[i]);
             }
+
+            // fully kinetic (B-x): the model B ghosts at the end of a partially refluxed substep,
+            // between Bold_ and the coarse mid B labelled with that time: exactly the mid B
+            if constexpr (sumsParticleCurrent)
+                if (!info->midMagnetic.empty())
+                {
+                    auto const model
+                        = std::find(std::begin(info->ghostMagnetic), std::end(info->ghostMagnetic),
+                                    info->modelMagnetic);
+                    assert(model != std::end(info->ghostMagnetic));
+                    magGhostsMidRefiners_.addTimeRefiner(
+                        info->modelMagnetic, info->midMagnetic, Bold_.name(), BRefineOp_,
+                        vecFieldTimeOp_, info->modelMagnetic, nonOverwriteInteriorTFfillPattern,
+                        magneticPatchStratPerGhostRefiner_[static_cast<std::size_t>(
+                            std::distance(std::begin(info->ghostMagnetic), model))]);
+                    midMagneticGhost_ = info->modelMagnetic;
+                }
 
 
             // J has no refiner: it is never communicated, each level computes it
@@ -1150,6 +1216,18 @@ namespace amr
             return fillTime > coarseElectricTime;
         }
 
+        // fully kinetic: the model B ghost fill at the time of the last partial reflux onto the
+        // coarser level (the start of the next substep) reads the coarse mid B. Every other fill,
+        // the half step one of the push included, keeps the interpolation towards the coarse
+        // B^{n+1}
+        bool fillsMid_(VecFieldT const& B, int const levelNumber, double const fillTime) const
+        {
+            if (B.name() != midMagneticGhost_)
+                return false;
+            auto const it = midMagneticTime_.find(levelNumber);
+            return it != midMagneticTime_.end() and it->second == fillTime;
+        }
+
         double timeInterpCoef_(double const afterPushTime, std::size_t levelNumber)
         {
             return (afterPushTime - beforePushCoarseTime_[levelNumber])
@@ -1275,6 +1353,16 @@ namespace amr
         std::map<int, std::shared_ptr<SAMRAI::xfer::CoarsenSchedule>> refluxSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> patchGhostRefluxedSchedules;
 
+        //! fully kinetic partial reflux (B-x), registered when the solver names its fields
+        bool partialReflux_ = false;
+        SAMRAI::xfer::CoarsenAlgorithm PartialRefluxAlgo{SAMRAI::tbox::Dimension{dimension}};
+        SAMRAI::xfer::RefineAlgorithm PatchGhostPartialAlgo;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::CoarsenSchedule>> partialRefluxSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> patchGhostPartialSchedules;
+        //! per finer level, the time of the coarse mid B of the last partial reflux
+        std::map<int, double> midMagneticTime_;
+        std::string midMagneticGhost_;
+
         // Level objects each level's schedules were built against: {L} for same-level schedules,
         // [root, L] for inter-level ones (coarse interpolation can read below L-1). SAMRAI
         // replaces a reinitialised level object and never changes a kept one in place.
@@ -1288,6 +1376,9 @@ namespace amr
         GhostRefinerPool elecGhostsAheadRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+        //! fully kinetic only: model B ghosts from the coarse mid B (empty without
+        //! info->midMagnetic)
+        GhostRefinerPool magGhostsMidRefiners_{resourcesManager_};
 
         //! fully kinetic only: J ghosts, after the border sum (current filter). Same level only:
         //! the level ghost band holds the level ghost particle deposit, never coarse values

@@ -21,6 +21,7 @@
 #include "SAMRAI/tbox/RestartManager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <memory>
@@ -518,6 +519,7 @@ namespace solver
 
             subcycleStartTimes_[iLevel] = currentTime;
             subcycleEndTimes_[iLevel]   = newTime;
+            lastSubstep_[iLevel]        = lastStep;
 
             if (firstStep)
             {
@@ -547,7 +549,11 @@ namespace solver
             // If we are on the finest level, we cannot do the accumulation in the
             // standardLevelSynchronization, so we need to do it per substep here
             if (iLevel != 0 && !hierarchy->finerLevelExists(iLevel))
+            {
                 solver.accumulateFluxSum(model, *level, substepWeight_(iLevel));
+                if (!lastStep)
+                    partialReflux_(*hierarchy, iLevel, newTime);
+            }
 
             load_balancer_manager_->estimate(*level, model);
 
@@ -587,8 +593,14 @@ namespace solver
                 // next coarser reflux.
                 // It is not needed to do this accumulation on the coarsest level.
                 if (iCoarseLevel != 0)
+                {
                     coarseSolver.accumulateFluxSum(coarseModel, coarseLevel,
                                                    substepWeight_(iCoarseLevel));
+                    // its flux sum is complete only now (three levels or more: UNVERIFIED, a
+                    // fully kinetic level cannot be regridded yet, P5a)
+                    if (!lastSubstep_.at(iCoarseLevel))
+                        partialReflux_(*hierarchy, iCoarseLevel, syncTime);
+                }
 
                 // recopy (patch) ghosts
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);
@@ -634,6 +646,7 @@ namespace solver
         int nbrOfLevels_;
         std::unordered_map<std::size_t, double> subcycleEndTimes_;
         std::unordered_map<std::size_t, double> subcycleStartTimes_;
+        std::unordered_map<std::size_t, bool> lastSubstep_;
         using IMessengerT       = amr::IMessenger<IPhysicalModel<AMR_Types>>;
         using LevelInitializerT = LevelInitializer<AMR_Types>;
         std::vector<LevelDescriptor> levelDescriptors_;
@@ -650,6 +663,25 @@ namespace solver
 
         // weight of the last substep of iLevel in the step of its coarser level: dt_f / dt_c,
         // 1/r^2 for the hybrid, 1/r for the fully kinetic model
+        // after a substep of a refined level but its last, once the level's flux sum holds it:
+        // the coarser level's B at its end, for the next substep's B ghosts (fully kinetic, B-x;
+        // nothing for the other solvers)
+        void partialReflux_(SAMRAI::hier::PatchHierarchy const& hierarchy, int const iLevel,
+                            double const midTime)
+        {
+            auto const iCoarseLevel = iLevel - 1;
+            auto const substep      = subcycleEndTimes_.at(iLevel) - subcycleStartTimes_.at(iLevel);
+            auto const coarseStart  = subcycleStartTimes_.at(iCoarseLevel);
+            auto const coarseStep   = subcycleEndTimes_.at(iCoarseLevel) - coarseStart;
+            auto const done         = std::lround((midTime - coarseStart) / substep);
+            auto const ratio        = std::lround(coarseStep / substep);
+            getSolver_(iCoarseLevel)
+                .partialReflux(getModel_(iCoarseLevel), *hierarchy.getPatchLevel(iCoarseLevel),
+                               *hierarchy.getPatchLevel(iLevel), getMessengerWithCoarser_(iLevel),
+                               static_cast<std::size_t>(done), static_cast<std::size_t>(ratio),
+                               midTime);
+        }
+
         double substepWeight_(int const iLevel) const
         {
             auto const coarseDuration

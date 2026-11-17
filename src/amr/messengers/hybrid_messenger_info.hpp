@@ -88,6 +88,15 @@ namespace amr
         // Empty: no such field, the finer level E ghosts only use Eold and the model E
         std::string aheadElectric;
 
+        // fully kinetic partial reflux after each finer substep but the last (P4 T9 residual,
+        // option B-x): the finer level's covered E extrapolated to the coarse E time (finer
+        // level), coarsened onto a copy of the coarse E (coarser level), whose Faraday from the
+        // coarse B^n gives the coarse B at the end of the substep (coarser level), from which the
+        // next substep's B ghosts are filled exactly. Empty: no partial reflux
+        std::string partialFluxElectric;
+        std::string partialElectric;
+        std::string midMagnetic;
+
         virtual ~HybridMessengerInfo() = default;
     };
 

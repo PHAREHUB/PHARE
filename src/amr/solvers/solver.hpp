@@ -108,6 +108,19 @@ namespace solver
                             amr::IMessenger<IPhysicalModel_t>& messenger, double const time) = 0;
 
         /**
+         * @brief after `done` of the `ratio` substeps of the finer level fineLevel (done < ratio),
+         * the coarser level's B at their end, midTime, from which the finer level's next B ghosts
+         * are filled. Fully kinetic only (P4 T9 residual, option B-x); nothing for other models.
+         */
+        virtual void partialReflux(IPhysicalModel_t& /*model*/, level_t& /*coarseLevel*/,
+                                   level_t& /*fineLevel*/,
+                                   amr::IMessenger<IPhysicalModel_t>& /*messenger*/,
+                                   std::size_t const /*done*/, std::size_t const /*ratio*/,
+                                   double const /*midTime*/)
+        {
+        }
+
+        /**
          * @brief advanceLevel advances the given level from t to t+dt
          */
         virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,

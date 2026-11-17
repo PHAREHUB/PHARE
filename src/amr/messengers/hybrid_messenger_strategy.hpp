@@ -114,6 +114,13 @@ namespace amr
                             double const syncTime)
             = 0;
 
+        // fully kinetic only (B-x partial reflux after a finer substep)
+        virtual void partialReflux(int const /*coarserLevelNumber*/, int const /*fineLevelNumber*/,
+                                   double const /*midTime*/)
+        {
+            throw std::runtime_error("partialReflux: fully kinetic only");
+        }
+
         virtual void postSynchronize(IPhysicalModel& model, level_t& level, double const time) = 0;
 
         virtual void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)    = 0;

@@ -203,6 +203,14 @@ namespace amr
             strat_->reflux(coarserLevelNumber, fineLevelNumber, syncTime);
         }
 
+        // fully kinetic: coarsens the finer level's extrapolated covered E onto the coarser
+        // level's copy of its E, for the coarse B at midTime (SolverFK::partialReflux)
+        void partialReflux(int const coarserLevelNumber, int const fineLevelNumber,
+                           double const midTime)
+        {
+            strat_->partialReflux(coarserLevelNumber, fineLevelNumber, midTime);
+        }
+
 
         void postSynchronize(IPhysicalModel& model, level_t& level, double const time) override
         {
