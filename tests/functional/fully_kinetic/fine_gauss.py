@@ -53,6 +53,8 @@ def wave(amplitude):
 
 def simulate(args, seed):
     tag = f"o{args.order}_N{args.filter_passes}_s{args.cleaning:g}_ppc{args.ppc}_steps{args.steps}"
+    if (args.vth_factor_protons, args.vth_factor_electrons) != (1.0, 1.0):
+        tag += f"_vi{args.vth_factor_protons:g}_ve{args.vth_factor_electrons:g}"
     diag_dir = f"{diag_root}/{tag}_seed{seed}"
     ph.global_vars.sim = None
     sim = ph.Simulation(
@@ -75,7 +77,10 @@ def simulate(args, seed):
         strict=True,
     )
     common = {"density": uniform(1.0), "nbr_part_per_cell": args.ppc}
-    vth = {"protons": np.sqrt(T), "electrons": np.sqrt(T / MASS_E)}
+    vth = {
+        "protons": args.vth_factor_protons * np.sqrt(T),
+        "electrons": args.vth_factor_electrons * np.sqrt(T / MASS_E),
+    }
     ph.MaxwellianFluidModel(
         bx=uniform(1.0),
         by=wave(0.1),
@@ -190,6 +195,8 @@ def main():
     parser.add_argument("--ppc", type=int, default=50)
     parser.add_argument("--seeds", type=int, default=1)
     parser.add_argument("--first-seed", type=int, default=0)
+    parser.add_argument("--vth-factor-protons", type=float, default=1.0)
+    parser.add_argument("--vth-factor-electrons", type=float, default=1.0)
     args = parser.parse_args()
 
     for seed in range(args.first_seed, args.first_seed + args.seeds):
