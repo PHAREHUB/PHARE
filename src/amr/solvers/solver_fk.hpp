@@ -53,7 +53,6 @@ namespace PHARE::solver
  * residual between two cleanings: each cleaning multiplies its mode k by
  * 1 - d dt sum_i 4/dx_i^2 sin^2(k_i dx_i / 2). The level initializer does not clean: the
  * residual of E^{-1/2} (E starts at zero) is what the first step cleans.
- * Single level only for now.
  */
 template<typename FKModel, typename AMR_Types>
 class SolverFK : public ISolver<AMR_Types>
@@ -205,9 +204,6 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
                                                 double const currentTime, double const newTime)
 {
     PHARE_LOG_SCOPE(1, "SolverFK::advanceLevel");
-
-    if (levelNumber != 0)
-        throw std::runtime_error("SolverFK: only the root level is supported yet");
 
     auto& model     = dynamic_cast<FKModel&>(level_model);
     auto& messenger = dynamic_cast<Messenger&>(fromCoarserMessenger);

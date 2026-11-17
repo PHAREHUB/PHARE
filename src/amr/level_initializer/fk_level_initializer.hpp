@@ -22,11 +22,16 @@
 namespace PHARE::solver
 {
 /**
- * @brief FKLevelInitializer initializes the root level of a fully kinetic model: particles, B,
- * E^0 = 0, then moves E half a step back,
- *     E^{-1/2} = E^0 - (dt/2) c^2 (curl B^0 - J_back),
- * with J_back the Esirkepov current of the backward half segment x^0 - (dt/2)v^0 -> x^0, so that
- * the leapfrog of SolverFK starts with the Gauss residual of t=0.
+ * @brief FKLevelInitializer initializes a level of a fully kinetic model at t=0: particles and B
+ * (from the user functions on the root, refined from the coarser level on a fine level: split
+ * particles, div-free B), E^0 = 0, then moves E half a level step back,
+ *     E^{-dt_l/2} = E^0 - (dt_l/2) c^2 (curl B^0 - J_back),
+ * with J_back the Esirkepov current of the backward half segment x^0 - (dt_l/2)v^0 -> x^0, so that
+ * the leapfrog of SolverFK starts with the Gauss residual of t=0 of the level's own particles.
+ * dt_l = dt / ratio^l, the fine time step of SolverFK::maxFinerLevelDt.
+ * E^0 = 0 holds at t=0 only: a level created later (regrid, P5) needs E from the coarser level
+ * (P4 plan D6), so regridding throws. Until the level-ghost particles deposit a current (P4 plan
+ * D5), J_back misses the plasma beyond a fine level boundary, next to it.
  */
 template<typename FKModel>
 class FKLevelInitializer : public LevelInitializer<typename FKModel::amr_types>
@@ -56,8 +61,8 @@ public:
     {
         PHARE_LOG_SCOPE(1, "FKLevelInitializer::initialize");
 
-        if (isRegridding or levelNumber != 0)
-            throw std::runtime_error("FKLevelInitializer: only the root level is supported yet");
+        if (isRegridding)
+            throw std::runtime_error("FKLevelInitializer: regridding is not supported yet");
 
         auto& fkModel     = static_cast<FKModel&>(model);
         auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
@@ -67,10 +72,16 @@ public:
         auto& E           = fkModel.state.electromag.E;
         auto& B           = fkModel.state.electromag.B;
         auto& J           = fkModel.state.J;
+        bool const isRoot = levelNumber == 0;
 
-        model.initialize(level);
-        messenger.fillRootGhosts(model, level, initDataTime);
-        fkMessenger.fillMagneticGhosts(B, level, initDataTime);
+        if (isRoot)
+        {
+            model.initialize(level);
+            messenger.fillRootGhosts(model, level, initDataTime);
+            fkMessenger.fillMagneticGhosts(B, level, initDataTime);
+        }
+        else
+            messenger.initLevel(hierarchy, model, level, initDataTime);
 
         // overlapping patches were each filled over their whole domain,
         // keep particles only on the patch owning their cell
@@ -91,24 +102,42 @@ public:
         fkMessenger.fillDensityBorders(ions, level, initDataTime);
         for (auto& patch : rm.enumerate(level, ions))
         {
+            // nodes next to the level boundary, as the hybrid level initializer does
+            if (!isRoot)
+            {
+                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                core::depositParticles(ions, layout, interpolate, core::LevelGhostDeposit{});
+            }
             ions.computeChargeDensity();
             ions.computeBulkVelocity();
             ions.computeChargeFlux();
         }
         fkMessenger.fillIonBorders(ions, level, initDataTime);
 
-        // E^{-1/2} from the current of the backward half segment
-        depositFKCurrent(level, fkModel, fkMessenger, dt_, /*back=*/1., /*front=*/0., initDataTime);
+        // E^{-dt_l/2} from the current of the backward half segment; on a fine level E^0 = 0
+        // replaces the coarse E refined by initLevel
+        auto const dt = dt_ / level.getRatioToLevelZero().max();
+        if (!isRoot)
+            for (auto& patch : rm.enumerate(level, E))
+                E.zero();
+
+        depositFKCurrent(level, fkModel, fkMessenger, dt, /*back=*/1., /*front=*/0., initDataTime);
 
         for (auto& patch : rm.enumerate(level, B, J, E))
         {
             auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            core::AmpereMaxwell{layout, fkModel.c2()}(B, J, E, -0.5 * dt_);
+            core::AmpereMaxwell{layout, fkModel.c2()}(B, J, E, -0.5 * dt);
         }
 
-        // E is labelled with its own time, half a step before the particles
-        TimeSetter{level, fkModel, initDataTime - 0.5 * dt_}(E);
-        fkMessenger.fillElectricGhosts(E, level, initDataTime - 0.5 * dt_);
+        // E is labelled with its own time, half a step before the particles. On a fine level
+        // its level ghosts would be interpolated in time between coarse E values that do not
+        // bracket t - dt_l/2 (the coarse E^{+dt_c/2} does not exist yet, P4 plan D6), so the
+        // ghosts are left at zero: SolverFK's Ampere update only reads E on the nodes it writes,
+        // then fills the ghosts. TODO P4 M0 part 2: with divergence cleaning the first Marder
+        // pass of a fine level reads these zero ghosts.
+        TimeSetter{level, fkModel, initDataTime - 0.5 * dt}(E);
+        if (isRoot)
+            fkMessenger.fillElectricGhosts(E, level, initDataTime - 0.5 * dt);
 
         fkMessenger.prepareStep(fkModel, level, initDataTime);
     }

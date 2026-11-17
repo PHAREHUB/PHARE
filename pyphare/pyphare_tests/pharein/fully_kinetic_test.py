@@ -120,12 +120,13 @@ class TestFullyKineticChecks(unittest.TestCase):
                 final_time=0.02,
             )
 
-    def test_refinement_is_refused(self):
-        with self.assertRaisesRegex(ValueError, "one level only"):
+    def test_tagging_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "tagging"):
             make_sim(refinement="tagging", max_nbr_levels=2)
-        global_vars.sim = None
-        with self.assertRaisesRegex(ValueError, "one level only"):
-            make_sim(refinement_boxes={"L0": {"B0": [(10,), (20,)]}})
+
+    def test_refinement_boxes_are_accepted(self):
+        sim = make_sim(refinement_boxes={"L0": {"B0": [(10,), (20,)]}})
+        self.assertEqual(sim.max_nbr_levels, 2)
 
     def test_current_filter_is_off_by_default(self):
         self.assertEqual(make_sim().current_filter_passes, 0)

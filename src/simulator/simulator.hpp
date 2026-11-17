@@ -353,9 +353,7 @@ void Simulator<opts>::fk_init(initializer::PHAREDict const& dict)
     using FKModel  = PHARETypes::FK::Model_t;
     using SolverFK = PHARETypes::FK::Solver_t;
 
-    // first version: one level, periodic, no tagging and no restarts
-    if (maxLevelNumber_ != 1)
-        throw std::runtime_error("FullyKineticModel: only one level is supported yet");
+    // static refinement boxes only: no tagging and no restarts
     if (dict["simulation"]["AMR"]["refinement"].contains("tagging")
         and dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
                 != "none")

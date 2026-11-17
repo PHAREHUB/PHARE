@@ -35,8 +35,12 @@ def check_fully_kinetic_simulation(**kwargs):
             f"Error: FullyKineticModel light CFL c dt sqrt(sum 1/dx^2) = {light:.3f} >= 1"
         )
 
-    if kwargs["refinement"] == "tagging" or kwargs["max_nbr_levels"] != 1:
-        raise ValueError("Error: FullyKineticModel supports one level only for now")
+    # static refinement boxes only. The checks below are done on the root: a level l has
+    # dt / 2^l and dx / 2^l (SolverFK::maxFinerLevelDt), so the light CFL and v dt / dx are the
+    # same on every level and every other criterion (omega dt, the leapfrog stability, dx over
+    # the Debye length) shrinks.
+    if kwargs["refinement"] == "tagging":
+        raise ValueError("Error: FullyKineticModel does not support tagging yet")
 
     if kwargs["restart_options"] is not None:
         raise ValueError("Error: FullyKineticModel does not support restarts yet")
