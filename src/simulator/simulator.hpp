@@ -284,7 +284,8 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
         {
             if (find_model("HybridModel"))
             {
-                auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(
+                using HybridModel = PHARETypes::Hybrid::Model_t;
+                auto lbe_         = std::make_shared<amr::LoadBalancerEstimatorHybrid<HybridModel>>(
                     lb_info.mode, lbm_->getId());
                 lbm_->addLoadBalancerEstimator(maxMHDLevel_, maxLevelNumber_ - 1, std::move(lbe_));
             }

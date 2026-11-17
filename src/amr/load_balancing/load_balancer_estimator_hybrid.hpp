@@ -14,17 +14,17 @@
 
 namespace PHARE::amr
 {
-template<typename PHARE_T>
+// the particle models: HybridModel, and FullyKineticModel, whose state has the same ions
+template<typename Model>
 class LoadBalancerEstimatorHybrid : public LoadBalancerEstimator
 {
-    using HybridModel = PHARE_T::Hybrid::Model_t;
-    using amr_types   = HybridModel::amr_types;
-    using level_t     = amr_types::level_t;
+    using amr_types = Model::amr_types;
+    using level_t   = amr_types::level_t;
 
 public:
     LoadBalancerEstimatorHybrid(std::string strategy_name, int const id)
         : LoadBalancerEstimator{id}
-        , strat_{LoadBalancerHybridStrategyFactory<HybridModel>::create(strategy_name, id)}
+        , strat_{LoadBalancerHybridStrategyFactory<Model>::create(strategy_name, id)}
     {
     }
 
@@ -38,7 +38,7 @@ public:
 
 
 private:
-    std::unique_ptr<LoadBalancerStrategy<HybridModel>> strat_;
+    std::unique_ptr<LoadBalancerStrategy<Model>> strat_;
 };
 
 } // namespace PHARE::amr
