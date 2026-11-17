@@ -625,6 +625,22 @@ class EqualityReport:
         return reversed(self.failed)
 
 
+def _paired_time_keys(this, that):
+    """``[(time key of this, time key of that)]`` in time order, or None if the times differ.
+
+    Times are compared as numbers (master's keys are "%.10f" strings, the new reader's
+    fields have float keys), within the readers' tolerance (amr.io.rawio.time_tolerance).
+    """
+    from pyphare.pharesee.amr.io.rawio import time_tolerance
+
+    a = sorted((float(k), k) for k in this.time_hier)
+    b = sorted((float(k), k) for k in that.time_hier)
+    if len(a) != len(b) or any(abs(ta - tb) > time_tolerance(ta)
+                               for (ta, _), (tb, _) in zip(a, b)):
+        return None
+    return [(ka, kb) for (_, ka), (_, kb) in zip(a, b)]
+
+
 def hierarchy_compare(this, that, atol=1e-16):
     eqr = EqualityReport()
 
@@ -634,12 +650,13 @@ def hierarchy_compare(this, that, atol=1e-16):
     if this.ndim != that.ndim or this.domain_box != that.domain_box:
         return eqr("dimensional mismatch")
 
-    if this.time_hier.keys() != that.time_hier.keys():
+    time_pairs = _paired_time_keys(this, that)
+    if time_pairs is None:
         return eqr("timesteps mismatch")
 
-    for tidx in this.times():
-        patch_levels_ref = this.time_hier[tidx]
-        patch_levels_cmp = that.time_hier[tidx]
+    for tidx_this, tidx_that in time_pairs:
+        patch_levels_ref = this.time_hier[tidx_this]
+        patch_levels_cmp = that.time_hier[tidx_that]
 
         if patch_levels_ref.keys() != patch_levels_cmp.keys():
             return eqr("levels mismatch")

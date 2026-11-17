@@ -1,6 +1,14 @@
 from .hierarchy import PatchHierarchy
 
 
+def is_amr_field(obj):
+    """True for a field of pyphare.pharesee.amr (detected without importing it): the
+    operators of the legacy classes then return NotImplemented and let it answer"""
+    return any(
+        c.__module__.startswith("pyphare.pharesee.amr") for c in type(obj).__mro__
+    )
+
+
 class AnyTensorField(PatchHierarchy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
