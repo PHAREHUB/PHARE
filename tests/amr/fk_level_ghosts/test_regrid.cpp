@@ -6,12 +6,17 @@
 // no cleaning pass at regrid; then F = div E - c^2 rho is measured on the nodes of the new level
 // at least MARGIN fine cells inside its boundary, before and after each Marder pass (s = 1/2, rho
 // fixed: cleanElectric, as the level initializer). On this square mesh a pass multiplies the mode
-// (a, b) = (k_x dx, k_y dy) by 1 - (sin^2(a/2) + sin^2(b/2)) / 2, the grid scale modes
-// (sin^2(a/2) + sin^2(b/2) >= 1) by at most G = 1/2. Grid scale part: F - S F, S one binomial
-// pass (1/4, 1/2, 1/4) along each direction; smooth part: S F. Checked: after K passes the grid
-// scale part is at most G^K + 1e-2 of its value at regrid (1e-2 for the smooth modes F - S F lets
-// through). The smooth part is reported: what is left of it after the passes decides between
-// Marder passes and a Poisson solve at regrid (P4 plan pitfall 21).
+// (a, b) = (k_x dx, k_y dy) by 1 - (sin^2(a/2) + sin^2(b/2)) / 2. Checked:
+// - every pass, node by node: E after the pass is E before it plus d dt grad F, F = div E - c^2 rho
+//   set to 0 on the skipped nodes (core::Marder, done here by hand on the E the pass reads), on
+//   the physical nodes of E_x, E_y, E_z unchanged, to rounding (1e-13 of max |E|);
+// - a regression number: after K passes, the grid scale part F - S F (S one binomial pass
+//   (1/4, 1/2, 1/4) along each direction) is at most GRID_LEFT of its value at regrid. It is not
+//   G^K: F - S F also holds medium wavelengths, which a pass damps by about 0.9 (measured
+//   0.338, 0.352, 0.366 at orders 1, 2, 3).
+// The smooth part S F is reported: 10 passes leave about 62 percent of it (0.620, 0.638, 0.656),
+// which the run-time passes, one per step, then keep cleaning. Marder passes at regrid do not
+// close the smooth gap; a Poisson solve would (P4 plan pitfall 21).
 //
 // T13. The regridded E (P4 plan D6, P5a). The coarse E at t - Dt/2 and the coarse E one step
 // ahead at t + Dt/2 are linear in x and y, the old fine level's E another linear function. A
@@ -58,12 +63,13 @@ using Initializer = solver::FKLevelInitializer<FKModel>;
 using Index2      = std::array<int, 2>;
 using Key         = std::array<int, 3>; // component, AMR index
 
-static constexpr int fineLevel     = 1;
-static constexpr double Dt         = 0.002; // the job's time step, the fine one is Dt / 2
-static constexpr std::size_t K     = 10;    // cleaning passes measured
-static constexpr double G          = 0.5;   // the largest factor of a pass on the grid scale modes
-static constexpr int MARGIN        = 4;     // fine cells away from the level boundary
-static constexpr std::size_t STEPS = 4;     // coarse steps before the regrid
+static constexpr int fineLevel    = 1;
+static constexpr double Dt        = 0.002; // the job's time step, the fine one is Dt / 2
+static constexpr std::size_t K    = 10;    // cleaning passes measured
+static constexpr double GRID_LEFT = 0.40; // grid scale part left after K passes (measured <= 0.366)
+static constexpr double STRENGTH  = 0.5;  // cleaning strength s of the passes
+static constexpr int MARGIN       = 4;    // fine cells away from the level boundary
+static constexpr std::size_t STEPS = 4;   // coarse steps before the regrid
 
 // one simulator per process, destroyed before SAMRAI is shut down (main)
 std::unique_ptr<Simulator_t> sim_;
@@ -208,6 +214,75 @@ Parts split(std::map<Index2, double> const& F)
 }
 
 
+bool isSkipped(std::vector<core::Box<int, 2>> const& boxes, Index2 const& node)
+{
+    return std::any_of(boxes.begin(), boxes.end(), [&](auto const& box) {
+        return box.lower[0] <= node[0] and node[0] <= box.upper[0] and box.lower[1] <= node[1]
+               and node[1] <= box.upper[1];
+    });
+}
+
+// one cleaning pass (cleanElectric, s = STRENGTH) on the fine level, checked node by node against
+// one core::Marder step done here by hand on the E the pass reads (ghosts filled at `time`).
+// Returns the largest |E - expected| over the physical nodes, relative to max |E|
+double checkedPass(FKModel& model, VecField& E, double const dt, double const time,
+                   solver::PatchBoxes<2> const& skipped)
+{
+    auto& rm    = *model.resourcesManager;
+    auto& rho   = model.state.rho;
+    auto& level = *simulator().hierarchy->getPatchLevel(fineLevel);
+
+    messenger().fillElectricPatchGhosts(E, level, time);
+    std::vector<std::array<std::vector<double>, 3>> expected; // per patch, per component
+    for (auto& patch : rm.enumerate(level, E, rho))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto const& dl    = layout.meshSize();
+        auto const ddt    = STRENGTH / (2. / (dl[0] * dl[0]) + 2. / (dl[1] * dl[1])); // d dt
+        auto const it     = skipped.find(amr::to_string(patch->getGlobalId()));
+        auto const ny     = rho.shape()[1];
+
+        std::vector<double> F(rho.shape()[0] * ny, 0.);
+        layout.evalOnBox(rho, [&](auto i, auto j) {
+            if (it != skipped.end() and isSkipped(it->second, amrIndex(layout, i, j)))
+                return;
+            F[i * ny + j] = -model.c2() * rho(i, j) + (E[0](i, j) - E[0](i - 1, j)) / dl[0]
+                            + (E[1](i, j) - E[1](i, j - 1)) / dl[1];
+        });
+
+        auto& out = expected.emplace_back();
+        layout.evalOnBox(E[0], [&](auto i, auto j) {
+            out[0].push_back(E[0](i, j) + ddt / dl[0] * (F[(i + 1) * ny + j] - F[i * ny + j]));
+        });
+        layout.evalOnBox(E[1], [&](auto i, auto j) {
+            out[1].push_back(E[1](i, j) + ddt / dl[1] * (F[i * ny + j + 1] - F[i * ny + j]));
+        });
+        layout.evalOnBox(E[2], [&](auto i, auto j) { out[2].push_back(E[2](i, j)); });
+    }
+
+    solver::cleanElectric(level, model, messenger(), E, dt, STRENGTH, 1, time, skipped);
+
+    double error = 0, scale = 0;
+    std::size_t p = 0;
+    for (auto& patch : rm.enumerate(level, E))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        for (std::size_t c = 0; c < 3; ++c)
+        {
+            std::size_t n = 0;
+            layout.evalOnBox(E[c], [&](auto i, auto j) {
+                error = std::max(error, std::abs(E[c](i, j) - expected[p][c][n]));
+                scale = std::max(scale, std::abs(E[c](i, j)));
+                ++n;
+            });
+            EXPECT_EQ(n, expected[p][c].size());
+        }
+        ++p;
+    }
+    return error / scale;
+}
+
+
 TEST(FullyKineticRegrid, gaussGapOfARegriddedLevelAndTheCleaningPasses)
 {
     auto& sim        = simulator();
@@ -235,29 +310,33 @@ TEST(FullyKineticRegrid, gaussGapOfARegriddedLevelAndTheCleaningPasses)
             EXPECT_NEAR(time, t - 0.5 * dt, 1e-12) << "E at the level's own half step";
 
     // the nodes the initializer's passes skip (boundary_cleaning_mask: the level edge)
-    auto const skipped = model.boundary_cleaning_mask
-                             ? solver::cleaningSkippedNodes<GridLayout>(*sim.hierarchy, fineLevel, {})
-                             : solver::PatchBoxes<GridLayout::dimension>{};
+    auto const skipped
+        = model.boundary_cleaning_mask
+              ? solver::cleaningSkippedNodes<GridLayout>(*sim.hierarchy, fineLevel, {})
+              : solver::PatchBoxes<GridLayout::dimension>{};
     std::vector<Parts> parts{split(gaussResidual(model))};
+    std::vector<double> passErrors{0.};
     for (std::size_t k = 1; k <= K; ++k)
     {
-        solver::cleanElectric(level, model, messenger(), E, dt, 0.5, 1, t - 0.5 * dt, skipped);
+        passErrors.push_back(checkedPass(model, E, dt, t - 0.5 * dt, skipped));
         parts.push_back(split(gaussResidual(model)));
     }
 
     std::cout << std::setprecision(3) << "order " << interp << ", regrid at t = " << t
-              << ": |F| (total, grid scale, smooth) after k passes, relative to k = 0\n";
+              << ": |F| (total, grid scale, smooth) after k passes, relative to k = 0;"
+              << " pass error relative to max |E|\n";
     for (std::size_t k = 0; k <= K; ++k)
     {
         ASSERT_TRUE(parts[k].finite) << "pass " << k;
         std::cout << "  k = " << k << ": " << parts[k].total / parts[0].total << " "
-                  << parts[k].grid / parts[0].grid << " (bound " << std::pow(G, k) + 1e-2 << ") "
-                  << parts[k].smooth / parts[0].smooth << std::endl;
+                  << parts[k].grid / parts[0].grid << " " << parts[k].smooth / parts[0].smooth
+                  << "  (pass error " << passErrors[k] << ")" << std::endl;
+        EXPECT_LE(passErrors[k], 1e-13) << "pass " << k;
     }
     std::cout << "  at k = 0: total " << parts[0].total << ", grid scale " << parts[0].grid
               << ", smooth " << parts[0].smooth << std::endl;
     ASSERT_GT(parts[0].grid, 0.);
-    EXPECT_LE(parts[K].grid, (std::pow(G, K) + 1e-2) * parts[0].grid);
+    EXPECT_LE(parts[K].grid, GRID_LEFT * parts[0].grid);
 }
 
 
