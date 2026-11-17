@@ -21,6 +21,8 @@ step JUMP_FROM on, the jump (coarse time mean - mid step mean) and the two-phase
 """
 
 import argparse
+import glob
+import os
 import time
 from math import comb, factorial
 
@@ -205,6 +207,8 @@ def main():
     parser.add_argument("--vth-factor-electrons", type=float, default=1.0)
     # setup checks as warnings, e.g. electrons x2 past the non relativistic pusher's 0.3 c
     parser.add_argument("--no-strict", action="store_true")
+    # the h5 dumps are ~1.9 GB at ppc 1600, steps 100: deleted once the npz is written
+    parser.add_argument("--keep-h5", action="store_true")
     args = parser.parse_args()
 
     def history(diag_dir, times, s0):
@@ -238,6 +242,9 @@ def main():
             scale=s0,
             args=str(vars(args)),
         )
+        if not args.keep_h5:
+            for h5 in glob.glob(f"{diag_dir}/*.h5"):
+                os.remove(h5)
         print(
             f"seed {seed} steps {JUMP_FROM}-{args.steps}: jump (coarse - mid) at the boundary "
             f"node {jump[0]:+.3f} / {jump[-1]:+.3f}, one cell in {jump[1]:+.3f} / {jump[-2]:+.3f}; "
