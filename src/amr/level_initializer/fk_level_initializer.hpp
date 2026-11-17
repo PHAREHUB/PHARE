@@ -17,21 +17,32 @@
 
 #include "initializer/data_provider.hpp"
 
-#include <stdexcept>
+#include <cstddef>
 
 namespace PHARE::solver
 {
 /**
- * @brief FKLevelInitializer initializes a level of a fully kinetic model at t=0: particles and B
- * (from the user functions on the root, refined from the coarser level on a fine level: split
- * particles, div-free B), E^0 = 0, then moves E half a level step back,
+ * @brief FKLevelInitializer initializes a level of a fully kinetic model.
+ *
+ * At t=0: particles and B (from the user functions on the root, refined from the coarser level on
+ * a fine level: split particles, div-free B), E^0 = 0, then E moved half a level step back,
  *     E^{-dt_l/2} = E^0 - (dt_l/2) c^2 (curl B^0 - J_back),
  * with J_back the Esirkepov current of the backward half segment x^0 - (dt_l/2)v^0 -> x^0, so that
  * the leapfrog of SolverFK starts with the Gauss residual of t=0 of the level's own particles.
- * dt_l = dt / ratio^l, the fine time step of SolverFK::maxFinerLevelDt.
- * E^0 = 0 holds at t=0 only: a level created later (regrid, P5) needs E from the coarser level
- * (P4 plan D6), so regridding throws. The level ghost particles deposit their J_back too (P4 plan
- * D5), within the particle ghost width.
+ * dt_l = dt / ratio^l, the fine time step of SolverFK::maxFinerLevelDt. The level ghost particles
+ * deposit their J_back too (P4 plan D5), within the particle ghost width.
+ *
+ * A level (re)created at t_n > 0 (SAMRAI regrids it after the coarser level's step and
+ * synchronization, P5a, P4 plan D6) is built from the old level where it overlaps it and from the
+ * coarser level elsewhere: B by the div-free regrid, particles copied or split and the level ghost
+ * particles split again (the hybrid regrid), E at its own half step t_n - dt_l/2, copied from the
+ * old level, elsewhere and on the level ghosts interpolated in time at 1/4 between the coarser
+ * E^{n-1/2} and the coarser E^{n+1/2} the coarser solver replayed just before
+ * (ISolver::prepareFinerLevel), then relabelled (the allocation stamped t_n). Its Gauss gap
+ * (splitting, interpolation, the old and new boundaries) is reduced by regridCleaningPasses Marder
+ * passes, s = 1/2, against rho deposited at x - (dt_l/2) v by the new particles; not with
+ * divergence_cleaning = 0 (explicit, measurement runs). A rebalanced root (no coarser level) is
+ * copied and relabelled only.
  */
 template<typename FKModel>
 class FKLevelInitializer : public LevelInitializer<typename FKModel::amr_types>
@@ -39,6 +50,7 @@ class FKLevelInitializer : public LevelInitializer<typename FKModel::amr_types>
     using amr_types                    = FKModel::amr_types;
     using level_ptr                    = amr_types::level_ptr;
     using hierarchy_ptr                = amr_types::hierarchy_ptr;
+    using level_t                      = amr_types::level_t;
     using IPhysicalModelT              = IPhysicalModel<amr_types>;
     using Messenger                    = amr::HybridMessenger<FKModel>;
     using GridLayoutT                  = FKModel::gridlayout_type;
@@ -59,14 +71,11 @@ public:
     {
     }
 
-    void initialize(hierarchy_ptr const& hierarchy, int levelNumber, level_ptr const& /*oldLevel*/,
+    void initialize(hierarchy_ptr const& hierarchy, int levelNumber, level_ptr const& oldLevel,
                     IPhysicalModelT& model, amr::IMessenger<IPhysicalModelT>& messenger,
                     double initDataTime, bool isRegridding) override
     {
         PHARE_LOG_SCOPE(1, "FKLevelInitializer::initialize");
-
-        if (isRegridding)
-            throw std::runtime_error("FKLevelInitializer: regridding is not supported yet");
 
         auto& fkModel     = static_cast<FKModel&>(model);
         auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
@@ -75,10 +84,23 @@ public:
         auto& ions        = fkModel.state.ions;
         auto& E           = fkModel.state.electromag.E;
         auto& B           = fkModel.state.electromag.B;
-        auto& J           = fkModel.state.J;
         bool const isRoot = levelNumber == 0;
+        auto const dt     = dt_ / level.getRatioToLevelZero().max();
 
-        if (isRoot)
+        // SAMRAI also creates a level without an old one during the run (a level that comes
+        // back): its E needs the coarser one too. Restarts (P5d) come through a regrid (SAMRAI
+        // issue 199)
+        bool const duringRun = isRegridding or initDataTime > 0.;
+
+        if (duringRun)
+        {
+            messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
+            fkMessenger.regridElectric(E, hierarchy, levelNumber, oldLevel,
+                                       initDataTime - 0.5 * dt);
+            if (isRoot)
+                fkMessenger.fillMagneticGhosts(B, level, initDataTime);
+        }
+        else if (isRoot)
         {
             model.initialize(level);
             messenger.fillRootGhosts(model, level, initDataTime);
@@ -94,7 +116,7 @@ public:
             ions.eraseDomainParticlesIn(
                 amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
 
-        // moments at t=0, for diagnostics
+        // moments at initDataTime, for diagnostics
         core::Interpolator<dimension, interp_order> interpolate;
         for (auto& patch : rm.enumerate(level, ions))
         {
@@ -118,9 +140,26 @@ public:
         }
         fkMessenger.fillIonBorders(ions, level, initDataTime);
 
-        // E^{-dt_l/2} from the current of the backward half segment; on a fine level E^0 = 0
-        // replaces the coarse E refined by initLevel
-        auto const dt = dt_ / level.getRatioToLevelZero().max();
+        if (duringRun)
+            cleanRegriddedElectric_(*hierarchy, level, fkModel, fkMessenger, dt, initDataTime,
+                                    isRoot);
+        else
+            startElectric_(level, fkModel, fkMessenger, dt, initDataTime, isRoot);
+
+        fkMessenger.prepareStep(fkModel, level, initDataTime);
+    }
+
+private:
+    // E^{-dt_l/2} from the current of the backward half segment; on a fine level E^0 = 0
+    // replaces the coarse E refined by initLevel
+    void startElectric_(level_t& level, FKModel& fkModel, Messenger& fkMessenger, double const dt,
+                        double const initDataTime, bool const isRoot) const
+    {
+        auto& rm = *fkModel.resourcesManager;
+        auto& E  = fkModel.state.electromag.E;
+        auto& B  = fkModel.state.electromag.B;
+        auto& J  = fkModel.state.J;
+
         if (!isRoot)
             for (auto& patch : rm.enumerate(level, E))
                 E.zero();
@@ -141,8 +180,38 @@ public:
         TimeSetter{level, fkModel, initDataTime - 0.5 * dt}(E);
         if (isRoot)
             fkMessenger.fillElectricGhosts(E, level, initDataTime - 0.5 * dt);
+    }
 
-        fkMessenger.prepareStep(fkModel, level, initDataTime);
+    // the regridded E, at its own half step: relabelled, then on a fine level cleaned against
+    // the charge of the new particles. Its level ghosts are those of the regrid (the coarser E
+    // interpolated at that time), its same-level ghosts are filled before every pass. With
+    // boundary_cleaning_mask the passes skip the level's edge nodes, which read those ghosts; the
+    // edge of the region its finer level synchronized into the old level is not skipped
+    void cleanRegriddedElectric_(SAMRAI::hier::PatchHierarchy const& hierarchy, level_t& level,
+                                 FKModel& fkModel, Messenger& fkMessenger, double const dt,
+                                 double const initDataTime, bool const isRoot) const
+    {
+        auto& E             = fkModel.state.electromag.E;
+        auto const halfTime = initDataTime - 0.5 * dt;
+
+        TimeSetter{level, fkModel, halfTime}(E);
+        if (isRoot)
+        {
+            fkMessenger.fillElectricGhosts(E, level, halfTime);
+            return;
+        }
+        // rho even without a pass: T14 measures the Gauss residual before the first one
+        if (fkModel.divergence_cleaning > 0.)
+        {
+            depositFKCurrent(level, fkModel, fkMessenger, dt, /*back=*/1., /*front=*/0.,
+                             initDataTime);
+            auto const skipped = fkModel.boundary_cleaning_mask
+                                     ? cleaningSkippedNodes<GridLayoutT>(
+                                           hierarchy, level.getLevelNumber(), {})
+                                     : PatchBoxes<dimension>{};
+            cleanElectric(level, fkModel, fkMessenger, E, dt, 0.5, regridCleaningPasses, halfTime,
+                          skipped);
+        }
     }
 };
 
