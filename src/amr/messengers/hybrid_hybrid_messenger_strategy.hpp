@@ -38,6 +38,7 @@
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
 #include <memory>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <utility>
@@ -370,7 +371,11 @@ namespace amr
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectricGhosts");
 
             setNaNsOnVecfieldGhosts(E, level);
-            elecGhostsRefiners_.fill(E, level.getLevelNumber(), fillTime);
+            auto const levelNumber = level.getLevelNumber();
+            if constexpr (sumsParticleCurrent)
+                if (fillsAhead_(levelNumber, fillTime))
+                    return elecGhostsAheadRefiners_.fill(E, levelNumber, fillTime);
+            elecGhostsRefiners_.fill(E, levelNumber, fillTime);
         }
 
 
@@ -661,7 +666,9 @@ namespace amr
                     hybridModel.state.ions, Bold_, Eold_);
 
                 resourcesManager_->setTime(Bold_, *patch, currentTime);
-                resourcesManager_->setTime(Eold_, *patch, currentTime);
+                resourcesManager_->setTime(
+                    Eold_, *patch,
+                    electricTime_(hybridModel.state.electromag.E, *patch, currentTime));
 
                 Bold_.copyData(hybridModel.state.electromag.B);
                 Eold_.copyData(hybridModel.state.electromag.E);
@@ -753,11 +760,11 @@ namespace amr
             {
                 elecGhostsRefiners_.registerLevel(hierarchy, level);
                 magGhostsRefiners_.registerLevel(hierarchy, level);
-                if constexpr (sumsParticleCurrent)
-                {
-                    currentGhostsRefiners_.registerLevel(hierarchy, level);
-                    chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
-                }
+            }
+            if constexpr (sumsParticleCurrent)
+            {
+                currentGhostsRefiners_.registerLevel(hierarchy, level);
+                chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
             }
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
@@ -788,12 +795,8 @@ namespace amr
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
+            elecGhostsAheadRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            if constexpr (sumsParticleCurrent)
-            {
-                currentGhostsRefiners_.registerLevel(hierarchy, level);
-                chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
-            }
 
             // refluxing
             auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
@@ -834,12 +837,8 @@ namespace amr
         void removeInterLevelSchedules_(int const levelNumber)
         {
             elecGhostsRefiners_.removeLevel(levelNumber);
+            elecGhostsAheadRefiners_.removeLevel(levelNumber);
             magGhostsRefiners_.removeLevel(levelNumber);
-            if constexpr (sumsParticleCurrent)
-            {
-                currentGhostsRefiners_.removeLevel(levelNumber);
-                chargeDensityGhostsRefiners_.removeLevel(levelNumber);
-            }
             lvlGhostPartNewRefiners_.removeLevel(levelNumber);
             electroSynchronizers_.removeLevel(levelNumber);
             chargeDensitySynchronizers_.removeLevel(levelNumber);
@@ -887,10 +886,20 @@ namespace amr
                                                 Eold_.name(), EfieldRefineOp_, vecFieldTimeOp_,
                                                 nonOverwriteInteriorTFfillPattern);
 
-            // fully kinetic J (summed on patch borders first): built like the E ghosts, same pool
-            // kind, levels and fill pattern, J being Yee centered like E. Static for now (one
-            // level: ghosts copied from the neighbor patches at the same time); with refinement
-            // it becomes a time refiner between an old and a new J, as E above.
+            // fully kinetic, finer level E ghosts at a time past the coarse model E (E^{n+1/2}):
+            // time interpolated between the model E and the E one coarse step ahead (E^{n+3/2}),
+            // fillElectricGhosts picks this pool past the coarse E time. Inert until the solver
+            // names the ahead E.
+            if constexpr (sumsParticleCurrent)
+                if (!info->aheadElectric.empty())
+                    elecGhostsAheadRefiners_.addTimeRefiners(
+                        info->ghostElectric, info->aheadElectric, info->modelElectric,
+                        EfieldRefineOp_, vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
+
+            // fully kinetic J (summed on patch borders, then completed by the level ghost
+            // particle deposit): ghosts copied from the same-level patches owning them, never
+            // refined from the coarser level, whose J is at another time and from other
+            // particles; the level ghost band keeps the level ghost particle deposit (P4 plan D5).
             // the charge density of the divergence cleaning: the same, primal scalar
             if constexpr (sumsParticleCurrent)
             {
@@ -1067,6 +1076,35 @@ namespace amr
 
 
 
+        // the time of Eold_: the model E's own time, fully kinetic (E at half steps, P4 plan D8),
+        // currentTime for the hybrid (E at integer times)
+        double electricTime_(VecFieldT const& E, SAMRAI::hier::Patch const& patch,
+                             double const currentTime) const
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                auto const times = resourcesManager_->getTimes(E, patch);
+                assert(std::all_of(std::begin(times), std::end(times),
+                                   [&](auto const t) { return t == times[0]; }));
+                return times[0];
+            }
+            else
+                return currentTime;
+        }
+
+        // fully kinetic: a finer level E ghost fill past the coarse E^{n+1/2}, whose time is the
+        // middle of the coarse step recorded by firstStep, interpolates towards the ahead E
+        // (P4 plan D1). Inert while no ahead E is registered.
+        bool fillsAhead_(int const levelNumber, double const fillTime) const
+        {
+            if (levelNumber == rootLevelNumber or elecGhostsAheadRefiners_.empty())
+                return false;
+            auto const coarseElectricTime
+                = 0.5
+                  * (beforePushCoarseTime_.at(levelNumber) + afterPushCoarseTime_.at(levelNumber));
+            return fillTime > coarseElectricTime;
+        }
+
         double timeInterpCoef_(double const afterPushTime, std::size_t levelNumber)
         {
             return (afterPushTime - beforePushCoarseTime_[levelNumber])
@@ -1200,13 +1238,17 @@ namespace amr
 
         //! store refiners for electric fields that need ghosts to be filled
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
+        //! fully kinetic only: finer level E ghosts past the coarse E, between the coarse E and
+        //! the E one coarse step ahead (empty without info->aheadElectric)
+        GhostRefinerPool elecGhostsAheadRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
 
-        //! fully kinetic only: J ghosts, after the border sum (current filter)
-        GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
-        //! fully kinetic only: rho ghosts, after the border sum (filter of the cleaning rho)
-        GhostRefinerPool chargeDensityGhostsRefiners_{resourcesManager_};
+        //! fully kinetic only: J ghosts, after the border sum (current filter). Same level only:
+        //! the level ghost band holds the level ghost particle deposit, never coarse values
+        PatchGhostRefinerPool currentGhostsRefiners_{resourcesManager_};
+        //! fully kinetic only: rho ghosts, after the border sum (filter of the cleaning rho), as J
+        PatchGhostRefinerPool chargeDensityGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
         // There is no level ghost refiner for the moments: on level ghost nodes they come

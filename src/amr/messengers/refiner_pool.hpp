@@ -147,6 +147,8 @@ namespace amr
             }
         }
 
+        bool empty() const { return refiners_.empty(); }
+
         /** @brief filldGhosts is used to fill the ghost nodes of all the given VecField.*/
         template<typename VecFieldT>
         void fill(VecFieldT& vec, int const levelNumber, double const fillTime)

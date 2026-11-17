@@ -32,6 +32,14 @@ namespace PHARE::solver
  * this J updates it (E^{n-1/2} in the solver, E^{-1/2} in the initializer). rho is summed on
  * patch borders and filtered like J, the filter commuting with the Yee divergence. Without
  * cleaning rho is not deposited.
+ *
+ * On a refined level, the level ghost particles (the pushable copies each patch holds in its
+ * level ghost band) then add their J and rho, after the border sums: a patch deposits its own
+ * copies on its own nodes, physical and ghost, so a node shared by several patches gets each
+ * level ghost particle once, and the band nodes are complete. The ghost fills of the filter
+ * copy from same-level patches only, the band keeps that deposit. With 2 passes or more, the
+ * band nodes are not filtered again after the first pass: S^N is not exact on the last N-1
+ * node layers next to the level boundary, a Gauss residual source the cleaning absorbs.
  */
 template<typename FKModel, typename Messenger>
 void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
@@ -49,36 +57,58 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
 
     bool const cleaning = model.divergence_cleaning > 0.;
 
-    try
-    {
-        for (auto& patch : rm.enumerate(level, ions, J, rho))
+    // J (and rho) of the given particles of every population, added to what the patch holds
+    auto const deposit = [&](auto&& particlesOf) {
+        try
         {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            J.zero();
-            if (cleaning)
-                rho.zero();
-            for (auto const& pop : ions)
+            for (auto& patch : rm.enumerate(level, ions, J, rho))
             {
-                try
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                for (auto const& pop : ions)
                 {
-                    esirkepov(pop.domainParticles(), J, layout, pop.charge(), dt, back, front);
+                    auto const& particles = particlesOf(pop);
+                    try
+                    {
+                        esirkepov(particles, J, layout, pop.charge(), dt, back, front);
+                    }
+                    catch (core::DictionaryException& ex)
+                    {
+                        throw ex("population", pop.name());
+                    }
+                    if (cleaning)
+                        esirkepov.depositCharge(particles, rho, layout, pop.charge(),
+                                                -back * 0.5 * dt);
                 }
-                catch (core::DictionaryException& ex)
-                {
-                    throw ex("population", pop.name());
-                }
-                if (cleaning)
-                    esirkepov.depositCharge(pop.domainParticles(), rho, layout, pop.charge(),
-                                            -back * 0.5 * dt);
             }
         }
-    }
-    catch (core::DictionaryException const& ex)
+        catch (core::DictionaryException const& ex)
+        {
+            PHARE_LOG_ERROR(ex());
+        }
+        if (mpi::any_errors())
+            throw core::DictionaryException{}("ID", "depositFKCurrent");
+    };
+
+    for (auto& patch : rm.enumerate(level, J, rho))
     {
-        PHARE_LOG_ERROR(ex());
+        J.zero();
+        if (cleaning)
+            rho.zero();
     }
-    if (mpi::any_errors())
-        throw core::DictionaryException{}("ID", "depositFKCurrent");
+    deposit([](auto const& pop) -> auto const& { return pop.domainParticles(); });
+
+    TimeSetter{level, model, time}(J);
+    messenger.fillCurrentBorders(J, level, time);
+    if (cleaning)
+    {
+        TimeSetter{level, model, time}(rho);
+        messenger.fillChargeDensityBorders(rho, level, time);
+    }
+
+    // after the border sums: every patch holding a copy of a level ghost particle deposits it
+    // on its own nodes, so a node shared by patches gets it once from each (P4 plan D5)
+    if (level.getLevelNumber() > 0)
+        deposit([](auto const& pop) -> auto const& { return pop.levelGhostParticles(); });
 
     // fill then filter, every pass
     auto const filter = [&](auto& field, auto&& fillGhosts) {
@@ -90,16 +120,9 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
         }
     };
 
-    TimeSetter{level, model, time}(J);
-    messenger.fillCurrentBorders(J, level, time);
     filter(J, [&]() { messenger.fillCurrentGhosts(J, level, time); });
-
     if (cleaning)
-    {
-        TimeSetter{level, model, time}(rho);
-        messenger.fillChargeDensityBorders(rho, level, time);
         filter(rho, [&]() { messenger.fillChargeDensityGhosts(rho, level, time); });
-    }
 }
 
 } // namespace PHARE::solver

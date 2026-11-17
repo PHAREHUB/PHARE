@@ -75,8 +75,7 @@ Key amrIndex(GridLayout const& layout, auto i, auto j)
 }
 
 // local index of the node in [physical start - layers, physical end + layers] in both directions
-bool within(GridLayout const& layout, auto const& field, std::uint32_t const layers, auto i,
-            auto j)
+bool within(GridLayout const& layout, auto const& field, std::uint32_t const layers, auto i, auto j)
 {
     std::array<std::uint32_t, 2> const index{static_cast<std::uint32_t>(i),
                                              static_cast<std::uint32_t>(j)};
@@ -100,8 +99,8 @@ bool within(GridLayout const& layout, auto const& field, std::uint32_t const lay
 template<typename Resource, typename FillGhosts>
 void checkGhostFillKeepsTheBand(Resource& resource, FillGhosts&& fillGhosts)
 {
-    auto& rm  = *simulator().getFKModel()->resourcesManager;
-    auto& lvl = level();
+    auto& rm       = *simulator().getFKModel()->resourcesManager;
+    auto& lvl      = level();
     auto const nan = std::numeric_limits<double>::quiet_NaN();
 
     auto const f = [](std::size_t c, auto const& r) {
@@ -109,9 +108,9 @@ void checkGhostFillKeepsTheBand(Resource& resource, FillGhosts&& fillGhosts)
     };
     auto const position = [](auto const& layout, auto const& field, auto i, auto j) {
         return layout.fieldNodeCoordinates(
-            field, layout.localToAMR(core::Point{static_cast<std::uint32_t>(i),
-                                                 static_cast<std::uint32_t>(j)}
-                                         .as_signed()));
+            field, layout.localToAMR(
+                       core::Point{static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j)}
+                           .as_signed()));
     };
 
     std::array<std::set<Key>, core::IsField<Resource> ? 1 : 3> owned;
@@ -177,11 +176,10 @@ void checkGhostFillKeepsTheBand(Resource& resource, FillGhosts&& fillGhosts)
 TEST(FullyKineticLevelGhosts, filterGhostFillsAreSameLevelOnlyAndKeepTheLevelGhostBand)
 {
     auto& state = simulator().getFKModel()->state;
+    checkGhostFillKeepsTheBand(state.J,
+                               [&](auto& lvl) { messenger().fillCurrentGhosts(state.J, lvl, 0.); });
     checkGhostFillKeepsTheBand(
-        state.J, [&](auto& lvl) { messenger().fillCurrentGhosts(state.J, lvl, 0.); });
-    checkGhostFillKeepsTheBand(state.rho, [&](auto& lvl) {
-        messenger().fillChargeDensityGhosts(state.rho, lvl, 0.);
-    });
+        state.rho, [&](auto& lvl) { messenger().fillChargeDensityGhosts(state.rho, lvl, 0.); });
 }
 
 
@@ -196,8 +194,9 @@ double shape(double x)
     else if constexpr (interp == 2)
         return x < 0.5 ? 0.75 - x * x : x < 1.5 ? 0.5 * (1.5 - x) * (1.5 - x) : 0;
     else
-        return x < 1 ? 2. / 3. - x * x + 0.5 * x * x * x
-                     : x < 2 ? (2 - x) * (2 - x) * (2 - x) / 6. : 0;
+        return x < 1   ? 2. / 3. - x * x + 0.5 * x * x * x
+               : x < 2 ? (2 - x) * (2 - x) * (2 - x) / 6.
+                       : 0;
 }
 
 
@@ -297,8 +296,7 @@ TEST(FullyKineticLevelGhosts, levelGhostParticlesDepositOnceAfterTheBorderSum)
 
         layout.evalOnBox(rho, [&](auto i, auto j) {
             auto const k        = i * shape_[1] + j;
-            auto const residual = end[k] - start[k]
-                                  + dtFine * (J[0](i, j) - J[0](i - 1, j)) / dl[0]
+            auto const residual = end[k] - start[k] + dtFine * (J[0](i, j) - J[0](i - 1, j)) / dl[0]
                                   + dtFine * (J[1](i, j) - J[1](i, j - 1)) / dl[1];
             maxResidual = std::max(maxResidual, std::abs(residual));
             ++nbrConservationNodes;

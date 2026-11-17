@@ -83,6 +83,11 @@ namespace amr
         std::string refluxElectric;
         std::string fluxSumElectric;
 
+        // fully kinetic: E one coarse step ahead of the model E (E^{n+3/2} next to E^{n+1/2}),
+        // the newer end of the time interpolation of the finer level E ghosts past E^{n+1/2}.
+        // Empty: no such field, the finer level E ghosts only use Eold and the model E
+        std::string aheadElectric;
+
         virtual ~HybridMessengerInfo() = default;
     };
 
