@@ -7,6 +7,7 @@ Before the fix, the domain particles leaving into the level ghost band were eras
 while the band was renewed from the coarser level each coarse step: the jump (coarse time mean -
 mid step mean) of F / scale at the boundary nodes, left / right, was +0.518 / +0.511, and the
 two-phase mean -0.078 / -0.180.
+With the fix (keeping them in the band until its renewal): +0.008 / +0.008 and +0.017 / -0.075.
 
 Gate:
 - |jump| <= JUMP_GATE on both sides. The no-sawtooth floor has sd 0.02 over 8 seeds and reaches
@@ -15,6 +16,7 @@ Gate:
   the mid step deficit moves it, by up to ~0.15 (UNVERIFIED): its shift is printed.
 """
 
+import shutil
 import time
 from argparse import Namespace
 
@@ -35,10 +37,15 @@ CASE = Namespace(
 SEED = 0
 JUMP_GATE, TWO_PHASE_SD = 0.1, 0.035
 TWO_PHASE_BEFORE = (-0.078, -0.180)  # left / right boundary node
+DUMPS_GB = 1.9  # every particle at every step (fine_gauss.py's diagnostics)
 
 
 def main():
     fg.diag_root = "phare_outputs/fully_kinetic_sawtooth_gate"  # not fine_gauss.py's own runs
+    # a full disk (a RAM-backed /tmp) cuts the dumps short: refuse to start rather than read them
+    free_gb = shutil.disk_usage(".").free / 1e9
+    if free_gb < 2 * DUMPS_GB:
+        raise RuntimeError(f"sawtooth gate: {free_gb:.1f} GB free here, {2 * DUMPS_GB} needed")
     start = time.perf_counter()
     diag_dir, times, seconds = fg.simulate(CASE, SEED)
     s0 = fg.scale(diag_dir, CASE.order)

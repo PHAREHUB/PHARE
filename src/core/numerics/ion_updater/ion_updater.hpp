@@ -87,7 +87,8 @@ private:
     // fully_kinetic, which silently turned the switch off
     static_assert(keepsBandLeavers == (GridLayout::options.particle_ghost_width >= 3));
 
-    // dealloced on regridding/load balancing coarsest
+    // dealloced on regridding/load balancing coarsest; with keepsBandLeavers, the band leavers
+    // of the population being updated
     ParticleArray tmp_particles_{Box{}}; //{std::make_unique<ParticleArray>(Box{})};
 };
 
@@ -295,6 +296,17 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                 throw core::DictionaryException{}("ID", "Updater::outsideGhostBox");
         })
 
+        // fully kinetic: a leaver into the level ghost band stays there as a band particle until
+        // the band is renewed from the coarser level (lastStep), or the band deposit misses the
+        // outflux of the fine steps in between (the boundary node's Gauss residual, a sawtooth)
+        if constexpr (keepsBandLeavers)
+        {
+            auto const bandLeavers
+                = makeRange(domainParticles, not_level_ghosts.iend(), now_ghosts.iend());
+            tmp_particles_.clear();
+            tmp_particles_.insert(tmp_particles_.end(), bandLeavers.begin(), bandLeavers.end());
+        }
+
         domainParticles.erase(now_ghosts); // drop all ghosts
 
         if (pop.levelGhostParticles().size())
@@ -311,6 +323,11 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
             particleArray.erase(
                 makeRange(particleArray, inGhostLayerRange.iend(), particleArray.size()));
         }
+
+        // after the band push: the leavers are at the end of this step already
+        if constexpr (keepsBandLeavers)
+            for (auto const& particle : tmp_particles_)
+                pop.levelGhostParticles().push_back(particle);
 
         interpolator_( //
             domainParticles, pop.particleDensity(), pop.flux(), layout);
