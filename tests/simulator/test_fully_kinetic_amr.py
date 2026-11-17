@@ -1,70 +1,100 @@
 #!/usr/bin/env python3
 """
-FullyKineticModel with one static refined box (P4 M0, tests T1 and T2), 1D, periodic root: the
+FullyKineticModel with one static refined box (P4 M0, tests T1 and T2), periodic root, the
 plasma of test_fully_kinetic.py (uniform thermal ions and electrons, a small B and electron
-velocity wave), the root of 64 cells and one refined box over its cells 24 to 39, 20 coarse steps.
+velocity wave) and its command line: dimension, interpolation order, --filter-passes N,
+--cleaning s (given explicitly, 0 included: required with refinement). Cases:
+    1 1 --cleaning 0                         1D, 64 cells, box over root cells 24 to 39
+    2 1 --filter-passes 1 --cleaning 0.5     2D, 32^2 cells, box over root cells 12 to 19
+--one-level runs the same case without the box: the reference the bounds below come from.
 
 Checks:
-- the run goes through: the FK level initializer throws on a regrid, so a run without exception
-  also says SAMRAI never re-initialized the fine level from an old one (static boxes are kept,
-  GriddingAlgorithm.cpp:2916-2937);
+- no regrid: SAMRAI keeps a level whose user boxes did not change (GriddingAlgorithm.cpp:
+  2916-2937) unless a data-dependent load balancer is set (refused for FK). The FK level
+  initializer throws on a regrid; the run is made to raise instead of exiting, and that throw
+  is turned into a named failure;
 - T1, fine time step: the fine level takes dt/2 (ratio 2, the light CFL is the same on both
   levels), so with a fine dump on every substep its dump times are k dt/2 (within 1e-12, SAMRAI
   evens out the substeps);
 - E finite on both levels;
-- Gauss on the root away from the box: the residual div E - c^2 rho drifts by less than 1e-6 of
-  c^2 max |rho| on root nodes more than ROOT_MARGIN coarse cells outside the box, as on one level.
+- without cleaning, Gauss on the root away from the box: the residual div E - c^2 F^N rho drifts
+  by less than MAX_ROOT_DRIFT (relative to c^2 max |rho|) on root nodes more than ROOT_MARGIN
+  coarse cells outside the box. Nothing the fine level does breaks it there: the reflux changes
+  B by a curl, which has no divergence, and E only on covered nodes. With cleaning the residual
+  is diffused, not kept: reported only.
 
-Reported, not asserted yet: the fine level Gauss residual at t=0 and at the end, on fine nodes
-more than FINE_MARGIN fine cells inside the box.
+Reported, not asserted yet: the residual inside and around the box, and in 1D without filter
+the fine level residual on fine nodes more than FINE_MARGIN fine cells inside the box.
 
 Known hole until D5 (P4 plan, level-ghost current): level-ghost particles deposit no current, so
 in the band next to the fine level boundary the start-up current J_back of E^{-dt_f/2}, and every
-step's J, miss the plasma beyond the boundary; the fine residual is only reported inside the box.
-The fine level E^{-dt_f/2} is built as the root one (E^0 = 0, then half a fine step back with the
-split particles' current), so at t=0 the fine residual is that of the split particles.
+step's J, miss the plasma beyond the boundary. The fine level E^{-dt_f/2} is built as the root
+one (E^0 = 0, then half a fine step back with the split particles' current), so at t=0 the fine
+residual away from that band is that of the split particles.
+
+Numbers: TIME_STEP_NBR = 20 coarse steps gives 10 regrid attempts (every 2 coarse steps with
+refined time stepping, TimeRefinementIntegrator.cpp:124-146), 20 swaps of the level-ghost
+particles, and moves a thermal electron by 0.9 coarse cell (v_th dt / dx = 0.043 per step), so
+the particles within a cell or two of the level boundary cross it. MAX_ROOT_DRIFT is twice the
+drift measured on one level for the same case (--one-level), the floor of the single precision
+E dumps; ROOT_MARGIN covers the particle shape and the coarsened E stencils around the box.
 """
 
+import sys
 import unittest
 
-import h5py
 import numpy as np
 
 import pyphare.pharein as ph
 from pyphare import cpp
-from pyphare.core.box import Box1D
+from pyphare.core.box import Box1D, Box2D
 from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.simulator import simulator
 from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
-from tests.simulator import test_fully_kinetic as fk
+
+one_level = "--one-level" in sys.argv
+if one_level:
+    sys.argv.remove("--one-level")
+
+# parses the command line
+from tests.simulator import test_fully_kinetic as fk  # noqa: E402
 
 ph.NO_GUI()
 
-assert fk.ndim == 1, "1D only for now"
-
-fk.diag_dir = "phare_outputs/fully_kinetic_amr_1d"
-interp_order = 1
-time_step_nbr = 20
-box = Box1D(24, 39)  # root cells, refined into fine cells 48 to 79
+ndim = fk.ndim
+interp_order = fk.interp_orders[0]
+BOXES = {1: Box1D(24, 39), 2: Box2D(12, 19)}
+box = BOXES[ndim]
 ratio = 2
-ROOT_MARGIN = 3  # coarse cells: the particle shape and the E stencil around the box
+TIME_STEP_NBR = 20
+ROOT_MARGIN = 3  # coarse cells around the box
 FINE_MARGIN = 3  # fine cells away from the fine level boundary
-MAX_GAUSS_DRIFT = 1e-6
+# twice the drift measured with --one-level (Debug, at cf2cd16b9), max over the root of
+# |F(20 dt) - F(0)| / c^2 max |rho|: 1D order 1 N=0: 2.76e-8; 2D order 1 N=1: 8.36e-8
+MAX_ROOT_DRIFT = {1: 6e-8, 2: 2e-7}[ndim]
 TIME_TOLERANCE = 1e-12
+
+fk.diag_dir = (
+    f"phare_outputs/fully_kinetic_amr_{ndim}d_filter{fk.filter_passes}"
+    f"_cleaning{fk.cleaning}" + ("_one_level" if one_level else "")
+)
 
 
 def config():
     sim = ph.Simulation(
         time_step=fk.time_step,
-        time_step_nbr=time_step_nbr,
-        cells=[fk.cells],
-        dl=[fk.dl],
+        time_step_nbr=TIME_STEP_NBR,
+        cells=[fk.cells] * ndim,
+        dl=[fk.dl] * ndim,
         interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=fk.c_over_va,
-        refinement_boxes={"L0": [box]},
+        current_filter_passes=fk.filter_passes,
+        divergence_cleaning=fk.cleaning,
+        refinement_boxes=None if one_level else {"L0": [box]},
         smallest_patch_size=8,
-        largest_patch_size=16,
+        largest_patch_size=fk.CASES[ndim]["tiled"],
         diag_options={
             "format": "phareh5",
             "options": {
@@ -79,7 +109,7 @@ def config():
     def vth(mass):
         return fk.uniform(np.sqrt(fk.T / mass))
 
-    common = {"density": fk.uniform(1.0), "nbr_part_per_cell": fk.CASES[1]["ppc"]}
+    common = {"density": fk.uniform(1.0), "nbr_part_per_cell": fk.CASES[ndim]["ppc"]}
     ph.MaxwellianFluidModel(
         bx=fk.uniform(1.0),
         by=fk.wave(0.1, 0),
@@ -104,32 +134,45 @@ def config():
         },
     )
 
-    every_step = [step * fk.time_step for step in range(time_step_nbr + 1)]
+    every_step = [step * fk.time_step for step in range(TIME_STEP_NBR + 1)]
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=every_step)
     for pop in ["protons", "electrons"]:
         ph.ParticleDiagnostics(
             quantity="domain",
-            write_timestamps=[0.0, time_step_nbr * fk.time_step],
+            write_timestamps=[0.0, TIME_STEP_NBR * fk.time_step],
             population_name=pop,
         )
     return sim
 
 
 def level_times(level):
+    import h5py
+
     with h5py.File(f"{fk.diag_dir}/EM_E.h5", "r") as f:
         return sorted(float(t) for t in f["t"] if f"pl{level}" in f["t"][t])
 
 
-def fine_gauss_residual(time):
-    """div E - c^2 rho on the fine primal nodes more than FINE_MARGIN cells inside the box,
-    rho from the fine domain particles moved half a fine step back: {node: residual}"""
+def outside_box():
+    """root primal nodes more than ROOT_MARGIN cells away from the box, along any direction"""
+    nodes = np.indices([fk.cells] * ndim)
+    outside = np.zeros([fk.cells] * ndim, dtype=bool)
+    for d in range(ndim):
+        outside |= (nodes[d] < box.lower[d] - ROOT_MARGIN) | (
+            nodes[d] > box.upper[d] + 1 + ROOT_MARGIN
+        )
+    return outside
+
+
+def fine_gauss_residual_1d(time):
+    """1D, no filter: div E - c^2 rho on the fine primal nodes more than FINE_MARGIN cells
+    inside the box, rho from the fine domain particles moved half a fine step back"""
     dl = fk.dl / ratio
     dt = fk.time_step / ratio
     lower, upper = ratio * box.lower[0], ratio * (box.upper[0] + 1)
     nodes = range(lower + FINE_MARGIN, upper - FINE_MARGIN + 1)
 
-    rho = {node: 0.0 for node in range(lower - 2, upper + 3)}
+    rho = dict.fromkeys(range(lower - 2, upper + 3), 0.0)
     for pop, charge in fk.charges.items():
         hier = hierarchy_from(
             h5_filename=f"{fk.diag_dir}/ions_pop_{pop}_domain.h5", times=f"{time:.10f}"
@@ -156,73 +199,85 @@ def fine_gauss_residual(time):
     for patch in hier.level(1, time).patches:
         pdata = patch.patch_datas["Ex"]
         for x, value in zip(pdata.x, pdata.dataset[:]):
-            Ex[int(round(x / dl - 0.5))] = value
+            Ex[round(x / dl - 0.5)] = value
 
-    return {
-        node: (Ex[node] - Ex[node - 1]) / dl - fk.c_over_va**2 * rho[node]
-        for node in nodes
-    }
+    return np.array(
+        [(Ex[n] - Ex[n - 1]) / dl - fk.c_over_va**2 * rho[n] for n in nodes]
+    )
 
 
 class FullyKineticAMRTest(SimulatorTest):
     def tearDown(self):
         super().tearDown()
         ph.global_vars.sim = None
+        simulator.exit_on_exception = True
 
     def test_static_box(self):
         ph.global_vars.sim = None
-        Simulator(config()).run().reset()
+        simulator.exit_on_exception = False  # an exception raises instead of exiting
+        try:
+            Simulator(config()).run().reset()
+        except RuntimeError as e:
+            if "regridding is not supported" in str(e):
+                self.fail(
+                    "SAMRAI re-initialized the fine level from an old one (regrid)"
+                )
+            raise
 
         if cpp.mpi_rank() != 0:
             return
 
-        self._check_fine_time_step()
+        if not one_level:
+            self._check_fine_time_step()
         self._check_finite()
         self._check_root_gauss()
-        self._report_fine_gauss()
+        if not one_level and ndim == 1 and fk.filter_passes == 0:
+            self._report_fine_gauss()
 
     def _check_fine_time_step(self):
-        expected = np.arange(2 * time_step_nbr + 1) * fk.time_step / ratio
+        expected = np.arange(2 * TIME_STEP_NBR + 1) * fk.time_step / ratio
         times = np.asarray(level_times(1))
         print(f"fine level dump times: {len(times)}, expected {len(expected)}")
         self.assertEqual(len(times), len(expected))
         self.assertLess(np.abs(times - expected).max(), TIME_TOLERANCE)
 
     def _check_finite(self):
-        time = time_step_nbr * fk.time_step
-        hier = hierarchy_from(h5_filename=f"{fk.diag_dir}/EM_E.h5", times=f"{time:.10f}")
-        for level in [0, 1]:
+        time = TIME_STEP_NBR * fk.time_step
+        hier = hierarchy_from(
+            h5_filename=f"{fk.diag_dir}/EM_E.h5", times=f"{time:.10f}"
+        )
+        for level in [0] if one_level else [0, 1]:
             for patch in hier.level(level, time).patches:
                 for component in "xyz":
                     data = patch.patch_datas[f"E{component}"].dataset[:]
                     self.assertTrue(np.all(np.isfinite(data)), f"L{level} E{component}")
 
     def _check_root_gauss(self):
-        final_time = time_step_nbr * fk.time_step
+        final_time = TIME_STEP_NBR * fk.time_step
         initial = fk.gauss_residual("", 0.0, interp_order)
         final = fk.gauss_residual("", final_time, interp_order)
         rho = fk.charge_density_at_half_step("", 0.0, interp_order)
         scale = fk.c_over_va**2 * np.abs(rho).max()
 
-        nodes = np.arange(fk.cells)
-        outside = (nodes < box.lower[0] - ROOT_MARGIN) | (
-            nodes > box.upper[0] + 1 + ROOT_MARGIN
-        )
-        drift = np.abs(final - initial)[outside].max() / scale
-        inside = np.abs(final - initial)[~outside].max() / scale
+        change = np.abs(final - initial) / scale
+        outside = outside_box()
         print(
-            f"root Gauss residual drift: outside the box {drift:.3e},"
-            f" inside (reported) {inside:.3e}"
+            f"{ndim}D N={fk.filter_passes} s={fk.cleaning}"
+            f"{' one level' if one_level else ''}: root Gauss residual,"
+            f" initial {np.abs(initial).max() / scale:.3e}, change outside the box"
+            f" {change[outside].max():.3e}, around and inside {change[~outside].max():.3e}"
         )
-        # E diagnostics are single precision
-        self.assertLess(drift, MAX_GAUSS_DRIFT)
+        if fk.cleaning == 0:
+            # E diagnostics are single precision
+            self.assertLess(change[outside].max(), MAX_ROOT_DRIFT)
 
     def _report_fine_gauss(self):
-        scale = fk.c_over_va**2 * np.abs(
-            fk.charge_density_at_half_step("", 0.0, interp_order)
-        ).max()
-        for time in [0.0, time_step_nbr * fk.time_step]:
-            residual = np.array(list(fine_gauss_residual(time).values()))
+        scale = (
+            fk.c_over_va**2
+            * np.abs(fk.charge_density_at_half_step("", 0.0, interp_order)).max()
+        )
+        for time in [0.0, TIME_STEP_NBR * fk.time_step]:
+            residual = fine_gauss_residual_1d(time)
             print(
                 f"fine Gauss residual at t = {time:g}, inside the box:"
                 f" max {np.abs(residual).max() / scale:.3e} (relative, not asserted)"
