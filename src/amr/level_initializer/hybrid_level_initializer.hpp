@@ -11,6 +11,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
 #include "amr/solvers/solver_hybrid_field_evolvers.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 
@@ -55,6 +56,7 @@ namespace solver
         {
             core::Interpolator<dimension, interp_order> interpolate_;
             auto& hybridModel = static_cast<HybridModel&>(model);
+            auto& state       = hybridModel.state;
             auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
 
             auto& hybMessenger = dynamic_cast<HybridMessenger&>(messenger);
@@ -84,49 +86,45 @@ namespace solver
                 }
             }
 
-            auto& ions = hybridModel.state.ions;
-            auto& rm   = *hybridModel.resourcesManager;
+            auto ions_accessor = amr::make_model_level_accessor(level, hybridModel, state.ions);
 
             // overlapping patches were each filled over their whole domain,
             // keep particles only on the patch owning their cell
-            auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
-            for (auto& patch : rm.enumerate(level, ions))
-                ions.eraseDomainParticlesIn(
-                    amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
+            auto const neighbours = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
+            amr::onLevel(ions_accessor, [&](auto& view) {
+                auto& [ions] = view.args;
+                ions.eraseDomainParticlesIn(view.nonOwnedBoxes(neighbours));
+            });
 
             // now all particles are here, we must compute moments.
-            for (auto& patch : rm.enumerate(level, ions))
-            {
-                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+            amr::onLevel(ions_accessor, [&](auto& view) {
+                auto& [ions] = view.args;
                 core::resetMoments(ions);
-                core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
-            }
+                core::depositParticles(ions, view.layout, interpolate_, core::DomainDeposit{});
+            });
 
             // at this point flux and density is computed for all pops
             // but nodes on ghost box overlaps are not complete because they lack
             // contribution of neighbor particles.
             // The following two calls will += flux and density on these overlaps.
-            hybMessenger.fillFluxBorders(ions, level, initDataTime);
-            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+            hybMessenger.fillFluxBorders(state.ions, level, initDataTime);
+            hybMessenger.fillDensityBorders(state.ions, level, initDataTime);
 
             // the only remaning incomplete nodes are those next to and on level ghost layers
             // we now complete them by depositing levelghost particles
-            for (auto& patch : rm.enumerate(level, ions))
-            {
+            amr::onLevel(ions_accessor, [&](auto& view) {
+                auto& [ions] = view.args;
                 if (!isRootLevel(levelNumber))
-                {
-                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                    core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
-                }
-
+                    core::depositParticles(ions, view.layout, interpolate_,
+                                           core::LevelGhostDeposit{});
 
                 // now all nodes are complete, the total ion moments
                 // can safely be computed.
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
                 ions.computeChargeFlux();
-            }
-            hybMessenger.fillIonBorders(ions, level, initDataTime);
+            });
+            hybMessenger.fillIonBorders(state.ions, level, initDataTime);
 
             // moments are not time interpolated: their level ghost nodes come from the
             // deposit of level ghost particles above. Only E and B ghosts are, from the
@@ -139,25 +137,23 @@ namespace solver
             // first ghost layer of J is the curl of those B ghosts.
             TimeSetter setTime{level, hybridModel, initDataTime};
 
-            auto& B = hybridModel.state.electromag.B;
-            auto& J = hybridModel.state.J;
-
-            Ampere_t{level, hybridModel}(B, J);
-            setTime(J);
+            Ampere_t{level, hybridModel}(state.electromag.B, state.J);
+            setTime(state.J);
 
             // E only needs computing on a fresh root level: it is regridded on
             // regrid paths and initLevel has done it on new finer levels
             if (!isRegridding and isRootLevel(levelNumber))
             {
-                auto& E         = hybridModel.state.electromag.E;
-                auto& electrons = hybridModel.state.electrons;
+                amr::onLevel(amr::make_model_level_accessor(level, hybridModel, state.electrons),
+                             [&](auto& view) {
+                                 auto& [electrons] = view.args;
+                                 electrons.update(view.layout);
+                             });
 
-                for (auto& patch : rm.enumerate(level, electrons))
-                    electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
-
-                Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
-                setTime(E);
-                hybMessenger.fillElectricGhosts(E, level, 0.);
+                Ohm_t{ohm_info, level, hybridModel}(state.electromag.B, state.J, state.electromag.E,
+                                                    state.electrons);
+                setTime(state.electromag.E);
+                hybMessenger.fillElectricGhosts(state.electromag.E, level, 0.);
             }
 
 

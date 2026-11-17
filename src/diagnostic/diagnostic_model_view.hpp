@@ -6,6 +6,7 @@
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/amr_constants.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/messengers/field_operate_transaction.hpp"
@@ -193,20 +194,24 @@ public:
         using value_type = TensorFieldT::value_type;
         auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
 
-        auto& rm   = *this->model_.resourcesManager;
-        auto& ions = this->model_.state.ions;
+        auto accessor = amr::make_model_level_accessor(lvl, this->model_, this->model_.state.ions,
+                                                       tmpTensor_);
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        amr::onLevel(accessor, [&](auto& view) {
+            auto& [ions, tmpTensor] = view.args;
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(tmpTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+                std::memcpy(tmpTensor[c].data(), ions[popidx].momentumTensor()[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+        });
 
         MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        amr::onLevel(accessor, [&](auto& view) {
+            auto& [ions, tmpTensor] = view.args;
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
+                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+        });
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
