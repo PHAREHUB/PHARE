@@ -8,6 +8,7 @@
 #include "core/utilities/algorithm.hpp"
 #include "mpi/mpi_utils.hpp"
 
+#include "amr/samrai.hpp"
 #include "amr/solvers/solver.hpp"
 #include "amr/solvers/particle_level_boxings.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
@@ -19,6 +20,8 @@
 
 #include <SAMRAI/hier/Patch.h>
 #include "SAMRAI/hier/PatchLevel.h"
+#include <SAMRAI/tbox/Database.h>
+#include <SAMRAI/tbox/Serializable.h>
 
 #include <cmath>
 #include <memory>
@@ -81,7 +84,7 @@ namespace PHARE::solver
  * region, changes. Without the option nothing is built and nothing skipped.
  */
 template<typename FKModel, typename AMR_Types>
-class SolverFK : public ISolver<AMR_Types>
+class SolverFK : public ISolver<AMR_Types>, public SAMRAI::tbox::Serializable
 {
 private:
     static constexpr auto dimension    = FKModel::dimension;
@@ -131,9 +134,35 @@ public:
         : ISolver<AMR_Types>{"FK"}
         , ionUpdater_{dict["algo"]["ion_updater"]}
     {
+        auto& restarts = *SamraiLifeCycle::getRestartManager();
+        if (restarts.isFromRestart())
+            if (auto const root = restarts.getRootDatabase(); root->keyExists(restartName_))
+                coveredFromRestart_(*root->getDatabase(restartName_));
+        restarts.registerRestartItem(restartName_, this);
     }
 
-    ~SolverFK() override = default;
+    ~SolverFK() override
+    {
+        SamraiLifeCycle::getRestartManager()->unregisterRestartItem(restartName_);
+    }
+
+    // in the restart file, the cells each level's finer level synchronized at the end of the
+    // last step (boundary_cleaning_mask), which a regrid at the end of that step has replaced
+    // by the time the file is written. Every other record of the solver is rewritten by the
+    // first step before it is read
+    void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& db) const override
+    {
+        for (auto const& [levelNumber, mask] : cleaningMasks_)
+        {
+            std::vector<int> bounds;
+            for (auto const& box : mask.covered)
+                for (auto const& point : {box.lower, box.upper})
+                    for (std::size_t d = 0; d < dimension; ++d)
+                        bounds.push_back(point[d]);
+            if (!bounds.empty()) // SAMRAI errors on writing 0 size arrays
+                db->putIntegerVector(coveredKey_ + std::to_string(levelNumber), bounds);
+        }
+    }
 
 
     std::string modelName() const override { return FKModel::model_name; }
@@ -310,6 +339,30 @@ private:
         bool stale = true;
     };
     std::unordered_map<int, CleaningMask> cleaningMasks_;
+
+    // the masks of the restart file: their covered cells, the level objects are new (stale)
+    void coveredFromRestart_(SAMRAI::tbox::Database& db)
+    {
+        for (auto const& key : db.getAllKeys())
+            if (key.starts_with(coveredKey_))
+            {
+                auto const bounds = db.getIntegerVector(key);
+                auto& covered = cleaningMasks_[std::stoi(key.substr(coveredKey_.size()))].covered;
+                for (std::size_t i = 0; i + 2 * dimension <= bounds.size(); i += 2 * dimension)
+                {
+                    core::Box<int, dimension> box;
+                    for (std::size_t d = 0; d < dimension; ++d)
+                    {
+                        box.lower[d] = bounds[i + d];
+                        box.upper[d] = bounds[i + dimension + d];
+                    }
+                    covered.push_back(box);
+                }
+            }
+    }
+
+    static inline std::string const restartName_ = "SolverFK";
+    static inline std::string const coveredKey_  = "covered_level_";
 };
 
 
