@@ -234,32 +234,243 @@ class TestSimulation(unittest.TestCase):
             refinement="tagging",
             tagging={
                 "method": "lohner-per-direction",
-                "quantities": {"B": 0.1},
-                "params": {"reltol": 0.02},
+                "quantities": {"B": {"threshold": 0.3, "reltol": 0.02}, "rho": 0.4},
             },
         )
         self.assertIsInstance(tag, tagging.LohnerPerDirectionTagging)
         self.assertEqual(tag.method, "lohner-per-direction")
-        self.assertEqual(tag.quantities, [("B", 0.1)])
-        self.assertEqual(tag.reltol, 0.02)
-        self.assertEqual(tag.abstol, 1e-8)
+        self.assertEqual(
+            tag.quantities,
+            [
+                ("B", {"threshold": 0.3, "reltol": 0.02, "ref_magnitude": 1e-8}),
+                ("rho", {"threshold": 0.4, "reltol": 0.01, "ref_magnitude": 1e-8}),
+            ],
+        )
 
     def test_tagging_lohner_default_params(self):
         tag = tagging.resolve_tagging(
-            refinement="tagging", tagging={"method": "lohner-per-direction"}
+            refinement="tagging",
+            tagging={"method": "lohner-per-direction", "quantities": {"B": 0.1}},
         )
-        self.assertEqual(tag.reltol, 0.01)
-        self.assertEqual(tag.abstol, 1e-8)
+        self.assertEqual(
+            tag.quantities,
+            [("B", {"threshold": 0.1, "reltol": 0.01, "ref_magnitude": 1e-8})],
+        )
 
     def test_tagging_lohner_cross_derivatives(self):
         tag = tagging.resolve_tagging(
             refinement="tagging",
-            tagging={"method": "lohner-cross-derivatives", "params": {"abstol": 1e-6}},
+            tagging={
+                "method": "lohner-cross-derivatives",
+                "quantities": {"B": {"threshold": 0.2, "ref_magnitude": 1e-6}},
+            },
         )
         self.assertIsInstance(tag, tagging.LohnerCrossDerivativesTagging)
         self.assertEqual(tag.method, "lohner-cross-derivatives")
-        self.assertEqual(tag.reltol, 0.01)
-        self.assertEqual(tag.abstol, 1e-6)
+        self.assertEqual(
+            tag.quantities,
+            [("B", {"threshold": 0.2, "reltol": 0.01, "ref_magnitude": 1e-6})],
+        )
+
+    def test_tagging_list_form(self):
+        as_list = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "lohner-per-direction",
+                "quantities": [("B", 0.1), ("rho", {"threshold": 0.2, "reltol": 0.0})],
+            },
+        )
+        as_dict = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "lohner-per-direction",
+                "quantities": {"B": 0.1, "rho": {"threshold": 0.2, "reltol": 0.0}},
+            },
+        )
+        self.assertEqual(as_list.quantities, as_dict.quantities)
+
+    def test_tagging_unknown_quantity_key_raises(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={"quantities": {"B": {"threshold": 0.1, "reltol": 0.1}}},
+            )
+        self.assertIn("reltol", str(error.exception))
+        self.assertIn("threshold", str(error.exception))
+
+    def test_tagging_dict_without_threshold_raises(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={
+                    "method": "lohner-per-direction",
+                    "quantities": {"B": {"reltol": 0.1}},
+                },
+            )
+        self.assertIn("threshold", str(error.exception))
+
+    def test_tagging_params_key_rejected(self):
+        with self.assertRaises(ValueError):
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={"method": "lohner-per-direction", "params": {"reltol": 0.1}},
+            )
+
+    def test_tagging_lohner_negative_rejected(self):
+        for key, value in (("reltol", -0.1), ("ref_magnitude", -1.0)):
+            with self.assertRaises(ValueError) as error:
+                tagging.resolve_tagging(
+                    refinement="tagging",
+                    tagging={
+                        "method": "lohner-per-direction",
+                        "quantities": {"B": {"threshold": 0.1, key: value}},
+                    },
+                )
+            self.assertIn(key, str(error.exception))
+
+    def test_tagging_non_finite_parameters_rejected(self):
+        cases = [
+            ("lohner-per-direction", "reltol", float("nan")),
+            ("lohner-per-direction", "ref_magnitude", float("nan")),
+            ("lohner-cross-derivatives", "ref_magnitude", float("inf")),
+            ("gradient-scale", "ref_magnitude", float("nan")),
+            ("gradient-scale", "ref_magnitude", float("inf")),
+            ("default", "threshold", float("nan")),
+        ]
+        for method, key, value in cases:
+            spec = (
+                {"threshold": 0.1, "ref_magnitude": 0.1}
+                if method == "gradient-scale"
+                else {}
+            )
+            spec = {"threshold": 0.1, **spec, key: value}
+            with self.subTest(method=method, key=key, value=value):
+                with self.assertRaises(ValueError) as error:
+                    tagging.resolve_tagging(
+                        refinement="tagging",
+                        tagging={"method": method, "quantities": {"B": spec}},
+                    )
+                self.assertIn(key, str(error.exception))
+
+    def test_tagging_explicit_none_is_not_a_number(self):
+        with self.assertRaises(TypeError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={
+                    "method": "lohner-per-direction",
+                    "quantities": {"B": {"threshold": 0.1, "reltol": None}},
+                },
+            )
+        self.assertIn("reltol must be a number", str(error.exception))
+
+    def test_tagging_malformed_list_entries_rejected(self):
+        for entry in ("Bx", ("B",), ("B", 0.1, 0.2), (1, 0.1)):
+            with self.subTest(entry=entry):
+                with self.assertRaises(TypeError) as error:
+                    tagging.resolve_tagging(
+                        refinement="tagging", tagging={"quantities": [entry]}
+                    )
+                self.assertIn("(name, threshold or dict)", str(error.exception))
+
+    def test_tagging_string_thresholds_rejected(self):
+        with self.assertRaises(TypeError):
+            tagging.resolve_tagging(
+                refinement="tagging", tagging={"quantities": {"B": "0.1"}}
+            )
+        with self.assertRaises(TypeError) as error:
+            tagging.resolve_tagging(refinement="tagging", tagging_threshold="0.1")
+        self.assertIn("tagging_threshold", str(error.exception))
+
+    def test_tagging_numeric_types_become_float(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "lohner-per-direction",
+                "quantities": {
+                    "B": 1,
+                    "rho": {"threshold": np.float32(0.25), "reltol": 0},
+                },
+            },
+        )
+        self.assertEqual(
+            tag.quantities,
+            [
+                ("B", {"threshold": 1.0, "reltol": 0.01, "ref_magnitude": 1e-8}),
+                ("rho", {"threshold": 0.25, "reltol": 0.0, "ref_magnitude": 1e-8}),
+            ],
+        )
+        for _, parameters in tag.quantities:
+            for value in parameters.values():
+                self.assertIs(type(value), float)
+        with self.assertRaises((TypeError, ValueError)):
+            tagging.resolve_tagging(
+                refinement="tagging", tagging={"quantities": {"B": True}}
+            )
+
+    def test_gradient_scale_spec(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "gradient-scale",
+                "quantities": {
+                    "B": {"threshold": 0.1, "ref_magnitude": 0.01},
+                    "rho": {"threshold": 0.2, "ref_magnitude": 0.05},
+                },
+            },
+        )
+        self.assertIsInstance(tag, tagging.GradientScaleTagging)
+        self.assertEqual(tag.method, "gradient-scale")
+        self.assertEqual(
+            tag.quantities,
+            [
+                ("B", {"threshold": 0.1, "ref_magnitude": 0.01}),
+                ("rho", {"threshold": 0.2, "ref_magnitude": 0.05}),
+            ],
+        )
+
+    def test_gradient_scale_ref_magnitude_required(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={"method": "gradient-scale", "quantities": {"B": 0.1}},
+            )
+        self.assertIn("ref_magnitude", str(error.exception))
+
+    def test_gradient_scale_without_quantities_raises(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging", tagging={"method": "gradient-scale"}
+            )
+        self.assertIn("ref_magnitude", str(error.exception))
+        self.assertIn("quantities", str(error.exception))
+        self.assertNotIn("'B'", str(error.exception))
+
+    def test_gradient_scale_ref_magnitude_must_be_positive(self):
+        for ref_magnitude in (0.0, -1.0):
+            with self.assertRaises(ValueError) as error:
+                tagging.resolve_tagging(
+                    refinement="tagging",
+                    tagging={
+                        "method": "gradient-scale",
+                        "quantities": {
+                            "B": {"threshold": 0.1, "ref_magnitude": ref_magnitude}
+                        },
+                    },
+                )
+            self.assertIn("ref_magnitude", str(error.exception))
+
+    def test_gradient_scale_rejects_reltol(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={
+                    "method": "gradient-scale",
+                    "quantities": {
+                        "B": {"threshold": 0.1, "ref_magnitude": 0.1, "reltol": 0.1}
+                    },
+                },
+            )
+        self.assertIn("reltol", str(error.exception))
 
     def test_tagging_old_lohner_name_rejected(self):
         with self.assertRaises(ValueError) as error:
@@ -272,13 +483,6 @@ class TestSimulation(unittest.TestCase):
     def test_tagging_unknown_method_raises(self):
         with self.assertRaises(ValueError):
             tagging.resolve_tagging(refinement="tagging", tagging={"method": "wavelet"})
-
-    def test_tagging_unknown_param_raises(self):
-        with self.assertRaises(ValueError):
-            tagging.resolve_tagging(
-                refinement="tagging",
-                tagging={"method": "default", "params": {"reltol": 0.1}},
-            )
 
     def test_tagging_not_available_rejected(self):
         for name in ("J", "Ey", "V", "pressure", "massDensity"):
@@ -296,19 +500,31 @@ class TestSimulation(unittest.TestCase):
         self.assertIn("given more than once", str(error.exception))
 
     def test_tagging_fallback_uses_tagging_threshold(self):
-        for spec in ({"method": "lohner-per-direction"}, {"quantities": {}}):
+        expected = [
+            (
+                {"method": "lohner-per-direction"},
+                {"reltol": 0.01, "ref_magnitude": 1e-8},
+            ),
+            ({"quantities": {}}, {}),
+            (None, {}),
+        ]
+        for spec, parameters in expected:
             tag = tagging.resolve_tagging(
                 refinement="tagging", tagging_threshold=0.3, tagging=spec
             )
-            self.assertEqual(tag.quantities, [("B", 0.3)])
+            self.assertEqual(tag.quantities, [("B", {"threshold": 0.3, **parameters})])
 
     def test_re_numpify_does_not_corrupt_tagging_quantities(self):
-        tag = tagging.LohnerPerDirectionTagging(quantities=[("B", 0.1), ("rho", 0.4)])
+        quantities = [
+            ("B", {"threshold": 0.1, "reltol": 0.01, "ref_magnitude": 1e-8}),
+            ("rho", {"threshold": 0.4, "reltol": 0.02, "ref_magnitude": 1e-8}),
+        ]
+        tag = tagging.LohnerPerDirectionTagging(quantities=[*quantities])
         simulation.re_numpify_recursive(tag, "quantities")
-        self.assertEqual(tag.quantities, [("B", 0.1), ("rho", 0.4)])
+        self.assertEqual(tag.quantities, quantities)
         self.assertIsInstance(tag.quantities, list)
         self.assertIsInstance(tag.quantities[0], tuple)
-        self.assertIsInstance(tag.quantities[0][1], float)
+        self.assertIs(type(tag.quantities[0][1]["threshold"]), float)
 
     def test_re_numpify_still_numpifies_homogeneous_numeric_lists(self):
         owner = simulation.Simulation.__new__(simulation.Simulation)
@@ -321,14 +537,20 @@ class TestSimulation(unittest.TestCase):
         sim = self.tagging_simulation(
             tagging={
                 "method": "lohner-per-direction",
-                "quantities": {"B": 0.1, "rho": 0.4},
-                "params": {"reltol": 0.02},
+                "quantities": {"B": 0.1, "rho": {"threshold": 0.4, "reltol": 0.02}},
             },
         )
         restored = simulation.deserialize(simulation.serialize(sim))
-        self.assertEqual(restored.tagging.quantities, [("B", 0.1), ("rho", 0.4)])
-        self.assertIsInstance(restored.tagging.quantities[0][1], float)
-        self.assertIsInstance(restored.tagging.quantities[1][1], float)
+        self.assertEqual(
+            restored.tagging.quantities,
+            [
+                ("B", {"threshold": 0.1, "reltol": 0.01, "ref_magnitude": 1e-8}),
+                ("rho", {"threshold": 0.4, "reltol": 0.02, "ref_magnitude": 1e-8}),
+            ],
+        )
+        for _, parameters in restored.tagging.quantities:
+            for value in parameters.values():
+                self.assertIs(type(value), float)
 
     def test_default_path_populates_legacy_keys(self):
         sim = self.tagging_simulation()
@@ -406,13 +628,32 @@ class FakeDictPopulator:
 
 
 class TestTaggingPopulateDict(unittest.TestCase):
+    def test_gradient_scale_populate_dict(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "gradient-scale",
+                "quantities": {"rho": {"threshold": 0.2, "ref_magnitude": 0.05}},
+            },
+        )
+        dp = FakeDictPopulator()
+        tag.populate_dict(dp)
+
+        base = "simulation/AMR/refinement/tagging/"
+        self.assertEqual(dp.calls[base + "Q0/name"], "rho")
+        self.assertEqual(dp.calls[base + "Q0/threshold"], 0.2)
+        self.assertEqual(dp.calls[base + "Q0/ref_magnitude"], 0.05)
+        self.assertNotIn(base + "Q0/reltol", dp.calls)
+
     def test_lohner_multi_quantity_populate_dict(self):
         tag = tagging.resolve_tagging(
             refinement="tagging",
             tagging={
                 "method": "lohner-per-direction",
-                "quantities": {"B": 0.1, "rho": 0.4},
-                "params": {"reltol": 0.02, "abstol": 1e-20},
+                "quantities": {
+                    "B": {"threshold": 0.1, "reltol": 0.02, "ref_magnitude": 1e-20},
+                    "rho": 0.4,
+                },
             },
         )
         dp = FakeDictPopulator()
@@ -424,8 +665,11 @@ class TestTaggingPopulateDict(unittest.TestCase):
         self.assertEqual(dp.calls[base + "Q0/threshold"], 0.1)
         self.assertEqual(dp.calls[base + "Q1/name"], "rho")
         self.assertEqual(dp.calls[base + "Q1/threshold"], 0.4)
-        self.assertEqual(dp.calls[base + "params/reltol"], 0.02)
-        self.assertEqual(dp.calls[base + "params/abstol"], 1e-20)
+        self.assertEqual(dp.calls[base + "Q0/reltol"], 0.02)
+        self.assertEqual(dp.calls[base + "Q0/ref_magnitude"], 1e-20)
+        self.assertEqual(dp.calls[base + "Q1/reltol"], 0.01)
+        self.assertEqual(dp.calls[base + "Q1/ref_magnitude"], 1e-8)
+        self.assertFalse(any("params" in key for key in dp.calls))
         self.assertNotIn(base + "method", dp.calls)
 
 

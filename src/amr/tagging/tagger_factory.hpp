@@ -11,6 +11,7 @@
 #include "tagger.hpp"
 #include "concrete_tagger.hpp"
 #include "default_tagger_strategy.hpp"
+#include "gradient_scale_tagger_strategy.hpp"
 #include "lohner_per_direction_tagger_strategy.hpp"
 #include "lohner_cross_derivatives_tagger_strategy.hpp"
 
@@ -37,6 +38,7 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
     using HTS = DefaultTaggerStrategy<Model>;
     using LPD = LohnerPerDirectionTaggerStrategy<Model>;
     using LCD = LohnerCrossDerivativesTaggerStrategy<Model>;
+    using GS  = GradientScaleTaggerStrategy<Model>;
 
     if constexpr (solver::is_hybrid_model_v<Model>)
     {
@@ -48,6 +50,8 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
             return std::make_unique<HT>(std::make_unique<LPD>(dict));
         if (methodName == "lohner-cross-derivatives")
             return std::make_unique<HT>(std::make_unique<LCD>(dict));
+        if (methodName == "gradient-scale")
+            return std::make_unique<HT>(std::make_unique<GS>(dict));
     }
     else if constexpr (solver::is_mhd_model_v<Model>)
     {
@@ -59,6 +63,8 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
             return std::make_unique<HT>(std::make_unique<LPD>(dict));
         if (methodName == "lohner-cross-derivatives")
             return std::make_unique<HT>(std::make_unique<LCD>(dict));
+        if (methodName == "gradient-scale")
+            return std::make_unique<HT>(std::make_unique<GS>(dict));
     }
     else
         static_assert(core::dependent_false_v<Model>);

@@ -60,6 +60,8 @@ set( SOURCES_INC
      tagging/per_quantity_tagger_strategy.hpp
      tagging/tagging_quantities.hpp
      tagging/default_tagger_strategy.hpp
+     tagging/gradient_scale_tagger_strategy.hpp
+     tagging/lohner_parameters.hpp
      tagging/lohner_per_direction_tagger_strategy.hpp
      tagging/lohner_cross_derivatives_tagger_strategy.hpp
      solvers/solver.hpp

@@ -383,11 +383,12 @@ Löhner's criterion
 Löhner's error estimator\ [#lohner1987]_ measures the change of slope from one
 cell to the next, normalized by the slopes themselves. A noise filter,
 weighted by :math:`\epsilon_r`, ignores the variations that are small compared
-with the local magnitude of the quantity, and :math:`\epsilon_a` is an
-absolute floor, in code units. :math:`\epsilon_r` and :math:`\epsilon_a` are
-the parameters ``reltol`` (default 0.01) and ``abstol`` (default
-:math:`10^{-8}`). PHARE provides the two multidimensional forms of the
-literature, which both lie between 0 and :math:`1/(1 + \epsilon_r)`.
+with the local magnitude of the quantity, and :math:`u_\mathrm{ref}` is an
+absolute reference magnitude, in the units of the quantity. :math:`\epsilon_r`
+and :math:`u_\mathrm{ref}` are the per-quantity parameters ``reltol`` (default
+0.01) and ``ref_magnitude`` (default :math:`10^{-8}`). PHARE provides the two
+multidimensional forms of the literature, which both lie between 0 and
+:math:`1/(1 + \epsilon_r)`.
 
 Per direction
 ^^^^^^^^^^^^^
@@ -401,7 +402,7 @@ direction :math:`d`,
    n_d &= \left\|\vb{u}(\vb{x} + \vu{e}_d) - 2\vb{u}(\vb{x}) + \vb{u}(\vb{x} - \vu{e}_d)\right\|, \\
    D_d &= \left\|\vb{u}(\vb{x} + \vu{e}_d) - \vb{u}(\vb{x})\right\| + \left\|\vb{u}(\vb{x}) - \vb{u}(\vb{x} - \vu{e}_d)\right\| \\
        &\quad + \epsilon_r \left(\left\|\vb{u}(\vb{x} + \vu{e}_d)\right\| + 2\left\|\vb{u}(\vb{x})\right\|
-         + \left\|\vb{u}(\vb{x} - \vu{e}_d)\right\|\right) + \epsilon_a
+         + \left\|\vb{u}(\vb{x} - \vu{e}_d)\right\|\right) + u_\mathrm{ref}
    \end{aligned}
 
 and the directions are combined in a single ratio,
@@ -427,7 +428,7 @@ contributes
    \begin{aligned}
    n_{pq} &= \left\|\Delta_p \vb{u}(\vb{x} + \vu{e}_q) - \Delta_p \vb{u}(\vb{x} - \vu{e}_q)\right\|, \\
    D_{pq} &= \left\|\Delta_p \vb{u}(\vb{x} + \vu{e}_q)\right\| + \left\|\Delta_p \vb{u}(\vb{x} - \vu{e}_q)\right\|
-             + \epsilon_r S_{pq} + \epsilon_a
+             + \epsilon_r S_{pq} + u_\mathrm{ref}
    \end{aligned}
 
 where :math:`S_{pq}` is the sum of :math:`\left\|\vb{u}\right\|` over the four
@@ -440,6 +441,25 @@ mesh sizes :math:`\Delta x_p` of the patch,
    \qquad w_{pq} = \frac{1}{\Delta x_p \Delta x_q}
 
 The stencil reach is two cells.
+
+Gradient scale
+~~~~~~~~~~~~~~
+
+``gradient-scale`` is the cell size over the gradient length of the quantity,
+:math:`\Delta x \left\|\nabla \vb{u}\right\|_F / (\left\|\vb{u}\right\| + u_\mathrm{ref})`,
+with :math:`\left\|\nabla \vb{u}\right\|_F^2 = \sum_{i,j} (\partial_i u_j)^2`
+the Frobenius norm of the gradient and :math:`u_\mathrm{ref}` the per-quantity
+parameter ``ref_magnitude``, in the units of the quantity. The derivatives are
+undivided centred differences, so each direction carries its own cell size:
+
+.. math::
+
+   I = \frac{\sqrt{\sum_d \left\|\frac{1}{2}\left(\vb{u}(\vb{x} + \vu{e}_d) - \vb{u}(\vb{x} - \vu{e}_d)\right)\right\|^2}}
+            {\left\|\vb{u}(\vb{x})\right\| + u_\mathrm{ref}}
+
+which equals
+:math:`\Delta x \left\|\nabla \vb{u}\right\|_F / (\left\|\vb{u}\right\| + u_\mathrm{ref})`
+on square cells. The stencil reach is one cell.
 
 Default criterion
 ~~~~~~~~~~~~~~~~~

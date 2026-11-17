@@ -20,6 +20,7 @@ thresholds = {
     "default": 0.05,
     "lohner-per-direction": 0.3,
     "lohner-cross-derivatives": 0.3,
+    "gradient-scale": {"threshold": 0.1, "ref_magnitude": 0.1},
 }
 diag_root = "phare_outputs/tagging_quantities"
 

@@ -48,11 +48,12 @@ public:
      * @param components The components of the quantity, viewed at cell centres
      * @param cell The index of the cell in the field arrays, the first ghost cell having index 0
      * @param layout unused by this criterion
+     * @param parameters unused, this criterion has none
      * @return the L2 norm of the components' indicators in 1D, their max in 2D and 3D
      */
     double indicator(std::span<recentered_field_type const> components,
                      std::array<std::uint32_t, dimension> const& cell,
-                     Model::gridlayout_type const&) const
+                     Model::gridlayout_type const&, NoQuantityParameters const&) const
     {
         double crit = 0.;
         for (auto const& component : components)
