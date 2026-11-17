@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Light pulse across a 1D periodic box, fully kinetic, PHARE units: the one-level baseline of the
-P4 gate T8 (reflection and transmission of a pulse crossing a static refined box). The refined
-box is a placeholder (--refinement-box, cells): it only places the pulse and the windows.
+Light pulse across a 1D periodic box, fully kinetic, PHARE units: the P4 gate T8, reflection of
+a pulse crossing a static 2:1 refined box (--refinement-box, coarse cells, default [176, 208]),
+and its one-level baseline (--one-level: the box only places the pulse and the windows).
 
 Launch. The FK initializer starts from E^0 = 0 (fk_level_initializer.hpp), so the pulse is B_z
-alone, b exp(-(x - x0)^2 / 2 sigma^2) sin(k0 (x - x0)), sigma = 8 cells, central wavelength 32
-cells: it splits into a right-going and a left-going half of amplitude b/2 each. The sine
+alone, b exp(-(x - x0)^2 / 2 sigma^2) sin(k0 (x - x0)), sigma = 8 coarse cells, central
+wavelength --wavelength fine cells (32 by default, 16 coarse cells): it splits into a
+right-going and a left-going half of amplitude b/2 each. The sine
 carrier makes the integral of B_z zero, so the particles start with the canonical
 v_y = -(q/m) A_y, A_y' = B_z, and keep no memory of the initial field (waves.py, light).
 
@@ -45,6 +46,19 @@ floor of the measurement):
 - plasma, orders 1 and 2: reflected / incident 4.6e-2 (thermal noise, E- flat at 2e-3 to 4e-3
   over the box), transmitted error +1.4e-3, left half 0.998; 37.7 s, 43.2 s
 The plasma floor is above every reflection T8 expects: T8 gates on the vacuum case.
+
+T8 (--check, vacuum, orders 1 to 3, lambda = 32 and 16 fine cells, one filter pass and Marder
+s = 0.5 as every refined run, inert in vacuum): the same run with and without the box, both
+with the same options; R = ||E-_box - E-_one level|| over the reflection window / incident norm
+of the one-level run (the floor and the decomposition leak cancel). Model (1D Yee model with the
+P4 coupling, docs/superpowers/specs/p4/mr_light_1d.py): R(k) = 0.32 (k dx_f)^2 for a
+monochromatic wave; for this pulse (sigma = 8 coarse cells, a broad spectrum: the power
+spectrum's width over k0 is 0.23 at lambda = 32 fine cells) the windowed norm sees R_model =
+0.32 dx_f^2 sqrt(<k^4>), <> the average over the pulse's power spectrum: 1.41e-2 and 5.12e-2 at
+lambda = 32 and 16, +15% and +4% over 0.32 (k0 dx_f)^2, ratio 3.62. Asserted: |R / R_model - 1|
+<= 0.3 at both wavelengths, R(16) / R(32) in [3, 5] (second order in k dx_f).
+A broken D1 (fine ghosts held at the newest coarse value instead of interpolated in time) gives
+R x 9 to 17 and R(16) / R(32) = 2.0 in the model: first order, rejected by the ratio.
 """
 
 import argparse
@@ -61,8 +75,9 @@ from pyphare.simulator.simulator import Simulator
 
 ph.NO_GUI()
 
-SIGMA = 8  # cells, every length below is in sigma
-WAVELENGTH = 32  # cells
+SIGMA = 8  # coarse cells, every length below is in sigma
+WAVELENGTHS = (32, 16)  # fine cells, T8
+RATIO = 2  # refinement
 CELLS = 48 * SIGMA
 BOX = (22 * SIGMA, 26 * SIGMA)  # default placeholder refined box
 AMPLITUDE = 0.05
@@ -71,6 +86,9 @@ STEPS_END = 36 * SIGMA
 DENSITIES = {"vacuum": 1e-6, "plasma": 1e-2}
 PPC = {"vacuum": 4, "plasma": 64}  # per species
 TEMPERATURES = {"protons": 0.01, "electrons": 0.04}  # waves.py
+FILTER_PASSES, CLEANING = 1, 0.5  # every refined run (P4 D7), the T8 runs
+MAX_MODEL_ERROR = 0.3
+RATIO_RANGE = (3.0, 5.0)
 diag_root = "phare_outputs/fully_kinetic_pulse"
 
 
@@ -100,8 +118,9 @@ class Geometry:
         }
 
 
-def pulse(geometry):
-    k0, sigma = 2 * np.pi / (WAVELENGTH * dl), SIGMA * dl
+def pulse(geometry, wavelength):
+    """B_z of the pulse and the canonical v_y, wavelength in fine cells"""
+    k0, sigma = 2 * np.pi / (wavelength / RATIO * dl), SIGMA * dl
 
     def bz(x):
         u = x - geometry.x0
@@ -121,8 +140,16 @@ def pulse(geometry):
     return bz, canonical_vy
 
 
-def run(case, interp_order, geometry):
-    bz, canonical_vy = pulse(geometry)
+def run(
+    case,
+    interp_order,
+    geometry,
+    wavelength=WAVELENGTHS[0],
+    refined=False,
+    passes=0,
+    cleaning=0.0,
+):
+    bz, canonical_vy = pulse(geometry, wavelength)
     density, ppc = DENSITIES[case], PPC[case]
     populations = {
         "protons": waves.maxwellian(
@@ -135,7 +162,12 @@ def run(case, interp_order, geometry):
     for pop in populations.values():
         pop["vbulky"] = canonical_vy(pop["charge"], pop["mass"])
 
-    diag_dir = f"{diag_root}/{case}_{interp_order}"
+    level = "box" if refined else "one"
+    diag_dir = f"{diag_root}/{case}_{interp_order}_l{wavelength}_N{passes}_s{cleaning:g}_{level}"
+    lo, hi = geometry.box
+    refinement = (
+        {"refinement_boxes": {"L0": {"B0": [(lo,), (hi - 1,)]}}} if refined else {}
+    )
     ph.global_vars.sim = None
     sim = ph.Simulation(
         time_step=time_step,
@@ -145,6 +177,9 @@ def run(case, interp_order, geometry):
         interp_order=interp_order,
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
+        current_filter_passes=passes,
+        divergence_cleaning=cleaning,
+        **refinement,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
@@ -216,6 +251,58 @@ def measure(diag_dir, geometry):
     }
 
 
+def reflection(box_dir, one_dir, geometry):
+    """||E-_box - E-_one level|| over the reflection window at t_end over the incident norm of
+    the one-level run, and the transmitted amplitude error of the box run against it"""
+    w = geometry.windows()
+    x, plus, _ = characteristics(one_dir, STEPS_INCIDENT)
+    incident = norm(x, plus, w["incident"])
+    x, plus_one, minus_one = characteristics(one_dir, STEPS_END)
+    _, plus_box, minus_box = characteristics(box_dir, STEPS_END)
+    return (
+        norm(x, minus_box - minus_one, w["reflected"]) / incident,
+        norm(x, plus_box, w["transmitted"]) / norm(x, plus_one, w["transmitted"]) - 1,
+    )
+
+
+def model_reflection(wavelength):
+    """0.32 dx_f^2 sqrt(<k^4>) over the power spectrum of the pulse (mr_light_1d.py: R(k) =
+    0.32 (k dx_f)^2), wavelength in fine cells"""
+    sigma, k0 = SIGMA * dl, 2 * np.pi / (wavelength / RATIO * dl)
+    k = np.linspace(0, 4 * k0 + 10 / sigma, 20001)
+    power = np.exp(-((k - k0) ** 2) * sigma**2)  # |B(k)|^2 of the Gaussian sine, k > 0
+    k4 = np.sum(k**4 * power) / np.sum(power)
+    return 0.32 * (dl / RATIO) ** 2 * np.sqrt(k4)
+
+
+def check(geometry):
+    failures = []
+    for order in (1, 2, 3):
+        R = {}
+        for wavelength in WAVELENGTHS:
+            options = dict(passes=FILTER_PASSES, cleaning=CLEANING)
+            one, s1 = run("vacuum", order, geometry, wavelength, **options)
+            box, s2 = run(
+                "vacuum", order, geometry, wavelength, refined=True, **options
+            )
+            R[wavelength], transmitted = reflection(box, one, geometry)
+            model = model_reflection(wavelength)
+            print(
+                f"order {order} lambda {wavelength} fine cells: R {R[wavelength]:.3e}, model "
+                f"{model:.3e} (monochromatic {0.32 * (2 * np.pi / wavelength) ** 2:.3e}), "
+                f"R / model - 1 {R[wavelength] / model - 1:+.2f}, transmitted error "
+                f"{transmitted:+.1e}, runs {s1:.1f} + {s2:.1f} s"
+            )
+            if abs(R[wavelength] / model - 1) > MAX_MODEL_ERROR:
+                failures.append(f"order {order} lambda {wavelength}: R off the model")
+        ratio = R[16] / R[32]
+        print(f"order {order}: R(16) / R(32) = {ratio:.2f}, in {RATIO_RANGE}")
+        if not RATIO_RANGE[0] <= ratio <= RATIO_RANGE[1]:
+            failures.append(f"order {order}: R(16) / R(32) = {ratio:.2f}")
+    if failures:
+        raise RuntimeError("; ".join(failures))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     parser.add_argument("--order", type=int, choices=[1, 2, 3], default=1)
@@ -223,18 +310,41 @@ def main():
     parser.add_argument(
         "--refinement-box",
         default=f"{BOX[0]},{BOX[1]}",
-        help="lo,hi in cells; placeholder: places the pulse and the windows, no refinement yet",
+        help="lo,hi in coarse cells (hi excluded): the refined box, and the pulse and windows",
     )
+    parser.add_argument(
+        "--wavelength", type=int, default=WAVELENGTHS[0], help="fine cells"
+    )
+    parser.add_argument(
+        "--one-level", action="store_true", help="no refinement: the baseline"
+    )
+    parser.add_argument("--filter-passes", type=int, default=0)
+    parser.add_argument("--cleaning", type=float, default=0.0)
+    parser.add_argument("--check", action="store_true", help="T8, the registered test")
     args = parser.parse_args()
     geometry = Geometry(tuple(int(c) for c in args.refinement_box.split(",")))
+    if args.check:
+        return check(geometry)
 
+    options = dict(passes=args.filter_passes, cleaning=args.cleaning)
     for case in DENSITIES if args.case == "both" else [args.case]:
-        diag_dir, seconds = run(case, args.order, geometry)
-        results = measure(diag_dir, geometry)
+        one, seconds = run(case, args.order, geometry, args.wavelength, **options)
+        results = measure(one, geometry)
         print(
-            f"{case} order {args.order}: "
+            f"{case} order {args.order} one level: "
             + ", ".join(f"{name} {value:+.3e}" for name, value in results.items())
             + f", run {seconds:.1f} s"
+        )
+        if args.one_level:
+            continue
+        box, seconds = run(
+            case, args.order, geometry, args.wavelength, refined=True, **options
+        )
+        R, transmitted = reflection(box, one, geometry)
+        print(
+            f"{case} order {args.order} refined box: R {R:.3e} (model "
+            f"{model_reflection(args.wavelength):.3e}), transmitted error {transmitted:+.1e},"
+            f" run {seconds:.1f} s"
         )
 
 

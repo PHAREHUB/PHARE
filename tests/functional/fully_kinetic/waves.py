@@ -28,13 +28,25 @@ Neglected: higher thermal terms (~1e-4) and the nonlinear Langmuir shift, which 
 (measured -0.49% +- 0.14% at v0 = 0.3, -0.18% +- 0.14% at v0 = 0.15). The dumped E is half a step
 behind its time label; frequencies and growth rates do not depend on it.
 
+T9 (P4 gate, --refinement-box lo,hi): the Langmuir case with a static 2:1 box over half the 32
+cells (default 8,23), one filter pass and Marder s = 0.5 as every refined run, each seed run
+with and without the box (same loader seeds: the coarse particles are the same, the fine ones
+are their splits). Observable: dw = (w_box - w_one level) / w_one level per seed, the one-level
+bias (-0.18% at order 1) cancels. Model (docs/superpowers/specs/p4/t9_langmuir_gate.md): the
+composite mode sits at 0.47 / 0.48 / 0.49 of the way from the coarse to the fine frequency,
+(w_f - w_c) / w_c = 4.94e-3 / 6.11e-3 / 7.27e-3 (kinetic, filtered): dw = +2.3e-3 / +2.9e-3 /
++3.6e-3 at orders 1 / 2 / 3. Gate (--t9-check): |mean dw - model| < 3 sigma of the seed mean.
+It rejects a coarse level that ignores the fine one (no reflux: dw = 0) once 3 sigma < 2.3e-3;
+it does not see the E-ghost time interpolation (T8 does) nor the fine time step (T1 does).
+Seed count: 5 or 8, from the measured paired spread (not registered until then).
+
 Measured numbers: Debug builds, recorded with the code of these commits: S(k) order errors
 86fdc49b2; 5-seed tolerances, nonlinear Langmuir shift, the +0.08% and +0.12% corrections and
 the x155 seed projection ea8a5f97e; light start (0.064 / 0.015), light damping and window
 curvature 524f91e6d.
 """
 
-import sys
+import argparse
 
 import numpy as np
 
@@ -59,6 +71,10 @@ MAX_LIGHT_DAMPING = 1e-3
 # two-stream: growth rates fitted on the two halves of the linear window differ by up to 10%
 # (5 seeds); more means the window reached the nonlinear phase
 MAX_WINDOW_CURVATURE = 0.15
+# T9: refined box over half the Langmuir case, the refined runs' options, model dw per order
+T9_BOX = (8, 23)  # coarse cells, both included
+T9_OPTIONS = {"current_filter_passes": 1, "divergence_cleaning": 0.5}
+T9_MODEL = {1: 2.3e-3, 2: 2.9e-3, 3: 3.6e-3}
 
 
 def plasma_frequency(n, q, m):
@@ -132,8 +148,14 @@ def run(
     bx=0.0,
     current_filter_passes=0,
     divergence_cleaning=0.0,
+    refinement_box=None,
 ):
+    """refinement_box: (lo, hi) coarse cells, both included, 1D: one static refined box"""
     diag_dir = f"{diag_root}/{name}_{interp_order}"
+    refinement = {}
+    if refinement_box is not None:
+        lo, hi = refinement_box
+        refinement = {"refinement_boxes": {"L0": {"B0": [(lo,), (hi,)]}}}
     nsteps = round(final_time / time_step)
     cells = list(np.atleast_1d(cells))
     ndim = len(cells)
@@ -148,6 +170,7 @@ def run(
         c_over_va=c_over_va,
         current_filter_passes=current_filter_passes,
         divergence_cleaning=divergence_cleaning,
+        **refinement,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
@@ -238,20 +261,32 @@ def k_over_K(k):
     return 1 / np.sinc(k * dl / 2 / np.pi)
 
 
-def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400, divergence_cleaning=0.0):
+def langmuir(
+    interp_order,
+    seed=0,
+    v0=0.15,
+    Te=0.04,
+    ppc=400,
+    divergence_cleaning=0.0,
+    current_filter_passes=0,
+    refinement_box=None,
+):
     """divergence_cleaning (Marder, s): must not change the resolved physics. Measured, order 1,
     seed 0, Debug, C++ at c757493ea: -1.33e-3 without, -1.53e-3 with s = 0.5 (fit error
-    2.6e-5)"""
+    2.6e-5). refinement_box: T9"""
     cells, mode = 32, 1
     k = 2 * np.pi * mode / (cells * dl)
 
     def vx(x):
         return v0 * np.sin(k * x)
 
+    name = "langmuir"
+    if divergence_cleaning or current_filter_passes:
+        name += f"_N{current_filter_passes}_s{divergence_cleaning:g}"
+    if refinement_box is not None:
+        name += f"_box{refinement_box[0]}-{refinement_box[1]}_seed{seed}"
     diag_dir, times = run(
-        f"langmuir_cleaning{divergence_cleaning}"
-        if divergence_cleaning
-        else "langmuir",
+        name,
         interp_order,
         cells,
         final_time=20 * 2 * np.pi / plasma_frequency(1, 1, mass_e),
@@ -262,10 +297,13 @@ def langmuir(interp_order, seed=0, v0=0.15, Te=0.04, ppc=400, divergence_cleanin
             ),
         },
         divergence_cleaning=divergence_cleaning,
+        current_filter_passes=current_filter_passes,
+        refinement_box=refinement_box,
     )
     w_pe, w_pi = plasma_frequency(1, -1, mass_e), plasma_frequency(1, 1, 1.0)
     debye = np.sqrt(Te / mass_e) / w_pe
     S2 = shape_factor2(k, interp_order) * k_over_K(k)
+    S2 *= filter_transfer(k, current_filter_passes)
     expected = leapfrog(np.sqrt(S2 * (w_pe**2 * (1 + 3 * (k * debye) ** 2) + w_pi**2)))
 
     Ex = mode_amplitude(diag_dir, "E", "x", times, cells, mode)
@@ -388,8 +426,7 @@ def exponential_growth(times, amplitude, expected, start_efolds):
     return measured
 
 
-def main():
-    interp_orders = [int(arg) for arg in sys.argv[1:]] or [1, 2, 3]
+def waves(interp_orders):
     results = []
     for order in interp_orders:
         for name, case in (("langmuir", langmuir), ("light", light)):
@@ -416,7 +453,61 @@ def main():
             )
         )
     if not all(results):
-        sys.exit(1)
+        raise SystemExit(1)
+
+
+def t9(order, seeds, box):
+    """dw = (w_box - w_one level) / w_one level per seed, same seeds for both runs"""
+    rows = []
+    for seed in seeds:
+        one, _, _, expected = langmuir(order, seed=seed, **T9_OPTIONS)
+        refined, error, _, _ = langmuir(
+            order, seed=seed, refinement_box=box, **T9_OPTIONS
+        )
+        rows.append((refined - one) / one)
+        print(
+            f"T9 order {order} seed {seed}: dw {rows[-1]:+.3e} (one level {one:.4f}, error "
+            f"{(one - expected) / expected:+.2e}; box fit error {error / refined:.1e})",
+            flush=True,
+        )
+    return np.array(rows)
+
+
+def t9_report(order, dw, check):
+    mean, spread = dw.mean(), dw.std(ddof=1)
+    sigma = spread / np.sqrt(len(dw))
+    off = abs(mean - T9_MODEL[order])
+    ok = off < 3 * sigma
+    print(
+        f"T9 order {order}: {len(dw)} seeds, dw mean {mean:+.3e}, paired spread {spread:.2e}, "
+        f"sigma of the mean {sigma:.2e}, model {T9_MODEL[order]:+.1e}, |mean - model| "
+        f"{off:.2e} = {off / sigma:.1f} sigma; no reflux (dw = 0) at "
+        f"{abs(mean) / sigma:.1f} sigma"
+        + (f" {'ok' if ok else 'FAILED'}" if check else "")
+    )
+    return ok or not check
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    parser.add_argument("orders", type=int, nargs="*", default=[1, 2, 3])
+    parser.add_argument(
+        "--refinement-box",
+        help=f"lo,hi coarse cells (both included): T9 on the Langmuir case, e.g. "
+        f"{T9_BOX[0]},{T9_BOX[1]}",
+    )
+    parser.add_argument("--seeds", type=int, default=5, help="T9: seeds 0 ... n - 1")
+    parser.add_argument("--t9-check", action="store_true", help="T9: assert the gate")
+    args = parser.parse_args()
+    if args.refinement_box is None:
+        return waves(args.orders)
+    box = tuple(int(c) for c in args.refinement_box.split(","))
+    results = [
+        t9_report(order, t9(order, range(args.seeds), box), args.t9_check)
+        for order in args.orders
+    ]
+    if not all(results):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
