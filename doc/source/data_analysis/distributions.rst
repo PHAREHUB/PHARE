@@ -87,7 +87,10 @@ shape, with the particle noise on top.
    x = rng.uniform(0, L, 40000)
    vy = -a * np.cos(2 * np.pi * x / L) + vth * rng.normal(size=x.size)
    fig, ax = plt.subplots(figsize=(6, 3.4))
-   ax.hist2d(x, vy, bins=(100, 60), cmap="jet", cmin=1)
+   h, xe, ve = np.histogram2d(x, vy, bins=(100, 60))
+   # one embedded cell grid (sharp, small) instead of 6000 vector squares
+   ax.imshow(np.ma.masked_less(h.T, 1), origin="lower", aspect="auto", cmap="jet",
+             interpolation="none", extent=(xe[0], xe[-1], ve[0], ve[-1]))
    ax.set_xlabel("x")
    ax.set_ylabel("Vy")
    fig.tight_layout()

@@ -106,8 +106,8 @@ mathjax3_config = {
 }
 
 # figures drawn from data at build time (no images in the repository)
-# 100 dpi: a 3.4 in figure is 340 px = whole on a phone, a 6.5 in one is 650 px; "hires" gives 2x screens a sharp copy
-plot_formats = [("png", 100), ("hires.png", 200)]
+# SVG: vector drawings stay sharp at any zoom and on any screen (PNG was blurry)
+plot_formats = ["svg"]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 
