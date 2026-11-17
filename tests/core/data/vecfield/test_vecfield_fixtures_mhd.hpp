@@ -1,5 +1,5 @@
-#ifndef PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP
-#define PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP
+#ifndef PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_MHD_HPP
+#define PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_MHD_HPP
 
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
@@ -19,4 +19,4 @@ using UsableVecFieldMHD = UsableTensorFieldMHD<dim, /*rank=*/1>;
 
 } // namespace PHARE::core
 
-#endif /*PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP*/
+#endif /*PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_MHD_HPP*/
