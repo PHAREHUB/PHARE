@@ -262,9 +262,16 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
 
     auto const halfTime = 0.5 * (currentTime + newTime);
 
-    // E^{n-1/2} level ghosts, from the coarser level's E bracketing t_n - dt/2
+    // E^{n-1/2} and B^n level ghosts, from the coarser level bracketing t_n - dt/2 and t_n. The B
+    // ghosts were filled at the end of the previous substep; at the first substep of a coarse step
+    // that fill predates the coarser level's reflux, which changed its B^n: refilled here, the
+    // Ampere update reads the refluxed B^n (Bold_ of the messenger, at t_n: no interpolation), and
+    // later substeps the same values as their previous fill
     if (levelNumber > 0)
+    {
         messenger.fillElectricGhosts(E, level, currentTime - 0.5 * dt);
+        messenger.fillMagneticGhosts(B, level, currentTime);
+    }
 
     // 1. and 2.
     advanceElectric_(level, model, messenger, E, dt, currentTime);
