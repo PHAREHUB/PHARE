@@ -6,6 +6,8 @@
 
 #include "diagnostic/detail/h5typewriter.hpp"
 
+#include "amr/physical_models/fully_kinetic_model.hpp"
+
 #include <algorithm>
 #include <stdexcept>
 
@@ -21,6 +23,7 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/ions/charge_flux/(x,y,z)
  * /t#/pl#/p#/ions/pop_(1,2,...)/density
  * /t#/pl#/p#/ions/pop_(1,2,...)/bulkVelocity/(x,y,z)
+ * /t#/pl#/p#/ions/FK_rho (fully kinetic only: the solver's charge density, FullyKineticState::rho)
  */
 template<typename H5Writer>
 class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
@@ -39,6 +42,8 @@ public:
     using FloatType  = H5Writer::FloatType;
 
     static constexpr auto dimension = GridLayout::dimension;
+    static constexpr bool fullyKinetic
+        = solver::is_fully_kinetic_model_v<typename H5Writer::Model_t>;
 
 
     FluidDiagnosticWriter(H5Writer& h5Writer)
@@ -163,6 +168,11 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
     std::string tree{"/ions/"};
     checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "mass_density",
                         "bulkVelocity", "charge_flux", "momentum_tensor");
+
+    if constexpr (fullyKinetic)
+        checkCreateFileFor_(diagnostic, fileData_, tree, "FK_rho");
+    else if (isActiveDiag(diagnostic, tree, "FK_rho"))
+        throw std::runtime_error("FK_rho is only written by a FullyKineticModel");
 }
 
 
@@ -228,6 +238,9 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
         infoVF(ions.chargeFlux(), "charge_flux", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         infoTF(ions.momentumTensor(), "momentum_tensor", patchAttributes[lvlPatchID]["ion"]);
+    if constexpr (fullyKinetic)
+        if (isActiveDiag(diagnostic, tree, "FK_rho"))
+            infoDS(h5Writer.modelView().getFKRho(), "FK_rho", patchAttributes[lvlPatchID]["ion"]);
 }
 
 
@@ -295,6 +308,9 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
             initVF(path, attr["ion"], "charge_flux", null);
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
             initTF(path, attr["ion"], "momentum_tensor", null);
+        if constexpr (fullyKinetic)
+            if (isActiveDiag(diagnostic, tree, "FK_rho"))
+                initDS(path, attr["ion"], "FK_rho", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -339,6 +355,9 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         writeTF(path + "charge_flux", ions.chargeFlux());
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         writeTF(path + "momentum_tensor", ions.momentumTensor());
+    if constexpr (fullyKinetic)
+        if (isActiveDiag(diagnostic, tree, "FK_rho"))
+            writeDS(path + "FK_rho", h5Writer.modelView().getFKRho());
 }
 
 

@@ -37,4 +37,8 @@ if(HighFive)
   # order 1, 1600 particles per cell, 100 steps (165 s Debug, 1.9 GB of dumps)
   phare_python3_exec(10 test-fully-kinetic-sawtooth-gate sawtooth_gate.py ${CMAKE_CURRENT_BINARY_DIR})
   phare_test_labels(test-fully-kinetic-sawtooth-gate physics)
+  # FK_rho dumped at fine time t(m+1) = the rho of the particles dumped at t(m) on every node of
+  # the fine level of T2, boundary nodes included (1D, N = 0, s = 0.5, 6 steps)
+  phare_python3_exec(9 test-fully-kinetic-fk-rho-pairing fk_rho_pairing.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_test_labels(test-fully-kinetic-fk-rho-pairing physics)
 endif()

@@ -175,6 +175,13 @@ public:
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
+    // fully kinetic: the charge density of the solver's last deposit (FullyKineticState::rho)
+    NO_DISCARD auto& getFKRho() const
+        requires solver::is_fully_kinetic_model_v<Model>
+    {
+        return this->model_.state.rho;
+    }
+
     auto& tmpField() { return tmpField_; }
 
     auto& tmpVecField() { return tmpVec_; }

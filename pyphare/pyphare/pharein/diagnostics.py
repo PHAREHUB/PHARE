@@ -380,6 +380,7 @@ class FluidDiagnostics_(Diagnostics):
         "bulkVelocity",
         "charge_flux",
         "momentum_tensor",
+        "FK_rho",
     )
     type = "fluid"
 
@@ -413,6 +414,13 @@ class FluidDiagnostics_(Diagnostics):
             )
         elif kwargs["quantity"] == "pressure_tensor":
             raise ValueError("'pressure_tensor' is not available yet")
+        elif kwargs["quantity"] == "FK_rho" and (
+            self.population_name is not None
+            or "FullyKineticModel" not in global_vars.sim.model_options
+        ):
+            raise ValueError(
+                "'FK_rho' is only available for the ions as a whole of a FullyKineticModel"
+            )
         else:
             self.quantity = kwargs["quantity"]
 
@@ -479,6 +487,12 @@ class FluidDiagnostics:
 
         * "charge_flux" - charge flux sum_s q_s n_s V_s, the ion current
           density used in the electron velocity
+        * "FK_rho" - FullyKineticModel only: the charge density of the solver's
+          last deposit, from the particles one step dt_l before the dump, at
+          x - (dt_l / 2) v. Deposited only with divergence_cleaning > 0: at 0
+          it is never updated. On a level with a finer one, it is the deposit
+          replayed for the finer level, from the particles at the dump time.
+          Not "charge_density", which is the moment at the particles' own time
 
     **population_name** (``str``), name of the ion population this
     diagnostics applies to, as declared in
