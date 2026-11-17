@@ -49,7 +49,7 @@ MIN_REGRIDS = 3
 ROOT_MARGIN = 3  # coarse cells around every level 1 box of the run
 FINE_MARGIN = 3  # fine cells inside a level 1 box
 DRIFT_FLOOR = 1e-7
-FINE_RESIDUAL_BOUND = None  # pinned from the first measurement
+FINE_RESIDUAL_BOUND = 1.0  # measured 0.941 (1D order 1, 24 steps, seeded, one rank)
 
 fk.diag_dir = (
     f"phare_outputs/fully_kinetic_amr_regrid_{ndim}d_o{interp_order}"
