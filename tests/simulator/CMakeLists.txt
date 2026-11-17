@@ -43,6 +43,8 @@ if(HighFive)
   # one static refined box (P4 T1, T2): fine time step, finite E, root Gauss drift outside the box
   phare_python3_exec(9       fully_kinetic_amr test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0)
   phare_python3_exec(9       fully_kinetic_amr_2d test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
+  # root drift asserted at cleaning 0 only: 6.6e-8 refined, 8.4e-8 one level, bound 2e-7 (13 s)
+  phare_python3_exec(9       fully_kinetic_amr_2d_nocleaning test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0)
   # P5a, T15: tagging on moving light pulses, level 1 regridded every 2 coarse steps
   phare_python3_exec(9       fully_kinetic_amr_regrid test_fully_kinetic_amr_regrid.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0.5)
   phare_python3_exec(9       fully_kinetic_amr_regrid_2d test_fully_kinetic_amr_regrid.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
