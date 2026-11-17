@@ -50,15 +50,18 @@ The plasma floor is above every reflection T8 expects: T8 gates on the vacuum ca
 T8 (--check, vacuum, orders 1 to 3, lambda = 32 and 16 fine cells, one filter pass and Marder
 s = 0.5 as every refined run, inert in vacuum): the same run with and without the box, both
 with the same options; R = ||E-_box - E-_one level|| over the reflection window / incident norm
-of the one-level run (the floor and the decomposition leak cancel). Model (1D Yee model with the
-P4 coupling, docs/superpowers/specs/p4/mr_light_1d.py): R(k) = 0.32 (k dx_f)^2 for a
-monochromatic wave; for this pulse (sigma = 8 coarse cells, a broad spectrum: the power
-spectrum's width over k0 is 0.23 at lambda = 32 fine cells) the windowed norm sees R_model =
-0.32 dx_f^2 sqrt(<k^4>), <> the average over the pulse's power spectrum: 1.41e-2 and 5.12e-2 at
-lambda = 32 and 16, +15% and +4% over 0.32 (k0 dx_f)^2, ratio 3.62. Asserted: |R / R_model - 1|
-<= 0.3 at both wavelengths, R(16) / R(32) in [3, 5] (second order in k dx_f).
-A broken D1 (fine ghosts held at the newest coarse value instead of interpolated in time) gives
-R x 9 to 17 and R(16) / R(32) = 2.0 in the model: first order, rejected by the ratio.
+of the one-level run (the floor and the decomposition leak cancel). Both box edges reflect: the
+two reflections arrive 2L = 64 cells apart, wider than the pulse, so they add in norm without
+interfering. Model: the 1D Yee model with the P4 coupling run on this exact pulse, geometry and
+measure (docs/superpowers/specs/p4/mr_light_1d.py, t8_reflection), with PHARE's fine B ghost, the
+conservative dual child B_p + sigma (B_{p+1} - B_{p-1}) / 8 (core/data/grid/gridlayoutdefs.hpp,
+directionalProlongation): R = 9.69e-4, 4.06e-3, 2.49e-2, 1.66e-1 at lambda = 64, 32, 16, 8 fine
+cells; R(16) / R(32) = 6.12, steeper than (k dx_f)^2 for this broad pulse. Measured (Debug, C++ at
+fe21e3bab, order 1): 1.17e-3, 4.89e-3, 2.94e-2, 1.87e-1, 1.12 to 1.20 times the model (the 18%
+left is not explained), ratio 6.01. Asserted: |R / R_model - 1| <= 0.3 at lambda = 32 and 16, and
+R(16) / R(32) in [5, 7.5]. What the ratio rejects, in the model: fine ghosts held at the newest
+coarse value instead of interpolated in time (a broken D1) 1.85 (and R x 12 to 39); the first
+substep's fine B ghost left from before the reflux 3.94; a one-sided 3/4, 1/4 dual child 3.60.
 """
 
 import argparse
@@ -88,7 +91,7 @@ PPC = {"vacuum": 4, "plasma": 64}  # per species
 TEMPERATURES = {"protons": 0.01, "electrons": 0.04}  # waves.py
 FILTER_PASSES, CLEANING = 1, 0.5  # every refined run (P4 D7), the T8 runs
 MAX_MODEL_ERROR = 0.3
-RATIO_RANGE = (3.0, 5.0)
+RATIO_RANGE = (5.0, 7.5)
 diag_root = "phare_outputs/fully_kinetic_pulse"
 
 
@@ -265,14 +268,12 @@ def reflection(box_dir, one_dir, geometry):
     )
 
 
+# the T8 model (docstring), per wavelength in fine cells
+MODEL_R = {64: 9.69e-4, 32: 4.06e-3, 16: 2.49e-2, 8: 1.66e-1}
+
+
 def model_reflection(wavelength):
-    """0.32 dx_f^2 sqrt(<k^4>) over the power spectrum of the pulse (mr_light_1d.py: R(k) =
-    0.32 (k dx_f)^2), wavelength in fine cells"""
-    sigma, k0 = SIGMA * dl, 2 * np.pi / (wavelength / RATIO * dl)
-    k = np.linspace(0, 4 * k0 + 10 / sigma, 20001)
-    power = np.exp(-((k - k0) ** 2) * sigma**2)  # |B(k)|^2 of the Gaussian sine, k > 0
-    k4 = np.sum(k**4 * power) / np.sum(power)
-    return 0.32 * (dl / RATIO) ** 2 * np.sqrt(k4)
+    return MODEL_R.get(wavelength, float("nan"))
 
 
 def check(geometry):
@@ -289,8 +290,7 @@ def check(geometry):
             model = model_reflection(wavelength)
             print(
                 f"order {order} lambda {wavelength} fine cells: R {R[wavelength]:.3e}, model "
-                f"{model:.3e} (monochromatic {0.32 * (2 * np.pi / wavelength) ** 2:.3e}), "
-                f"R / model - 1 {R[wavelength] / model - 1:+.2f}, transmitted error "
+                f"{model:.3e}, R / model - 1 {R[wavelength] / model - 1:+.2f}, transmitted error "
                 f"{transmitted:+.1e}, runs {s1:.1f} + {s2:.1f} s"
             )
             if abs(R[wavelength] / model - 1) > MAX_MODEL_ERROR:
