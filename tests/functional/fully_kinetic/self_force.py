@@ -103,7 +103,12 @@ Marder at the two boundary nodes dominates (their F reads the coarse E ghost; wi
 dual child at the particle adds <= 3e-3 (the 3/4, 1/4 child 4.4e-2 instead of 3.4e-2). Crossing
 windows: net +13 to +27 Q steps (mean 0.1 to 0.2 Q); out, the two child impulses are about
 -125 and +150 Q steps (the children repel each other in the box; the coarse particle has the mean
-velocity) and nearly cancel. Not run in PHARE yet.
+velocity) and nearly cancel. Measured (11-17), max |extra| / Q, in / out:
+      0.5    0.385 / 0.488    0.325 / 0.415    0.284 / 0.388
+      0      0.034 / 0.030    0.026 / 0.022    0.022 / 0.016
+crossing windows, s = 0.5: in +19 to +26, out -26 to -28 Q steps (model out -21 to -22); s = 0:
+in +13 / +16 / +18, out +7 / +6 / +7 (as the model). The run total from the last velocities, box
+run minus one-level run, matches the sum of the rows within 1 Q step.
 """
 
 import argparse
