@@ -497,8 +497,8 @@ TEST(FullyKineticCleaningMask, regionEdgeNodesHaveCellsInAndOutOfTheRegion)
 
 // the same on the job's levels, from the boxes SAMRAI gives: the root is 16^2 cells in 8^2
 // patches, the fine level covers the root cells [4,11]^2, the fine cells [8,23]^2 in 4 patches.
-// One process here: neighbours on other ranks come through the same connector (SAMRAI
-// HierarchyNeighbors), as the periodic images do.
+// One process here: boxes of other ranks come through the same globalized box level, the
+// periodic images one period away are added.
 TEST(FullyKineticCleaningMask, skippedNodesOnTheJobLevelsAreTheEdgesOfTheFineLevel)
 {
     auto& hierarchy = *simulator().hierarchy;

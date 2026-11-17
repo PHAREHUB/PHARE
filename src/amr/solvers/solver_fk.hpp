@@ -299,13 +299,13 @@ private:
     ParticleLevelBoxings<IonUpdater_t, GridLayout, AMR_Types> boxing;
 
     // the nodes the cleaning skips on a level (boundary_cleaning_mask): those of the level object
-    // they were built for, from the cells the finer level covered (`covered`, per patch) at the
-    // end of the last step, taken from the level `finer`
+    // they were built for, from the cells the finer level covered (`covered`, in level cells, not
+    // per patch) at the end of the last step, taken from the level `finer`
     struct CleaningMask
     {
         std::weak_ptr<level_t> level;
         std::weak_ptr<level_t> finer;
-        PatchBoxes<dimension> covered;
+        std::vector<core::Box<int, dimension>> covered;
         PatchBoxes<dimension> skipped;
         bool stale = true;
     };
@@ -402,10 +402,12 @@ auto SolverFK<FKModel, AMR_Types>::skippedNodes_(hierarchy_t const& hierarchy,
 
     auto const level = hierarchy.getPatchLevel(levelNumber);
     auto& mask       = cleaningMasks_[levelNumber];
+    // a new level object (a rebalanced root, a regridded level): the cells the finer level
+    // synchronized at the end of the last step are the same, the patches are new
     if (mask.level.lock() != level)
     {
-        mask       = CleaningMask{}; // a new level object: no synchronization on it yet
         mask.level = level;
+        mask.stale = true;
     }
     if (mask.stale)
     {

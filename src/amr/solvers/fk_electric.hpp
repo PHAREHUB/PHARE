@@ -14,9 +14,10 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
 
-#include <SAMRAI/hier/HierarchyNeighbors.h>
+#include <SAMRAI/hier/BoxLevel.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -202,28 +203,54 @@ template<std::size_t dimension>
 using PatchBoxes = std::unordered_map<std::string /*patch id*/, std::vector<core::Box<int, dimension>>>;
 
 /**
- * @brief finerLevelCoverage returns, for every local patch of level ln, the boxes of the next
- * finer level near it (SAMRAI's coarse to fine connector, width 1: boxes of other ranks and
- * periodic images included), coarsened to level ln: the cells the finer level synchronizes.
- * Empty without a finer level. Collective (the connector may be built).
+ * @brief finerLevelCoverage returns the cells of level ln the next finer level covers, the cells
+ * it synchronizes: every box of the finer level, on every rank (SAMRAI's globalized box level),
+ * coarsened to level ln, and its images one period away in each periodic direction. It does not
+ * depend on how level ln is cut into patches: it outlives a new level ln object (a rebalanced
+ * root, P5b). Empty without a finer level. Collective (the globalized box level may be built).
  */
 template<std::size_t dimension>
 auto finerLevelCoverage(SAMRAI::hier::PatchHierarchy const& hierarchy, int const ln)
 {
-    PatchBoxes<dimension> covered;
+    std::vector<core::Box<int, dimension>> covered;
     if (!hierarchy.finerLevelExists(ln))
         return covered;
 
-    auto const ratio = hierarchy.getPatchLevel(ln + 1)->getRatioToCoarserLevel();
-    SAMRAI::hier::HierarchyNeighbors const neighbors{hierarchy, ln, ln + 1,
-                                                     /*do_same_level_nbrs=*/false};
-    for (auto const& patch : *hierarchy.getPatchLevel(ln))
-    {
-        auto& boxes = covered[amr::to_string(patch->getGlobalId())];
-        for (auto fine : neighbors.getFinerLevelNeighbors(patch->getBox(), ln))
+    auto const& finer = *hierarchy.getPatchLevel(ln + 1);
+    auto const ratio  = finer.getRatioToCoarserLevel();
+    auto const period = hierarchy.getGridGeometry()->getPeriodicShift(
+        hierarchy.getPatchLevel(ln)->getRatioToLevelZero());
+
+    // no shift, and -1 or +1 period along every periodic direction (0 along the others)
+    std::vector<std::array<int, dimension>> shifts(1);
+    for (std::size_t d = 0; d < dimension; ++d)
+        if (period[d] != 0)
         {
-            fine.coarsen(ratio);
-            boxes.push_back(amr::phare_box_from<dimension>(fine));
+            auto const unshifted = shifts;
+            for (auto const& base : unshifted)
+                for (int const k : {-1, 1})
+                {
+                    auto shift = base;
+                    shift[d]   = k * period[d];
+                    shifts.push_back(shift);
+                }
+        }
+
+    for (auto fine : finer.getBoxLevel()->getGlobalizedVersion().getGlobalBoxes())
+    {
+        if (fine.isPeriodicImage())
+            continue;
+        fine.coarsen(ratio);
+        auto const box = amr::phare_box_from<dimension>(fine);
+        for (auto const& shift : shifts)
+        {
+            auto image = box;
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                image.lower[d] += shift[d];
+                image.upper[d] += shift[d];
+            }
+            covered.push_back(image);
         }
     }
     return covered;
@@ -231,12 +258,12 @@ auto finerLevelCoverage(SAMRAI::hier::PatchHierarchy const& hierarchy, int const
 
 /**
  * @brief cleaningSkippedNodes returns, for every local patch of level ln with any, the nodes the
- * cleaning skips (regionEdgeNodes): on a refined level the edge of the level, and the edge of the
- * `covered` cells of the patch (finerLevelCoverage, of the last synchronization).
+ * cleaning skips (regionEdgeNodes): on a refined level the edge of the level, and in the patch the
+ * edge of the `covered` cells (finerLevelCoverage, of the last synchronization).
  */
 template<typename GridLayout>
 auto cleaningSkippedNodes(SAMRAI::hier::PatchHierarchy const& hierarchy, int const ln,
-                          PatchBoxes<GridLayout::dimension> const& covered)
+                          std::vector<core::Box<int, GridLayout::dimension>> const& covered)
 {
     constexpr auto dimension = GridLayout::dimension;
     auto const& level        = *hierarchy.getPatchLevel(ln);
@@ -257,9 +284,16 @@ auto cleaningSkippedNodes(SAMRAI::hier::PatchHierarchy const& hierarchy, int con
         for (auto const& patch : level)
             add(*patch, amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors));
     }
+    // only the covered boxes within a cell of the patch have a face on its nodes
     for (auto const& patch : level)
-        if (auto const it = covered.find(amr::to_string(patch->getGlobalId())); it != covered.end())
-            add(*patch, it->second);
+    {
+        auto const near = core::grow(amr::phare_box_from<dimension>(patch->getBox()), 1);
+        std::vector<core::Box<int, dimension>> nearby;
+        for (auto const& box : covered)
+            if (box * near)
+                nearby.push_back(box);
+        add(*patch, nearby);
+    }
     return skipped;
 }
 
