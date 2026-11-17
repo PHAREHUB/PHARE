@@ -1,0 +1,9 @@
+# PHARE code dc62fdd4e (branch HEAD b26c5bdbd; src/ and pyphare/ identical to it: yes), build build/rel, serial (1 MPI rank)
+# written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
+# command: python3 mhd_divb_runs.py init out.txt
+# R5: one level, 2D MHD, Gaussian-curl field sampled at the faces; max |div B| over the interior cells
+# n dx maxdiv_t0 maxdiv_after_10_steps
+16 0.0625 7.517427e-02 7.517436e-02
+32 0.03125 2.137804e-02 2.137899e-02
+64 0.015625 5.453110e-03 5.451679e-03
+128 0.0078125 1.378059e-03 1.373291e-03

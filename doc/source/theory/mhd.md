@@ -16,7 +16,7 @@ $$
 \end{align}
 $$
 
-where $e$ is the internal energy, $\vb{u}$ the bulk velocity, $\vb{B}$ the
+where $e$ is the internal energy per unit mass (in Ohm's law, $e$ in $1/(ne)$ is the elementary charge), $\vb{u}$ the bulk velocity, $\vb{B}$ the
 magnetic field, $\vb{E}$ the electric field, $\vb{j}$ the electric current
 density, $P$ the thermal pressure, and $e_t = e + \flatfrac{\vb{u}^2}{2}$ the
 total plasma energy. In Ohm's law, $\eta$ is the Joule resistivity and $\nu$
@@ -39,11 +39,13 @@ $$
 \end{align}
 $$
 
-The system is closed with a polytropic equation of state:
+The system is closed with the ideal-gas equation of state, which gives the pressure from the total energy:
 
 $$
-    \dv{}{t}\left(\frac{P}{\rho^\gamma}\right) = 0
+    P = (\gamma - 1)\left(E - \frac{\rho \vb{u}^2}{2} - \frac{\vb{B}^2}{2 \mu_0}\right)
 $$ (eq:theory_mhd_dimensional_eos)
+
+where $\gamma$ is the adiabatic index (ratio of specific heats), set with `gamma` in the input. In smooth flow this is equivalent to the polytropic relation $\dv{}{t}\left(P/\rho^\gamma\right) = 0$; across a shock it is not.
 
 ## Normalized equations
 
@@ -71,6 +73,11 @@ $$
 In the following, equations will be considered under their non-dimensional form, with the tildes dropped for readability.
 
 ## Splitting of the magnetic field
+
+```{admonition} In preparation
+:class: note
+Imposing an external magnetic field with this splitting is not in the code yet: {pr}`1327` (infrastructure for an external field). The derivation below is the method it is based on.
+```
 
 To numerically impose an external magnetic field, the magnetic field is decomposed as
 
@@ -116,3 +123,7 @@ $$
 $$
 
 ## Numerical scheme
+
+The MHD equations are solved with a finite-volume Godunov scheme and constrained transport
+for the magnetic field, described in {doc}`/numerics/mhd_finite_volume`. The time
+integrators are described in {doc}`/numerics/mhd_time_integration`.

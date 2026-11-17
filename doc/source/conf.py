@@ -16,6 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../../pyphare"))
+sys.path.insert(0, os.path.abspath("_ext"))  # phare_draw (drawings), phare_flow (.. flow::)
 
 
 # -- Project information -----------------------------------------------------
@@ -53,7 +54,18 @@ extensions = [
     "sphinx_rtd_theme",
     "myst_parser",
     "matplotlib.sphinxext.plot_directive",
+    "sphinx.ext.extlinks",
+    "phare_flow",
 ]
+
+# :src:`src/amr/.../file.hpp#L42` links to the code at the commit the docs were checked against.
+phare_doc_commit = "dc62fdd4e6c99d31b3f563678a1084267f5b5c10"
+extlinks = {
+    "src": (f"https://github.com/PHAREHUB/PHARE/blob/{phare_doc_commit}/%s", "%s"),
+    # :pr:`1278` and :issue:`604` render as "#1278" / "#604", linked to GitHub
+    "pr": ("https://github.com/PHAREHUB/PHARE/pull/%s", "#%s"),
+    "issue": ("https://github.com/PHAREHUB/PHARE/issues/%s", "#%s"),
+}
 
 autodoc_default_options = {
     "members": True,
@@ -87,7 +99,8 @@ mathjax3_config = {
 }
 
 # figures drawn from data at build time (no images in the repository)
-plot_formats = [("png", 130)]
+# SVG: vector drawings stay sharp at any zoom and on any screen (PNG was blurry)
+plot_formats = ["svg"]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 
@@ -117,7 +130,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

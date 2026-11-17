@@ -1,0 +1,11 @@
+# PHARE code dc62fdd4e (branch HEAD 36ba5aad4; src/ and pyphare/ identical to it: yes), build build/rel, serial (1 MPI rank)
+# written 2026-11-15 by doc/source/validation/scripts/run_doc_runs.py
+# command: python3 mhd_convergence_scan.py Linear VanLeer out.txt SSPRK4_5 5e-4 1e-6 50:1600 1
+# Linear VanLeer SSPRK4_5 dt=0.0005 amp=1e-06 final_time=1.0
+# nx dx L1 local_order
+50 0.02 1.18939318e-08 
+100 0.01 3.31779124e-09 1.842
+200 0.005 8.54472771e-10 1.957
+400 0.0025 2.13293767e-10 2.002
+800 0.00125 5.25445167e-11 2.021
+1600 0.000625 1.28405323e-11 2.033

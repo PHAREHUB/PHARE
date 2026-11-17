@@ -3,7 +3,9 @@
 ## Domain boundary conditions for fields
 
 PHARE imposes domain boundary conditions on fields through the values it sets in the ghost cells
-beyond the boundary. In what follows:
+beyond the boundary. Every stencil next to the domain edge reads values beyond it, so the boundary
+condition is what decides those {term}`ghost cell` values. How to choose them in an input script is on {doc}`/user_guide/boundary_conditions`;
+where each field component sits on the grid (primal or dual) is on {doc}`/numerics/grid`. In what follows:
 
 - $\phi$ is a scalar field;
 - $\vb*{\phi}$ is a vector field;
@@ -17,6 +19,45 @@ beyond the boundary. In what follows:
 
 When a field is primal in the direction normal to $\Gamma$, some of its nodes lie exactly on
 $\Gamma$; such nodes are their own mirror image.
+
+```{eval-rst}
+.. plot::
+   :include-source: False
+   :caption: Mirror images at a lower boundary :math:`\Gamma` (x = 0), with two ghost layers
+      (grey). Top: a primal quantity; the node on :math:`\Gamma` is its own mirror, the ghost
+      at :math:`-k\,\Delta x` mirrors the node at :math:`+k\,\Delta x`. Bottom: a dual
+      quantity; the ghost at :math:`-(k-\frac12)\Delta x` mirrors the value at
+      :math:`+(k-\frac12)\Delta x`.
+
+   import matplotlib.pyplot as plt
+
+   fig, axes = plt.subplots(2, 1, figsize=(5, 4), sharex=True)
+   for ax, dual, title in zip(axes, (False, True), ("primal", "dual")):
+       off = 0.5 if dual else 0.0
+       ax.axvspan(-2.4, 0, color="0.88", lw=0)
+       ax.axvline(0, color="k", lw=2)
+       xs = [k + off for k in range(-2, 3)] if dual else list(range(-2, 3))
+       for x in xs:
+           ghost = x < 0
+           ax.plot(x, 0, "o" if not dual else "s", ms=11,
+                   color="0.6" if ghost else "#2a7ab9", zorder=3)
+       ghosts = [x for x in xs if x < 0]
+       for k, x in enumerate(sorted(ghosts, reverse=True)):
+           h = 0.35 + 0.25 * k
+           ax.annotate("", xy=(-x, 0.08), xytext=(x, 0.08),
+                       arrowprops=dict(arrowstyle="<->", color="#e07a1f",
+                                       connectionstyle=f"arc3,rad=-{h}"))
+       ax.set_title(title, fontsize=14, loc="left")
+       ax.set_ylim(-0.3, 1.15)
+       ax.set_yticks([])
+       ax.tick_params(labelsize=13)
+       for side in ("top", "right", "left"):
+           ax.spines[side].set_visible(False)
+   axes[0].text(0.05, 0.75, "Γ", fontsize=15)
+   axes[1].set_xlabel("x / Δx", fontsize=14)
+   axes[1].set_xlim(-2.4, 2.8)
+   fig.tight_layout()
+```
 
 ### Dirichlet boundary condition
 
