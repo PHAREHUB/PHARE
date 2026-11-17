@@ -152,9 +152,10 @@ class TestFullyKineticChecks(unittest.TestCase):
                 final_time=0.02,
             )
 
-    def test_tagging_is_accepted_with_the_regrid_warning(self):
-        # P5-1: the tagger is there, the regrid of the fine levels it creates is not (P5a)
-        with self.assertWarnsRegex(UserWarning, "regrid"):
+    def test_tagging_is_accepted(self):
+        # P5a: the fine levels the tagger creates are regridded, no warning left
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             sim = make_sim(
                 refinement="tagging", max_nbr_levels=2, divergence_cleaning=0.5
             )

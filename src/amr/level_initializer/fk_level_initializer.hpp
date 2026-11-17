@@ -50,6 +50,10 @@ class FKLevelInitializer : public LevelInitializer<typename FKModel::amr_types>
 public:
     using model_type = FKModel;
 
+    // Marder passes (s = 1/2) on the E of a level (re)created during the run (P5a); a test sets
+    // it to 0 to measure the passes one by one (T14)
+    static inline std::size_t regridCleaningPasses = 10;
+
     explicit FKLevelInitializer(PHARE::initializer::PHAREDict const& dict)
         : dt_{dict["time_step"]["value"].template to<double>()}
     {

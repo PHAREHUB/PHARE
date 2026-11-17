@@ -43,6 +43,9 @@ if(HighFive)
   # one static refined box (P4 T1, T2): fine time step, finite E, root Gauss drift outside the box
   phare_python3_exec(9       fully_kinetic_amr test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0)
   phare_python3_exec(9       fully_kinetic_amr_2d test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
+  # P5a, T15: tagging on moving light pulses, level 1 regridded every 2 coarse steps
+  phare_python3_exec(9       fully_kinetic_amr_regrid test_fully_kinetic_amr_regrid.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0.5)
+  phare_python3_exec(9       fully_kinetic_amr_regrid_2d test_fully_kinetic_amr_regrid.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
   # T9 residual: a seeded B_z in vacuum does not grow with a refined box (~40 s, Debug)
   phare_python3_exec(10      fully_kinetic_amr_vacuum_stability test_fully_kinetic_amr_vacuum_stability.py ${CMAKE_CURRENT_BINARY_DIR})
   phare_test_labels(fully_kinetic_amr_vacuum_stability physics)

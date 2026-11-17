@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+# P5a (T13, T14): fully kinetic, 2D, 32^2 root cells in 8^2 patches, one refined box over root
+# cells 10 to 21 (fine cells 20 to 43): the tests move the fine level by 2 and 4 coarse cells and
+# its fine ghosts still read coarse nodes away from the periodic images (field ghosts 4, 6, 6).
+# Drifting thermal plasma (the job.py.in one), one filter pass and Marder s = 0.5 (the refined
+# runs' operating point), so that the fine level has a Gauss gap to clean when it is regridded.
+
+import numpy as np
+
+import pyphare.pharein as ph
+
+ph.Simulation(
+    time_step=0.002,
+    time_step_nbr=10,
+    cells=(32, 32),
+    dl=(0.04, 0.04),
+    interp_order=@INTERP_ORDER@,
+    model_options=["FullyKineticModel"],
+    c_over_va=10.0,
+    current_filter_passes=1,
+    divergence_cleaning=0.5,
+    smallest_patch_size=8,
+    largest_patch_size=8,
+    refinement_boxes={"L0": {"B0": [(10, 10), (21, 21)]}},
+)
+
+
+def uniform(value):
+    return lambda x, y: value + 0.0 * x
+
+
+def species(charge, mass, temperature, drift):
+    vth = uniform(np.sqrt(temperature / mass))
+    return {
+        "charge": charge,
+        "mass": mass,
+        "density": uniform(1.0),
+        "vbulkx": uniform(drift),
+        "vbulky": uniform(-0.5 * drift),
+        "vbulkz": uniform(0.0),
+        "vthx": vth,
+        "vthy": vth,
+        "vthz": vth,
+        "nbr_part_per_cell": 4,
+        "init": {"seed": 1},
+    }
+
+
+ph.MaxwellianFluidModel(
+    bx=uniform(1.0),
+    by=uniform(0.0),
+    bz=uniform(0.0),
+    protons=species(1, 1.0, 0.01, 0.3),
+    electrons=species(-1, 0.04, 0.03, -0.6),
+)

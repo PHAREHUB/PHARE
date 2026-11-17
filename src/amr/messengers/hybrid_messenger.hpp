@@ -211,6 +211,20 @@ namespace amr
             strat_->partialReflux(coarserLevelNumber, fineLevelNumber, midTime);
         }
 
+        // fully kinetic: the E of a level (re)created during the run, at its own half step
+        // (FKLevelInitializer, P5a)
+        void regridElectric(VecFieldT& E, hierarchy_ptr const& hierarchy, int const levelNumber,
+                            level_ptr const& oldLevel, double const fillTime)
+        {
+            strat_->regridElectric(E, hierarchy, levelNumber, oldLevel, fillTime);
+        }
+
+        // fully kinetic: the E ghosts other patches of the level own, before a cleaning pass
+        void fillElectricPatchGhosts(VecFieldT& E, level_t const& level, double const fillTime)
+        {
+            strat_->fillElectricPatchGhosts(E, level, fillTime);
+        }
+
 
         void postSynchronize(IPhysicalModel& model, level_t& level, double const time) override
         {

@@ -121,6 +121,24 @@ namespace amr
             throw std::runtime_error("partialReflux: fully kinetic only");
         }
 
+        // fully kinetic only (P5a): the E of a level (re)created during the run, at fillTime, its
+        // own half step: copied from the old level where it overlaps the new one, elsewhere and
+        // on the level ghosts interpolated in time between the coarser E and the coarser E one
+        // step ahead
+        virtual void regridElectric(VecFieldT& /*E*/, hierarchy_ptr const& /*hierarchy*/,
+                                    int const /*levelNumber*/, level_ptr const& /*oldLevel*/,
+                                    double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not regrid E at a time of its own");
+        }
+
+        // fully kinetic only: the E ghosts other patches of the level own, the level ghosts kept
+        virtual void fillElectricPatchGhosts(VecFieldT& /*E*/, level_t const& /*level*/,
+                                             double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not fill the E patch ghosts alone");
+        }
+
         virtual void postSynchronize(IPhysicalModel& model, level_t& level, double const time) = 0;
 
         virtual void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)    = 0;

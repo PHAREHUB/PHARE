@@ -29,6 +29,33 @@ foreach(order 1 2 3)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py.in ${CMAKE_CURRENT_BINARY_DIR}/job_o${order}.py @ONLY)
 endforeach()
 
+# P5a, a level regridded during the run (T14 then T13, one process: T13 overwrites the fields)
+foreach(order 1 2 3)
+  set(binary test-fk-regrid-o${order})
+
+  add_executable(${binary} test_regrid.cpp)
+  target_compile_definitions(${binary} PRIVATE PHARE_TEST_INTERP_ORDER=${order})
+
+  add_dependencies(${binary} cpp_etc)
+
+  target_include_directories(${binary} PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    ${GTEST_INCLUDE_DIRS}
+    )
+
+  target_link_libraries(${binary} PRIVATE
+    phare_simulator
+    pybind11::embed
+    ${GTEST_LIBS}
+  )
+
+  add_no_mpi_phare_test(${binary} ${CMAKE_CURRENT_BINARY_DIR})
+
+  set(INTERP_ORDER ${order})
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job_regrid.py.in ${CMAKE_CURRENT_BINARY_DIR}/job_regrid_o${order}.py @ONLY)
+endforeach()
+
 # the level ghost band against every particle of the plasma, same jobs
 foreach(order 1 2 3)
   set(binary test-fk-level-ghost-band-o${order})

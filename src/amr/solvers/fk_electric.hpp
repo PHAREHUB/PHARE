@@ -307,6 +307,44 @@ void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messeng
     }
 }
 
+
+/**
+ * @brief cleanElectric applies `passes` Marder steps of strength s to E on a level whose rho
+ * (depositFKCurrent) stays fixed: the E of a level (re)created during the run, before its first
+ * step (P5a). The same-level E ghosts are filled again before every pass; the level ghosts keep
+ * what the caller filled, the coarser E interpolated at the time of E, which a pass does not
+ * change. Each pass multiplies the Gauss residual mode k by
+ * 1 - s sum_i (4/dl_i^2) sin^2(k_i dl_i / 2) / sum_i (2/dl_i^2) away from the level boundary.
+ * The passes on a patch skip its nodes in `skipped` (cleaningSkippedNodes; empty without
+ * boundary_cleaning_mask).
+ */
+template<typename FKModel, typename Messenger, typename VecField>
+void cleanElectric(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
+                   VecField& E, double const dt, double const s, std::size_t const passes,
+                   double const time, PatchBoxes<FKModel::dimension> const& skipped)
+{
+    using GridLayout = FKModel::gridlayout_type;
+
+    auto& rm  = *model.resourcesManager;
+    auto& rho = model.state.rho;
+    for (std::size_t pass = 0; pass < passes; ++pass)
+    {
+        messenger.fillElectricPatchGhosts(E, level, time);
+        for (auto& patch : rm.enumerate(level, rho, E))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            auto const d      = core::marderCoefficient(layout, s, dt);
+            core::Marder const marder{layout, model.c2(), d};
+            auto const it = skipped.empty() ? skipped.end()
+                                            : skipped.find(amr::to_string(patch->getGlobalId()));
+            if (it == skipped.end())
+                marder(E, rho, dt);
+            else
+                marder(E, rho, dt, it->second);
+        }
+    }
+}
+
 } // namespace PHARE::solver
 
 #endif
