@@ -47,7 +47,7 @@ floor of the measurement):
   over the box), transmitted error +1.4e-3, left half 0.998; 37.7 s, 43.2 s
 The plasma floor is above every reflection T8 expects: T8 gates on the vacuum case.
 
-T8 (--check, vacuum, orders 1 to 3, lambda = 32 and 16 fine cells, one filter pass and Marder
+T8 (--check, vacuum, orders 1 and 3, lambda = 32 and 16 fine cells, one filter pass and Marder
 s = 0.5 as every refined run, inert in vacuum): the same run with and without the box, both
 with the same options; R = ||E-_box - E-_one level|| over the reflection window / incident norm
 of the one-level run (the floor and the decomposition leak cancel). Both box edges reflect: the
@@ -59,7 +59,8 @@ directionalProlongation): R = 9.69e-4, 4.06e-3, 2.49e-2, 1.66e-1 at lambda = 64,
 cells; R(16) / R(32) = 6.12, steeper than (k dx_f)^2 for this broad pulse. Measured (Debug, C++ at
 fe21e3bab, order 1): 1.17e-3, 4.89e-3, 2.94e-2, 1.87e-1, 1.12 to 1.20 times the model (the 18%
 left is not explained), ratio 6.01. Asserted: |R / R_model - 1| <= 0.3 at lambda = 32 and 16, and
-R(16) / R(32) in [5, 7.5]. What the ratio rejects, in the model: fine ghosts held at the newest
+R(16) / R(32) in [5, 7.5]. In vacuum R does not depend on the order (identical to 4 digits at orders
+1 to 3, fe21e3bab): order 2 is left to --order 2 by hand. What the ratio rejects, in the model: fine ghosts held at the newest
 coarse value instead of interpolated in time (a broken D1) 1.85 (and R x 12 to 39); the first
 substep's fine B ghost left from before the reflux 3.94; a one-sided 3/4, 1/4 dual child 3.60.
 """
@@ -276,9 +277,12 @@ def model_reflection(wavelength):
     return MODEL_R.get(wavelength, float("nan"))
 
 
+CHECK_ORDERS = (1, 3)
+
+
 def check(geometry):
     failures = []
-    for order in (1, 2, 3):
+    for order in CHECK_ORDERS:
         R = {}
         for wavelength in WAVELENGTHS:
             options = dict(passes=FILTER_PASSES, cleaning=CLEANING)
