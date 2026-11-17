@@ -406,6 +406,7 @@ auto SolverFK<FKModel, AMR_Types>::skippedNodes_(hierarchy_t const& hierarchy,
     {
         mask       = CleaningMask{}; // a new level object: no synchronization on it yet
         mask.level = level;
+        return none; // its first step cleans the edge too: the residual it starts with
     }
     if (mask.stale)
     {
