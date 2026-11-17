@@ -40,6 +40,9 @@ if(HighFive)
   phare_python3_exec(9       fully_kinetic_cleaning test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 1 --cleaning 0.5)
   phare_python3_exec(9       fully_kinetic_2d_cleaning test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --cleaning 0.5)
   phare_python3_exec(9       fully_kinetic_2d_filter_cleaning test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
+  # one static refined box (P4 T1, T2): fine time step, finite E, root Gauss drift outside the box
+  phare_python3_exec(9       fully_kinetic_amr test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0)
+  phare_python3_exec(9       fully_kinetic_amr_2d test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)
@@ -57,6 +60,7 @@ if(HighFive)
     phare_mpi_python3_exec(9 3 fully_kinetic_3d test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 3 1)
     phare_mpi_python3_exec(9 3 fully_kinetic_2d_filter test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1)
     phare_mpi_python3_exec(9 3 fully_kinetic_2d_filter_cleaning test_fully_kinetic.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
+    phare_mpi_python3_exec(9 3 fully_kinetic_amr_2d test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
     phare_mpi_python3_exec(9 4 mhd_shared_faces test_mhd_shared_faces.py ${CMAKE_CURRENT_BINARY_DIR})
 
   else() # serial only
