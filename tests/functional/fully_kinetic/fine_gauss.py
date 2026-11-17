@@ -189,9 +189,10 @@ def main():
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--ppc", type=int, default=50)
     parser.add_argument("--seeds", type=int, default=1)
+    parser.add_argument("--first-seed", type=int, default=0)
     args = parser.parse_args()
 
-    for seed in range(args.seeds):
+    for seed in range(args.first_seed, args.first_seed + args.seeds):
         diag_dir, times, seconds = simulate(args, seed)
         s0 = scale(diag_dir, args.order)
         profiles = (
