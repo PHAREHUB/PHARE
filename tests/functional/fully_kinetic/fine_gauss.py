@@ -80,7 +80,7 @@ def simulate(args, seed):
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite", "fine_dump_lvl_max": 1},
         },
-        strict=True,
+        strict=not args.no_strict,
     )
     common = {"density": uniform(1.0), "nbr_part_per_cell": args.ppc}
     vth = {
@@ -203,6 +203,8 @@ def main():
     parser.add_argument("--first-seed", type=int, default=0)
     parser.add_argument("--vth-factor-protons", type=float, default=1.0)
     parser.add_argument("--vth-factor-electrons", type=float, default=1.0)
+    # setup checks as warnings, e.g. electrons x2 past the non relativistic pusher's 0.3 c
+    parser.add_argument("--no-strict", action="store_true")
     args = parser.parse_args()
 
     def history(diag_dir, times, s0):
