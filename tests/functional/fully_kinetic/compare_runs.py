@@ -3,7 +3,7 @@
 Fully kinetic static refined box (the configuration of tests/simulator/test_fully_kinetic_amr.py,
 T2), run twice and compared on both levels (P4 tests T3c, T3d):
 
-    --tiling        one patch per level (largest_patch_size 32) vs tiled (8): fine patch corners
+    --tiling        one patch per level (largest_patch_size 32) vs tiled (TILED): fine patch corners
                     on the level boundary, so the level ghost band and the same-level border sums
                     meet there
     --ranks N       tiled, serial vs N ranks (mpirun)
@@ -37,7 +37,13 @@ import sys
 import h5py
 import numpy as np
 
-ONE_PATCH, TILED = 32, 8
+ONE_PATCH = 32
+# SAMRAI raises the smallest patch to the largest ghost width (fully kinetic fields 4, 6, 6 at
+# orders 1 to 3) and aborts in BoxUtilities::fixBadCutPointsForDirection when a box cannot be cut
+# into pieces between that and the largest patch size (with 6 and 8: 9 to 11 cells). Measured on
+# 3 ranks, 2D: orders 2 and 3 abort with tiles of 8, order 2 runs with 12, order 1 with 8. Tiles of
+# 8 at order 1, 12 above: a tile still ends on the level boundary (fine box 16..47).
+TILED = {1: 8, 2: 12, 3: 12}
 FIELD_ULPS = 4
 
 
@@ -196,16 +202,17 @@ def main():
         run(int(cli.run[0]), cli.run[1], t2_args)
         return 0
 
+    tiled = TILED[int(t2_args[1])] if len(t2_args) > 1 else TILED[1]
     if cli.compare:
         a, b = cli.compare
     elif cli.tiling:
         a, b = f"{cli.out}/one_patch", f"{cli.out}/tiled"
         launch(ONE_PATCH, a, t2_args)
-        launch(TILED, b, t2_args)
+        launch(tiled, b, t2_args)
     else:
         a, b = f"{cli.out}/serial", f"{cli.out}/ranks{cli.ranks}"
-        launch(TILED, a, t2_args)
-        launch(TILED, b, t2_args, ranks=cli.ranks)
+        launch(tiled, a, t2_args)
+        launch(tiled, b, t2_args, ranks=cli.ranks)
 
     same = compare(a, b, cli.particle_tolerance, cli.exact)
     print(("IDENTICAL" if cli.exact else "MATCH") if same else "DIFFERENT")
