@@ -89,8 +89,10 @@ public:
         }
     }
 
+    // collective: see fillLazyFluxes_
     auto getBulkVelocity()
     {
+        fillLazyFluxes_();
         decltype(getPopDensities()) bulkV;
 
         auto& ions = model_.state.ions;
@@ -113,8 +115,10 @@ public:
         return bulkV;
     }
 
+    // collective: see fillLazyFluxes_
     auto getPopFlux()
     {
+        fillLazyFluxes_();
         using Inner = decltype(getPopDensities());
 
         std::unordered_map<std::string, Inner> pop_data;
@@ -191,8 +195,10 @@ public:
 
 
 
+    // collective: see fillLazyFluxes_
     auto getVi(std::string componentName)
     {
+        fillLazyFluxes_();
         std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
 
         auto& V = model_.state.ions.velocity();
@@ -210,8 +216,10 @@ public:
 
 
 
+    // collective: see fillLazyFluxes_
     auto getPopFluxCompo(std::string component, std::string popName)
     {
+        fillLazyFluxes_();
         std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
 
         auto& ions = model_.state.ions;
@@ -248,6 +256,25 @@ public:
     auto getFx(std::string pop) { return getPopFluxCompo("x", pop); }
     auto getFy(std::string pop) { return getPopFluxCompo("y", pop); }
     auto getFz(std::string pop) { return getPopFluxCompo("z", pop); }
+
+    // total ion charge flux on the E nodes, the one Ohm reads (kept up to date by the time loop)
+    auto getChargeFluxE(std::string component)
+    {
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
+
+        auto& fluxE = model_.state.ions.chargeFluxE();
+
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
+            auto compo = PHARE::core::Components::componentMap().at(component);
+            setPatchDataFromField(patchDatas.emplace_back(), fluxE.getComponent(compo), grid,
+                                  patchID);
+        };
+
+        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                           *model_.resourcesManager, visit, fluxE);
+
+        return patchDatas;
+    }
 
 
 
@@ -297,6 +324,16 @@ public:
     }
 
 private:
+    // The time loop does not keep the population fluxes and the bulk velocity up to date: they are
+    // computed for this level on the first such getter call after an advance, and kept until the
+    // next one (amr::HybridLazyMoments, shared with the diagnostics). The computation sums over the
+    // patch overlaps, which communicates between MPI ranks: every rank must call these getters.
+    void fillLazyFluxes_()
+    {
+        model_.lazyMoments.fill(hierarchy_, model_.resourcesManager, model_.state.ions,
+                                static_cast<int>(lvl_), {/*flux=*/true, /*momentumTensor=*/false});
+    }
+
     std::size_t lvl_;
     amr::Hierarchy& hierarchy_;
     HybridModel& model_;

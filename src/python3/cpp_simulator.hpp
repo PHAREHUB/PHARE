@@ -92,6 +92,7 @@ void inline declare_etc_hybrid(py::module& m)
         .def("getFx", &PL::getFx)
         .def("getFy", &PL::getFy)
         .def("getFz", &PL::getFz)
+        .def("getChargeFluxE", &PL::getChargeFluxE)
         .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
 
     using _Splitter
