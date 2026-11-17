@@ -50,7 +50,7 @@ Resource monitor (memory, CPU)
 ------------------------------
 
 Install the optional package ``phlop`` at the version PHARE is built with
-(``python3 -m pip install phlop==0.0.45``),
+(``python3 -m pip install phlop==0.0.46``),
 then ask for monitoring when you run:
 
 .. code-block:: python
@@ -59,7 +59,7 @@ then ask for monitoring when you run:
 
 Or, without changing the script, set the environment variable
 ``PHARE_SIM_MON=1`` (one sample every second). Each rank writes
-``.phare/stats/rank.<rank>.yaml``. The format is that of ``phlop`` (version 0.0.45
+``.phare/stats/rank.<rank>.yaml``. The format is that of ``phlop`` (version 0.0.46
 here), not defined by PHARE; this is what ``run(monitoring=1)`` wrote in one run:
 
 .. code-block:: yaml

@@ -2,10 +2,23 @@
 #
 # how to use - UPDATE <datetime> or tab complete!
 """
-PHARE_SCOPE_TIMING=1 python3 -Ou tools/bench/functional/permute_harris_3d.py
+python3 -Ou tools/bench/functional/permute_harris_3d.py
 python3 tools/python3/bench.py print_summary -i .phare_bench/<datetime>.tar.gz > perms
 python3 -c "from tools.bench.functional.permutor import sort_summaries as sort; sort('perms')" # optional, to read perms in order
 python3 tools/bench/functional/plot_permutations.py -i perms
+
+# scope timings (PHARE built with -DwithPhlop, phlop python package installed),
+#  PHLOP_PERF_ALL: hardware counters for "perf", generic events for CPUs without phlop event sets
+PHLOP_PERF_ALL="generic/ipc;cycles=hw:0x0,instructions=hw:0x1,branches=hw:0x4,br_misp=hw:0x5" \\
+  mpirun -n 4 python3 -Ou tools/bench/functional/permute_harris_3d.py
+T=$(ls -t .phare_bench/*.tar.gz | head -1); D=$(mktemp -d)
+tar xzf "$T" -C "$D" && for a in "$D"/*/*.tar.gz; do tar xzf "$a" -C "$(dirname "$a")"; done
+R=$(ls -d "$D"/*/*/ | head -1); echo "$R" # one directory per permutation
+python3 -m phlop.timing.scope_timer times       "$R.phare/timings/rank.0.txt"
+python3 -m phlop.timing.scope_timer perf        "$R.phare/timings/rank.0.txt"
+python3 -m phlop.timing.scope_timer variance    "$R.phare/timings/rank.*.txt"
+python3 -m phlop.timing.scope_timer memvariance "$R.phare/timings/rank.*.txt"
+python3 -m phlop.timing.scope_compare base.tar.gz new.tar.gz -t time=5 # two runs
 """
 
 import shutil
