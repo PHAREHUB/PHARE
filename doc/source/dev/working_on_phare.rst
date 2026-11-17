@@ -124,9 +124,7 @@ Conventions
 
 * An issue first, one issue per PR, small PRs, tests with the code: ``CONTRIBUTING.md`` and the PR template
   (Issue / What this implements / Design / Tests).
-* C++: ``.clang-format`` (version pinned in ``pyproject.toml``). Python: lint rules in ``ruff.toml`` (ruff
-  ignores the ``[tool.ruff]`` table of ``pyproject.toml`` while ``ruff.toml`` exists); dependencies in
-  ``pyproject.toml``; no top-level ``h5py``, ``mpi4py``, ``scipy.optimize`` imports (``doc/conventions.md``).
+* Formatting, lint, Python dependencies and imports: :doc:`conventions`.
 
 .. admonition:: In preparation
    :class: in-preparation

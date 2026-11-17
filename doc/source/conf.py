@@ -55,15 +55,8 @@ extensions = [
     "myst_parser",
     "matplotlib.sphinxext.plot_directive",
     "sphinx.ext.extlinks",
-    "sphinxcontrib.mermaid",
     "phare_flow",
 ]
-
-# diagrams are text (Mermaid), drawn by the browser: no images in the repository.
-# natural size + horizontal scroll (see custom.css) instead of shrinking wide diagrams.
-# `click NODE href "page.html"` makes boxes links (works with the default Mermaid security level).
-mermaid_init_config = {"startOnLoad": False, "flowchart": {"useMaxWidth": False}}
-mermaid_height = "auto"
 
 # :src:`src/amr/.../file.hpp#L42` links to the code at the commit the docs were checked against.
 phare_doc_commit = "dc62fdd4e6c99d31b3f563678a1084267f5b5c10"

@@ -20,10 +20,6 @@ body.phare-dev .wy-nav-top { background: #d9730d; }
 body.phare-dev .wy-side-nav-search { background-color: #b85c08; }
 body.phare-dev .rst-content h1 { border-bottom: 3px solid #d9730d; padding-bottom: 0.2em; }
 
-/* ---- Mermaid: natural size, scroll sideways (the plugin forces 500px height and shrinks to column width) ---- */
-.rst-content pre.mermaid { overflow-x: auto; text-align: center; background: transparent; }
-.rst-content pre.mermaid > svg { width: auto !important; max-width: none !important; height: auto !important; }
-.mermaid a { cursor: pointer; }          /* clickable boxes */
 
 /* ---- "In preparation" boxes ---- */
 .rst-content .admonition.in-preparation { background: #f3f0ff; }

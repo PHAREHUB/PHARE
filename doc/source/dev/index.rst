@@ -83,6 +83,7 @@ How to use this guide
       **Working on PHARE**
 
       - :doc:`working_on_phare`
+      - :doc:`conventions`
       - :doc:`how_to_add`
       - :doc:`cpp_api`
 
@@ -120,5 +121,6 @@ How to use this guide
    load_balancing
    hpc_internals
    working_on_phare
+   conventions
    how_to_add
    cpp_api
