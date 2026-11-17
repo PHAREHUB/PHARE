@@ -1,0 +1,325 @@
+// The fully kinetic J and rho on a refined level (P4 plan D5): the level ghost band holds the
+// deposit of the level ghost particles, made after the border sum, and the same-level ghost fills
+// of the filter never overwrite it.
+
+#include "phare_mpi.hpp"
+
+#include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/solvers/fk_current_deposit.hpp"
+#include "core/data/field/field_traits.hpp"
+
+#include "tests/simulator/per_test.hpp"
+
+#include <set>
+#include <cmath>
+#include <limits>
+#include <memory>
+#include <string>
+#include <vector>
+#include <algorithm>
+
+
+using namespace PHARE;
+
+static constexpr std::size_t interp = PHARE_TEST_INTERP_ORDER;
+static constexpr SimOpts opts{
+    .dimension = 2, .interp_order = interp, .nbRefinedPart = 4, .fully_kinetic = true};
+using Simulator_t = SimulatorTestParam<opts>;
+using FKModel     = solver::PHARE_Types<opts>::FK::Model_t;
+using GridLayout  = FKModel::gridlayout_type;
+using Key         = std::array<int, 2>;
+
+static constexpr int fineLevel = 1;
+static constexpr double dtFine = 0.002 / 2; // job time step over the refinement ratio
+
+// one simulator per process, destroyed before SAMRAI is shut down (main)
+std::unique_ptr<Simulator_t> sim_;
+Simulator_t& simulator()
+{
+    if (!sim_)
+        sim_ = std::make_unique<Simulator_t>("job_o" + std::to_string(interp));
+    return *sim_;
+}
+
+auto& level()
+{
+    auto& sim = simulator();
+    if (sim.hierarchy->getNumberOfLevels() != 2)
+        throw std::runtime_error("the job must give two levels");
+    return *sim.hierarchy->getPatchLevel(fineLevel);
+}
+
+auto& messenger()
+{
+    return dynamic_cast<amr::HybridMessenger<FKModel>&>(
+        simulator().getMultiPhysicsIntegrator()->messenger(fineLevel));
+}
+
+
+// the components of a vector field, or the field itself
+template<typename Resource>
+auto components(Resource& resource)
+{
+    if constexpr (core::IsField<Resource>)
+        return std::array{&resource};
+    else
+        return std::array{&resource[0], &resource[1], &resource[2]};
+}
+
+Key amrIndex(GridLayout const& layout, auto i, auto j)
+{
+    auto const amr = layout.localToAMR(
+        core::Point{static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j)}.as_signed());
+    return {amr[0], amr[1]};
+}
+
+// local index of the node in [physical start - layers, physical end + layers] in both directions
+bool within(GridLayout const& layout, auto const& field, std::uint32_t const layers, auto i,
+            auto j)
+{
+    std::array<std::uint32_t, 2> const index{static_cast<std::uint32_t>(i),
+                                             static_cast<std::uint32_t>(j)};
+    for (std::size_t d = 0; d < 2; ++d)
+    {
+        auto const direction = static_cast<core::Direction>(d);
+        if (index[d] + layers < layout.physicalStartIndex(field, direction)
+            or index[d] > layout.physicalEndIndex(field, direction) + layers)
+            return false;
+    }
+    return true;
+}
+
+
+
+// T3a. Physical nodes hold a function, every ghost node NaN. After the ghost fill, the ghost
+// nodes owned by another fine patch hold the function (corners included) and the level ghost band
+// (no fine patch owns it) is still NaN: the fill is same-level only. The band must be NaN here:
+// the field refine operators only write NaN nodes (composite_field_refiner.hpp), so a refine from
+// the coarser level is only visible on NaN band nodes.
+template<typename Resource, typename FillGhosts>
+void checkGhostFillKeepsTheBand(Resource& resource, FillGhosts&& fillGhosts)
+{
+    auto& rm  = *simulator().getFKModel()->resourcesManager;
+    auto& lvl = level();
+    auto const nan = std::numeric_limits<double>::quiet_NaN();
+
+    auto const f = [](std::size_t c, auto const& r) {
+        return std::sin(7.1 * r[0] + c) * std::cos(5.3 * r[1] - 0.3 * c) + c;
+    };
+    auto const position = [](auto const& layout, auto const& field, auto i, auto j) {
+        return layout.fieldNodeCoordinates(
+            field, layout.localToAMR(core::Point{static_cast<std::uint32_t>(i),
+                                                 static_cast<std::uint32_t>(j)}
+                                         .as_signed()));
+    };
+
+    std::array<std::set<Key>, core::IsField<Resource> ? 1 : 3> owned;
+    for (auto& patch : rm.enumerate(lvl, resource))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        std::size_t c     = 0;
+        for (auto* field : components(resource))
+        {
+            layout.evalOnGhostBox(*field, [&](auto i, auto j) {
+                if (within(layout, *field, 0, i, j))
+                    owned[c].insert(amrIndex(layout, i, j));
+            });
+            ++c;
+        }
+    }
+
+    for (auto& patch : rm.enumerate(lvl, resource))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        std::size_t c     = 0;
+        for (auto* field : components(resource))
+        {
+            layout.evalOnGhostBox(*field, [&](auto i, auto j) {
+                (*field)(i, j)
+                    = within(layout, *field, 0, i, j) ? f(c, position(layout, *field, i, j)) : nan;
+            });
+            ++c;
+        }
+    }
+
+    fillGhosts(lvl);
+
+    std::size_t ownedGhosts = 0, band = 0;
+    for (auto& patch : rm.enumerate(lvl, resource))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        std::size_t c     = 0;
+        for (auto* field : components(resource))
+        {
+            layout.evalOnGhostBox(*field, [&](auto i, auto j) {
+                auto const value = (*field)(i, j);
+                if (owned[c].contains(amrIndex(layout, i, j)))
+                {
+                    EXPECT_NEAR(value, f(c, position(layout, *field, i, j)), 1e-14)
+                        << field->name();
+                    ownedGhosts += !within(layout, *field, 0, i, j);
+                }
+                else
+                {
+                    EXPECT_TRUE(std::isnan(value)) << field->name() << " level ghost band";
+                    ++band;
+                }
+            });
+            ++c;
+        }
+    }
+    EXPECT_GT(ownedGhosts, 0u);
+    EXPECT_GT(band, 0u);
+}
+
+
+TEST(FullyKineticLevelGhosts, filterGhostFillsAreSameLevelOnlyAndKeepTheLevelGhostBand)
+{
+    auto& state = simulator().getFKModel()->state;
+    checkGhostFillKeepsTheBand(
+        state.J, [&](auto& lvl) { messenger().fillCurrentGhosts(state.J, lvl, 0.); });
+    checkGhostFillKeepsTheBand(state.rho, [&](auto& lvl) {
+        messenger().fillChargeDensityGhosts(state.rho, lvl, 0.);
+    });
+}
+
+
+
+// the B-spline of the interpolation order, centered on the node, written here independently of
+// the code under test
+double shape(double x)
+{
+    x = std::abs(x);
+    if constexpr (interp == 1)
+        return x < 1 ? 1 - x : 0;
+    else if constexpr (interp == 2)
+        return x < 0.5 ? 0.75 - x * x : x < 1.5 ? 0.5 * (1.5 - x) * (1.5 - x) : 0;
+    else
+        return x < 1 ? 2. / 3. - x * x + 0.5 * x * x * x
+                     : x < 2 ? (2 - x) * (2 - x) * (2 - x) / 6. : 0;
+}
+
+
+// T3b. J and rho deposited on the fine level by depositFKCurrent (no filter) against a direct sum
+// over the particles each patch should see: all the fine domain particles (the border sum brings
+// those of the neighbors), and the patch's own copies of the level ghost particles, each once.
+//  - rho at x - dt/2 v on the physical nodes and the first ghost layer (the filter reads it)
+//  - charge conservation on the physical nodes, rho(x + dt/2 v) - rho(x - dt/2 v) + dt div J = 0,
+//    which needs J complete on them and on the first dual ghost layer
+TEST(FullyKineticLevelGhosts, levelGhostParticlesDepositOnceAfterTheBorderSum)
+{
+    auto& model = *simulator().getFKModel();
+    auto& rm    = *model.resourcesManager;
+    auto& lvl   = level();
+    auto& ions  = model.state.ions;
+    auto& J     = model.state.J;
+    auto& rho   = model.state.rho;
+    ASSERT_GT(model.divergence_cleaning, 0.);
+    ASSERT_EQ(model.current_filter_passes, 0u);
+
+    solver::depositFKCurrent(lvl, model, messenger(), dtFine, 1., 1., 0.);
+
+    struct Charge
+    {
+        std::array<int, 2> iCell;
+        std::array<double, 2> delta;
+        std::array<double, 2> v;
+        double qw;
+    };
+    auto const charges = [](auto const& pop, auto const& particles, auto& out) {
+        for (auto const& p : particles)
+            out.push_back({p.iCell,
+                           {static_cast<double>(p.delta[0]), static_cast<double>(p.delta[1])},
+                           {p.v[0], p.v[1]},
+                           pop.charge() * p.weight});
+    };
+
+    std::vector<Charge> domain;
+    std::vector<std::vector<Charge>> levelGhosts;
+    std::size_t nbrLevelGhosts = 0;
+    for (auto& patch : rm.enumerate(lvl, ions))
+    {
+        levelGhosts.emplace_back();
+        for (auto const& pop : ions)
+        {
+            charges(pop, pop.domainParticles(), domain);
+            charges(pop, pop.levelGhostParticles(), levelGhosts.back());
+        }
+        nbrLevelGhosts += levelGhosts.back().size();
+    }
+    ASSERT_GT(nbrLevelGhosts, 0u);
+
+    double constexpr halfSupport = 0.5 * (interp + 1);
+    double maxRho = 0, maxRhoError = 0, maxResidual = 0;
+    std::size_t nbrRhoNodes = 0, nbrConservationNodes = 0, patchIndex = 0;
+
+    for (auto& patch : rm.enumerate(lvl, J, rho))
+    {
+        auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto const& dl    = layout.meshSize();
+        auto const shape_ = rho.shape();
+        std::vector<double> start(shape_[0] * shape_[1]), end(start.size());
+
+        auto const deposit = [&](Charge const& p, double const timeShift, auto& out) {
+            std::array<double, 2> pos; // in local node units, primal node i at i
+            for (std::size_t d = 0; d < 2; ++d)
+                pos[d] = p.iCell[d] - layout.AMRBox().lower[d]
+                         + static_cast<int>(layout.physicalStartIndex(
+                             core::QtyCentering::primal, static_cast<core::Direction>(d)))
+                         + p.delta[d] + timeShift * p.v[d] / dl[d];
+            auto const lo = [&](std::size_t d) {
+                return std::max(0, static_cast<int>(std::ceil(pos[d] - halfSupport)));
+            };
+            auto const hi = [&](std::size_t d) {
+                return std::min(static_cast<int>(shape_[d]) - 1,
+                                static_cast<int>(std::floor(pos[d] + halfSupport)));
+            };
+            for (int i = lo(0); i <= hi(0); ++i)
+                for (int j = lo(1); j <= hi(1); ++j)
+                    out[i * shape_[1] + j] += p.qw * shape(pos[0] - i) * shape(pos[1] - j);
+        };
+        for (auto const* set : {&domain, &levelGhosts[patchIndex]})
+            for (auto const& p : *set)
+            {
+                deposit(p, -0.5 * dtFine, start);
+                deposit(p, +0.5 * dtFine, end);
+            }
+
+        layout.evalOnGhostBox(rho, [&](auto i, auto j) {
+            if (!within(layout, rho, 1, i, j))
+                return;
+            auto const expected = start[i * shape_[1] + j];
+            maxRho              = std::max(maxRho, std::abs(expected));
+            maxRhoError         = std::max(maxRhoError, std::abs(rho(i, j) - expected));
+            ++nbrRhoNodes;
+        });
+
+        layout.evalOnBox(rho, [&](auto i, auto j) {
+            auto const k        = i * shape_[1] + j;
+            auto const residual = end[k] - start[k]
+                                  + dtFine * (J[0](i, j) - J[0](i - 1, j)) / dl[0]
+                                  + dtFine * (J[1](i, j) - J[1](i, j - 1)) / dl[1];
+            maxResidual = std::max(maxResidual, std::abs(residual));
+            ++nbrConservationNodes;
+        });
+        ++patchIndex;
+    }
+
+    std::cout << "order " << interp << ": " << domain.size() << " domain and " << nbrLevelGhosts
+              << " level ghost particles, rho on " << nbrRhoNodes << " nodes: max error "
+              << maxRhoError / maxRho << " of max rho, charge conservation on "
+              << nbrConservationNodes << " nodes: max residual " << maxResidual / maxRho << "\n";
+    EXPECT_LT(maxRhoError, 1e-13 * maxRho);
+    EXPECT_LT(maxResidual, 1e-13 * maxRho);
+}
+
+
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    PHARE::SamraiLifeCycle samsam(argc, argv);
+    auto const result = RUN_ALL_TESTS();
+    sim_.reset();
+    return result;
+}
