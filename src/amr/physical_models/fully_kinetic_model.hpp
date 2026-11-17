@@ -61,6 +61,9 @@ public:
     // Marder cleaning, s = d dt sum_i 2 / dx_i^2 in [0, 1], 0: no cleaning. The solver derives d
     // from s on each level, with its own mesh size and time step
     double const divergence_cleaning;
+    // the cleaning skips the nodes on the edge of a refined level and of the region a finer level
+    // synchronized (fk_electric.hpp, regionEdgeNodes); needs divergence_cleaning > 0
+    bool const boundary_cleaning_mask;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
 
@@ -73,10 +76,14 @@ public:
         , current_filter_passes{static_cast<std::size_t>(
               cppdict::get_value(dict, "current_filter_passes", 0))}
         , divergence_cleaning{cppdict::get_value(dict, "divergence_cleaning", 0.)}
+        , boundary_cleaning_mask{cppdict::get_value(dict, "boundary_cleaning_mask", false)}
         , resourcesManager{_resourcesManager}
     {
         if (!(divergence_cleaning >= 0. and divergence_cleaning <= 1.))
             throw std::runtime_error("FullyKineticModel: divergence_cleaning must be in [0, 1]");
+        if (boundary_cleaning_mask and !(divergence_cleaning > 0.))
+            throw std::runtime_error(
+                "FullyKineticModel: boundary_cleaning_mask needs divergence_cleaning > 0");
         // periodic only: no particle boundary conditions yet, and the Esirkepov segment would
         // need to be folded at a physical boundary. The messenger still needs a manager.
         if (dict.contains("grid"))

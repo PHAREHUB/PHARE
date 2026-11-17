@@ -701,6 +701,31 @@ def check_divergence_cleaning(**kwargs):
     return float(s)
 
 
+def check_boundary_cleaning_mask(**kwargs):
+    """the fully kinetic cleaning skips the nodes on the edge of each refined level and of the
+    region a finer level synchronized, off by default; it needs divergence_cleaning > 0"""
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+    mask = kwargs.get("boundary_cleaning_mask")
+
+    if "FullyKineticModel" not in model_options:
+        if mask is not None:
+            raise ValueError(
+                "Error: boundary_cleaning_mask is only used by FullyKineticModel"
+            )
+        return None
+
+    if mask is None:
+        return False
+    if not isinstance(mask, bool):
+        raise ValueError(f"Error: boundary_cleaning_mask must be a bool, got {mask!r}")
+    if mask and not kwargs["divergence_cleaning"] > 0:
+        raise ValueError(
+            "Error: boundary_cleaning_mask needs divergence_cleaning > 0, the nodes it"
+            " skips are nodes of the cleaning"
+        )
+    return mask
+
+
 def check_mhd_constants(**kwargs):
     gamma = kwargs.get("gamma", 5.0 / 3.0)
     eta = kwargs.get("eta", 0.0)
@@ -788,6 +813,7 @@ def checker(func):
             "c_over_va",
             "current_filter_passes",
             "divergence_cleaning",
+            "boundary_cleaning_mask",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -890,6 +916,7 @@ def checker(func):
         kwargs["c_over_va"] = check_c_over_va(**kwargs)
         kwargs["current_filter_passes"] = check_current_filter_passes(**kwargs)
         kwargs["divergence_cleaning"] = check_divergence_cleaning(**kwargs)
+        kwargs["boundary_cleaning_mask"] = check_boundary_cleaning_mask(**kwargs)
         if "FullyKineticModel" in kwargs["model_options"]:
             fully_kinetic.check_fully_kinetic_simulation(**kwargs)
 
@@ -1211,6 +1238,10 @@ class Simulation:
           scale mode in one step, s > 1 is unstable. rho is the charge density of the particles
           half a step back, filtered like the current; the correction is a gradient, B is not
           affected. The residual at t=0 (E starts at zero, not from Poisson) is what it cleans.
+        * **boundary_cleaning_mask** (``bool``), default=False, with divergence_cleaning > 0
+          only: the cleaning skips (F = 0 there) the nodes of a refined level next to a cell off
+          the level, whose residual reads the coarse E ghost, and the nodes of a coarser level on
+          the edge of the region the finer level synchronized at the end of the step before.
 
     **MHD parameters:**
 
