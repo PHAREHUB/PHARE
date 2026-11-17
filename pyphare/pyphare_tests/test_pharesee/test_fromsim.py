@@ -88,6 +88,23 @@ class FromSimTest(unittest.TestCase):
         layout = make_layout_for(simulator, patch, "EM_E_x", simulator.cell_width())
         self.assertEqual(list(layout.ghosts_nbr), [2])
 
+    def test_2d_field_is_shaped_by_the_reported_ghosts(self):
+        """Bz (dual, dual) of a 10 x 6 patch: the flat data takes the ghost box shape"""
+        patch = FakePatchData(GHOSTS)
+        patch.lower, patch.upper = np.array([0, 0]), np.array([CELLS - 1, 5])
+        patch.origin = " 0.000000, 0.000000"  # as C++ sends it
+        shape = (CELLS + 2 * GHOSTS, 6 + 2 * GHOSTS)
+        patch.data = list(np.arange(shape[0] * shape[1], dtype=float))
+        simulator = FakeSimulator(patch)
+        simulator.cell_width = lambda: [0.1, 0.2]
+        simulator.domain_box = lambda: np.array([CELLS - 1, 5])
+        hier = hierarchy_from_sim(simulator, "EM_B_z")
+        pdata = hier.level(0).patches[0].patch_datas["EM_B_z"]
+        self.assertEqual(pdata.dataset.shape, shape)
+        physical = pdata[pdata.box]
+        self.assertEqual(physical.shape, (CELLS, 6))
+        self.assertEqual(physical[0, 0], GHOSTS * shape[1] + GHOSTS)
+
     def test_hierarchy_from_sim_reads_the_physical_nodes(self):
         hier = hierarchy_from_sim(FakeSimulator(FakePatchData(GHOSTS)), "EM_E_x")
         patches = hier.level(0).patches

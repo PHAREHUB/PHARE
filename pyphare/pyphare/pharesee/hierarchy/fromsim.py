@@ -15,9 +15,15 @@ def make_layout_for(simulator, patch, qty, dl):
     model = "mhd" if str(qty).startswith("mhd") else "hybrid"
     box = Box(patch.lower, patch.upper)
     origin = patch.origin
+    if isinstance(origin, str):  # C++ Point<double>::str(): " 0.000000, 1.500000"
+        origin = np.array([float(x) for x in origin.split(",")])
     if model == "hybrid":
-        # check for particle quantity?
-        return gridlayout.HybridGridLayoutFor(box, origin, dl, simulator.interp_order())
+        # fields: the ghost count the C++ layout reports (fully kinetic layouts have more than
+        # the hybrid table, P4). Particle patch data reports none, ParticleData sets its own.
+        ghosts_nbr = [patch.nGhosts] * box.ndim if isFieldQty(qty) else None
+        return gridlayout.HybridGridLayoutFor(
+            box, origin, dl, simulator.interp_order(), ghosts_nbr=ghosts_nbr
+        )
     return gridlayout.MHDGridLayoutFor(
         box, origin, dl, simulator.simulation.reconstruction
     )
@@ -28,9 +34,9 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 
-    root_cell_width = simulator.cell_width()
+    root_cell_width = np.asarray(simulator.cell_width())
     domain_box = Box([0] * len(root_cell_width), simulator.domain_box())
-    assert len(domain_box.ndim) == len(simulator.domain_box().ndim)
+    assert domain_box.ndim == len(simulator.domain_box())
 
     for ilvl in range(nbr_levels):
         lvl_cell_width = root_cell_width / refinement_ratio**ilvl
@@ -43,7 +49,9 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for patch in wpatches:
                 patch_datas = {}
                 layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
-                pdata = FieldData(layout, field_qties[qty], patch.data)
+                pdata = FieldData(layout, field_qties[qty], np.asarray(patch.data))
+                # the wrangler sends the ghost box flat, in the order of the C++ field shape
+                pdata.dataset = pdata.dataset.reshape(pdata.size)
                 patch_datas[qty] = pdata
                 patches[ilvl].append(Patch(patch_datas))
 
