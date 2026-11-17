@@ -70,8 +70,8 @@ Measured, Debug, C++ at dd9d3aa37 plus uncommitted part 2 edits (one level only)
   stencil), so the y case resolves g_p to a few 1e-3 of the jump only: report only.
 --check: orders 1 to 3 in one process, x drift only: |E_self / Q - g_p(delta)| <= 1e-7 at every
 step of the sweep, and the peak |E_self / Q| equal to PEAKS within 1%. Registered (level 9,
-label physics) with N = 0, s = 0: 11.6 to 13.8 s. With --filter-passes 1 --cleaning 0.5 by hand (it
-added 16 s to the registered one, over its budget).
+label physics) twice: N = 0, s = 0 (11.6 to 13.8 s), and --filter-passes 1 --cleaning 0.5, the
+reference the refinement boundary gate subtracts (16.3 s).
 Reading: the self-force is the Yee staggering (charge on primal nodes, field on dual nodes,
 gathered with the same B-spline), not the Esirkepov averaging: in 1D the field of the segment
 deposit is the Gauss field of the shape at the segment end, and the direct J_y deposit gives the

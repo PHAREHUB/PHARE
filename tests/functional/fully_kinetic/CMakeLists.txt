@@ -25,4 +25,8 @@ if(HighFive)
   # self-force of one particle on one level against the Yee model, orders 1 to 3 (~30 s, Debug)
   phare_python3_exec(9 test-fully-kinetic-self-force self_force.py ${CMAKE_CURRENT_BINARY_DIR} --check)
   phare_test_labels(test-fully-kinetic-self-force physics)
+  # the same at the refined runs' options (one filter pass, Marder s = 0.5), the reference the
+  # refinement boundary gate subtracts (~12 s, Debug)
+  phare_python3_exec(9 test-fully-kinetic-self-force-amr self_force.py ${CMAKE_CURRENT_BINARY_DIR} --check --filter-passes 1 --cleaning 0.5)
+  phare_test_labels(test-fully-kinetic-self-force-amr physics)
 endif()
