@@ -287,7 +287,9 @@ namespace amr
             bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
-            electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            // the fully kinetic E is at its own half step, not at initDataTime: regridElectric
+            if constexpr (!sumsParticleCurrent)
+                electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
 
@@ -313,6 +315,37 @@ namespace amr
             // nodes may not have been copied correctly, due to a bug in SAMRAI
             // it seems these nodes are only on ghost box border if that border
             // overlaps an old level patch border. See https://github.com/LLNL/SAMRAI/pull/293
+        }
+
+        // fully kinetic (P5a): the E of a level (re)created during the run, at fillTime, its own
+        // half step. On a root rebalance (no coarser level) everything is copied. Above, the level
+        // ghosts are filled again after the regrid: a regrid schedule can leave nodes of the ghost
+        // box border uncopied where it meets an old patch border (SAMRAI PR 293), and a level
+        // ghost takes the coarser E, as every later fill does
+        void regridElectric(VecFieldT& E, hierarchy_ptr const& hierarchy, int const levelNumber,
+                            level_ptr const& oldLevel, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                if (elecRegridRefiners_.empty())
+                    throw std::runtime_error("regridElectric: no E one step ahead registered");
+                elecRegridRefiners_.regrid(hierarchy, levelNumber, oldLevel, fillTime);
+                if (levelNumber == rootLevelNumber)
+                    return;
+                auto const level = hierarchy->getPatchLevel(levelNumber);
+                setNaNsOnVecfieldGhosts(E, *level);
+                elecRegridGhostsRefiners_.fillTransient(hierarchy, level, fillTime);
+            }
+            else
+                throw std::runtime_error("regridElectric: fully kinetic only");
+        }
+
+        // fully kinetic: the model E ghosts other patches of the level own (the same-level
+        // schedule of EalgoPatchGhost), the level ghosts kept
+        void fillElectricPatchGhosts(VecFieldT& /*E*/, level_t const& level,
+                                     double const fillTime) override
+        {
+            elecPatchGhostsRefineSchedules.at(level.getLevelNumber())->fillData(fillTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -968,6 +1001,26 @@ namespace amr
                         info->ghostElectric, info->aheadElectric, info->modelElectric,
                         EfieldRefineOp_, vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
 
+            // fully kinetic, a level (re)created during the run (P5a): its E at its own half step.
+            // A regrid schedule copies the source from the old level where it overlaps the new
+            // one, without time interpolation (it is built without time refinement,
+            // RefineSchedule.cpp:454-460), and refines from the coarser level elsewhere,
+            // interpolated in time (its coarse recursion always is, :600-614) between the coarser
+            // model E and the coarser E one step ahead: Eold_ is stale at regrid time. No fill
+            // pattern: interior and ghosts, as electricInitRefiners_. The level ghosts are then
+            // filled again from the same pair, the same-level ghosts from the new patches.
+            if constexpr (sumsParticleCurrent)
+                if (!info->aheadElectric.empty())
+                {
+                    elecRegridRefiners_.addTimeRefiner(
+                        info->modelElectric, info->aheadElectric, info->modelElectric,
+                        EfieldRefineOp_, vecFieldTimeOp_, info->modelElectric);
+                    elecRegridGhostsRefiners_.addTimeRefiner(
+                        info->modelElectric, info->aheadElectric, info->modelElectric,
+                        EfieldRefineOp_, vecFieldTimeOp_, info->modelElectric,
+                        nonOverwriteInteriorTFfillPattern);
+                }
+
             // fully kinetic J (summed on patch borders, then completed by the level ghost
             // particle deposit): ghosts copied from the same-level patches owning them, never
             // refined from the coarser level, whose J is at another time and from other
@@ -1337,6 +1390,10 @@ namespace amr
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
+        //! fully kinetic only: the E of a level (re)created during the run, and its level ghosts
+        //! then (empty without info->aheadElectric)
+        InitRefinerPool elecRegridRefiners_{resourcesManager_};
+        GhostRefinerPool elecRegridGhostsRefiners_{resourcesManager_};
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost;
