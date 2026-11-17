@@ -69,11 +69,12 @@ struct HybridStack<opts, CoreTypes, true>
                       amr::SAMRAI_Types, typename CoreTypes::Hybrid::Grid_t>;
     using Solver_t = PHARE::solver::SolverPPC<Model_t, PHARE::amr::SAMRAI_Types>;
 
-    using Splitter_t = PHARE::amr::Splitter<PHARE::core::DimConst<opts.dimension>,
-                                            PHARE::core::InterpConst<opts.interp_order>,
-                                            PHARE::core::RefinedParticlesConst<opts.nbRefinedPart>>;
-    using RefinementParams_t
-        = PHARE::amr::RefinementParams<typename CoreTypes::Hybrid::ParticleArray_t, Splitter_t>;
+    using Splitter_t         = PHARE::amr::Splitter<PHARE::core::DimConst<opts.dimension>,
+                                                    PHARE::core::InterpConst<opts.interp_order>,
+                                                    PHARE::core::RefinedParticlesConst<opts.nbRefinedPart>>;
+    using RefinementParams_t = PHARE::amr::RefinementParams<
+        typename CoreTypes::Hybrid::ParticleArray_t, Splitter_t,
+        CoreTypes::Hybrid::GridLayout_t::options.particle_ghost_width>;
 
     using LevelInitializer_t = HybridLevelInitializer<Model_t>;
 };
@@ -97,11 +98,12 @@ struct FKStack<opts, CoreTypes, true>
                                            typename CoreTypes::Hybrid::Grid_t>;
     using Solver_t     = PHARE::solver::SolverFK<Model_t, PHARE::amr::SAMRAI_Types>;
 
-    using Splitter_t = PHARE::amr::Splitter<PHARE::core::DimConst<opts.dimension>,
-                                            PHARE::core::InterpConst<opts.interp_order>,
-                                            PHARE::core::RefinedParticlesConst<opts.nbRefinedPart>>;
-    using RefinementParams_t
-        = PHARE::amr::RefinementParams<typename CoreTypes::Hybrid::ParticleArray_t, Splitter_t>;
+    using Splitter_t         = PHARE::amr::Splitter<PHARE::core::DimConst<opts.dimension>,
+                                                    PHARE::core::InterpConst<opts.interp_order>,
+                                                    PHARE::core::RefinedParticlesConst<opts.nbRefinedPart>>;
+    using RefinementParams_t = PHARE::amr::RefinementParams<
+        typename CoreTypes::Hybrid::ParticleArray_t, Splitter_t,
+        CoreTypes::Hybrid::GridLayout_t::options.particle_ghost_width>;
 
     using LevelInitializer_t = FKLevelInitializer<Model_t>;
 };

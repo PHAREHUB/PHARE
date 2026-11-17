@@ -15,11 +15,11 @@ namespace amr
     template<typename ResourcesUser, typename GridLayout_t>
     struct UserParticleType
     {
-        static constexpr auto dimension    = ResourcesUser::dimension;
-        static constexpr auto interp_order = GridLayout_t::options.interp_order;
+        static constexpr auto dimension          = ResourcesUser::dimension;
+        static constexpr std::size_t ghost_width = GridLayout_t::options.particle_ghost_width;
 
         using particle_array_type = ResourcesUser::particle_array_type;
-        using variable_type       = ParticlesVariable<particle_array_type, interp_order>;
+        using variable_type       = ParticlesVariable<particle_array_type, ghost_width>;
         using patch_data_type     = ParticlesData<particle_array_type>;
     };
 

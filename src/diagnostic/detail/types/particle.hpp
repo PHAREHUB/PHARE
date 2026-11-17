@@ -142,7 +142,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
                           null);
             ++part_idx;
         });
-        this->writeGhostsAttr_(h5file, path, core::ghostWidthForParticles<interpOrder>(), null);
+        this->writeGhostsAttr_(h5file, path, GridLayout::options.particle_ghost_width, null);
     };
 
     auto initIfActive = [&](auto& lvl, auto& tree, auto& attr, auto& pop, auto& patch, auto var) {

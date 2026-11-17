@@ -36,7 +36,7 @@ using GridLayout  = FKModel::gridlayout_type;
 using Key         = std::array<int, 2>;
 
 
-// the hybrid widths as instantiated
+// the widths as instantiated: hybrid unchanged
 template<std::size_t order, bool fk>
 using Options
     = HybridFieldOptions<SimOpts{.dimension = 2, .interp_order = order, .fully_kinetic = fk}>;
@@ -46,6 +46,16 @@ static_assert(Options<2, false>::particle_ghost_width == 2
               and Options<2, false>::field_ghost_width == 4);
 static_assert(Options<3, false>::particle_ghost_width == 2
               and Options<3, false>::field_ghost_width == 4);
+// fully kinetic: band ceil(3/2 + half support), fields floor(band + 1/2 + half support) rounded
+// up to even (whole coarse cells)
+static_assert(Options<1, true>::particle_ghost_width == 3
+              and Options<1, true>::field_ghost_width == 4);
+static_assert(Options<2, true>::particle_ghost_width == 3
+              and Options<2, true>::field_ghost_width == 6);
+static_assert(Options<3, true>::particle_ghost_width == 4
+              and Options<3, true>::field_ghost_width == 6);
+static_assert(GridLayout::options.particle_ghost_width
+              == Options<interp, true>::particle_ghost_width);
 
 
 static constexpr double dtFine = 0.002 / 2; // job time step over the refinement ratio

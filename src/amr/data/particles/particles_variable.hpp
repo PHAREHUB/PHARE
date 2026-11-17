@@ -16,7 +16,7 @@ namespace amr
     /**
      * @brief The ParticlesVariable class
      */
-    template<typename ParticleArray, std::size_t interp>
+    template<typename ParticleArray, std::size_t ghostWidth>
     class ParticlesVariable : public SAMRAI::hier::Variable
     {
         static constexpr auto dim = ParticleArray::dimension;
@@ -24,8 +24,7 @@ namespace amr
     public:
         ParticlesVariable(std::string const& name, bool fineBoundaryRepresentsVariable = false,
                           SAMRAI::hier::IntVector ghost
-                          = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
-                                                    core::ghostWidthForParticles<interp>()})
+                          = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim}, ghostWidth})
             : SAMRAI::hier::Variable{name, std::make_shared<ParticlesDataFactory<ParticleArray>>(
                                                ghost, fineBoundaryRepresentsVariable, name)}
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}

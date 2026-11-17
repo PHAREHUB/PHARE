@@ -50,6 +50,8 @@ namespace core
     }
 
 
+    // the hybrid particle ghost width, the least any model uses: the width in use is
+    // GridLayout::options.particle_ghost_width (hybrid_options.hpp)
     template<std::size_t interpOrder>
     NO_DISCARD std::uint32_t constexpr ghostWidthForParticles()
     {

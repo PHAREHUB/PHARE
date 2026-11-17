@@ -58,9 +58,11 @@ class ParticleDomainFromGhostFillPattern : public SAMRAI::xfer::VariableFillPatt
     std::size_t constexpr static dim = GridLayout_t::dimension;
 
     // SAMRAI creates a transaction only if the source box is within the particle data ghost
-    // width of the destination, which must therefore cover how far leaving particles go
-    static_assert(core::ghostWidthForParticles<GridLayout_t::options.interp_order>()
-                  >= GridLayout_t::options.particle_ghost_width);
+    // width of the destination, which must therefore cover how far leaving particles go: both
+    // are options.particle_ghost_width (particle_resource.hpp). No model goes below the hybrid
+    // width, the least a leaving particle and the particle shape need
+    static_assert(GridLayout_t::options.particle_ghost_width
+                  >= core::ghostWidthForParticles<GridLayout_t::options.interp_order>());
 
 public:
     ParticleDomainFromGhostFillPattern() {}

@@ -51,7 +51,8 @@ namespace amr
     /** \brief the ParticlesRefineOperator is the concrete RefineOperator PHARE provides to
      * SAMRAI to refine particles from coarse to fine levels.
      */
-    template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
+    template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter,
+             std::size_t particleGhostWidth>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
         using Particle_t = ParticleArray::value_type;
@@ -80,7 +81,7 @@ namespace amr
         virtual SAMRAI::hier::IntVector
         getStencilWidth(SAMRAI::tbox::Dimension const& dimension) const override
         {
-            return SAMRAI::hier::IntVector{dimension, ghostWidthForParticles<interpOrder>()};
+            return SAMRAI::hier::IntVector{dimension, particleGhostWidth};
         }
 
         /** @brief perform a split and keep those that are inside a fineOverlap
@@ -286,19 +287,21 @@ namespace amr
 
 namespace PHARE::amr
 {
-template<typename ParticleArray, typename Splitter>
+// particleGhostWidth: GridLayout::options.particle_ghost_width of the model
+template<typename ParticleArray, typename Splitter, std::size_t particleGhostWidth>
 struct RefinementParams
 {
     using InteriorParticleRefineOp
-        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::interior, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::interior, Splitter,
+                                  particleGhostWidth>;
 
     using CoarseToFineRefineOpOld
         = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::coarseBoundaryOld,
-                                  Splitter>;
+                                  Splitter, particleGhostWidth>;
 
     using CoarseToFineRefineOpNew
         = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::coarseBoundaryNew,
-                                  Splitter>;
+                                  Splitter, particleGhostWidth>;
 };
 
 } // namespace PHARE::amr
