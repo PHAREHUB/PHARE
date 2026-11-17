@@ -3,10 +3,12 @@
 Self-force of one particle on ONE level, fully kinetic, 1D periodic, 64 cells, PHARE units: the
 floor the P4 gate T10 compares against at a refinement boundary.
 
-Start. E^0 = 0 and the deposit conserves charge, so div E - c^2 rho keeps its t = 0 value: a
-charge present at t = 0 never gets its Coulomb field (no light crossing builds it, Gauss is a
-constraint), it carries a frozen opposite charge where it started. pyphare refuses such a start
-(fully_kinetic.py, "frozen background"). Here the start is neutral: the test particle (charge
+Frozen Gauss (lesson): the FK start has E^0 = 0 and the deposit conserves charge, so div E - c^2 rho
+keeps its t = 0 value forever. A charge present at t = 0 never gets its Coulomb field (no light
+crossing builds it, Gauss is a constraint): it carries a frozen opposite charge where it started.
+
+Start. pyphare refuses a non-neutral start (fully_kinetic.py, "frozen background"). Here the
+start is neutral: the test particle (charge
 -1, mass m_e of waves.py) and its partner (charge +1, mass 1e6, at rest) share one cell, each
 alone in its population (density in that one cell only, 1 particle per cell, v_th = 1e-12: the
 C++ normal distribution needs v_th > 0). When the test particle drifts away the deposit builds
@@ -42,6 +44,9 @@ Measured, Debug, C++ at 1714f3d49, Q = 1e-4 (~9.5 s per order, all cases):
 - y: B_self / jump agrees with the same g_p within 1% at delta 0.25 and 0.75 (0.0625 / 0.0346 /
   0.0097 against 0.0625 / 0.0342 / 0.0098), equal over both halves of the run; per-step
   scatter 1e-3 to 3e-2 of the jump (the light fronts' dispersive tails cross the stencil).
+--check (registered, level 9, label physics): orders 1 to 3 in one process, x drift only:
+|E_self / Q - g_p(delta)| <= 1e-7 at every step of the sweep, and the peak |E_self / Q| equal
+to 1/16, 0.0342, 0.0098 within 1%.
 Reading: the self-force is the Yee staggering (charge on primal nodes, field on dual nodes,
 gathered with the same B-spline), not the Esirkepov averaging: in 1D the field of the segment
 deposit is the Gauss field of the shape at the segment end, and the direct J_y deposit gives the
@@ -269,10 +274,34 @@ def drift_y(order, cell):
     return x[0, 0] % 1, np.array(rows), seconds
 
 
+PEAKS = {1: 1 / 16, 2: 0.0342, 3: 0.0098}  # g_p(1/4)
+
+
+def check():
+    for order in (1, 2, 3):
+        rows, seconds = drift_x(order, delta_table(order))
+        delta, ratio, _ = rows.T
+        error = np.abs(ratio - [predicted(d, order) for d in delta]).max()
+        peak = np.abs(ratio).max()
+        print(
+            f"order {order}: |E_self / Q - g_p| max {error:.1e}, "
+            f"peak |E_self / Q| {peak:.5f}, run {seconds:.1f} s"
+        )
+        if error > 1e-7:
+            raise RuntimeError(
+                f"order {order}: E_self / Q off the model by {error:.1e}"
+            )
+        if abs(peak / PEAKS[order] - 1) > 0.01:
+            raise RuntimeError(f"order {order}: peak {peak:.5f}, not {PEAKS[order]}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     parser.add_argument("--order", type=int, choices=[1, 2, 3], default=1)
+    parser.add_argument("--check", action="store_true", help="the registered test")
     args = parser.parse_args()
+    if args.check:
+        return check()
     order = args.order
     deltas = delta_table(order)
 

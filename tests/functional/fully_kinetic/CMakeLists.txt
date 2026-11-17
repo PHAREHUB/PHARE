@@ -22,4 +22,7 @@ if(HighFive)
   # filter pass cuts it (~46 s, Debug: two 16^2 runs); the longer runs of energy.py are by hand
   phare_python3_exec(10 test-fully-kinetic-energy-filter energy.py ${CMAKE_CURRENT_BINARY_DIR} --check)
   phare_test_labels(test-fully-kinetic-energy-filter physics)
+  # self-force of one particle on one level against the Yee model, orders 1 to 3 (~30 s, Debug)
+  phare_python3_exec(9 test-fully-kinetic-self-force self_force.py ${CMAKE_CURRENT_BINARY_DIR} --check)
+  phare_test_labels(test-fully-kinetic-self-force physics)
 endif()
