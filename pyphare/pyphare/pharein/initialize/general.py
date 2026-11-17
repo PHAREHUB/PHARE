@@ -83,7 +83,8 @@ def populate_amr(dp, sim):
 def populate_load_balancer(dp, sim):
     # load balancing is always on with tagging, a declared LoadBalancer only overrides the
     # defaults. With refinement boxes it is off unless declared, which is then an error. The
-    # fully kinetic model has no load balancing yet (P5b): tagging leaves it off there
+    # fully kinetic model rebalances only with a declared LoadBalancer: tagging alone leaves it
+    # off there
     base = "simulation/AMR/loadbalancing"
     declared = sim.load_balancer is not None
     lb = sim.load_balancer or LoadBalancer(_register=False)

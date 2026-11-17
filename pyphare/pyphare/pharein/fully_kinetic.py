@@ -77,9 +77,6 @@ def _cell_centers(sim):
 
 def check_fully_kinetic(sim):
     """checks needing the populations, done before the C++ dictionary is filled"""
-    if sim.load_balancer is not None:
-        raise ValueError("Error: FullyKineticModel does not support load balancing yet")
-
     model = sim.model
     coords = _cell_centers(sim)
     directions = "xyz"[: sim.ndim]

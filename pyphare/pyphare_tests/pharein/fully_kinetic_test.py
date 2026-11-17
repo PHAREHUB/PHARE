@@ -8,6 +8,7 @@ from pyphare.pharein import global_vars, simulation
 from pyphare.pharein.fully_kinetic import check_fully_kinetic
 from pyphare.pharein.initialize import fully_kinetic as initialize_fully_kinetic
 from pyphare.pharein.initialize.general import populate_load_balancer
+from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.maxwellian_fluid_model import MaxwellianFluidModel
 
 cells = 64
@@ -163,7 +164,7 @@ class TestFullyKineticChecks(unittest.TestCase):
 
     def test_tagging_writes_fk_method_and_leaves_load_balancing_off(self):
         # the C++ tagger factory reads fk_method; tagging turns load balancing on for the
-        # hybrid, which the fully kinetic model does not support yet (P5b)
+        # hybrid, the fully kinetic model only with a declared LoadBalancer (P5b)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             sim = make_sim(
@@ -183,6 +184,25 @@ class TestFullyKineticChecks(unittest.TestCase):
             written["simulation/AMR/refinement/tagging/fk_method"], "default"
         )
         self.assertFalse(written["simulation/AMR/loadbalancing/active"])
+
+    def test_a_declared_load_balancer_is_active(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sim = make_sim(
+                refinement="tagging", max_nbr_levels=2, divergence_cleaning=0.5
+            )
+        make_model()
+        LoadBalancer(every=3, on_init=False)
+        check_fully_kinetic(sim)
+        written = {}
+
+        class Recorder:
+            def __getattr__(self, adder):
+                return lambda path, value, *args: written.__setitem__(path, value)
+
+        populate_load_balancer(Recorder(), sim)
+        self.assertTrue(written["simulation/AMR/loadbalancing/active"])
+        self.assertEqual(written["simulation/AMR/loadbalancing/every"], 3)
 
     def test_refinement_boxes_are_accepted(self):
         sim = make_sim(

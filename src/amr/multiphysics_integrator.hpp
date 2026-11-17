@@ -614,8 +614,7 @@ namespace solver
                 {
                     coarseSolver.accumulateFluxSum(coarseModel, coarseLevel,
                                                    substepWeight_(iCoarseLevel));
-                    // its flux sum is complete only now (three levels or more: UNVERIFIED, a
-                    // fully kinetic level cannot be regridded yet, P5a)
+                    // its flux sum is complete only now (three levels or more: UNVERIFIED)
                     if (!lastSubstep_.at(iCoarseLevel))
                         partialReflux_(*hierarchy, iCoarseLevel, syncTime);
                 }

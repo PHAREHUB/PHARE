@@ -277,8 +277,18 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
 
     if (lb_info.active)
     {
+        // a rebalanced fully kinetic level 0 is copied (FKLevelInitializer), its particles
+        // counted as the hybrid ones
         if constexpr (has_fk_v<opts>)
-            throw std::runtime_error("FullyKineticModel: load balancing is not supported yet");
+        {
+            if (find_model("FullyKineticModel"))
+            {
+                using FKModel = PHARETypes::FK::Model_t;
+                auto lbe_     = std::make_shared<amr::LoadBalancerEstimatorHybrid<FKModel>>(
+                    lb_info.mode, lbm_->getId());
+                lbm_->addLoadBalancerEstimator(0, maxLevelNumber_ - 1, std::move(lbe_));
+            }
+        }
 
         if constexpr (has_hybrid_v<opts>)
         {
@@ -354,8 +364,7 @@ void Simulator<opts>::fk_init(initializer::PHAREDict const& dict)
     using FKModel  = PHARETypes::FK::Model_t;
     using SolverFK = PHARETypes::FK::Solver_t;
 
-    // no restarts; tagging creates the refined levels, their regrid is not supported yet (P5a,
-    // FKLevelInitializer throws)
+    // no restarts yet (P5d)
     if (dict["simulation"].contains("restarts"))
         throw std::runtime_error("FullyKineticModel: restarts are not supported yet");
 
