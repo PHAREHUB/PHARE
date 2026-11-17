@@ -280,8 +280,10 @@ class Simulator:
 
     def regrid_count(self, level_number):
         """how many times SAMRAI re-initialized this level from an old one (a regrid: its boxes
-        changed). A run with static refinement boxes never regrids."""
-        self._check_setup()
+        changed). A run with static refinement boxes never regrids. Read it before reset(), which
+        run() calls at the end: the counts go with the C++ simulator."""
+        if self.cpp_sim is None:
+            raise RuntimeError("regrid_count: no simulator (reset, or not set up)")
         return self.cpp_sim.regrid_count(level_number)
 
     def cpp_initialize(self):

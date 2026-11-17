@@ -204,7 +204,9 @@ class FullyKineticAMRRegridTest(SimulatorTest):
 
     def run_case(self, refined):
         ph.global_vars.sim = None
-        run = Simulator(config(refined)).run()
+        run = Simulator(config(refined)).initialize()
+        for _ in range(STEPS):  # not run(): it resets, the counts go with it
+            run.advance()
         regrids = run.regrid_count(1) if refined else 0
         run.reset()
         return regrids

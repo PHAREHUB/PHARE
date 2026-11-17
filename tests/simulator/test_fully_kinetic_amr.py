@@ -212,7 +212,9 @@ class FullyKineticAMRTest(SimulatorTest):
     def test_static_box(self):
         ph.global_vars.sim = None
         sim = config()
-        run = Simulator(sim).run()
+        run = Simulator(sim).initialize()
+        for _ in range(TIME_STEP_NBR):  # not run(): it resets, the counts go with it
+            run.advance()
         regrids = [run.regrid_count(level) for level in range(sim.max_nbr_levels)]
         run.reset()
         self.assertEqual(regrids, [0] * sim.max_nbr_levels, "regrids per level")
