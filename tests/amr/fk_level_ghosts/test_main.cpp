@@ -412,6 +412,126 @@ TEST(FullyKineticLevelGhosts, fineElectricGhostsInterpolateBetweenTheThreeCoarse
 }
 
 
+// T3e. The nodes the cleaning skips with boundary_cleaning_mask: the primal nodes of a patch whose
+// 2^dim cells are some in a region and some not. The region is the level on a refined level (the
+// patch and its same-level neighbours), the cells the finer level covers on a coarser one.
+using Box2 = core::Box<int, 2>;
+
+std::set<Key> nodeSet(std::vector<Box2> const& boxes)
+{
+    std::set<Key> nodes;
+    for (auto const& box : boxes)
+        core::for_each_point(box, [&](auto const& node) { nodes.insert({node[0], node[1]}); });
+    return nodes;
+}
+
+// every node of the patch, one by one (node i is the lower corner of cell i)
+template<typename InRegion>
+std::set<Key> mixedNodes(Box2 const& cells, InRegion&& inRegion)
+{
+    std::set<Key> nodes;
+    for (int i = cells.lower[0]; i <= cells.upper[0] + 1; ++i)
+        for (int j = cells.lower[1]; j <= cells.upper[1] + 1; ++j)
+        {
+            int in = 0;
+            for (int const di : {-1, 0})
+                for (int const dj : {-1, 0})
+                    in += inRegion(core::Point<int, 2>{i + di, j + dj});
+            if (in > 0 and in < 4)
+                nodes.insert({i, j});
+        }
+    return nodes;
+}
+
+Box2 box(int x0, int y0, int x1, int y1)
+{
+    return {core::Point<int, 2>{x0, y0}, core::Point<int, 2>{x1, y1}};
+}
+
+TEST(FullyKineticCleaningMask, regionEdgeNodesHaveCellsInAndOutOfTheRegion)
+{
+    auto const check = [](Box2 const& cells, std::vector<Box2> const& region) {
+        auto const nodes = nodeSet(solver::regionEdgeNodes(cells, region));
+        EXPECT_EQ(nodes, mixedNodes(cells, [&](auto const& c) { return core::isIn(c, region); }));
+        return nodes;
+    };
+
+    // L-shaped level: the patch [0,7]^2 and a same-level neighbour [8,15]x[0,3], seen through the
+    // particle ghost band. The face x = 8 is on the level boundary from y = 4 on only
+    {
+        auto const nodes = check(box(0, 0, 7, 7), {box(0, 0, 7, 7), box(8, 0, 9, 3)});
+        EXPECT_EQ(nodes.size(), 32u - 3u);
+        for (int const j : {1, 2, 3})
+            EXPECT_FALSE(nodes.contains({8, j}));
+        for (int const j : {0, 4, 8}) // (8, 4): the inner corner, on the boundary too
+            EXPECT_TRUE(nodes.contains({8, j}));
+    }
+    // periodic in x over 16 cells: the neighbour [8,15]x[0,7] beyond the upper x face, its
+    // periodic image [-8,-1]x[0,7] beyond the lower one. Only the faces normal to y are left
+    {
+        auto const nodes
+            = check(box(0, 0, 7, 7), {box(0, 0, 7, 7), box(8, 0, 9, 7), box(-2, 0, -1, 7)});
+        EXPECT_EQ(nodes.size(), 18u);
+        for (auto const& [i, j] : nodes)
+            EXPECT_TRUE(j == 0 or j == 8) << i << " " << j;
+    }
+    // a patch inside its level: nothing
+    EXPECT_TRUE(check(box(0, 0, 7, 7), {box(0, 0, 7, 7), box(-2, -2, 9, 9)}).empty());
+
+    // a coarser level patch [0,15]^2: two finer boxes sharing the face x = 8 for y in [4, 5], a
+    // third one across the patch's upper x face (in the next patch too)
+    {
+        auto const nodes = check(box(0, 0, 15, 15),
+                                 {box(4, 4, 7, 7), box(8, 4, 11, 5), box(14, 10, 17, 11)});
+        EXPECT_FALSE(nodes.contains({8, 5})); // between two finer boxes
+        EXPECT_TRUE(nodes.contains({8, 6}));
+        EXPECT_FALSE(nodes.contains({6, 6})); // covered
+        EXPECT_TRUE(nodes.contains({16, 10}));
+        EXPECT_FALSE(nodes.contains({16, 11})); // the next patch is covered there too
+        for (auto const& [i, j] : nodes)
+            EXPECT_TRUE(i >= 0 and i <= 16 and j >= 0 and j <= 16) << i << " " << j;
+    }
+    EXPECT_TRUE(check(box(0, 0, 15, 15), {}).empty());
+}
+
+
+// the same on the job's levels, from the boxes SAMRAI gives: the root is 16^2 cells in 8^2
+// patches, the fine level covers the root cells [4,11]^2, the fine cells [8,23]^2 in 4 patches.
+// One process here: neighbours on other ranks come through the same connector (SAMRAI
+// HierarchyNeighbors), as the periodic images do.
+TEST(FullyKineticCleaningMask, skippedNodesOnTheJobLevelsAreTheEdgesOfTheFineLevel)
+{
+    auto& hierarchy = *simulator().hierarchy;
+    level(); // two levels
+
+    auto const check = [&](int const ln, auto const& skipped, Box2 const& region) {
+        std::set<Key> all;
+        for (auto const& patch : *hierarchy.getPatchLevel(ln))
+        {
+            auto const id    = amr::to_string(patch->getGlobalId());
+            auto const cells = amr::phare_box_from<2>(patch->getBox());
+            auto const nodes = skipped.contains(id) ? nodeSet(skipped.at(id)) : std::set<Key>{};
+            EXPECT_EQ(nodes, mixedNodes(cells, [&](auto const& c) { return core::isIn(c, region); }))
+                << "level " << ln << " patch " << cells;
+            all.insert(nodes.begin(), nodes.end());
+        }
+        return all.size();
+    };
+
+    // fine level: its edge, from the same-level neighbours
+    auto const fine = solver::cleaningSkippedNodes<GridLayout>(hierarchy, fineLevel, {});
+    EXPECT_EQ(check(fineLevel, fine, box(8, 8, 23, 23)), 4u * 16u);
+
+    // root: no level edge, the edge of the cells the fine level covers
+    auto const covered = solver::finerLevelCoverage<2>(hierarchy, 0);
+    auto const root    = solver::cleaningSkippedNodes<GridLayout>(hierarchy, 0, covered);
+    EXPECT_EQ(check(0, root, box(4, 4, 11, 11)), 4u * 8u);
+
+    // the finest level covers nothing
+    EXPECT_TRUE(solver::finerLevelCoverage<2>(hierarchy, fineLevel).empty());
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
