@@ -79,8 +79,8 @@ same g_p for B_z. The filter divides it by 4 to 6; the cleaning does not change 
 
 T10 at the refinement boundary (--refinement-box [lo,hi], default 16,48 = half the domain, hi
 excluded; one filter pass and s = 0.5 unless given): the pair in one cell, --outside 4 cells
-before the box edge (case in) or --inside 8 cells inside it (case out), the test charge drifting
-+x at 0.01 c through the edge (2640 steps, every step dumped, both levels), and the same run on one
+before the box edge (case in) or --inside 12 cells inside it (case out), the test charge drifting
++x at 0.01 c through the edge (3521 steps, every step dumped, both levels), and the same run on one
 level. In the box the test charge is its split children (2 per particle in 1D, split_1d.hpp): per
 coarse step the composite force is the children's in the box at both ends, weighted by their
 charge fraction, plus the coarse particle's for the rest; a child entering (a level ghost copy
@@ -718,7 +718,7 @@ def main():
     parser.add_argument(
         "--outside", type=int, default=4, help="in: start cells before the edge"
     )
-    parser.add_argument("--inside", type=int, default=8, help="out: start cells inside")
+    parser.add_argument("--inside", type=int, default=12, help="out: start cells inside")
     parser.add_argument(
         "--t10-check",
         action="store_true",
