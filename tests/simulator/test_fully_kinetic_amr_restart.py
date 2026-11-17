@@ -13,7 +13,10 @@ runs. The first step rewrites the solver's and the messenger's other records bef
 except the cells the finer level synchronized at the end of the last step (the cleaning mask).
 
 Check: both runs write a restart file at the last step, and every patch data array in them
-(doubles, the particles included) is bitwise the same, on every rank. Two restart steps, one on
+(doubles, the particles included) is bitwise the same, on every rank. The restarted run writes at
+the reference's restart steps after N too: writing a restart re-sorts each particle array's cell
+map in place (ParticlesData::putToRestart, ParticleArray::sortMapping), which changes the order
+particles are visited in and so the last bit of later sums. Two restart steps, one on
 each side of a level 1 regrid: the mask must know the cells of the level 1 that synchronized,
 which a regrid at the end of step N has already replaced.
 """
@@ -55,8 +58,10 @@ def time_dir(subdir, time):
 
 
 def restart_files(subdir, time):
-    """{proc.NNNNNNN: path}, the SAMRAI restart file of every rank"""
-    paths = glob.glob(f"{time_dir(subdir, time)}/restore.*/nodes.*/proc.*")
+    """{proc.NNNNNNN: path}, the SAMRAI restart file of every rank of this run's size (runs on
+    another number of ranks leave their nodes.NNNNNNN beside it)"""
+    nodes = f"nodes.{cpp.mpi_size():07d}"
+    paths = glob.glob(f"{time_dir(subdir, time)}/restore.*/{nodes}/proc.*")
     return {os.path.basename(path): path for path in paths}
 
 
@@ -99,7 +104,8 @@ class FullyKineticAMRRestartTest(SimulatorTest):
                 restart_options={
                     "dir": restarts_dir(subdir),
                     "mode": "overwrite",
-                    "timestamps": [last],
+                    "timestamps": [n * fk.time_step for n in RESTART_STEPS if n > restart_step]
+                    + [last],
                     "restart_time": start,
                 },
             )
