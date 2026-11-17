@@ -115,8 +115,9 @@ class TestFullyKineticChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "light CFL"):
             make_sim(time_step=0.005)
 
-    def test_refined_light_courant_is_bounded_per_direction(self):
-        # the level coupling grows above c dt / dx ~ 0.85 (1D vacuum, B-x), one level is fine
+    def test_refined_light_cfl_is_bounded(self):
+        # the level coupling grows above c dt sqrt(sum 1/dx^2) ~ 0.85 (1D and 2D vacuum, B-x),
+        # one level is fine
         box = {"L0": {"B0": [(10,), (20,)]}}
         with self.assertRaisesRegex(ValueError, "AMR coupling instability"):
             make_sim(time_step=0.0032, refinement_boxes=box, divergence_cleaning=0.5)
@@ -125,11 +126,21 @@ class TestFullyKineticChecks(unittest.TestCase):
         global_vars.sim = None
         make_sim(time_step=0.0032)
         global_vars.sim = None
-        # per direction: 0.5 in x and y passes although c dt sqrt(sum 1/dx^2) = 0.71
+        # 2D: 0.7 per direction is 0.99 together (grows x 1e4 by t = 6), 0.5 is 0.71
+        box_2d = {"L0": {"B0": [(10, 10), (20, 20)]}}
+        with self.assertRaisesRegex(ValueError, "AMR coupling instability"):
+            make_sim(
+                time_step=0.0028,
+                cells=[cells, cells],
+                dl=[dl, dl],
+                refinement_boxes=box_2d,
+                divergence_cleaning=0.5,
+            )
+        global_vars.sim = None
         make_sim(
             cells=[cells, cells],
             dl=[dl, dl],
-            refinement_boxes={"L0": {"B0": [(10, 10), (20, 20)]}},
+            refinement_boxes=box_2d,
             divergence_cleaning=0.5,
         )
 

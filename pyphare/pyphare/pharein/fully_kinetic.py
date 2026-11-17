@@ -17,9 +17,10 @@ max_dx_over_debye = 3.0
 # the pusher is not relativistic
 max_speed_over_light = 0.3
 net_charge_tolerance = 1e-6
-# with refinement, per direction: the level coupling grows above c dt / dx ~ 0.85 (1D vacuum
-# seeded run with the partial reflux: stable at 0.8, gamma 0.09 at 0.85, 0.5 at 0.9, one level
-# stable), docs/superpowers/specs/p4/t9_residual.md
+# with refinement: the level coupling grows above a light CFL c dt sqrt(sum 1/dx^2) of ~0.85 to
+# 0.95 (vacuum seeded runs with the partial reflux; 1D stable at 0.8, gamma 0.09 at 0.85; 2D stable
+# at 0.85, gamma 0.4 to 1 at 0.95 and 2.3 at 0.99, one level stable), the 2D limit follows this
+# number, not c dt / dx per direction. docs/superpowers/specs/p4/t9_residual.md
 max_refined_light_courant = 0.75
 
 
@@ -38,13 +39,11 @@ def check_fully_kinetic_simulation(**kwargs):
         raise ValueError(
             f"Error: FullyKineticModel light CFL c dt sqrt(sum 1/dx^2) = {light:.3f} >= 1"
         )
-    courant = c * dt / dl.min()
-    if kwargs["max_nbr_levels"] > 1 and courant > max_refined_light_courant:
+    if kwargs["max_nbr_levels"] > 1 and light > max_refined_light_courant:
         raise ValueError(
-            f"Error: FullyKineticModel with refinement: c dt / dx = {courant:.3f} >"
-            f" {max_refined_light_courant} in some direction. AMR coupling instability above"
-            f" ~0.85 (1D measured), bound {max_refined_light_courant} per direction with"
-            " refinement"
+            f"Error: FullyKineticModel with refinement: light CFL c dt sqrt(sum 1/dx^2) ="
+            f" {light:.3f} > {max_refined_light_courant}. AMR coupling instability above ~0.85"
+            f" (1D and 2D measured), bound {max_refined_light_courant} with refinement"
         )
 
     # static refinement boxes only. The checks below are done on the root: a level l has
