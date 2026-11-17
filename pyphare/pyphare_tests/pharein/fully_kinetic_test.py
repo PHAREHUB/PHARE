@@ -115,6 +115,24 @@ class TestFullyKineticChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "light CFL"):
             make_sim(time_step=0.005)
 
+    def test_refined_light_courant_is_bounded_per_direction(self):
+        # the level coupling grows above c dt / dx ~ 0.85 (1D vacuum, B-x), one level is fine
+        box = {"L0": {"B0": [(10,), (20,)]}}
+        with self.assertRaisesRegex(ValueError, "AMR coupling instability"):
+            make_sim(time_step=0.0032, refinement_boxes=box, divergence_cleaning=0.5)
+        global_vars.sim = None
+        make_sim(time_step=0.003, refinement_boxes=box, divergence_cleaning=0.5)
+        global_vars.sim = None
+        make_sim(time_step=0.0032)
+        global_vars.sim = None
+        # per direction: 0.5 in x and y passes although c dt sqrt(sum 1/dx^2) = 0.71
+        make_sim(
+            cells=[cells, cells],
+            dl=[dl, dl],
+            refinement_boxes={"L0": {"B0": [(10, 10), (20, 20)]}},
+            divergence_cleaning=0.5,
+        )
+
     def test_adaptive_time_step_is_refused(self):
         with self.assertRaisesRegex(ValueError, "constant time step"):
             make_sim(
