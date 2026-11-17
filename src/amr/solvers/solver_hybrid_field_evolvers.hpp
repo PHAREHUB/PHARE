@@ -33,10 +33,10 @@ public:
         for (auto& patch : rm.enumerate(level_, electrons, ions, B, J, E))
         {
             auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-            // Ohm takes the ion current on the E nodes, not Ve: the electron flux Ji - J is
-            // formed where J and E live (#1577)
-            (*this)(layout, ions.chargeDensity(), ions.chargeFluxE(), electrons.pressureTerm(), B,
-                    J, E);
+            // Ohm takes the electron flux n Ve = Ji - J on the E nodes, formed where J and E
+            // live (#1577), not Ve on the moment nodes
+            (*this)(layout, ions.chargeDensity(), electrons.flux(), electrons.pressureTerm(), B, J,
+                    E);
         }
     }
 

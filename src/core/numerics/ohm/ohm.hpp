@@ -49,19 +49,22 @@ public:
     {
     }
 
-    // n: ion charge density. Ji: ion current sum_s q_s fluxE_s on the E nodes, deposited with
-    // the weights that gather E to the particles (Ions::chargeFluxE). pressureTerm: -grad(Pe)/n
-    // on the E edges, from the electron pressure closure (see pressure_term.hpp).
+    // The electron momentum equation without electron inertia, solved for E:
+    // E = -(n Ve) x B / n + pressureTerm + resistive terms.
+    // n: ion charge density. Ge: electron flux n Ve = Ji - J on the E nodes (Electrons::flux),
+    // with Ji the ion current deposited with the weights that gather E to the particles.
+    // pressureTerm: -grad(Pe)/n on the E edges, from the electron pressure closure
+    // (see pressure_term.hpp). J: total current, for the resistive terms.
     template<typename VecField, typename Field>
-    void operator()(Field const& n, VecField const& Ji, VecField const& pressureTerm,
+    void operator()(Field const& n, VecField const& Ge, VecField const& pressureTerm,
                     VecField const& B, VecField const& J, VecField& Enew)
     {
         for (auto const c : {Component::X, Component::Y, Component::Z})
         {
             if (layout_.centering(pressureTerm(c)) != layout_.centering(Enew(c)))
                 throw std::runtime_error("Error - Ohm - the pressure term must be E-centred");
-            if (layout_.centering(Ji(c)) != layout_.centering(Enew(c)))
-                throw std::runtime_error("Error - Ohm - the ion current must be E-centred");
+            if (layout_.centering(Ge(c)) != layout_.centering(Enew(c)))
+                throw std::runtime_error("Error - Ohm - the electron flux must be E-centred");
         }
 
         // lift the resistive / hyper-resistive runtime flags into compile-time tags: the per-cell
@@ -69,7 +72,7 @@ public:
         // nu is zero without ever testing the flags inside the evalOnBox loop.
         Constexprifier{isResistive(),
                        isHyperResistive()}([&]<bool isResistiveV, bool isHyperResistiveV>() {
-            solve_<isResistiveV, isHyperResistiveV>(n, Ji, pressureTerm, B, J, Enew);
+            solve_<isResistiveV, isHyperResistiveV>(n, Ge, pressureTerm, B, J, Enew);
         });
     }
 
@@ -77,7 +80,7 @@ private:
     GridLayout layout_;
 
     template<bool isResistive, bool isHyperResistive, typename VecField, typename Field>
-    void solve_(Field const& n, VecField const& Ji, VecField const& pressureTerm, VecField const& B,
+    void solve_(Field const& n, VecField const& Ge, VecField const& pressureTerm, VecField const& B,
                 VecField const& J, VecField& Enew) const
     {
         using Pack = OhmPack<VecField, Field>;
@@ -86,15 +89,15 @@ private:
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ji, B, J}, pressureTerm(Component::X), args...);
+                Pack{Enew, n, Ge, B, J}, pressureTerm(Component::X), args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ji, B, J}, pressureTerm(Component::Y), args...);
+                Pack{Enew, n, Ge, B, J}, pressureTerm(Component::Y), args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Ji, B, J}, pressureTerm(Component::Z), args...);
+                Pack{Enew, n, Ge, B, J}, pressureTerm(Component::Z), args...);
         });
     }
 
@@ -103,7 +106,7 @@ private:
     {
         VecField& Exyz;
         Field const& n;
-        VecField const &Ji, &B, &J;
+        VecField const &Ge, &B, &J;
     };
 
 
@@ -111,12 +114,12 @@ private:
              typename PressureTerm, typename... IDXs>
     void E_Eq_(OhmPack&& pack, PressureTerm const& pressureTerm, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ji, B, J]     = pack;
+        auto const& [E, n, Ge, B, J]     = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        auto E_ = ideal_<Tag>(n, Ji, B, J, {ijk...}) + pressureTerm(ijk...);
+        auto E_ = ideal_<Tag>(n, Ge, B, {ijk...}) + pressureTerm(ijk...);
 
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
@@ -149,14 +152,14 @@ private:
     // (the former form) is not, and heats the plasma from particle noise. Ji must be the current
     // deposited on the E nodes with the gather weights: then the work of E on the ions is
     // exactly sum Ji.E, and the ions + B energy is conserved up to time integration error.
-    // Reads Ji, J and n one node beyond the box E is computed on.
+    // Reads G and n one node beyond the box E is computed on.
     template<auto component, typename VecField, typename Field>
-    auto ideal_(Field const& n, VecField const& Ji, VecField const& B, VecField const& J,
+    auto ideal_(Field const& n, VecField const& G, VecField const& B,
                 MeshIndex<dimension> index) const
     {
-        auto Gx = [&](auto const& ijk) { return Ji(Component::X)(ijk) - J(Component::X)(ijk); };
-        auto Gy = [&](auto const& ijk) { return Ji(Component::Y)(ijk) - J(Component::Y)(ijk); };
-        auto Gz = [&](auto const& ijk) { return Ji(Component::Z)(ijk) - J(Component::Z)(ijk); };
+        auto Gx = [&](auto const& ijk) { return G(Component::X)(ijk); };
+        auto Gy = [&](auto const& ijk) { return G(Component::Y)(ijk); };
+        auto Gz = [&](auto const& ijk) { return G(Component::Z)(ijk); };
 
         // B_c / n on the B_c node, times the electron flux component Gq averaged to it
         auto omegaG = [&]<auto c, auto Bq, auto Eq>(auto&& Gq, auto const& ijk) {

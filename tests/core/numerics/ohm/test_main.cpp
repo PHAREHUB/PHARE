@@ -78,7 +78,17 @@ struct OhmTest : public ::testing::Test
 
     Grid_t n;
     UsableVecFieldND V, B, J, Enew, pressureTerm;
-    UsableVecFieldND Ji; // ion current on the E nodes, the input of Ohm's ideal term
+    UsableVecFieldND Ji; // ion current on the E nodes
+    UsableVecFieldND Ge; // electron flux Ji - J on the E nodes, the input of Ohm's ideal term
+
+    // what Electrons::computeFlux does, on the whole ghost box: G = Ji - J
+    auto& electronFlux()
+    {
+        for (auto const c : {Component::X, Component::Y, Component::Z})
+            layout.evalOnGhostBox(
+                Ge(c), [&](auto const&... ijk) { Ge(c)(ijk...) = Ji(c)(ijk...) - J(c)(ijk...); });
+        return Ge;
+    }
 
     OhmInfo ohm_info;
 
@@ -90,6 +100,7 @@ struct OhmTest : public ::testing::Test
         , Enew{"Enew", layout, HybridQuantity::Vector::E}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
         , Ji{"Ji", layout, HybridQuantity::Vector::J}
+        , Ge{"Ge", layout, HybridQuantity::Vector::J}
         , ohm_info{OhmInfo::FROM(createDict())}
     {
         auto const& [Bx, By, Bz]          = B();
@@ -384,8 +395,8 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
     // the reference values (test_ohm.py) use the isothermal pressure term, so build it the same way
     IsothermalPressureTerm<typename TestFixture::GridYee>{TestFixture::Te}(layout, this->n,
                                                                            this->pressureTerm);
-    Ohm_t{this->ohm_info, layout}(this->n, this->Ji, this->pressureTerm, this->B, this->J,
-                                  this->Enew);
+    Ohm_t{this->ohm_info, layout}(this->n, this->electronFlux(), this->pressureTerm, this->B,
+                                  this->J, this->Enew);
 
 
     auto const& [Exnew, Eynew, Eznew] = this->Enew();
@@ -563,8 +574,8 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
         dict["hyper_resistivity"] = 0.0;
         return dict;
     }();
-    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->Ji, this->pressureTerm, this->B, this->J,
-                                       this->Enew);
+    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->electronFlux(), this->pressureTerm, this->B,
+                                       this->J, this->Enew);
 
     for (auto const c : {Component::X, Component::Y, Component::Z})
     {
@@ -605,6 +616,7 @@ struct OhmWorkTest : public ::testing::Test
     Grid_t Vez{"Vez", Scalar::Vz, layout.allocSize(Scalar::Vz)};
     UsableVecField<dim> F{"F", layout, HybridQuantity::Vector::V};
     UsableVecField<dim> Ji{"Ji", layout, HybridQuantity::Vector::J};
+    UsableVecField<dim> Ge{"Ge", layout, HybridQuantity::Vector::J}; // Ji - J, Ohm's input
     UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
     UsableVecField<dim> J{"J", layout, HybridQuantity::Vector::J};
     UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
@@ -741,7 +753,11 @@ TYPED_TEST(OhmWorkTest, ThatTheIdealTermDoesNoWorkOnTheElectrons)
         return dict;
     }();
 
-    Ohm_t{OhmInfo::FROM(dict), this->layout}(this->n, this->Ji, this->pressureTerm, this->B,
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+        this->layout.evalOnGhostBox(this->Ge(c), [&](auto const&... ijk) {
+            this->Ge(c)(ijk...) = this->Ji(c)(ijk...) - this->J(c)(ijk...);
+        });
+    Ohm_t{OhmInfo::FROM(dict), this->layout}(this->n, this->Ge, this->pressureTerm, this->B,
                                              this->J, this->E);
     auto const [sum, scale] = this->work();
     EXPECT_GT(scale, 0.);
