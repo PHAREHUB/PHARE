@@ -5,6 +5,7 @@ from unittest.mock import patch
 import numpy as np
 
 from pyphare.pharein import global_vars, simulation
+from pyphare.pharein.diagnostics import FluidDiagnostics
 from pyphare.pharein.fully_kinetic import check_fully_kinetic
 from pyphare.pharein.initialize import fully_kinetic as initialize_fully_kinetic
 from pyphare.pharein.initialize.general import populate_load_balancer
@@ -289,6 +290,35 @@ class TestFullyKineticChecks(unittest.TestCase):
                 ValueError, "boundary_cleaning_mask needs divergence_cleaning > 0"
             ):
                 make_sim(boundary_cleaning_mask=True, **kwargs)
+
+    # FK_rho refusals raise RuntimeError: diagnostics_checker prints a ValueError and drops
+    # the diagnostic, the run would go on without it
+    def test_fk_rho_needs_the_cleaning(self):
+        # the solver deposits rho only for the cleaning: without it the dump would never change
+        for s in [None, 0]:
+            global_vars.sim = None
+            make_sim(**({} if s is None else {"divergence_cleaning": s}))
+            make_model()
+            with self.assertRaisesRegex(RuntimeError, "FK_rho' needs divergence_cleaning > 0"):
+                FluidDiagnostics(quantity="FK_rho", write_timestamps=[0.0])
+        global_vars.sim = None
+        sim = make_sim(divergence_cleaning=0.5)
+        make_model()
+        FluidDiagnostics(quantity="FK_rho", write_timestamps=[0.0])
+        self.assertEqual([d.quantity for d in sim.diagnostics.values()], ["/ions/FK_rho"])
+
+    def test_fk_rho_is_for_the_ions_of_a_fully_kinetic_model(self):
+        sim = make_sim(divergence_cleaning=0.5)
+        make_model()
+        with self.assertRaisesRegex(RuntimeError, "FK_rho' is only available for the ions"):
+            FluidDiagnostics(
+                quantity="FK_rho", write_timestamps=[0.0], population_name="protons"
+            )
+        global_vars.sim = None
+        sim = make_sim(model_options=["HybridModel"], c_over_va=None)
+        with self.assertRaisesRegex(RuntimeError, "FK_rho' is only available for the ions"):
+            FluidDiagnostics(quantity="FK_rho", write_timestamps=[0.0])
+        self.assertEqual(sim.diagnostics, {})
 
     def test_boundary_cleaning_mask_is_a_bool(self):
         for mask in [1, "yes", 0.0]:
