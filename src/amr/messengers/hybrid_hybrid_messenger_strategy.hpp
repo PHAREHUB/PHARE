@@ -347,10 +347,12 @@ namespace amr
 
         // fully kinetic: the model E ghosts other patches of the level own (the same-level
         // schedule of EalgoPatchGhost), the level ghosts kept
-        void fillElectricPatchGhosts(VecFieldT& /*E*/, level_t const& level,
+        void fillElectricPatchGhosts(VecFieldT& E, level_t const& level,
                                      double const fillTime) override
         {
             elecPatchGhostsRefineSchedules.at(level.getLevelNumber())->fillData(fillTime);
+            if constexpr (sumsParticleCurrent)
+                fillFromOwners_(ownerSchedules_, E, level.getLevelNumber(), fillTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -421,9 +423,15 @@ namespace amr
             setNaNsOnVecfieldGhosts(B, level);
             auto const levelNumber = level.getLevelNumber();
             if constexpr (sumsParticleCurrent)
+            {
                 if (fillsMid_(B, levelNumber, fillTime))
-                    return magGhostsMidRefiners_.fill(B, levelNumber, fillTime);
-            magGhostsRefiners_.fill(B, levelNumber, fillTime);
+                    magGhostsMidRefiners_.fill(B, levelNumber, fillTime);
+                else
+                    magGhostsRefiners_.fill(B, levelNumber, fillTime);
+                fillFromOwners_(ownerSchedules_, B, levelNumber, fillTime);
+            }
+            else
+                magGhostsRefiners_.fill(B, levelNumber, fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime) override
@@ -433,9 +441,15 @@ namespace amr
             setNaNsOnVecfieldGhosts(E, level);
             auto const levelNumber = level.getLevelNumber();
             if constexpr (sumsParticleCurrent)
+            {
                 if (fillsAhead_(levelNumber, fillTime))
-                    return elecGhostsAheadRefiners_.fill(E, levelNumber, fillTime);
-            elecGhostsRefiners_.fill(E, levelNumber, fillTime);
+                    elecGhostsAheadRefiners_.fill(E, levelNumber, fillTime);
+                else
+                    elecGhostsRefiners_.fill(E, levelNumber, fillTime);
+                fillFromOwners_(ownerSchedules_, E, levelNumber, fillTime);
+            }
+            else
+                elecGhostsRefiners_.fill(E, levelNumber, fillTime);
         }
 
 
@@ -561,10 +575,10 @@ namespace amr
                 HybridMessengerStrategy<HybridModel>::equalizeCurrentBorders(J, level, fillTime);
         }
 
-        // Debug: every copy of a node shared by patches of the level must be equal in E and B.
-        // Nothing re-synchronises them during the run, and the shared E/B pairs amplify a
-        // difference: a seed (a non periodic user function on a periodic border, a regrid) is
-        // reported here with its node and spread, never reconciled
+        // Debug: the copies of a node shared by patches of the level, in E and B, before the owner
+        // fill makes them equal (ownSharedElectromag). A spread above 1e-12 of the level's largest
+        // |component| is a seed of the user setup (a non periodic user function on a periodic
+        // border): reported with its node and stops the run. Round-off is left to the owner fill
         void checkSharedElectromagCopies(VecFieldT& E, VecFieldT& B, level_t& level) override
         {
             if constexpr (sumsParticleCurrent)
@@ -572,10 +586,11 @@ namespace amr
                 assert(electromagBorderMaxRefiners_.size() == 2);
                 assert(electromagBorderMinRefiners_.size() == 2);
                 std::ostringstream report;
+                auto constexpr relative = 1e-12;
                 reportSharedCopySpread_(E, electromagBorderMaxRefiners_[0],
-                                        electromagBorderMinRefiners_[0], level, report);
+                                        electromagBorderMinRefiners_[0], level, relative, report);
                 reportSharedCopySpread_(B, electromagBorderMaxRefiners_[1],
-                                        electromagBorderMinRefiners_[1], level, report);
+                                        electromagBorderMinRefiners_[1], level, relative, report);
                 auto const local = !report.str().empty();
                 if (mpi::any(local))
                 {
@@ -592,11 +607,29 @@ namespace amr
                 HybridMessengerStrategy<HybridModel>::checkSharedElectromagCopies(E, B, level);
         }
 
+        // fully kinetic, level init: every copy of a shared E and B node from its owner (in Debug,
+        // first the seed report of checkSharedElectromagCopies), as every later E and B fill
+        void ownSharedElectromag(VecFieldT& E, VecFieldT& B, level_t& level) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                PHARE_DEBUG_DO(checkSharedElectromagCopies(E, B, level);)
+                fillFromOwners_(ownerSchedules_, E, level.getLevelNumber(), 0.);
+                fillFromOwners_(ownerSchedules_, B, level.getLevelNumber(), 0.);
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::ownSharedElectromag(E, B, level);
+        }
+
         // copies the ghost nodes of J from the patches that own them, after the border sum
         void fillCurrentGhosts(VecFieldT& J, level_t& level, double const fillTime) override
         {
             if constexpr (sumsParticleCurrent)
+            {
                 currentGhostsRefiners_.fill(J, level.getLevelNumber(), fillTime);
+                if (level.getLevelNumber() != rootLevelNumber)
+                    fillFromOwners_(ownerBandSchedules_, J, level.getLevelNumber(), fillTime);
+            }
             else
                 HybridMessengerStrategy<HybridModel>::fillCurrentGhosts(J, level, fillTime);
         }
@@ -652,7 +685,11 @@ namespace amr
         void fillChargeDensityGhosts(FieldT& rho, level_t& level, double const fillTime) override
         {
             if constexpr (sumsParticleCurrent)
+            {
                 chargeDensityGhostsRefiners_.fill(rho, level.getLevelNumber(), fillTime);
+                if (level.getLevelNumber() != rootLevelNumber)
+                    fillFromOwners_(ownerBandSchedules_, rho, level.getLevelNumber(), fillTime);
+            }
             else
                 HybridMessengerStrategy<HybridModel>::fillChargeDensityGhosts(rho, level, fillTime);
         }
@@ -977,6 +1014,9 @@ namespace amr
             for (auto& refiner : chargeDensityBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
+            if constexpr (sumsParticleCurrent)
+                buildOwnerSchedules_(hierarchy, levelNumber);
+
             PHARE_DEBUG_DO({
                 for (auto& refiner : electromagBorderMaxRefiners_)
                     refiner.registerLevel(hierarchy, level);
@@ -991,6 +1031,40 @@ namespace amr
         }
 
 
+
+        // the owner fills of the level (fully kinetic): the patterns read the boxes of the level
+        // while the schedules are built, all ranks in the same (name) order
+        void buildOwnerSchedules_(hierarchy_ptr const& hierarchy, int const levelNumber)
+        {
+            auto const level  = hierarchy->getPatchLevel(levelNumber);
+            auto const owners = std::make_shared<SameLevelOwners<dimension> const>(
+                *level, *hierarchy->getGridGeometry());
+            ownerTFPattern_->setOwners(owners);
+            ownerBandTFPattern_->setOwners(owners);
+            ownerBandFieldPattern_->setOwners(owners);
+
+            auto& schedules = ownerSchedules_[levelNumber];
+            schedules.clear();
+            for (auto& [name, algo] : ownerAlgos_)
+                schedules[name] = algo.createSchedule(level);
+
+            // the root level has no level ghost band
+            auto& band = ownerBandSchedules_[levelNumber];
+            band.clear();
+            if (levelNumber != rootLevelNumber)
+                for (auto& [name, algo] : ownerBandAlgos_)
+                    band[name] = algo.createSchedule(level);
+
+            ownerTFPattern_->setOwners(nullptr);
+            ownerBandTFPattern_->setOwners(nullptr);
+            ownerBandFieldPattern_->setOwners(nullptr);
+        }
+
+        static void fillFromOwners_(auto const& schedules, auto const& field, int const levelNumber,
+                                    double const fillTime)
+        {
+            schedules.at(levelNumber).at(field.name())->fillData(fillTime);
+        }
 
         void buildInterLevelSchedules_(hierarchy_ptr const& hierarchy, int const levelNumber)
         {
@@ -1138,6 +1212,21 @@ namespace amr
                 chargeDensityGhostsRefiners_.addStaticRefiners(
                     info->ghostChargeDensity, fieldRefineOp_, info->ghostChargeDensity,
                     nonOverwriteInteriorFieldFillPattern);
+
+                // after each fill above: every copy of a node from its owner (OwnerFillPattern),
+                // E and B on the nodes of the level, J and rho in the level ghost band
+                auto const registerOwner
+                    = [&](auto& algos, auto const& names, auto const& pattern) {
+                          for (auto const& name : names)
+                          {
+                              auto const id = *resourcesManager_->getID(name);
+                              algos[name].registerRefine(id, id, id, nullptr, pattern);
+                          }
+                      };
+                registerOwner(ownerAlgos_, info->ghostElectric, ownerTFPattern_);
+                registerOwner(ownerAlgos_, info->ghostMagnetic, ownerTFPattern_);
+                registerOwner(ownerBandAlgos_, info->ghostCurrent, ownerBandTFPattern_);
+                registerOwner(ownerBandAlgos_, info->ghostChargeDensity, ownerBandFieldPattern_);
             }
 
 
@@ -1407,10 +1496,11 @@ namespace amr
 
         // Debug: the spread (max - min) over the copies of every physical node of V shared with
         // other patches of the level, from the border max and min fills. V is restored after
-        // each fill. Appends one line per patch and component with a non-zero spread
+        // each fill. Appends one line per patch and component with a spread above `relative`
+        // times the largest |component| on the physical nodes of the level
         template<typename MaxPool, typename MinPool>
         void reportSharedCopySpread_(VecFieldT& V, MaxPool const& maxFill, MinPool const& minFill,
-                                     level_t& level, std::ostream& report)
+                                     level_t& level, double const relative, std::ostream& report)
         {
             auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
             using value_type = FieldT::value_type;
@@ -1426,8 +1516,19 @@ namespace amr
             auto const levelNumber = level.getLevelNumber();
 
             std::vector<Copy> kept, maxed;
+            std::array<double, N> largest{};
             for (auto patch : resourcesManager_->enumerate(level, V))
+            {
                 save(kept.emplace_back());
+                auto const layout = layoutFromPatch<GridLayoutT>(*patch);
+                for (std::uint8_t c = 0; c < N; ++c)
+                    for (std::size_t i = 0; i < V[c].size(); ++i)
+                        if (physicalNode_(i, V[c], layout))
+                            largest[c] = std::max(largest[c],
+                                                  std::abs(static_cast<double>(V[c].data()[i])));
+            }
+            for (auto& value : largest)
+                value = -mpi::min(-value); // the level's, all ranks
 
             maxFill.fill(levelNumber, 0.);
             std::size_t p = 0;
@@ -1453,14 +1554,15 @@ namespace amr
                             worst = spread;
                             at    = i;
                         }
-                    if (worst > 0)
+                    if (worst > relative * largest[c])
                     {
                         auto const local = *physicalNode_(at, V[c], layout);
                         report << std::setprecision(17) << "level " << levelNumber << " patch "
                                << patch->getBox() << " " << V[c].name() << " node (AMR) "
-                               << layout.localToAMR(local) << ": copies from "
-                               << V[c].data()[at] << " to " << maxed[p][c][at] << ", spread "
-                               << worst << " (largest on this patch)\n";
+                               << layout.localToAMR(local) << ": copies from " << V[c].data()[at]
+                               << " to " << maxed[p][c][at] << ", spread " << worst
+                               << " (largest on this patch), level max |" << V[c].name() << "| "
+                               << largest[c] << "\n";
                     }
                 }
                 restore(kept[p++]);
@@ -1479,7 +1581,10 @@ namespace amr
             value_type scale = 0;
             for (auto const v : values(before))
                 scale = std::max(scale, std::abs(v));
-            auto const tolerance = 16 * std::numeric_limits<value_type>::epsilon() * scale;
+            // a fine level corner node adds four partial sums and the level ghost deposits of each
+            // patch in its own order: 23 epsilons measured (amr_regrid_2d), a missed particle is
+            // a fraction of its weight, orders of magnitude above
+            auto const tolerance = 64 * std::numeric_limits<value_type>::epsilon() * scale;
 
             auto const layout = layoutFromPatch<GridLayoutT>(patch);
 
@@ -1746,6 +1851,19 @@ namespace amr
         std::shared_ptr<TensorFieldFillPattern<dimension, 1, /*overwrite_interior=*/true>>
             overwriteInteriorTFfillPattern
             = std::make_shared<TensorFieldFillPattern<dimension, 1, /*overwrite_interior=*/true>>();
+
+        //! fully kinetic: the owner fills, per quantity name, and their schedules per level
+        std::shared_ptr<OwnerFillPattern<dimension, 1>> ownerTFPattern_
+            = std::make_shared<OwnerFillPattern<dimension, 1>>();
+        std::shared_ptr<OwnerFillPattern<dimension, 1, /*band=*/true>> ownerBandTFPattern_
+            = std::make_shared<OwnerFillPattern<dimension, 1, /*band=*/true>>();
+        std::shared_ptr<OwnerFillPattern<dimension, 0, /*band=*/true>> ownerBandFieldPattern_
+            = std::make_shared<OwnerFillPattern<dimension, 0, /*band=*/true>>();
+        std::map<std::string, SAMRAI::xfer::RefineAlgorithm> ownerAlgos_;
+        std::map<std::string, SAMRAI::xfer::RefineAlgorithm> ownerBandAlgos_;
+        using OwnerSchedules = std::map<std::string, std::shared_ptr<SAMRAI::xfer::RefineSchedule>>;
+        std::map<int, OwnerSchedules> ownerSchedules_;
+        std::map<int, OwnerSchedules> ownerBandSchedules_;
 
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};

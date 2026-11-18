@@ -380,6 +380,11 @@ namespace amr
             strat_->fillCurrentGhosts(J, level, fillTime);
         }
 
+        void ownSharedElectromag(VecFieldT& E, VecFieldT& B, level_t& level)
+        {
+            strat_->ownSharedElectromag(E, B, level);
+        }
+
         void checkSharedElectromagCopies(VecFieldT& E, VecFieldT& B, level_t& level)
         {
             strat_->checkSharedElectromagCopies(E, B, level);

@@ -166,8 +166,14 @@ namespace amr
             throw std::runtime_error(stratname_ + " does not fill current ghosts");
         }
 
+        // fully kinetic, level init: every copy of a shared E and B node from its owner patch
+        virtual void ownSharedElectromag(VecFieldT& /*E*/, VecFieldT& /*B*/, level_t& /*level*/)
+        {
+            throw std::runtime_error(stratname_ + " does not own shared E and B copies");
+        }
+
         // fully kinetic, Debug only: throws if the copies of a node shared by patches of the
-        // level differ in E or B
+        // level differ in E or B by more than round-off
         virtual void checkSharedElectromagCopies(VecFieldT& /*E*/, VecFieldT& /*B*/,
                                                  level_t& /*level*/)
         {

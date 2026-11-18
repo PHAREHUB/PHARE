@@ -99,17 +99,22 @@ public:
             messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
             fkMessenger.regridElectric(E, hierarchy, levelNumber, oldLevel,
                                        initDataTime - 0.5 * dt);
-            if (isRoot)
-                fkMessenger.fillMagneticGhosts(B, level, initDataTime);
         }
         else if (isRoot)
-        {
             model.initialize(level);
-            messenger.fillRootGhosts(model, level, initDataTime);
-            fkMessenger.fillMagneticGhosts(B, level, initDataTime);
-        }
         else
             messenger.initLevel(hierarchy, model, level, initDataTime);
+
+        // every copy of a shared E or B node from its owner patch, as after every later fill:
+        // nothing else re-synchronises them, and the shared E/B pairs amplify a difference. In
+        // Debug, a difference above round-off (a non periodic user function) stops the run first
+        fkMessenger.ownSharedElectromag(E, B, level);
+        if (isRoot)
+        {
+            if (!duringRun)
+                messenger.fillRootGhosts(model, level, initDataTime);
+            fkMessenger.fillMagneticGhosts(B, level, initDataTime);
+        }
 
         // overlapping patches were each filled over their whole domain,
         // keep particles only on the patch owning their cell
@@ -150,8 +155,7 @@ public:
 
         fkMessenger.prepareStep(fkModel, level, initDataTime);
 
-        // every copy of a shared E or B node must start equal: nothing re-synchronises them, the
-        // shared E/B pairs amplify a difference (a non periodic user function, a regrid seed)
+        // the owner fills left every copy of a shared E or B node equal
         PHARE_DEBUG_DO(fkMessenger.checkSharedElectromagCopies(E, B, level);)
     }
 
