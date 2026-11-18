@@ -303,6 +303,15 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
 
     startTime_   = integrator_->currentTime();
     currentTime_ = startTime_;
+
+    if (auto const pythonStartTime = cppdict::get_value(dict, "simulation/start_time", startTime_);
+        pythonStartTime != startTime_)
+    {
+        std::ostringstream oss;
+        oss << std::setprecision(17) << "Simulator: Python start time " << pythonStartTime
+            << " differs from the restored time " << startTime_;
+        throw std::runtime_error(oss.str());
+    }
     multiphysInteg_->setRestartTime(startTime_);
 }
 

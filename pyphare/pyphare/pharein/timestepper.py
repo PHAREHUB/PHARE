@@ -46,6 +46,7 @@ class TimeStepper(ABC):
         avoid a circular import between this module and pharein.initialize.
         """
         dp.add_enum_int("simulation/time_step/mode", "TimeStepType", self.mode)
+        dp.add_double("simulation/start_time", self.start_time)
         dp.add_double("simulation/final_time", self.final_time)
 
 
