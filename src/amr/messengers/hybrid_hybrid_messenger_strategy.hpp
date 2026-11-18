@@ -582,6 +582,18 @@ namespace amr
             // TODO : still useful?
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
 
+            // Ampere and Ohm at initialization and the first particle push read the B ghosts.
+            // Unfilled, they hold the initial condition at their own coordinate, which across a
+            // periodic boundary is not the value of the domain node they stand for.
+            auto& B = hybridModel.state.electromag.B;
+            fillMagneticGhosts(B, level, initDataTime);
+
+            // A face on a periodic boundary is initialised twice, at x=0 and at x=L: make every
+            // patch holding it agree once, before anything reads B. This must follow the ghost
+            // fill: the max runs over whole ghost overlaps, so ghosts still holding initializer
+            // values would leak into the interior.
+            magMaxRootRefiners_.fill(B, levelNumber, initDataTime);
+
             // at some point in the future levelGhostParticles could be filled with injected
             // particles depending on the domain boundary condition.
             //
@@ -668,6 +680,7 @@ namespace amr
             {
                 elecGhostsRefiners_.registerLevel(hierarchy, level);
                 magGhostsRefiners_.registerLevel(hierarchy, level);
+                magMaxRootRefiners_.registerLevel(hierarchy, level);
             }
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
@@ -811,6 +824,11 @@ namespace amr
                     vecFieldTimeOp_, info->ghostMagnetic[i], nonOverwriteInteriorTFfillPattern,
                     magneticPatchStratPerGhostRefiner_[i]);
             }
+
+            magMaxRootRefiners_.addStaticRefiner(
+                info->modelMagnetic, info->modelMagnetic, nullptr, info->modelMagnetic,
+                std::make_shared<
+                    TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
 
             // J has no refiner: it is never communicated, each level computes it
@@ -1040,6 +1058,8 @@ namespace amr
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+        // root level only, for the one-time B equalization in fillRootGhosts
+        VecFieldGhostMaxRefinerPool magMaxRootRefiners_{resourcesManager_};
 
         // moment ghosts
         // There is no level ghost refiner for the moments: on level ghost nodes they come
