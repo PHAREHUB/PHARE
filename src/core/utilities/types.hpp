@@ -550,6 +550,13 @@ struct SetMax
 };
 
 template<typename D>
+struct SetMin
+{
+    void operator()(auto& d0) { d = std::min(d, d0); }
+    D& d;
+};
+
+template<typename D>
 struct PlusEqualsProduct
 {
     void operator()(auto& d0, auto& o) { d += d0 * o; }

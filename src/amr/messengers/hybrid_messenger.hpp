@@ -375,6 +375,11 @@ namespace amr
             strat_->fillCurrentGhosts(J, level, fillTime);
         }
 
+        void checkSharedElectromagCopies(VecFieldT& E, VecFieldT& B, level_t& level)
+        {
+            strat_->checkSharedElectromagCopies(E, B, level);
+        }
+
         void fillChargeDensityBorders(FieldT& rho, level_t& level, double const fillTime)
         {
             strat_->fillChargeDensityBorders(rho, level, fillTime);

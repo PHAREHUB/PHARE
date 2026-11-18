@@ -50,6 +50,8 @@
 #include <cmath>
 #include <span>
 #include <sstream>
+#include <array>
+#include <optional>
 
 
 
@@ -540,6 +542,37 @@ namespace amr
                 HybridMessengerStrategy<HybridModel>::fillCurrentBorders(J, level, fillTime);
         }
 
+        // Debug: every copy of a node shared by patches of the level must be equal in E and B.
+        // Nothing re-synchronises them during the run, and the shared E/B pairs amplify a
+        // difference: a seed (a non periodic user function on a periodic border, a regrid) is
+        // reported here with its node and spread, never reconciled
+        void checkSharedElectromagCopies(VecFieldT& E, VecFieldT& B, level_t& level) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                assert(electromagBorderMaxRefiners_.size() == 2);
+                assert(electromagBorderMinRefiners_.size() == 2);
+                std::ostringstream report;
+                reportSharedCopySpread_(E, electromagBorderMaxRefiners_[0],
+                                        electromagBorderMinRefiners_[0], level, report);
+                reportSharedCopySpread_(B, electromagBorderMaxRefiners_[1],
+                                        electromagBorderMinRefiners_[1], level, report);
+                auto const local = !report.str().empty();
+                if (mpi::any(local))
+                {
+                    if (local)
+                        std::cerr << "shared E/B copies differ on rank " << mpi::rank()
+                                  << ":\n"
+                                  << report.str() << std::flush;
+                    throw std::runtime_error("copies of a shared E or B node differ on level "
+                                             + std::to_string(level.getLevelNumber())
+                                             + ", see the report on stderr");
+                }
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::checkSharedElectromagCopies(E, B, level);
+        }
+
         // copies the ghost nodes of J from the patches that own them, after the border sum
         void fillCurrentGhosts(VecFieldT& J, level_t& level, double const fillTime) override
         {
@@ -908,6 +941,13 @@ namespace amr
             for (auto& refiner : chargeDensityBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
+            PHARE_DEBUG_DO({
+                for (auto& refiner : electromagBorderMaxRefiners_)
+                    refiner.registerLevel(hierarchy, level);
+                for (auto& refiner : electromagBorderMinRefiners_)
+                    refiner.registerLevel(hierarchy, level);
+            })
+
             for (auto& refiner : ionFluxBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
             for (auto& refiner : ionDensityBorderMaxRefiners_)
@@ -1202,6 +1242,20 @@ namespace amr
                         info->modelChargeDensity,
                         std::make_shared<
                             FieldFillPattern<dimension, /*overwrite_interior=*/true>>());
+
+                // Debug: max and min over the copies of the shared E and B nodes, from the
+                // physical nodes of each patch (checkSharedElectromagCopies)
+                PHARE_DEBUG_DO({
+                    for (auto const& name : {info->modelElectric, info->modelMagnetic})
+                    {
+                        electromagBorderMaxRefiners_.emplace_back(resourcesManager_)
+                            .addStaticRefiner(name, name, nullptr, name,
+                                              overwriteInteriorTFfillPattern);
+                        electromagBorderMinRefiners_.emplace_back(resourcesManager_)
+                            .addStaticRefiner(name, name, nullptr, name,
+                                              overwriteInteriorTFfillPattern);
+                    }
+                })
             }
 
             assert(info->maxBorderFields.size() == 1); // charge density
@@ -1297,6 +1351,86 @@ namespace amr
             return time;
         }
 
+        // the local index of the flat (row major) node of the field, if it is a physical node
+        static std::optional<core::Point<std::uint32_t, dimension>>
+        physicalNode_(std::size_t flat, FieldT const& field, GridLayoutT const& layout)
+        {
+            auto const shape = field.shape();
+            core::Point<std::uint32_t, dimension> local;
+            for (std::size_t d = dimension; d-- > 0;)
+            {
+                auto const direction = static_cast<core::Direction>(d);
+                local[d]             = flat % shape[d];
+                flat /= shape[d];
+                if (local[d] < layout.physicalStartIndex(field, direction)
+                    or local[d] > layout.physicalEndIndex(field, direction))
+                    return std::nullopt;
+            }
+            return local;
+        }
+
+        // Debug: the spread (max - min) over the copies of every physical node of V shared with
+        // other patches of the level, from the border max and min fills. V is restored after
+        // each fill. Appends one line per patch and component with a non-zero spread
+        template<typename MaxPool, typename MinPool>
+        void reportSharedCopySpread_(VecFieldT& V, MaxPool const& maxFill, MinPool const& minFill,
+                                     level_t& level, std::ostream& report)
+        {
+            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
+            using value_type = FieldT::value_type;
+            using Copy       = std::array<std::vector<value_type>, N>;
+            auto const save  = [&](Copy& copy) {
+                for (std::uint8_t c = 0; c < N; ++c)
+                    copy[c].assign(V[c].data(), V[c].data() + V[c].size());
+            };
+            auto const restore = [&](Copy const& copy) {
+                for (std::uint8_t c = 0; c < N; ++c)
+                    std::memcpy(V[c].data(), copy[c].data(), V[c].size() * sizeof(value_type));
+            };
+            auto const levelNumber = level.getLevelNumber();
+
+            std::vector<Copy> kept, maxed;
+            for (auto patch : resourcesManager_->enumerate(level, V))
+                save(kept.emplace_back());
+
+            maxFill.fill(levelNumber, 0.);
+            std::size_t p = 0;
+            for (auto patch : resourcesManager_->enumerate(level, V))
+            {
+                save(maxed.emplace_back());
+                restore(kept[p++]);
+            }
+
+            minFill.fill(levelNumber, 0.);
+            p = 0;
+            for (auto patch : resourcesManager_->enumerate(level, V))
+            {
+                auto const layout = layoutFromPatch<GridLayoutT>(*patch);
+                for (std::uint8_t c = 0; c < N; ++c)
+                {
+                    value_type worst = 0;
+                    std::size_t at   = 0;
+                    for (std::size_t i = 0; i < V[c].size(); ++i)
+                        if (auto const spread = maxed[p][c][i] - V[c].data()[i];
+                            spread > worst and physicalNode_(i, V[c], layout))
+                        {
+                            worst = spread;
+                            at    = i;
+                        }
+                    if (worst > 0)
+                    {
+                        auto const local = *physicalNode_(at, V[c], layout);
+                        report << std::setprecision(17) << "level " << levelNumber << " patch "
+                               << patch->getBox() << " " << V[c].name() << " node (AMR) "
+                               << layout.localToAMR(local) << ": copies from "
+                               << V[c].data()[at] << " to " << maxed[p][c][at] << ", spread "
+                               << worst << " (largest on this patch)\n";
+                    }
+                }
+                restore(kept[p++]);
+            }
+        }
+
         // the max after a border sum may only move a physical node by round-off: a larger move
         // means a copy missed a contribution, which the max would hide (#1494). Ghost nodes are
         // left out, the ghost fill replaces them. Scale: the patch's largest |value|
@@ -1311,23 +1445,11 @@ namespace amr
                 scale = std::max(scale, std::abs(v));
             auto const tolerance = 16 * std::numeric_limits<value_type>::epsilon() * scale;
 
-            auto const layout     = layoutFromPatch<GridLayoutT>(patch);
-            auto const shape      = before.shape();
-            auto const isPhysical = [&](std::size_t flat) { // row major
-                for (std::size_t d = dimension; d-- > 0;)
-                {
-                    auto const direction = static_cast<core::Direction>(d);
-                    auto const index     = flat % shape[d];
-                    flat /= shape[d];
-                    if (index < layout.physicalStartIndex(before, direction)
-                        or index > layout.physicalEndIndex(before, direction))
-                        return false;
-                }
-                return true;
-            };
+            auto const layout = layoutFromPatch<GridLayoutT>(patch);
 
             for (std::size_t i = 0; i < before.size(); ++i)
-                if (isPhysical(i) and std::abs(values(after)[i] - values(before)[i]) > tolerance)
+                if (physicalNode_(i, before, layout)
+                    and std::abs(values(after)[i] - values(before)[i]) > tolerance)
                 {
                     std::ostringstream message;
                     message << std::setprecision(17) << "border max moved " << before.name()
@@ -1458,6 +1580,7 @@ namespace amr
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
         using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
         using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
+        using VecFieldGhostMinRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMin>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
@@ -1473,6 +1596,9 @@ namespace amr
         //! max over the copies of a shared node, after the two sums above (fully kinetic only)
         std::vector<VecFieldGhostMaxRefinerPool> currentBorderMaxRefiners_;
         std::vector<FieldGhostMaxRefinerPool> chargeDensityBorderMaxRefiners_;
+        //! Debug: max and min over the copies of a shared E (first) and B (second) node
+        std::vector<VecFieldGhostMaxRefinerPool> electromagBorderMaxRefiners_;
+        std::vector<VecFieldGhostMinRefinerPool> electromagBorderMinRefiners_;
 
         std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;

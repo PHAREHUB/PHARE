@@ -159,6 +159,14 @@ namespace amr
             throw std::runtime_error(stratname_ + " does not fill current ghosts");
         }
 
+        // fully kinetic, Debug only: throws if the copies of a node shared by patches of the
+        // level differ in E or B
+        virtual void checkSharedElectromagCopies(VecFieldT& /*E*/, VecFieldT& /*B*/,
+                                                 level_t& /*level*/)
+        {
+            throw std::runtime_error(stratname_ + " does not check shared E and B copies");
+        }
+
         // fully kinetic only: the same for the charge density of the divergence cleaning
         virtual void fillChargeDensityBorders(FieldT& /*rho*/, level_t& /*level*/,
                                               double const /*fillTime*/)

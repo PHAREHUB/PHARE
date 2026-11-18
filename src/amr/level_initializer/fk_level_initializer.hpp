@@ -149,6 +149,10 @@ public:
             startElectric_(level, fkModel, fkMessenger, dt, initDataTime, isRoot);
 
         fkMessenger.prepareStep(fkModel, level, initDataTime);
+
+        // every copy of a shared E or B node must start equal: nothing re-synchronises them, the
+        // shared E/B pairs amplify a difference (a non periodic user function, a regrid seed)
+        PHARE_DEBUG_DO(fkMessenger.checkSharedElectromagCopies(E, B, level);)
     }
 
 private:

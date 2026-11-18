@@ -25,6 +25,7 @@ enum class RefinerType {
     PatchTensorFieldBorderSum,
     PatchFieldBorderMax,
     PatchVecFieldBorderMax,
+    PatchVecFieldBorderMin,
     ExteriorGhostParticles
 };
 
@@ -48,6 +49,7 @@ class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
     using FieldData_t = ResourcesManager::UserField_t::patch_data_type;
 
     using SetMaxOp     = core::SetMax<typename FieldData_t::value_type>;
+    using SetMinOp     = core::SetMin<typename FieldData_t::value_type>;
     using PlusEqualsOp = core::PlusEquals<typename FieldData_t::value_type>;
 
     // hard coded rank cause there's no real tensorfields that use this code yet
@@ -139,6 +141,14 @@ private:
             return algo->createSchedule(
                 level, patchStrat_.get(),
                 std::make_shared<FieldBorderOpTransactionFactory<VecFieldData_t, SetMaxOp>>());
+        }
+
+        // min over the copies of a shared node, with the max above: their spread (Debug check)
+        else if constexpr (Type == RefinerType::PatchVecFieldBorderMin)
+        {
+            return algo->createSchedule(
+                level, patchStrat_.get(),
+                std::make_shared<FieldBorderOpTransactionFactory<VecFieldData_t, SetMinOp>>());
         }
 
         // this createSchedule overload is used to initialize fields.
