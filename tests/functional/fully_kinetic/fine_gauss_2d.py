@@ -8,7 +8,10 @@ sawtooth fix (docs/superpowers/specs/p4/sawtooth_fix_spec.md, point 3). 1D: fine
 
 F on fine primal node (i, j) at a coarse time t, as in 1D: the dumped fine E (ghosts included, so
 the boundary nodes use the ghosts the solver filled from the coarse E), rho at x - (dt_f / 2) v
-from the domain and level ghost particles of the fine level, filtered N times as the solver does.
+from the domain particles of the fine level and the level ghost particles of the node's owner
+patch (smallest GlobalId) only, filtered N times as the solver does. The solver deposits each
+patch's level ghost band on that patch alone, and near a junction the bands of two patches
+overlap and hold the same particles: summing every band counts them twice.
 At coarse times and mid steps (fine dumps on every substep): per boundary node the jump (coarse
 time mean - mid step mean) and the two-phase mean from step JUMP_FROM on.
 
@@ -126,16 +129,17 @@ def simulate(args, seed):
     return diag_dir, times, time.perf_counter() - start
 
 
-def particles(diag_dir, pop, quantity, t, level):
-    """positions in cells of the level (global index + delta), (v_x, v_y), weights"""
+def particles(diag_dir, pop, quantity, t, level, patch_name=None):
+    """positions in cells of the level (global index + delta), (v_x, v_y), weights; of the
+    patch patch_name only if given"""
     import h5py
 
     xs, vs, ws = [], [], []
     with h5py.File(f"{diag_dir}/ions_pop_{pop}_{quantity}.h5", "r") as f:
         key = next(k for k in f["t"] if abs(float(k) - t) < 1e-9)
         group = f["t"][key].get(f"pl{level}")
-        for patch in group.values() if group is not None else []:
-            if "iCell" not in patch:
+        for name, patch in group.items() if group is not None else []:
+            if "iCell" not in patch or patch_name not in (None, name):
                 continue
             xs.append(patch["iCell"][:, :2] + patch["delta"][:, :2])
             vs.append(patch["v"][:, :2])
@@ -162,13 +166,15 @@ def deposit(rho, pos, weights, lower, order, periodic=False):
         np.add.at(rho, tuple(index.T), w)
 
 
-def charge(diag_dir, t, level, lower, n, order, quantities, periodic=False):
+def charge(
+    diag_dir, t, level, lower, n, order, quantities, periodic=False, patch_name=None
+):
     """rho at x - (dt_l / 2) v on the n x n global primal nodes from lower, unfiltered"""
     dl, dt = DL / RATIO**level, DT / RATIO**level
     rho = np.zeros((n, n))
     for pop, q in (("protons", 1.0), ("electrons", -1.0)):
         for quantity in quantities:
-            x, v, w = particles(diag_dir, pop, quantity, t, level)
+            x, v, w = particles(diag_dir, pop, quantity, t, level, patch_name)
             deposit(rho, x - 0.5 * dt * v / dl, q * w, lower, order, periodic)
     return rho
 
@@ -232,21 +238,39 @@ def fine_e(diag_dir, t):
     return E, mismatch
 
 
+def node_owners(diag_dir, t):
+    """per fine primal node of the box (n x n), the name of its owner patch: the patch of
+    smallest GlobalId (rank, local index) among those holding the node, as the solver"""
+    import h5py
+
+    lo, n = fine_nodes()
+    with h5py.File(f"{diag_dir}/ions_pop_protons_levelGhost.h5", "r") as f:
+        key = next(k for k in f["t"] if abs(float(k) - t) < 1e-9)
+        patches = f["t"][key]["pl1"]
+        boxes = {
+            name: (p.attrs["lower"][:2], p.attrs["upper"][:2] + 1)
+            for name, p in patches.items()
+        }
+    owners = np.empty((n, n), dtype=object)
+    for name in sorted(boxes, key=lambda s: tuple(map(int, s[1:].split("#"))))[::-1]:
+        (xl, yl), (xu, yu) = (np.asarray(c) - lo for c in boxes[name])
+        owners[xl : xu + 1, yl : yu + 1] = name
+    return owners
+
+
 def fine_residual(diag_dir, t, order, passes):
-    """F on the fine primal nodes of the box (global lo + (0..n-1) per direction), and the
-    largest patch disagreement on E"""
+    """F on the fine primal node (global lo + (0..n-1) per direction) of the box, from the rho
+    of its owner patch, and the largest patch disagreement on E"""
     dl = DL / RATIO
     lo, n = fine_nodes()
-    rho = charge(
-        diag_dir,
-        t,
-        1,
-        (lo - passes,) * 2,
-        n + 2 * passes,
-        order,
-        ("domain", "levelGhost"),
-    )
-    rho = binomial(rho, passes)[passes : n + passes, passes : n + passes]
+    nodes = ((lo - passes,) * 2, n + 2 * passes, order)
+    domain = charge(diag_dir, t, 1, *nodes, ("domain",))
+    owners = node_owners(diag_dir, t)
+    rho = np.zeros((n, n))
+    for name in set(owners.ravel()):
+        band = charge(diag_dir, t, 1, *nodes, ("levelGhost",), patch_name=name)
+        own = owners == name
+        rho[own] = binomial(domain + band, passes)[passes : n + passes, passes : n + passes][own]
     E, mismatch = fine_e(diag_dir, t)
     div = np.zeros((n, n))
     for a, b in itertools.product(range(n), repeat=2):
