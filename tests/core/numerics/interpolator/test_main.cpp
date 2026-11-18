@@ -295,6 +295,50 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
+// the fields repeat every `period` nodes: a particle at the same delta in cells `period` apart
+// sees the same node values, so it must get the same E and B bit for bit, whatever its cell's
+// index in the patch (the weights must not depend on where the patch starts)
+TYPED_TEST(A1DInterpolator, givesTheSameFieldsAtTheSameDeltaInEveryCell)
+{
+    constexpr std::size_t period = 7;
+
+    for (auto* vecfield : {&this->E, &this->B})
+        for (auto const c : {Component::X, Component::Y, Component::Z})
+        {
+            auto& field     = (*vecfield)(c);
+            auto const comp = static_cast<std::size_t>(c);
+            for (std::size_t ix = 0; ix < field.shape()[0]; ++ix)
+                field(ix) = 1. + 0.1 * static_cast<double>((ix * 3 + comp) % period)
+                            + 0.013 * static_cast<double>(ix % period);
+        }
+    this->B.set_on(this->em.B);
+    this->E.set_on(this->em.E);
+
+    std::mt19937_64 rng{42};
+    std::uniform_real_distribution<double> uniform{0., 1.};
+    auto particle = *this->particles.begin();
+
+    int constexpr first = 2;
+    for (int n = 0; n < 1000; ++n)
+    {
+        particle.delta[0]   = uniform(rng);
+        particle.iCell[0]   = first;
+        auto const [rE, rB] = this->interp(particle, this->em, this->layout);
+        for (int cell = first + period; cell < static_cast<int>(this->nx) - 2; cell += period)
+        {
+            particle.iCell[0] = cell;
+            auto const [E, B] = this->interp(particle, this->em, this->layout);
+            for (std::size_t i = 0; i < 3; ++i)
+            {
+                ASSERT_EQ(E[i], rE[i]) << "delta " << particle.delta[0] << " cell " << cell;
+                ASSERT_EQ(B[i], rB[i]) << "delta " << particle.delta[0] << " cell " << cell;
+            }
+        }
+    }
+}
+
+
+
 template<typename InterpolatorT>
 class A2DInterpolator : public ::testing::Test
 {

@@ -540,15 +540,17 @@ protected:
         auto iCell = layout.AMRToLocal(Point{iCell_});
         for (auto iDim = 0u; iDim < dimension; ++iDim)
         {
-            startIndex_[iDim]
-                = iCell[iDim] - computeStartLeftShift<CenteringT, centering>(delta[iDim]);
+            auto const shift  = computeStartLeftShift<CenteringT, centering>(delta[iDim]);
+            startIndex_[iDim] = iCell[iDim] - shift;
 
-            double normalizedPos = iCell[iDim] + delta[iDim];
-
+            // the position relative to the start index, from delta alone: (iCell + delta) -
+            // startIndex would round at the magnitude of the local index, so the weights of a
+            // particle would depend on where its patch starts
+            double relativePos = delta[iDim] + shift;
             if constexpr (centering == QtyCentering::dual)
-                normalizedPos -= dual_offset;
+                relativePos = delta[iDim] + (shift - dual_offset); // shift - .5 is exact
 
-            weightComputer_.computeWeight(normalizedPos, startIndex_[iDim], weights_[iDim]);
+            weightComputer_.computeWeight(relativePos, 0, weights_[iDim]);
         }
     }
 
