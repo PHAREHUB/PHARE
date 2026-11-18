@@ -54,13 +54,12 @@ class RecordingTest(SimulatorTest):
             self.register_diag_dir_for_cleanup(out)
         return out
 
-    def run_recording(
+    def build(
         self,
         restart_options,
         diag_dir="diags",
         diags=False,
         diag_timestamps=None,
-        advance_past_end=False,
         **time_kwargs,
     ):
         out = self.out()
@@ -97,7 +96,10 @@ class RecordingTest(SimulatorTest):
             )
         if diag_timestamps is not None:
             ph.MHDDiagnostics(quantity="rho", write_timestamps=diag_timestamps)
+        return ph.global_vars.sim
 
+    def run_recording(self, restart_options, advance_past_end=False, **kwargs):
+        self.build(restart_options, **kwargs)
         simulator.exit_on_exception = False
         try:
             self.simulator = Simulator(ph.global_vars.sim).initialize()
@@ -240,6 +242,53 @@ class RestartTimeTest(RecordingTest):
 
         if cpp.mpi_rank() == 0:
             self.assertEqual(self.diag_times("diag_B"), self.diag_times("diag_A")[10:])
+
+    def test_restart_timestamps_tolerate_float64_rounding_of_tiny_steps(self):
+        tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
+        sim = self.build(
+            dict(restart_time=0.3, timestamps=[0.30001]),
+            time_step=1e-9,
+            time_step_nbr=10000,
+        )
+        self.assertEqual(sim.start_time(), tA[3])
+        self.assertEqual(
+            list(sim.restart_options["timestamps"]), [sim.time_stepper.final_time]
+        )
+
+    def test_constant_restart_off_the_grid_of_the_new_dt(self):
+        dt, nbr = 0.07, 3
+        tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
+        start = tA[3]
+        with self.assertRaisesRegex(
+            RuntimeError, "inconsistent with simulation.time_step"
+        ):
+            self.build(
+                dict(restart_time=0.3),
+                diag_timestamps=[start + dt / 2],
+                time_step=dt,
+                time_step_nbr=nbr,
+            )
+        with self.assertRaisesRegex(
+            RuntimeError, "inconsistent with simulation.time_step"
+        ):
+            self.build(
+                dict(restart_time=0.3, timestamps=[start + 1.5 * dt]),
+                time_step=dt,
+                time_step_nbr=nbr,
+            )
+        tB = self.run_recording(
+            dict(restart_time=0.3, timestamps=[start + nbr * dt]),
+            diag_dir="diag_B",
+            diags=True,
+            time_step=dt,
+            time_step_nbr=nbr,
+        )
+        self.assertEqual(tB[0], start)
+        self.assertEqual(len(tB), nbr + 1)
+        from pyphare import cpp
+
+        if cpp.mpi_rank() == 0:
+            self.assertEqual(len(self.diag_times("diag_B")), nbr + 1)
 
 
 if __name__ == "__main__":

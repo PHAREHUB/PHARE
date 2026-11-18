@@ -104,12 +104,8 @@ def validate_timestamps(clazz, key, **kwargs):
     if (
         sim.time_stepper.mode == "constant"
         and sim.time_stepper.time_step_nbr > 0
-        and not np.all(
-            np.abs(
-                timestamps / sim.time_stepper.time_step
-                - np.rint(timestamps / sim.time_stepper.time_step)
-                < 1e-9
-            )
+        and not phare_utilities.on_step_grid(
+            timestamps, init_time, sim.time_stepper.time_step
         )
     ):
         raise RuntimeError(

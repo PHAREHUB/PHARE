@@ -103,6 +103,11 @@ def snap_to(times, *instants, rel_tol=1e-12):
     return times
 
 
+def on_step_grid(times, start, step, steps_tol=1e-6):
+    steps = (np.asarray(times, dtype=float) - start) / step
+    return bool(np.all(np.abs(steps - np.rint(steps)) < steps_tol))
+
+
 def fp_less_equal(a, b, atol=1e-6):
     return fp_equal(a, b, atol=atol) or a < b
 
