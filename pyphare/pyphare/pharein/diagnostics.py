@@ -110,6 +110,7 @@ def validate_timestamps(clazz, key, **kwargs):
     ):
         raise RuntimeError(
             f"Error: {clazz}.{key} is inconsistent with simulation.time_step"
+            f" (steps of {sim.time_stepper.time_step} from start time {init_time})"
         )
 
     return timestamps

@@ -147,6 +147,7 @@ def validate(sim):
         ):
             raise RuntimeError(
                 "Error: restart_options timestamps is inconsistent with simulation.time_step"
+                f" (steps of {sim.time_stepper.time_step} from start time {init_time})"
             )
 
         sim.restart_options["timestamps"] = conserve_existing(sim)

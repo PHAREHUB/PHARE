@@ -263,7 +263,8 @@ class RestartTimeTest(RecordingTest):
         tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
         start = tA[3]
         with self.assertRaisesRegex(
-            RuntimeError, "inconsistent with simulation.time_step"
+            RuntimeError,
+            r"inconsistent with simulation.time_step \(steps of 0.07 from start time",
         ):
             self.build(
                 dict(restart_time=0.3),
@@ -272,7 +273,8 @@ class RestartTimeTest(RecordingTest):
                 time_step_nbr=nbr,
             )
         with self.assertRaisesRegex(
-            RuntimeError, "inconsistent with simulation.time_step"
+            RuntimeError,
+            r"inconsistent with simulation.time_step \(steps of 0.07 from start time",
         ):
             self.build(
                 dict(restart_time=0.3, timestamps=[start + 1.5 * dt]),
@@ -343,6 +345,18 @@ class RestartTimeTest(RecordingTest):
         self.assertEqual(tB[0], tA[10])
         self.assertEqual(len(tB), 21)
         self.assert_ulp_close(tB, tA[10:])
+        if cpp.mpi_rank() == 0:
+            folder = cpp.cpp_etc_lib().restart_path_for_time(
+                f"{self.out()}/restarts", 10 * dt
+            )
+            code = (
+                "from pyphare import cpp; "
+                f"print(repr(cpp.cpp_etc_lib().restored_time({folder!r})))"
+            )
+            out = subprocess.run(
+                [sys.executable, "-c", code], capture_output=True, text=True, check=True
+            )
+            self.assertEqual(float(out.stdout.strip().splitlines()[-1]), tA[10])
 
     def test_restored_time_without_mpi_layout_match(self):
         tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
