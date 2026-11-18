@@ -266,7 +266,7 @@ private:
     }
 
     // dump_level only writes levels in [minLevel, maxLevel], but NSteps grows on every dump
-    bool isDumpedLevel(std::size_t const ilvl) const
+    NO_DISCARD bool isDumpedLevel(std::size_t const ilvl) const
     {
         auto const& h5Writer = typewriter->h5Writer_;
         return ilvl >= h5Writer.minLevel and ilvl <= h5Writer.maxLevel;
