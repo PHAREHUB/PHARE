@@ -3,9 +3,10 @@
 
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/types.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/meta/container_meta.hpp"
 #include "mpi/mpi_utils.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/span.hpp"
 
 
 #include "highfive/H5File.hpp"
@@ -173,7 +174,7 @@ public:
         )
         // clang-format on
 
-        constexpr bool data_is_vector = core::is_std_vector_v<Data>;
+        constexpr bool data_is_vector = core::IsStdVector<Data>;
 
         auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
             if constexpr (data_is_vector)
@@ -212,7 +213,7 @@ public:
     template<typename Data>
     void write_attributes_per_mpi(std::string path, std::string key, Data const& data)
     {
-        constexpr bool data_is_vector = core::is_std_vector_v<Data>;
+        constexpr bool data_is_vector = core::IsStdVector<Data>;
 
         auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
             if constexpr (data_is_vector)
@@ -306,7 +307,7 @@ private:
     template<typename Size>
     static bool is_zero(Size size)
     {
-        if constexpr (core::is_iterable_v<Size>)
+        if constexpr (core::Spannable<Size>)
             return std::all_of(size.begin(), size.end(), [](auto const& val) { return val == 0; });
 
         else

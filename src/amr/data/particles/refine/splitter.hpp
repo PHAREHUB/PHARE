@@ -1,7 +1,8 @@
 #ifndef PHARE_SPLITTER_HPP
 #define PHARE_SPLITTER_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/tuple.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 
 #include "amr/amr_constants.hpp"
@@ -18,7 +19,7 @@
 
 namespace PHARE::amr
 {
-// see meta_utilities.hpp for list of declared permutations.
+// see possibleSimulators() in simulator/simulator_def.hpp for the declared permutations.
 
 /** \brief A SplitPattern identifies where refined particles will be placed
  * relative to a coarse particle and their weight.

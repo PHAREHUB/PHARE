@@ -1,7 +1,7 @@
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
 #include "core/data/particles/particle_array.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"

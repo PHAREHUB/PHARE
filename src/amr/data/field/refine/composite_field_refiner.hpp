@@ -6,7 +6,9 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/numeric.hpp"
 #include "core/utilities/box/box_spans.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"

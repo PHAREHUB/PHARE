@@ -5,7 +5,6 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/utilities/types.hpp"
 #include "core/def.hpp"
 
 namespace PHARE
