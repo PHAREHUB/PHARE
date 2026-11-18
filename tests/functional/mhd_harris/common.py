@@ -17,16 +17,16 @@ ph.NO_GUI()
 full_cells = (160, 80)
 dl = (0.375, 0.375)
 Lx, Ly = (n * d for n, d in zip(full_cells, dl))
-time_step = 0.005
+time_step = {"mode": "adaptive", "cfl_wave": 0.8}
 
 hall = True
 
 
 def timestamps(final_time):
-    return np.arange(0, final_time + time_step, final_time / 5)
+    return np.linspace(0, final_time, 6)
 
 
-def config(cells, final_time, diag_dir, time_step=time_step, levels=2, **kwargs):
+def config(cells, final_time, diag_dir, levels=2, **kwargs):
     L = 0.5
 
     sim = ph.Simulation(
@@ -170,6 +170,21 @@ def dumped_times(diag_dir):
         return sorted(float(t) for t in f["t"])
 
 
+def count_nans(diag_dir):
+    import h5py
+
+    n = 0
+    with h5py.File(f"{diag_dir}/EM_B.h5", "r") as f:
+
+        def visit(_, obj):
+            nonlocal n
+            if isinstance(obj, h5py.Dataset) and obj.dtype.kind == "f":
+                n += int(np.isnan(obj[...]).sum())
+
+        f.visititems(visit)
+    return n
+
+
 class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -182,8 +197,9 @@ class HarrisTest(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    def check(self, diag_dir):
-        pass
+    def check(self, diag_dir, final_time):
+        self.assertEqual(len(dumped_times(diag_dir)), len(timestamps(final_time)))
+        self.assertEqual(count_nans(diag_dir), 0, "NaN in B")
 
     def run_case(self, cells, final_time, diag_dir, **kwargs):
         self.register_diag_dir_for_cleanup(diag_dir)
@@ -192,9 +208,7 @@ class HarrisTest(SimulatorTest):
         if not sim.dry_run and cpp.mpi_rank() == 0:
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
             plot_dir.mkdir(parents=True, exist_ok=True)
-            adaptive = isinstance(kwargs.get("time_step"), dict)
-            times = dumped_times(diag_dir) if adaptive else timestamps(final_time)
-            plot(diag_dir, plot_dir, times)
-            self.check(diag_dir)
+            plot(diag_dir, plot_dir, dumped_times(diag_dir))
+            self.check(diag_dir, final_time)
         cpp.mpi_barrier()
         return self

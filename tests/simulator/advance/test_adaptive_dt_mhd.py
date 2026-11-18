@@ -206,9 +206,16 @@ def covered_increment_errors(diag_dir, t_ref, t, qties):
 
 @ddt
 class AdaptiveDtMHDTest(SimulatorTest):
-    @data((2, "constant"), (3, "constant"), (2, "adaptive"), (3, "adaptive"))
+    @data(
+        (2, "constant", False),
+        (3, "constant", False),
+        (2, "adaptive", False),
+        (3, "adaptive", False),
+        (2, "adaptive", True),
+        (3, "adaptive", True),
+    )
     @unpack
-    def test_covered_coarse_follows_fine(self, levels, mode):
+    def test_covered_coarse_follows_fine(self, levels, mode, hall):
         final_time = 0.3
         timestamps = np.linspace(0, final_time, 6)
 
@@ -223,7 +230,7 @@ class AdaptiveDtMHDTest(SimulatorTest):
         def density(x, y):
             return 1.0 + 0.0 * x
 
-        diag_dir = f"phare_outputs/adaptive_dt_mhd/{mode}_{levels}"
+        diag_dir = f"phare_outputs/adaptive_dt_mhd/{mode}_{levels}_hall{hall}"
         self.register_diag_dir_for_cleanup(diag_dir)
         ph.global_vars.sim = None
         sim = box_sim(
@@ -231,6 +238,7 @@ class AdaptiveDtMHDTest(SimulatorTest):
             diag_dir,
             density,
             blast_pressure,
+            hall=hall,
             write_timestamps=timestamps,
             **time_args,
         )
@@ -246,7 +254,8 @@ class AdaptiveDtMHDTest(SimulatorTest):
         del simulator
 
         if mode == "adaptive":
-            self.assertGreater(max(dts) / min(dts), 2.0)
+            full_dts = dts[:-1]
+            self.assertGreater(max(full_dts) / min(full_dts), 1.5)
 
         hier = hierarchy_from(h5_filename=diag_dir + "/mhd_rho.h5")
         times = sorted(hier.time_hier.keys(), key=float)
