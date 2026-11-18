@@ -55,6 +55,9 @@ if(HighFive)
   # T9 residual: a seeded B_z in vacuum does not grow with a refined box (~40 s, Debug)
   phare_python3_exec(10      fully_kinetic_amr_vacuum_stability test_fully_kinetic_amr_vacuum_stability.py ${CMAKE_CURRENT_BINARY_DIR})
   phare_test_labels(fully_kinetic_amr_vacuum_stability physics)
+  # P4 with plasma: the box's rms B_z grows as on one level, fitted rate (~135 s, Debug)
+  phare_python3_exec(10      fully_kinetic_amr_stability test_fully_kinetic_amr_stability.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_test_labels(fully_kinetic_amr_stability nightly physics)
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)

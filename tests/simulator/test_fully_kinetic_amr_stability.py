@@ -5,28 +5,39 @@ waves.py 1 --refinement-box 8,23 --seeds 1, found 11-17).
 
 The 1D Langmuir case of tests/functional/fully_kinetic/waves.py (32 cells, a standing electron
 velocity wave v0 sin(kx), T_e = 0.04, T_i = 0.01, no B), order 1, with a box over root cells 8 to
-23 and the refined runs' options (one filter pass, Marder s = 0.5), and the same run on one level.
-On one level the transverse fields stay at the noise level; with the box and stale fine B ghosts
-at the first substep after the reflux, B_z and E_y grew at the coarse grid scale (gamma about 4.4
-per unit time, 0.09 w_pe) until an electron passed c.
-Checks: on each level of the box run, the growth of max |B_z| after t = 0.3 (its max after over
-its value at t = 0.3) is below MAX_RELATIVE_GROWTH times that of the one level run.
+23 and the refined runs' options (one filter pass, Marder s = 0.5, boundary_cleaning_mask on),
+and the same run on one level. Seed 0: protons 1, electrons 2 (seed s: 1 + 10 s, 2 + 10 s), 100
+particles per cell and species, 1200 coarse steps (t = 2.4).
+Check: on each level of the box run, the growth rate of the box region's rms B_z (sqrt of its
+mean B_z^2 over the box cells; least squares fit of its log against t in [0.3, 2.4]) minus the
+same rate on the one level run is below MAX_GROWTH_RATE = 0.5 per unit time. This is pV's
+border characterisation metric ("rms box", build/db/border/summary.py, 11-18), on the box cells:
+pV's harness (bq.py) took 2 ghost values per side where the dumps have 4, so its window sits 2
+cells left of the box (on the fine level, 2 ghost cells in, the last 2 box cells out). The fields
+are the same (this test's seed 0 runs are bitwise pV's); on pV's window this test's fit gives pV's
+seed 0 numbers exactly (one level +0.169, box +0.111 / +0.103), on the box cells +0.179 and
++0.080 / +0.081: -0.10 / -0.10 (root / fine) relative to one level.
 
-Calibration (Debug, 100 particles per cell and species, 600 coarse steps, seed s: protons
-1 + 10 s, electrons 2 + 10 s; this test is seed 0), growth then ratio to the one level run:
+Why a fitted rate, not the former ratio of maxima (max |B_z| after t = 0.3 over its value at
+0.3, 600 steps, bound 2): at seed 0, mask off, that ratio is 2.59 on the fine level, 2.03 times
+the one level run's, but its window ends at t = 1.2 on a temporary bump (100 particles per cell,
+mask off: +25% amplitude at t ~ 1.2, gone by 2.4, absent with the mask on), not on a growth.
+pV's fitted rates (its window), box minus one level, t in [0.3, 2.4], 3 seeds (mean +- seed s.e.):
 
-    seed   one level   box level 0, 1        box level 0, 1
-                       (bd07c2150)            (B-x partial reflux)
-    0      1.28        1.86 (1.45)  2.83 (2.21)   1.59 (1.24)  2.48 (1.94)
-    1      1.28        1.77 (1.38)  1.90 (1.48)   1.58 (1.23)  1.66 (1.30)
-    2      1.76        1.27 (0.72)  1.35 (0.77)   1.26 (0.72)  1.27 (0.72)
+    particles per cell, mask    fine level       root level
+    100, on                     +0.01 +- 0.04    0.00 +- 0.03   (seed 0: -0.07, -0.06)
+    100, off                    +0.05 +- 0.13    +0.03 +- 0.13  (worst seed: +0.30, fine)
+    400, on                     +0.08 +- 0.04    +0.07 +- 0.05
 
-Stale ghosts (at ee59c5225): 9.2 on the box run, ratio above 7. With B-x the vacuum seeded run
-decays (test_fully_kinetic_amr_vacuum_stability.py) and pV's reproducer at 400 particles per cell
-grows as one level (gamma 0.02, one level 0.02), but the seed 0 fine ratio stays at 1.94: a ratio
-of maxima at 100 particles per cell is noisy (the fine B_z at t = 0.3 is the lowest of the six).
-Unregistered: the vacuum test is the regression test of the interface instability.
-Runtime about 65 s (box 49 s, one level 16 s).
+No border instability at order 1 with one filter pass: the box holds 1.6 to 7 times less fine
+scale power than a uniform fine run, and nothing grows past t ~ 1.6.
+What the bound catches: the stale fine B ghosts after the reflux (before 4103718fb; red test
+ee59c5225) gave a fitted rate of max |B_z| of 4.45 (fine) / 4.20 (root), one level 0.11, at 400
+particles per cell (4103718fb's message): 8 times the bound. That is max |B_z|, not this rms;
+the rms rate of that regime was not measured (UNVERIFIED). This test's former ratio, 9.2 by
+t <= 1.2, alone means ln(9.2) / 0.9 >= 2.5 per unit time, 5 times the bound. No runtime option
+brings that regime back (the B ghost refill is not switchable): no red run.
+Runtime 133 s, Debug (box and one level runs; nightly).
 
 E and B are dumped at every coarse step on both levels (the mode may flip sign every coarse step),
 the domain particles at the start and the end; --diagnose dumps the particles at every coarse step.
@@ -53,10 +64,10 @@ cells, dl, time_step = 32, 0.04, 0.002
 c_over_va, mass_e = 10.0, 0.04
 L = cells * dl
 BOX = (8, 23)
-TIME_STEP_NBR = 600
+TIME_STEP_NBR = 1200
 PPC = 100
-CHECK_FROM = 0.3
-MAX_RELATIVE_GROWTH = 2.0
+FIT_FROM = 0.3
+MAX_GROWTH_RATE = 0.5  # per unit time, box run level minus the one level run
 diag_root = "phare_outputs/fully_kinetic_amr_stability"
 
 
@@ -95,6 +106,7 @@ def config(diag_dir, refined):
         c_over_va=c_over_va,
         current_filter_passes=1,
         divergence_cleaning=0.5,
+        boundary_cleaning_mask=True,
         **refinement,
         strict=False,  # v_th,e / c = 0.1 with a 0.15 drift: warned regime, as waves.py
         diag_options={
@@ -122,20 +134,40 @@ def config(diag_dir, refined):
     return sim
 
 
-def growths(diag_dir):
-    """{level: max |B_z| over the level's patches after CHECK_FROM, over its value at CHECK_FROM}"""
-    series = {}
+def box_cells(level):
+    """first and last cell of the box region in the level's index space"""
+    return BOX[0] * 2**level, (BOX[1] + 1) * 2**level - 1
+
+
+def growth_rates(diag_dir):
+    """{level: growth rate of the box region's rms B_z}, the least squares slope of its log
+    against t, for t >= FIT_FROM (pV's "rms box", build/db/border/summary.py)"""
+    sums = {}  # {level: {t: [sum of B_z^2, cells]}}
     with h5py.File(f"{diag_dir}/EM_B.h5", "r") as f:
-        for t in sorted(f["t"], key=float):
+        for t in f["t"]:
             for level, patches in f["t"][t].items():
-                values = [np.abs(p["EM_B_z"][()]).max() for p in patches.values()]
-                if values:
-                    series.setdefault(int(level[2:]), []).append((float(t), max(values)))
-    out = {}
-    for level, s in sorted(series.items()):
-        times, bz = np.array(s).T
-        out[level] = bz[times > CHECK_FROM].max() / bz[np.argmin(np.abs(times - CHECK_FROM))]
-    return out
+                lv = int(level[2:])
+                lo, hi = box_cells(lv)
+                for p in patches.values():
+                    lower, n = int(p.attrs["lower"][0]), int(p.attrs["nbrCells"][0])
+                    bz = p["EM_B_z"][()]  # dual in 1D: one value per cell, ghosts both sides
+                    ghosts = (len(bz) - n) // 2
+                    first, last = max(lo, lower), min(hi, lower + n - 1)
+                    if first > last:
+                        continue
+                    values = bz[ghosts + first - lower : ghosts + last - lower + 1]
+                    s = sums.setdefault(lv, {}).setdefault(float(t), [0.0, 0])
+                    s[0] += np.sum(values**2)
+                    s[1] += len(values)
+    rates = {}
+    for lv, by_time in sorted(sums.items()):
+        times = np.array(sorted(by_time))
+        cells = np.array([by_time[t][1] for t in times])
+        assert np.all(cells == box_cells(lv)[1] - box_cells(lv)[0] + 1), lv
+        rms = np.sqrt(np.array([by_time[t][0] for t in times]) / cells)
+        fit = (times >= FIT_FROM) & (rms > 0)
+        rates[lv] = np.polyfit(times[fit], np.log(rms[fit]), 1)[0]
+    return rates
 
 
 class FullyKineticAMRStabilityTest(SimulatorTest):
@@ -149,17 +181,20 @@ class FullyKineticAMRStabilityTest(SimulatorTest):
         ph.global_vars.sim = None
         simulator.exit_on_exception = False  # an electron passing c raises
         Simulator(config(diag_dir, refined)).run().reset()
-        return growths(diag_dir)
+        return growth_rates(diag_dir)
 
     def test_transverse_fields_stay_at_noise_level(self):
         one = self.run_case(refined=False)[0]
         box = self.run_case(refined=True)
-        print(f"one level: max |B_z| up to {one:.2f}x its value at t = {CHECK_FROM}")
-        for level, growth in box.items():
-            print(f"box level {level}: {growth:.2f}x, ratio {growth / one:.2f}")
+        print(f"one level: rms B_z growth rate {one:+.3f} per unit time")
+        for level, rate in box.items():
+            print(
+                f"box level {level}: {rate:+.3f}, minus one level {rate - one:+.3f}"
+                f" (bound {MAX_GROWTH_RATE})"
+            )
         self.assertEqual(sorted(box), [0, 1])
-        for level, growth in box.items():
-            self.assertLess(growth / one, MAX_RELATIVE_GROWTH, f"level {level}")
+        for level, rate in box.items():
+            self.assertLess(rate - one, MAX_GROWTH_RATE, f"level {level}")
 
 
 if __name__ == "__main__":
