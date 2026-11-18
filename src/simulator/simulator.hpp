@@ -169,7 +169,6 @@ private:
     double cflWave_                  = 0;
     double cflDiffusive_             = 0;
     int timeStepNbr_                 = 0;
-    std::size_t stepIdx_             = 0;
     double startTime_                = 0;
     double finalTime_                = 0;
     double currentTime_              = 0;
@@ -307,7 +306,11 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
         pythonStartTime != startTime_)
         throw std::runtime_error(
             "Simulator: Python start time " + core::to_string_exact(pythonStartTime)
-            + " differs from the restored time " + core::to_string_exact(startTime_));
+            + " differs from the restored time " + core::to_string_exact(startTime_)
+            + " of restart folder "
+            + cppdict::get_value(dict, "simulation/restarts/loadPath", std::string{})
+            + "; a folder holding dumps for several MPI layouts makes Python read another"
+              " layout's time");
     multiphysInteg_->setRestartTime(startTime_);
 }
 
@@ -583,11 +586,12 @@ double Simulator<opts>::advance()
             last                   = remaining - stable <= sliver * stable;
             dt_                    = last ? remaining : stable;
         }
-        else
-            last = ++stepIdx_ == static_cast<std::size_t>(timeStepNbr_);
 
-        auto const next
-            = last ? finalTime_ : std::min(startTime_ + ((*timeStamper) += dt_), finalTime_);
+        auto const stamped = startTime_ + ((*timeStamper) += dt_);
+        if (timeStepType_ == core::TimeStepType::constant)
+            last = timeStamper->steps() == static_cast<std::size_t>(timeStepNbr_);
+
+        auto const next = last ? finalTime_ : std::min(stamped, finalTime_);
 
         integrator_->advanceTo(next);
         currentTime_ = integrator_->currentTime();

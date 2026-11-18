@@ -9,8 +9,29 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 
 using namespace PHARE::core;
+
+TEST(TimeStampers, countTheirSteps)
+{
+    ConstantTimeStamper constant{0.1};
+    KahanTimeStamper kahan{0.1};
+    constant += 0.1;
+    constant += 0.1;
+    kahan += 0.1;
+    EXPECT_EQ(constant.steps(), 2u);
+    EXPECT_EQ(kahan.steps(), 1u);
+}
+
+TEST(TimeStamperFactory, constantModeNeedsTheStepCount)
+{
+    PHARE::initializer::PHAREDict dict;
+    dict["time_step"]["value"] = 0.1;
+    EXPECT_THROW(std::ignore = TimeStamperFactory::create(dict), std::runtime_error);
+    dict["time_step_nbr"] = 3;
+    EXPECT_NO_THROW(std::ignore = TimeStamperFactory::create(dict));
+}
 
 TEST(ToStringExact, roundTrips)
 {

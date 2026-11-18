@@ -331,6 +331,22 @@ class RestartTimeTest(RecordingTest):
             with h5py.File(path, "a") as f:
                 del f["phare"].attrs["time"]
 
+    def test_restored_time_without_any_stored_time_raises(self):
+        import h5py
+
+        self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
+        if cpp.mpi_rank() == 0:
+            self.strip_phare_time()
+            for path in Path(f"{self.out()}/restarts").glob(
+                "*/restore.*/nodes.*/proc.*"
+            ):
+                with h5py.File(path, "a") as f:
+                    del f["TimeRefinementIntegrator"]
+        cpp.mpi_barrier()
+        folder = cpp.cpp_etc_lib().restart_path_for_time(f"{self.out()}/restarts", 0.3)
+        with self.assertRaisesRegex(RuntimeError, "holds no restart time"):
+            cpp.cpp_etc_lib().restored_time(folder)
+
     def test_legacy_restart_resumes_at_the_exact_time(self):
         dt = 1.0 / 30.0
         tA = self.run_recording(

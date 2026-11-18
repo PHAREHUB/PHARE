@@ -19,6 +19,8 @@ class StartTimeMismatchTest(RecordingTest):
             self.run_recording(dict(restart_time=0.3), time_step=0.1, time_step_nbr=3)
         message = str(cm.exception) + str(cm.exception.__cause__)
         self.assertIn("differs from the restored time", message)
+        self.assertIn("00000.30000", message)
+        self.assertIn("MPI layout", message)
 
 
 if __name__ == "__main__":

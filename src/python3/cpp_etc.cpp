@@ -73,50 +73,62 @@ auto pybind_version()
     return ss.str();
 }
 
-std::string first_restart_file(std::string const& folder)
+namespace
 {
-    namespace fs = std::filesystem;
-    std::vector<fs::path> files;
-    if (fs::is_directory(folder))
-        for (auto const& entry : fs::recursive_directory_iterator(folder))
-            if (entry.is_regular_file() and entry.path().filename().string().starts_with("proc."))
-                files.push_back(entry.path());
-    if (files.empty())
-        throw std::runtime_error("no restart file under " + folder);
-    return std::ranges::min(files).string();
-}
+    std::string first_restart_file(std::string const& folder)
+    {
+        namespace fs = std::filesystem;
+        std::vector<fs::path> files;
+        if (fs::is_directory(folder))
+            for (auto const& entry : fs::recursive_directory_iterator(folder))
+                if (entry.is_regular_file()
+                    and entry.path().filename().string().starts_with("proc."))
+                    files.push_back(entry.path());
+        if (files.empty())
+            throw std::runtime_error("no restart file under " + folder);
+        return std::ranges::min(files).string();
+    }
 
-double restored_time(std::string const& folder)
-{
-    _PHARE_WITH_HIGHFIVE({
-        auto const file = mpi::is_init()
-                              ? PHARE::amr::HierarchyRestarter::getRestartFileFullPath(folder)
-                              : first_restart_file(folder);
-        if (!std::filesystem::exists(file))
-            throw std::runtime_error("no restart file " + file + " under " + folder);
+    double restored_time(std::string const& folder)
+    {
+        _PHARE_WITH_HIGHFIVE({
+            auto const file = mpi::is_init()
+                                  ? PHARE::amr::HierarchyRestarter::getRestartFileFullPath(folder)
+                                  : first_restart_file(folder);
+            if (!std::filesystem::exists(file))
+                throw std::runtime_error("no restart file " + file + " under " + folder);
 
-        {
-            PHARE::hdf5::h5::HighFiveFile h5File{file, HighFive::File::ReadOnly, /*para=*/false};
-            auto const phare = h5File.file().getGroup("/phare");
-            if (phare.hasAttribute("time"))
             {
-                double time = 0;
-                phare.getAttribute("time").read(time);
-                return time;
+                PHARE::hdf5::h5::HighFiveFile h5File{file, HighFive::File::ReadOnly,
+                                                     /*para=*/false};
+                auto const phare = h5File.file().getGroup("/phare");
+                if (phare.hasAttribute("time"))
+                {
+                    double time = 0;
+                    phare.getAttribute("time").read(time);
+                    return time;
+                }
             }
-        }
 
-        SAMRAI::tbox::HDFDatabase db{"restored_time"};
-        if (!db.open(file))
-            throw std::runtime_error("cannot open restart file " + file);
-        auto const time
-            = db.getDatabase("TimeRefinementIntegrator")->getDouble("d_integrator_time");
-        db.close();
-        return time;
-    });
+            SAMRAI::tbox::HDFDatabase db{"restored_time"};
+            db.open(file);
+            if (db.keyExists("TimeRefinementIntegrator"))
+            {
+                auto const integrator = db.getDatabase("TimeRefinementIntegrator");
+                if (integrator->keyExists("d_integrator_time"))
+                {
+                    auto const time = integrator->getDouble("d_integrator_time");
+                    db.close();
+                    return time;
+                }
+            }
+            db.close();
+            throw std::runtime_error("restart file " + file + " holds no restart time");
+        });
 
-    throw std::runtime_error("PHARE not built with highfive support");
-}
+        throw std::runtime_error("PHARE not built with highfive support");
+    }
+} // namespace
 
 auto samrai_version()
 {

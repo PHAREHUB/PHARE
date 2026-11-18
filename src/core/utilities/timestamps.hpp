@@ -78,6 +78,8 @@ struct ITimeStamper
 {
     virtual double operator+=(double const& new_dt) noexcept = 0;
 
+    NO_DISCARD virtual std::size_t steps() const noexcept = 0;
+
     virtual ~ITimeStamper() {}
 };
 
@@ -96,6 +98,8 @@ public:
         assert(dt_ == new_dt);
         return last_time_ + dt_ * ++idx_;
     }
+
+    NO_DISCARD std::size_t steps() const noexcept override { return idx_; }
 
 private:
     double dt_        = 0;
@@ -117,6 +121,7 @@ public:
     {
         assert(new_dt > 0);
         dt_ = new_dt;
+        ++steps_;
 
         // Kahan Summation Algorithm
         // 1. Subtract the accumulated floating-point error from the new increment
@@ -133,10 +138,13 @@ public:
         return (last_time_ = temp);
     }
 
+    NO_DISCARD std::size_t steps() const noexcept override { return steps_; }
+
 private:
     double dt_                 = 0;
     double last_time_          = 0;
     double error_compensation_ = 0; // Tracks the lost bits
+    std::size_t steps_         = 0;
 };
 
 
@@ -151,6 +159,9 @@ struct TimeStamperFactory
             return std::make_unique<KahanTimeStamper>(0.);
 
         assert(time_step_dict.contains("value"));
+        if (!dict.contains("time_step_nbr"))
+            throw std::runtime_error(
+                "TimeStamperFactory: a constant time_step needs time_step_nbr");
         auto time_step = time_step_dict["value"].template to<double>();
 
         return std::make_unique<ConstantTimeStamper>(time_step);
