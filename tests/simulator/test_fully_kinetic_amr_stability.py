@@ -41,6 +41,8 @@ Runtime 133 s, Debug (box and one level runs; nightly).
 
 E and B are dumped at every coarse step on both levels (the mode may flip sign every coarse step),
 the domain particles at the start and the end; --diagnose dumps the particles at every coarse step.
+The dumps (~390 MB) are deleted once the test passes, unless --keep-h5 is given (fine_gauss.py's
+name); a failing run keeps them.
 """
 
 import sys
@@ -57,6 +59,9 @@ from tests.simulator import SimulatorTest
 diagnose = "--diagnose" in sys.argv
 if diagnose:
     sys.argv.remove("--diagnose")
+keep_h5 = "--keep-h5" in sys.argv
+if keep_h5:
+    sys.argv.remove("--keep-h5")
 
 ph.NO_GUI()
 
@@ -180,6 +185,8 @@ class FullyKineticAMRStabilityTest(SimulatorTest):
         diag_dir = f"{diag_root}/{'box' if refined else 'one_level'}"
         ph.global_vars.sim = None
         simulator.exit_on_exception = False  # an electron passing c raises
+        if not keep_h5:
+            self.register_diag_dir_for_cleanup(diag_root)  # deleted on success only
         Simulator(config(diag_dir, refined)).run().reset()
         return growth_rates(diag_dir)
 
