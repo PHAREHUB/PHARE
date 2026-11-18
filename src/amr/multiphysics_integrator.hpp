@@ -112,8 +112,11 @@ namespace solver
                        ? CFLNumbers{dict["time_step"]["cfl_wave"].template to<double>(),
                                     dict["time_step"]["cfl_diffusive"].template to<double>()}
                        : CFLNumbers{}}
-            , fineLevelSubstepsMax_{
-                  isAdaptive_ ? dict["time_step"]["fine_level_substeps_max"].template to<int>() : 0}
+            , fineLevelSubstepsMax_{isAdaptive_ ? dict["time_step"]["fine_level_substeps_max"]
+                                                      .template to<int>()
+                                                : 0}
+            , level0DtShrinkMax_{
+                  isAdaptive_ ? dict["time_step"]["level0_dt_shrink_max"].template to<int>() : 0}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -767,6 +770,8 @@ namespace solver
         std::vector<double> levelDts_;
         CFLNumbers const cfl_;
         int const fineLevelSubstepsMax_; //!< limit on the number of substeps of a fine level
+        int const level0DtShrinkMax_;    //!< limit on the level 0 dt decrease during the run
+        double firstLevel0Dt_ = std::numeric_limits<double>::quiet_NaN(); //!< first L0 stable dt
 
 
         /**
@@ -788,8 +793,10 @@ namespace solver
          * @brief Compute the level's stable dt, reduced across MPI ranks.
          *
          * Throw if a rank found a cell with a non-finite wave speed: the solver then returns a
-         * negative dt, which the min reduction gives to all ranks. For a level > 0, also throw
-         * if the stable dt is more than fine_level_substeps_max times smaller than the coarser
+         * negative dt, which the min reduction gives to all ranks. For level 0, also throw if
+         * the stable dt is more than level0_dt_shrink_max times smaller than the first level 0
+         * stable dt of the run (at the start or restart time). For a level > 0, also throw if
+         * the stable dt is more than fine_level_substeps_max times smaller than the coarser
          * level's stable dt, or if that one was never computed (NaN). The caller stores the
          * result in levelDts_.
          *
@@ -809,7 +816,20 @@ namespace solver
                    << " at t = " << time;
                 throw std::runtime_error(ss.str());
             }
-            if (iLevel > 0)
+            if (iLevel == 0)
+            {
+                if (std::isnan(firstLevel0Dt_))
+                    firstLevel0Dt_ = dt;
+                else if (!(firstLevel0Dt_ <= level0DtShrinkMax_ * dt))
+                {
+                    std::ostringstream ss;
+                    ss << std::setprecision(17) << "stable dt on level 0 at t = " << time << " is "
+                       << dt << ", more than level0_dt_shrink_max = " << level0DtShrinkMax_
+                       << " times smaller than the first one of the run (" << firstLevel0Dt_ << ")";
+                    throw std::runtime_error(ss.str());
+                }
+            }
+            else
             {
                 auto const coarserDt = levelDts_.at(iLevel - 1);
                 if (!(coarserDt <= fineLevelSubstepsMax_ * dt))

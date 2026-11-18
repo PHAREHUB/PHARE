@@ -901,6 +901,9 @@ class Simulation:
             time step of a refined level is more than this many times smaller than the one of
             the next coarser level, i.e. when a fine level would need more substeps than this
             per coarser step.
+          * **level0_dt_shrink_max** (``int``), default 1000. The run stops when the stable
+            time step of level 0 is more than this many times smaller than the first one of the
+            run (at the start time, or at the restart time on a restart).
 
           With adaptive stepping there is no fixed dump grid, so diagnostics require explicit
           ``write_timestamps``.

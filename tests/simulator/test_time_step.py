@@ -16,6 +16,8 @@ baseArgs = dict(
     dl=0.3,
 )
 
+ADAPTIVE_INT_OPTIONS = ("fine_level_substeps_max", "level0_dt_shrink_max")
+
 
 # pure pharein config validation: never runs the simulator, so no MPI / cpp module needed
 class TimeStepValidation(unittest.TestCase):
@@ -90,50 +92,44 @@ class TimeStepValidation(unittest.TestCase):
         )
         self.assertEqual(sim.time_stepper.cfl_diffusive, 0.2)
 
-    def test_adaptive_fine_level_substeps_max_defaults_to_1000(self):
+    def test_adaptive_int_options_default_to_1000(self):
         sim = ph.Simulation(
             time_step={"mode": "adaptive", "cfl_wave": 0.4}, final_time=1.0, **baseArgs
         )
-        self.assertEqual(sim.time_stepper.fine_level_substeps_max, 1000)
+        for key in ADAPTIVE_INT_OPTIONS:
+            self.assertEqual(getattr(sim.time_stepper, key), 1000, key)
 
-    def test_adaptive_fine_level_substeps_max_explicit(self):
-        sim = ph.Simulation(
-            time_step={
-                "mode": "adaptive",
-                "cfl_wave": 0.4,
-                "fine_level_substeps_max": 50,
-            },
-            final_time=1.0,
-            **baseArgs,
-        )
-        self.assertEqual(sim.time_stepper.fine_level_substeps_max, 50)
-
-    def test_adaptive_fine_level_substeps_max_accepts_numpy_integer(self):
-        sim = ph.Simulation(
-            time_step={
-                "mode": "adaptive",
-                "cfl_wave": 0.4,
-                "fine_level_substeps_max": np.int64(50),
-            },
-            final_time=1.0,
-            **baseArgs,
-        )
-        self.assertEqual(sim.time_stepper.fine_level_substeps_max, 50)
-        self.assertIs(type(sim.time_stepper.fine_level_substeps_max), int)
-
-    def test_adaptive_fine_level_substeps_max_rejects_invalid(self):
-        for value in (0, -3, 2.5, True):
+    def test_adaptive_int_options_explicit(self):
+        for key in ADAPTIVE_INT_OPTIONS:
             ph.global_vars.sim = None
-            with self.assertRaises(ValueError):
-                ph.Simulation(
-                    time_step={
-                        "mode": "adaptive",
-                        "cfl_wave": 0.4,
-                        "fine_level_substeps_max": value,
-                    },
-                    final_time=1.0,
-                    **baseArgs,
-                )
+            sim = ph.Simulation(
+                time_step={"mode": "adaptive", "cfl_wave": 0.4, key: 50},
+                final_time=1.0,
+                **baseArgs,
+            )
+            self.assertEqual(getattr(sim.time_stepper, key), 50, key)
+
+    def test_adaptive_int_options_accept_numpy_integer(self):
+        for key in ADAPTIVE_INT_OPTIONS:
+            ph.global_vars.sim = None
+            sim = ph.Simulation(
+                time_step={"mode": "adaptive", "cfl_wave": 0.4, key: np.int64(50)},
+                final_time=1.0,
+                **baseArgs,
+            )
+            self.assertEqual(getattr(sim.time_stepper, key), 50, key)
+            self.assertIs(type(getattr(sim.time_stepper, key)), int, key)
+
+    def test_adaptive_int_options_reject_invalid(self):
+        for key in ADAPTIVE_INT_OPTIONS:
+            for value in (0, -3, 2.5, True):
+                ph.global_vars.sim = None
+                with self.assertRaises(ValueError, msg=f"{key}={value}"):
+                    ph.Simulation(
+                        time_step={"mode": "adaptive", "cfl_wave": 0.4, key: value},
+                        final_time=1.0,
+                        **baseArgs,
+                    )
 
     def test_adaptive_requires_cfl_wave(self):
         with self.assertRaises(ValueError):
