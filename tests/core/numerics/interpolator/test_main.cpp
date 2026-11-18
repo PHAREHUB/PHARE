@@ -42,25 +42,23 @@ public:
     {
         std::random_device rd;  // Will be used to obtain a seed for the random number engine
         std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-        std::uniform_real_distribution<> dis(5, 10);
+        std::uniform_real_distribution<> dis(0, 1);
 
 
-        // generate the nbr_tests random (normalized) particle position
-        std::generate(std::begin(normalizedPositions), std::end(normalizedPositions),
-                      [&dis, &gen]() { return dis(gen); });
+        // generate the nbr_tests random particle deltas
+        std::generate(std::begin(deltas), std::end(deltas), [&dis, &gen]() { return dis(gen); });
 
 
-        // now for each random position, calculate
-        // the start index and the N(interp_order) weights
+        // now for each random delta, calculate the N(interp_order) weights
         for (auto i = 0u; i < nbr_tests; ++i)
         {
-            auto icell = static_cast<int>(normalizedPositions[i]);
-            auto delta = normalizedPositions[i] - icell;
-            auto startIndex
-                = icell
-                  - Interpolator_t::template computeStartLeftShift<QtyCentering,
-                                                                   QtyCentering::primal>(delta);
-            this->weighter.computeWeight(normalizedPositions[i], startIndex, weights_[i]);
+            auto const delta = deltas[i];
+            auto const shift
+                = Interpolator_t::template computeStartLeftShift<QtyCentering,
+                                                                 QtyCentering::primal>(delta);
+            this->weighter.computeWeight(
+                detail::interpolator_relative_position<QtyCentering::primal>(delta, shift),
+                weights_[i]);
         }
 
 
@@ -76,7 +74,7 @@ public:
 protected:
     Weighter weighter;
     static int const nbr_tests = 100000;
-    std::array<double, nbr_tests> normalizedPositions;
+    std::array<double, nbr_tests> deltas;
     std::array<double, nbr_tests> weightsSums;
     std::array<std::array<double, nbrPointsSupport(Weighter::interp_order)>, nbr_tests> weights_;
 };
@@ -160,21 +158,16 @@ void check_bspline(Weighter& weighter, std::string centering_id)
     // that start at x = 3 every 0.1
 
     std::size_t const n_particles = 10;
-    double const icell            = 3;
     double const dx               = 0.1;
 
     for (auto ipos = 0u; ipos < n_particles; ++ipos)
     {
-        auto delta = static_cast<double>(ipos) * dx;
+        auto const delta = static_cast<double>(ipos) * dx;
+        auto const shift
+            = Interpolator_t::template computeStartLeftShift<Centering, centering>(delta);
 
-        auto startIndex
-            = icell - Interpolator_t::template computeStartLeftShift<Centering, centering>(delta);
-
-        double normalizedPosition = icell + delta;
-        if constexpr (centering == QtyCentering::dual)
-            normalizedPosition -= .5;
-
-        weighter.computeWeight(normalizedPosition, startIndex, weights);
+        weighter.computeWeight(detail::interpolator_relative_position<centering>(delta, shift),
+                               weights);
 
         for (auto inode = 0u; inode < weights.size(); ++inode)
         {

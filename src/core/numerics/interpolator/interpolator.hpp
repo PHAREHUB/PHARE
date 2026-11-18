@@ -4,6 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
@@ -35,13 +36,13 @@ constexpr int nbrPointsSupport(int interpOrder)
  *  This class assumes the interpolation order is known at compile-time
  *  thus there are three specialization for orders 1, 2 and 3.
  *
- *  the class has only one method called computeWeight that takes three arguments:
+ *  the class has only one method called computeWeight that takes two arguments:
  *
- *  \param[in] normalized position is the particle position in the cell normalized by grid
- * spacing \param[in] startIndex first grid index where to interpolate the field \param[out]
- * weights contains the nbrPointsSupport weights calculated
+ *  \param[in] relativePos is the particle position relative to the first node of the stencil,
+ *  normalized by the grid spacing
+ *  \param[out] weights contains the nbrPointsSupport weights calculated
  *
- *  these three parameters are given for a specific direction (x, y or z)
+ *  these parameters are given for a specific direction (x, y or z)
  */
 template<std::size_t interpOrder>
 class Weighter
@@ -56,10 +57,10 @@ template<>
 class Weighter<1>
 {
 public:
-    PHARE_ALWAYS_INLINE void computeWeight(double normalizedPos, int startIndex,
+    PHARE_ALWAYS_INLINE void computeWeight(double const relativePos,
                                            std::array<double, nbrPointsSupport(1)>& weights)
     {
-        weights[1] = normalizedPos - static_cast<double>(startIndex);
+        weights[1] = relativePos;
         weights[0] = 1. - weights[1];
     }
 
@@ -73,11 +74,10 @@ template<>
 class Weighter<2>
 {
 public:
-    PHARE_ALWAYS_INLINE void computeWeight(double normalizedPos, int startIndex,
+    PHARE_ALWAYS_INLINE void computeWeight(double const relativePos,
                                            std::array<double, nbrPointsSupport(2)>& weights)
     {
-        auto index = startIndex + 1;
-        auto delta = static_cast<double>(index) - normalizedPos;
+        auto const delta = 1. - relativePos;
         double coef1, coef2, coef3;
         coef1 = 0.5 + delta;
         coef2 = delta;
@@ -99,17 +99,17 @@ template<>
 class Weighter<3>
 {
 public:
-    PHARE_ALWAYS_INLINE void computeWeight(double normalizedPos, int startIndex,
+    PHARE_ALWAYS_INLINE void computeWeight(double const relativePos,
                                            std::array<double, nbrPointsSupport(3)>& weights)
     {
         constexpr double _4_over_3 = 4. / 3.;
         constexpr double _2_over_3 = 2. / 3.;
 
-        auto index   = static_cast<double>(startIndex) - normalizedPos;
-        double coef1 = 1. + 0.5 * index;
-        double coef2 = index + 1;
-        double coef3 = index + 2;
-        double coef4 = 1. - 0.5 * (index + 3);
+        auto const index = -relativePos;
+        double coef1     = 1. + 0.5 * index;
+        double coef2     = index + 1;
+        double coef3     = index + 2;
+        double coef4     = 1. - 0.5 * (index + 3);
 
         double coef2_sq  = coef2 * coef2;
         double coef2_cub = coef2_sq * coef2;
@@ -511,6 +511,28 @@ private:
 
 
 
+namespace detail
+{
+    // the position relative to the first node of the stencil, from delta alone: (iCell + delta) -
+    // startIndex would round at the magnitude of the local index, so the weights of a particle
+    // would depend on where its patch starts
+    template<auto centering>
+    NO_DISCARD auto interpolator_relative_position(double const delta, int const shift)
+    {
+        if constexpr (centering == QtyCentering::dual)
+        {
+            auto constexpr offset = .5;      // dual nodes sit half a cell right of primal ones
+            return delta + (shift - offset); // shift - offset is exact
+        }
+        else if constexpr (centering == QtyCentering::primal)
+            return delta + shift;
+        else
+            static_assert(dependent_false_v<decltype(centering)>);
+    }
+} // namespace detail
+
+
+
 /** \brief Interpolator is used to perform particle-mesh interpolations using
  * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
  */
@@ -518,18 +540,13 @@ template<std::size_t dim, std::size_t interpOrder>
 class Interpolator : private Weighter<interpOrder>
 {
 protected:
-    // this calculates the startIndex and the nbrPointsSupport() weights for
-    // dual field interpolation and puts this at the corresponding location
-    // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
-    // is offseted compared to primal ones.
+    // this calculates the startIndex and the nbrPointsSupport() weights for the given centering
+    // and puts them in the corresponding 'startIndex' and 'weights' members
     template<typename CenteringT, CenteringT centering, typename GridLayout, typename ICell,
              typename Delta>
     PHARE_ALWAYS_INLINE auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_,
                                               Delta const& delta)
     {
-        // dual weights require -.5 to take the correct position weight
-        auto constexpr offset = centering == QtyCentering::dual ? .5 : 0.;
-
         auto const& [startIndex_, weights_] = [&]() {
             if constexpr (centering == QtyCentering::dual)
                 return std::forward_as_tuple(dual_startIndex_, dual_weights_);
@@ -542,13 +559,9 @@ protected:
         {
             auto const shift  = computeStartLeftShift<CenteringT, centering>(delta[iDim]);
             startIndex_[iDim] = iCell[iDim] - shift;
-
-            // the position relative to the start index, from delta alone: (iCell + delta) -
-            // startIndex would round at the magnitude of the local index, so the weights of a
-            // particle would depend on where its patch starts
-            double const relativePos = delta[iDim] + (shift - offset); // shift - offset is exact
-
-            weightComputer_.computeWeight(relativePos, 0, weights_[iDim]);
+            weightComputer_.computeWeight(
+                detail::interpolator_relative_position<centering>(delta[iDim], shift),
+                weights_[iDim]);
         }
     }
 
