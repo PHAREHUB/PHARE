@@ -525,7 +525,7 @@ void Simulator<opts>::initialize()
         {
             double const dt = multiphysInteg_->computeStableDt(
                 *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            dt_ = finalTime_ > currentTime_ ? std::min(dt, finalTime_ - currentTime_) : dt;
         }
     }
     catch (core::DictionaryException const& ex)

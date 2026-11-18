@@ -293,6 +293,21 @@ class RestartTimeTest(RecordingTest):
         if cpp.mpi_rank() == 0:
             self.assertEqual(len(self.diag_times("diag_B")), nbr + 1)
 
+    def test_adaptive_zero_step_restart_dumps_at_the_restored_time(self):
+        tA = self.run_recording(
+            dict(timestamps=[0.009]), time_step=0.001, time_step_nbr=9
+        )
+        tB = self.run_recording(
+            dict(restart_time=0.009),
+            diag_dir="diag_B",
+            diag_timestamps=[0.009],
+            time_step={"mode": "adaptive", "cfl_wave": 0.5},
+            final_time=0.009,
+        )
+        self.assertEqual(tB, [tA[9]])
+        if cpp.mpi_rank() == 0:
+            self.assertEqual(len(self.diag_times("diag_B")), 1)
+
     def strip_phare_time(self):
         import h5py
 
