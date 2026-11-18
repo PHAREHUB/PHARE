@@ -528,8 +528,27 @@ namespace amr
                         std::memcpy(J[c].data(), sumJ_[c].data(), J[c].size() * sizeof(value_type));
 
                 // the copies of a shared node are sums of the same terms in different orders (a
-                // 2D corner node has four), so their last bits can differ; the max makes them
-                // equal, being exact whatever the order. sumJ_ keeps the values before it
+                // 2D corner node has four), so their last bits can differ
+                equalizeCurrentBorders(J, level, fillTime);
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::fillCurrentBorders(J, level, fillTime);
+        }
+
+        // the max over the copies of each shared node makes them equal, being exact whatever
+        // the order; Debug: sumJ_ keeps the values before it, to check it moved round-off only
+        void equalizeCurrentBorders(VecFieldT& J, level_t& level, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
+                using value_type = FieldT::value_type;
+                PHARE_DEBUG_DO({
+                    for (auto patch : resourcesManager_->enumerate(level, J, sumJ_))
+                        for (std::uint8_t c = 0; c < N; ++c)
+                            std::memcpy(sumJ_[c].data(), J[c].data(),
+                                        J[c].size() * sizeof(value_type));
+                })
                 assert(currentBorderMaxRefiners_.size() == 1);
                 currentBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
                 PHARE_DEBUG_DO({
@@ -539,7 +558,7 @@ namespace amr
                 })
             }
             else
-                HybridMessengerStrategy<HybridModel>::fillCurrentBorders(J, level, fillTime);
+                HybridMessengerStrategy<HybridModel>::equalizeCurrentBorders(J, level, fillTime);
         }
 
         // Debug: every copy of a node shared by patches of the level must be equal in E and B.
@@ -599,7 +618,24 @@ namespace amr
                 for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
                     std::memcpy(rho.data(), sumField_.data(), rho.size() * sizeof(value_type));
 
-                // equal copies of the shared nodes, as the current
+                equalizeChargeDensityBorders(rho, level, fillTime);
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::fillChargeDensityBorders(rho, level,
+                                                                               fillTime);
+        }
+
+        // equal copies of the shared nodes, as the current
+        void equalizeChargeDensityBorders(FieldT& rho, level_t& level,
+                                          double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                using value_type = FieldT::value_type;
+                PHARE_DEBUG_DO({
+                    for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
+                        std::memcpy(sumField_.data(), rho.data(), rho.size() * sizeof(value_type));
+                })
                 assert(chargeDensityBorderMaxRefiners_.size() == 1);
                 chargeDensityBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
                 PHARE_DEBUG_DO({
@@ -608,8 +644,8 @@ namespace amr
                 })
             }
             else
-                HybridMessengerStrategy<HybridModel>::fillChargeDensityBorders(rho, level,
-                                                                               fillTime);
+                HybridMessengerStrategy<HybridModel>::equalizeChargeDensityBorders(rho, level,
+                                                                                   fillTime);
         }
 
         // copies the ghost nodes of rho from the patches that own them, after the border sum

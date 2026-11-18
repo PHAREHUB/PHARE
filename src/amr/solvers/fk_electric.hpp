@@ -120,9 +120,15 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
     }
 
     // after the border sums: every patch holding a copy of a level ghost particle deposits it
-    // on its own nodes, so a node shared by patches gets it once from each (P4 plan D5)
+    // on its own nodes, so a node shared by patches gets it once from each (P4 plan D5). Each
+    // patch adds these terms in its own order: the max makes the copies equal again
     if (level.getLevelNumber() > 0)
+    {
         deposit([](auto const& pop) -> auto const& { return pop.levelGhostParticles(); });
+        messenger.equalizeCurrentBorders(J, level, time);
+        if (cleaning)
+            messenger.equalizeChargeDensityBorders(rho, level, rhoTime);
+    }
 
     // fill then filter, every pass
     auto const filter = [&](auto& field, auto&& fillGhosts) {

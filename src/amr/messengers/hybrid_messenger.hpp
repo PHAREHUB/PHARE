@@ -370,6 +370,11 @@ namespace amr
             strat_->fillCurrentBorders(J, level, fillTime);
         }
 
+        void equalizeCurrentBorders(VecFieldT& J, level_t& level, double const fillTime)
+        {
+            strat_->equalizeCurrentBorders(J, level, fillTime);
+        }
+
         void fillCurrentGhosts(VecFieldT& J, level_t& level, double const fillTime)
         {
             strat_->fillCurrentGhosts(J, level, fillTime);
@@ -383,6 +388,11 @@ namespace amr
         void fillChargeDensityBorders(FieldT& rho, level_t& level, double const fillTime)
         {
             strat_->fillChargeDensityBorders(rho, level, fillTime);
+        }
+
+        void equalizeChargeDensityBorders(FieldT& rho, level_t& level, double const fillTime)
+        {
+            strat_->equalizeChargeDensityBorders(rho, level, fillTime);
         }
 
         void fillChargeDensityGhosts(FieldT& rho, level_t& level, double const fillTime)

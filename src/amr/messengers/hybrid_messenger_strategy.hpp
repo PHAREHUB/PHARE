@@ -153,6 +153,13 @@ namespace amr
             throw std::runtime_error(stratname_ + " does not sum current borders");
         }
 
+        // fully kinetic only: make the copies of a node shared by patches equal (a max)
+        virtual void equalizeCurrentBorders(VecFieldT& /*J*/, level_t& /*level*/,
+                                            double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not equalize current borders");
+        }
+
         virtual void fillCurrentGhosts(VecFieldT& /*J*/, level_t& /*level*/,
                                        double const /*fillTime*/)
         {
@@ -172,6 +179,12 @@ namespace amr
                                               double const /*fillTime*/)
         {
             throw std::runtime_error(stratname_ + " does not sum charge density borders");
+        }
+
+        virtual void equalizeChargeDensityBorders(FieldT& /*rho*/, level_t& /*level*/,
+                                                  double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not equalize charge density borders");
         }
 
         virtual void fillChargeDensityGhosts(FieldT& /*rho*/, level_t& /*level*/,
