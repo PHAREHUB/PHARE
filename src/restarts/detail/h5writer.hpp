@@ -56,6 +56,10 @@ public:
             "/phare", "serialized_simulation",
             properties.fileAttributes["serialized_simulation"].template to<std::string>());
 
+        h5File.write_attribute(
+            "/phare", "resource_names",
+            properties.fileAttributes["resource_names"].template to<std::vector<std::string>>());
+
         mpi::barrier();
     }
 

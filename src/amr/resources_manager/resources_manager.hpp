@@ -19,7 +19,10 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <string>
+#include <vector>
 #include <optional>
+#include <algorithm>
 
 
 
@@ -64,6 +67,18 @@ namespace amr
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
             for (auto const& id : ALL_IDS()) // duplicates don't matter
                 pdrm->registerPatchDataForRestart(id);
+        }
+
+        // sorted and unique, written to restart files to check one has what this build expects
+        static std::vector<std::string> registeredResourceNames()
+        {
+            std::vector<std::string> names;
+            for (auto const res_map_ptr : INSTANCE().resources_)
+                for (auto const& [name, _] : *res_map_ptr)
+                    names.emplace_back(name);
+            std::sort(names.begin(), names.end());
+            names.erase(std::unique(names.begin(), names.end()), names.end());
+            return names;
         }
     };
 
