@@ -26,6 +26,7 @@
 
 #include <tuple>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <stdexcept>
 #include <type_traits>
@@ -90,12 +91,13 @@ private:
         static_assert(std::is_standard_layout_v<Particle_t>, "member offsets need standard layout");
 
         Particle_t const particle{};
-        auto const base      = reinterpret_cast<std::byte const*>(&particle);
+        // addresses as integers: subtracting pointers is only defined within one array
+        auto const base      = reinterpret_cast<std::uintptr_t>(&particle);
         std::size_t key      = 0;
         auto const member_fn = [&](auto const& member) {
             using Member = std::decay_t<decltype(member)>;
             auto const offset
-                = static_cast<std::size_t>(reinterpret_cast<std::byte const*>(&member) - base);
+                = static_cast<std::size_t>(reinterpret_cast<std::uintptr_t>(&member) - base);
             if constexpr (std::is_arithmetic_v<Member>)
                 fn(Packer::keys()[key++], Member{}, offset, std::size_t{1});
             else

@@ -7,8 +7,6 @@
 //
 //  and are left in the test directory, to compare with h5ls against a real restart.
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/utilities/types.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
@@ -16,8 +14,6 @@
 #include "amr/samrai.hpp"
 #include "amr/data/particles/particles_restart.hpp"
 
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
-#include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/HDFDatabase.h>
 
 #include "gtest/gtest.h"
@@ -263,19 +259,9 @@ TYPED_TEST(ParticlesRestartTest, missingMembersThrow)
 
 
 
+// serial HDF5 only (HDFDatabase, H5D*): no MPI or SAMRAI initialization needed
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-
-    SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
-    SAMRAI::tbox::SAMRAIManager::initialize();
-    SAMRAI::tbox::SAMRAIManager::startup();
-
-    int testResult = RUN_ALL_TESTS();
-
-    SAMRAI::tbox::SAMRAIManager::shutdown();
-    SAMRAI::tbox::SAMRAIManager::finalize();
-    SAMRAI::tbox::SAMRAI_MPI::finalize();
-
-    return testResult;
+    return RUN_ALL_TESTS();
 }
