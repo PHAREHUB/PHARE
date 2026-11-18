@@ -63,10 +63,6 @@ namespace amr
         std::vector<std::string> ghostMagnetic;
         std::vector<std::string> ghostElectric;
 
-
-        std::vector<std::string> maxBorderFields;
-        std::vector<std::string> maxBorderVecFields;
-
         // below are the descriptions of the electric field that we use in the refluxing
         std::string refluxElectric;
         std::string fluxSumElectric;
