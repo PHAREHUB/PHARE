@@ -2,16 +2,15 @@
 #define PHARE_CORE_UTILITIES_TIMESTAMPS_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 
 #include "initializer/data_provider.hpp"
 
 #include <cassert>
 #include <cmath>
 #include <cstdint>
-#include <iomanip>
 #include <limits>
 #include <optional>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -27,11 +26,8 @@ inline double dt_between(double const start, double const end)
 {
     // a step must move the clock forward
     if (!(end > start))
-    {
-        std::stringstream ss;
-        ss << std::setprecision(17) << "dt_between: end " << end << " is not after start " << start;
-        throw std::runtime_error(ss.str());
-    }
+        throw std::runtime_error("dt_between: end " + to_string_exact(end) + " is not after start "
+                                 + to_string_exact(start));
 
     auto constexpr inf = std::numeric_limits<double>::infinity();
 
@@ -66,9 +62,8 @@ inline double dt_between(double const start, double const end)
     if (auto const dt = solve(std::nextafter(end, inf)))
         return *dt;
 
-    std::stringstream ss;
-    ss << std::setprecision(17) << "dt_between: no dt goes from " << start << " to " << end;
-    throw std::runtime_error(ss.str());
+    throw std::runtime_error("dt_between: no dt goes from " + to_string_exact(start) + " to "
+                             + to_string_exact(end));
 }
 
 

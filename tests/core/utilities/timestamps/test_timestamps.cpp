@@ -1,4 +1,5 @@
 #include "core/utilities/timestamps.hpp"
+#include "core/utilities/types.hpp"
 
 #include "gtest/gtest.h"
 
@@ -7,8 +8,15 @@
 #include <limits>
 #include <random>
 #include <stdexcept>
+#include <string>
 
 using namespace PHARE::core;
+
+TEST(ToStringExact, roundTrips)
+{
+    for (double const x : {0.1, 0.009000000000000001, std::nextafter(1.0, 2.0), 1e-300})
+        EXPECT_EQ(std::stod(to_string_exact(x)), x);
+}
 
 TEST(KahanTimeStamper, accumulatesConstantDt)
 {

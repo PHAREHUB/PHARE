@@ -308,6 +308,20 @@ class RestartTimeTest(RecordingTest):
         if cpp.mpi_rank() == 0:
             self.assertEqual(len(self.diag_times("diag_B")), 1)
 
+    def test_constant_final_time_and_step_count_lands_on_final_time(self):
+        t = self.run_recording({}, final_time=0.9, time_step_nbr=7)
+        self.assertEqual(len(t), 8)
+        self.assertEqual(t[-1], 0.9)
+
+    def test_adaptive_sliver_is_merged_into_the_last_step(self):
+        tR = self.run_recording({}, **ADAPTIVE)
+        final = tR[5] + 0.5e-6 * (tR[5] - tR[4])
+        t = self.run_recording(
+            {}, time_step={"mode": "adaptive", "cfl_wave": 0.5}, final_time=final
+        )
+        self.assertEqual(len(t), 6)
+        self.assertEqual(t[-1], final)
+
     def strip_phare_time(self):
         import h5py
 

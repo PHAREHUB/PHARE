@@ -24,8 +24,6 @@
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
-#include <iomanip>
-#include <sstream>
 #include <stdexcept>
 
 
@@ -72,12 +70,10 @@ public:
 
         // forbid PHARE and SAMRAI's times to drift apart.
         if (!core::reaches_target(currentTime(), newTime))
-        {
-            std::stringstream ss;
-            ss << std::setprecision(17) << "Integrator::advanceTo: SAMRAI time " << currentTime()
-               << " did not land on the new time " << newTime << " from t = " << t;
-            throw std::runtime_error(ss.str());
-        }
+            throw std::runtime_error(
+                "Integrator::advanceTo: SAMRAI time " + core::to_string_exact(currentTime())
+                + " did not land on the new time " + core::to_string_exact(newTime)
+                + " from t = " + core::to_string_exact(t));
     }
 
     void initialize() { timeRefIntegrator_->initializeHierarchy(); }

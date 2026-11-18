@@ -29,8 +29,6 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
 
 
@@ -171,6 +169,7 @@ private:
     double cflWave_                  = 0;
     double cflDiffusive_             = 0;
     int timeStepNbr_                 = 0;
+    std::size_t stepIdx_             = 0;
     double startTime_                = 0;
     double finalTime_                = 0;
     double currentTime_              = 0;
@@ -306,12 +305,9 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
 
     if (auto const pythonStartTime = cppdict::get_value(dict, "simulation/start_time", startTime_);
         pythonStartTime != startTime_)
-    {
-        std::ostringstream oss;
-        oss << std::setprecision(17) << "Simulator: Python start time " << pythonStartTime
-            << " differs from the restored time " << startTime_;
-        throw std::runtime_error(oss.str());
-    }
+        throw std::runtime_error(
+            "Simulator: Python start time " + core::to_string_exact(pythonStartTime)
+            + " differs from the restored time " + core::to_string_exact(startTime_));
     multiphysInteg_->setRestartTime(startTime_);
 }
 
@@ -573,23 +569,25 @@ double Simulator<opts>::advance()
             throw std::runtime_error("Error - no valid integrator in the simulator");
 
         if (!(currentTime_ < finalTime_))
-        {
-            std::ostringstream oss;
-            oss << std::setprecision(17)
-                << "Simulator::advance: the simulation is already at its final time " << finalTime_;
-            throw std::runtime_error(oss.str());
-        }
+            throw std::runtime_error(
+                "Simulator::advance: the simulation is already at its final time "
+                + core::to_string_exact(finalTime_));
 
+        bool last = false;
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
-            double const dt = multiphysInteg_->computeStableDt(
+            double constexpr sliver = 1e-6;
+            double const stable     = multiphysInteg_->computeStableDt(
                 *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            double const remaining = finalTime_ - currentTime_;
+            last                   = remaining - stable <= sliver * stable;
+            dt_                    = last ? remaining : stable;
         }
+        else
+            last = ++stepIdx_ == static_cast<std::size_t>(timeStepNbr_);
 
-        auto next = startTime_ + ((*timeStamper) += dt_);
-        if (next > finalTime_ or finalTime_ - next < 1e-6 * dt_)
-            next = finalTime_;
+        auto const next
+            = last ? finalTime_ : std::min(startTime_ + ((*timeStamper) += dt_), finalTime_);
 
         integrator_->advanceTo(next);
         currentTime_ = integrator_->currentTime();
