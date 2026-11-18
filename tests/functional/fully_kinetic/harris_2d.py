@@ -17,8 +17,8 @@ field in this frame and the loader starts with E = 0.
 
 B_x = tanh((y - y1) / L) - tanh((y - y2) / L) - 1 plus a localized X-point perturbation on
 each sheet at x = Lx / 2 (as the hybrid script): dB = z x grad(psi), psi = +-db sigma
-exp(-r^2 / sigma^2), divergence free. Its curl has no particle current: E answers it with a
-light and plasma wave transient at t = 0.
+exp(-r^2 / sigma^2) summed over its periodic images, divergence free and periodic. Its curl
+has no particle current: E answers it with a light and plasma wave transient at t = 0.
 
 dt = courant dx / (c sqrt(2)) rounded down to 1e-6, the light CFL c dt sqrt(sum 1/dx^2) of the setup checks
 (pyphare/pharein/fully_kinetic.py).
@@ -145,19 +145,26 @@ def config(setup):
     def tanh(y, y0):
         return sum(np.tanh((y - y0 - shift) / L) for shift in images)
 
-    def bump(x, y, y0):
-        """psi / (db sigma) of the X-point perturbation centred on (Lx/2, y0)"""
-        return np.exp(-((x - 0.5 * Lx) ** 2 + (y - y0) ** 2) / SIGMA**2)
+    def perturbation(x, y):
+        """(dB_x, dB_y) = z x grad(psi), psi = db sigma exp(-r^2 / sigma^2) centred on (Lx/2, y1)
+        minus the same on (Lx/2, y2), each with its periodic images at +-Lx and +-Ly: without
+        them B_y jumps at the y border (exp(-(Ly/4)^2 / sigma^2) is 4e-5 here) and the copies
+        of a shared border node differ from t = 0"""
+        dbx, dby = 0.0 * x, 0.0 * x
+        for y0, sign in ((y1, 1.0), (y2, -1.0)):
+            for xshift in (-Lx, 0.0, Lx):
+                for yshift in images:
+                    x0, yy0 = x - 0.5 * Lx - xshift, y - y0 - yshift
+                    g = sign * 2 * PERTURBATION / SIGMA * np.exp(-(x0**2 + yy0**2) / SIGMA**2)
+                    dbx = dbx - yy0 * g  # dpsi/dy
+                    dby = dby + x0 * g  # -dpsi/dx
+        return dbx, dby
 
     def bx(x, y):
-        harris = tanh(y, y1) - tanh(y, y2) - 1
-        # dB_x = dpsi/dy, psi = +db sigma bump on sheet 1, -db sigma bump on sheet 2
-        dbx = -2 * PERTURBATION / SIGMA * ((y - y1) * bump(x, y, y1) - (y - y2) * bump(x, y, y2))
-        return harris + dbx
+        return tanh(y, y1) - tanh(y, y2) - 1 + perturbation(x, y)[0]
 
     def by(x, y):
-        x0 = x - 0.5 * Lx
-        return 2 * PERTURBATION / SIGMA * x0 * (bump(x, y, y1) - bump(x, y, y2))
+        return perturbation(x, y)[1]
 
     def bz(x, y):
         return 0.0 * x
