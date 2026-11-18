@@ -24,6 +24,9 @@ electrons over dx/dt and the Esirkepov displacement abort at step ~2818, as run1
 copies of Ex, Ey and Bz stay identical. The onset changes from run to run on 4 ranks (another
 run: Ez 1.5e-8 at step 1600), the same input not giving the same result on 3+ ranks (#1526). On 1 rank no copy differs up to step 3200, no abort;
 on 2 ranks single last-bit differences of Ez and By, not growing, up to step 2800.
+Cause: the copies of a shared node of J were sums of the same terms in different orders, and a
+corner node has four, so they differed in the last bits; the border sum is now followed by a
+max over the copies.
 
 The fully kinetic modules have no DataWrangler (live patch data), so the copies are read from
 the h5 dumps, which hold each patch with its ghosts in single precision: a difference shows

@@ -47,6 +47,9 @@
 #include <utility>
 #include <iomanip>
 #include <iostream>
+#include <cmath>
+#include <span>
+#include <sstream>
 
 
 
@@ -521,6 +524,17 @@ namespace amr
                 for (auto patch : resourcesManager_->enumerate(level, J, sumJ_))
                     for (std::uint8_t c = 0; c < N; ++c)
                         std::memcpy(J[c].data(), sumJ_[c].data(), J[c].size() * sizeof(value_type));
+
+                // the copies of a shared node are sums of the same terms in different orders (a
+                // 2D corner node has four), so their last bits can differ; the max makes them
+                // equal, being exact whatever the order. sumJ_ keeps the values before it
+                assert(currentBorderMaxRefiners_.size() == 1);
+                currentBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
+                PHARE_DEBUG_DO({
+                    for (auto patch : resourcesManager_->enumerate(level, J, sumJ_))
+                        for (std::uint8_t c = 0; c < N; ++c)
+                            checkMaxMovedRoundOffOnly_(J[c], sumJ_[c], *patch);
+                })
             }
             else
                 HybridMessengerStrategy<HybridModel>::fillCurrentBorders(J, level, fillTime);
@@ -551,6 +565,14 @@ namespace amr
 
                 for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
                     std::memcpy(rho.data(), sumField_.data(), rho.size() * sizeof(value_type));
+
+                // equal copies of the shared nodes, as the current
+                assert(chargeDensityBorderMaxRefiners_.size() == 1);
+                chargeDensityBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
+                PHARE_DEBUG_DO({
+                    for (auto patch : resourcesManager_->enumerate(level, rho, sumField_))
+                        checkMaxMovedRoundOffOnly_(rho, sumField_, *patch);
+                })
             }
             else
                 HybridMessengerStrategy<HybridModel>::fillChargeDensityBorders(rho, level,
@@ -880,6 +902,12 @@ namespace amr
             for (auto& refiner : chargeDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
+            for (auto& refiner : currentBorderMaxRefiners_)
+                refiner.registerLevel(hierarchy, level);
+
+            for (auto& refiner : chargeDensityBorderMaxRefiners_)
+                refiner.registerLevel(hierarchy, level);
+
             for (auto& refiner : ionFluxBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
             for (auto& refiner : ionDensityBorderMaxRefiners_)
@@ -1161,6 +1189,19 @@ namespace amr
                     .addStaticRefiner(
                         sumField_.name(), info->modelChargeDensity, nullptr, sumField_.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+
+                // the max reads the physical nodes of the source patch only: after the sum, the
+                // outer ghost nodes of J can miss contributions (interpolation order 3), and a max
+                // over the ghost overlaps would carry them into the interior
+                currentBorderMaxRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(info->modelCurrent, info->modelCurrent, nullptr,
+                                      info->modelCurrent, overwriteInteriorTFfillPattern);
+                chargeDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        info->modelChargeDensity, info->modelChargeDensity, nullptr,
+                        info->modelChargeDensity,
+                        std::make_shared<
+                            FieldFillPattern<dimension, /*overwrite_interior=*/true>>());
             }
 
             assert(info->maxBorderFields.size() == 1); // charge density
@@ -1254,6 +1295,50 @@ namespace amr
                                              + std::to_string(level.getLevelNumber()));
             })
             return time;
+        }
+
+        // the max after a border sum may only move a physical node by round-off: a larger move
+        // means a copy missed a contribution, which the max would hide (#1494). Ghost nodes are
+        // left out, the ghost fill replaces them. Scale: the patch's largest |value|
+        static void checkMaxMovedRoundOffOnly_(FieldT const& after, FieldT const& before,
+                                               patch_t const& patch)
+        {
+            using value_type = FieldT::value_type;
+            auto const values
+                = [](auto const& field) { return std::span{field.data(), field.size()}; };
+            value_type scale = 0;
+            for (auto const v : values(before))
+                scale = std::max(scale, std::abs(v));
+            auto const tolerance = 16 * std::numeric_limits<value_type>::epsilon() * scale;
+
+            auto const layout     = layoutFromPatch<GridLayoutT>(patch);
+            auto const shape      = before.shape();
+            auto const isPhysical = [&](std::size_t flat) { // row major
+                for (std::size_t d = dimension; d-- > 0;)
+                {
+                    auto const direction = static_cast<core::Direction>(d);
+                    auto const index     = flat % shape[d];
+                    flat /= shape[d];
+                    if (index < layout.physicalStartIndex(before, direction)
+                        or index > layout.physicalEndIndex(before, direction))
+                        return false;
+                }
+                return true;
+            };
+
+            for (std::size_t i = 0; i < before.size(); ++i)
+                if (isPhysical(i) and std::abs(values(after)[i] - values(before)[i]) > tolerance)
+                {
+                    std::ostringstream message;
+                    message << std::setprecision(17) << "border max moved " << before.name()
+                            << " flat node " << i << " (shape";
+                    for (auto const n : before.shape())
+                        message << " " << n;
+                    message << ", row major, from the ghost box start) of patch " << patch.getBox()
+                            << " from " << values(before)[i] << " to " << values(after)[i]
+                            << ", more than round-off " << tolerance;
+                    throw std::runtime_error(message.str());
+                }
         }
 
         // fully kinetic: a finer level E ghost fill past the coarse E^{n+1/2}, whose time is the
@@ -1385,6 +1470,9 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> currentBorderSumRefiners_;
         //! += charge density of the divergence cleaning (fully kinetic only)
         std::vector<FieldGhostSumRefinerPool> chargeDensityBorderSumRefiners_;
+        //! max over the copies of a shared node, after the two sums above (fully kinetic only)
+        std::vector<VecFieldGhostMaxRefinerPool> currentBorderMaxRefiners_;
+        std::vector<FieldGhostMaxRefinerPool> chargeDensityBorderMaxRefiners_;
 
         std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
         std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;

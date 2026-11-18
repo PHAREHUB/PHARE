@@ -78,6 +78,8 @@ if(HighFive)
     phare_mpi_python3_exec(9 3 fully_kinetic_amr_2d test_fully_kinetic_amr.py ${CMAKE_CURRENT_BINARY_DIR} 2 1 --filter-passes 1 --cleaning 0.5)
     phare_mpi_python3_exec(9 3 fully_kinetic_amr_rebalance test_fully_kinetic_amr_rebalance.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0.5)
     phare_mpi_python3_exec(9 2 fully_kinetic_amr_restart test_fully_kinetic_amr_restart.py ${CMAKE_CURRENT_BINARY_DIR} 1 1 --cleaning 0.5)
+    # 2D, four patches on four ranks: every copy of a shared E and B node stays equal (~90 s, Debug)
+    phare_mpi_python3_exec(9 4 fully_kinetic_patches test_fully_kinetic_patches.py ${CMAKE_CURRENT_BINARY_DIR} --tiled-only)
     phare_mpi_python3_exec(9 4 mhd_shared_faces test_mhd_shared_faces.py ${CMAKE_CURRENT_BINARY_DIR})
 
   else() # serial only
