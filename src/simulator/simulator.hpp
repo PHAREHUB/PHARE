@@ -576,9 +576,9 @@ double Simulator<opts>::advance()
         {
             double constexpr sliver = 1e-6;
             double const stable     = multiphysInteg_->computeStableDt(*hierarchy_, currentTime_);
-            double const remaining = finalTime_ - currentTime_;
-            last                   = remaining - stable <= sliver * stable;
-            dt_                    = last ? remaining : stable;
+            double const remaining  = finalTime_ - currentTime_;
+            last                    = remaining - stable <= sliver * stable;
+            dt_                     = last ? remaining : stable;
         }
 
         auto const stamped = startTime_ + ((*timeStamper) += dt_);

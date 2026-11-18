@@ -261,24 +261,21 @@ class AdaptiveDtMHDTest(SimulatorTest):
         times = sorted(hier.time_hier.keys(), key=float)
         self.assertGreater(len(times), 1)
         rho_dtype = hier.level(0, times[0]).patches[0]["mhdRho"].dataset[:].dtype
-        if np.dtype(rho_dtype) != np.float64:
-            self.skipTest(
-                f"needs double-precision diagnostics (rho was dumped as {rho_dtype}): "
-                "rebuild with -DPHARE_DIAG_DOUBLES=1"
-            )
+        doubles = np.dtype(rho_dtype) == np.float64
+        covered_tol, mass_rtol = (1e-12, 1e-12) if doubles else (1e-5, 1e-6)
         for t in times[1:]:
             errors = covered_increment_errors(
                 diag_dir, times[0], t, ["mhdRho", "Bx", "By", "Bz"]
             )
             self.assertTrue(errors)
             for key, err in errors.items():
-                self.assertLess(err, 1e-12, f"{key} at t={t}")
+                self.assertLess(err, covered_tol, f"{key} at t={t}")
 
         mass_hier = hierarchy_from(h5_filename=diag_dir + "/mhd_rho.h5")
         mass_ref = composite_mass(mass_hier, times[0])
         for t in times[1:]:
             drift = composite_mass(mass_hier, t) - mass_ref
-            self.assertLess(abs(drift), 1e-12 * mass_ref, f"mass drift at t={t}")
+            self.assertLess(abs(drift), mass_rtol * mass_ref, f"mass drift at t={t}")
 
     def test_dt0_is_level0_stable_dt(self):
         cfl_wave = 0.5

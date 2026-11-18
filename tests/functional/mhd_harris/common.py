@@ -197,8 +197,11 @@ class HarrisTest(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    def check(self, diag_dir, final_time):
+    def check_dumps(self, diag_dir, final_time):
         self.assertEqual(len(dumped_times(diag_dir)), len(timestamps(final_time)))
+
+    def check(self, diag_dir, final_time):
+        self.check_dumps(diag_dir, final_time)
         self.assertEqual(count_nans(diag_dir), 0, "NaN in B")
 
     def run_case(self, cells, final_time, diag_dir, **kwargs):

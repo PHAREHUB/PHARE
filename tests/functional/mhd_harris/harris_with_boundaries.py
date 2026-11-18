@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from common import HarrisTest, dl, full_cells
+from common import HarrisTest, count_nans, dl, full_cells
 
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
@@ -52,8 +52,14 @@ class HarrisWithBoundariesTest(HarrisTest):
         )
 
     def check(self, diag_dir, final_time):
-        super().check(diag_dir, final_time)
+        self.check_dumps(diag_dir, final_time)
         times = get_times_from_h5(f"{diag_dir}/EM_B.h5")
+        self.assertEqual(
+            count_nans(diag_dir),
+            0,
+            "NaN in B: refined-level physical-boundary ghosts not filled "
+            "at init/regrid",
+        )
         bn_lower, bn_upper = max_normal_B_at_y_walls(diag_dir, times[-1])
         print(
             f"max |By| at walls @ t={times[-1]:.3f}: "
