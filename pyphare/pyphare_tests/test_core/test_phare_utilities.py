@@ -31,6 +31,11 @@ class PhareUtilitiesTest(unittest.TestCase):
         start, step, nbr = 0.30000000000000004, 1e-9, 10000
         self.assertTrue(on_step_grid([start, start + nbr * step], start, step))
 
+    def test_on_step_grid_absorbs_rounding_of_a_large_start(self):
+        start, step = 1048576.0, 1e-5
+        self.assertTrue(on_step_grid(start + np.arange(1, 4) * step, start, step))
+        self.assertFalse(on_step_grid([start + 0.5 * step], start, step))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ namespace PHARE::restarts
 class IRestartsManager
 {
 public:
-    virtual bool dump(double timeStamp, double timeStep) = 0;
+    virtual bool dump(double timeStamp, double timeStep, double clock) = 0;
     inline virtual ~IRestartsManager();
 };
 IRestartsManager::~IRestartsManager() {}
@@ -31,7 +31,7 @@ template<typename Writer>
 class RestartsManager : public IRestartsManager
 {
 public:
-    bool dump(double timeStamp, double timeStep) override;
+    bool dump(double timeStamp, double timeStep, double clock) override;
 
 
 
@@ -158,7 +158,7 @@ RestartsManager<Writer>::addRestartDict(initializer::PHAREDict const& params)
 
 
 template<typename Writer>
-bool RestartsManager<Writer>::dump(double timeStamp, double timeStep)
+bool RestartsManager<Writer>::dump(double timeStamp, double timeStep, double clock)
 {
     if (!restarts_properties_)
         return false; // not active
@@ -167,7 +167,7 @@ bool RestartsManager<Writer>::dump(double timeStamp, double timeStep)
         return false; // not needed now
 
     PHARE_LOG_SCOPE(3, "RestartsManager::dump");
-    writer_->dump(*restarts_properties_, timeStamp);
+    writer_->dump(*restarts_properties_, timeStamp, clock);
     return true;
 }
 

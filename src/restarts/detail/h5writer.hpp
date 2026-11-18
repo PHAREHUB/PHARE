@@ -39,7 +39,7 @@ public:
     }
 
 
-    void dump(RestartsProperties const& properties, double timestamp)
+    void dump(RestartsProperties const& properties, double timestamp, double clock)
     {
         auto restart_file = writeRestartFile(restartFilePathForTime(path_, timestamp));
 
@@ -56,7 +56,7 @@ public:
             "/phare", "serialized_simulation",
             properties.fileAttributes["serialized_simulation"].template to<std::string>());
 
-        h5File.write_attribute("/phare", "time", timestamp);
+        h5File.write_attribute("/phare", "time", clock);
 
         mpi::barrier();
     }
