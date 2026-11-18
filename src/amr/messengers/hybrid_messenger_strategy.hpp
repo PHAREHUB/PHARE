@@ -83,6 +83,13 @@ namespace amr
 
         virtual void fillIonGhostParticles(IonsT& ions, level_t& level, double const fillTime) = 0;
 
+        // fully kinetic: hands each patch's level leavers to the level ghost particles of the
+        // same-level patches whose ghost layer holds them, then empties the leavers
+        virtual void fillBandLeavers(IonsT& /*ions*/, level_t& /*level*/, double const /*fillTime*/)
+        {
+            throw std::runtime_error(stratname_ + " does not hand over band leavers");
+        }
+
 
         virtual void fillIonPopMomentGhosts(IonsT& ions, level_t& level, double const afterPushTime)
             = 0;

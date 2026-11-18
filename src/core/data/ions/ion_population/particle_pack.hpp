@@ -34,6 +34,9 @@ namespace core
         ParticleArray* _levelGhostParticles{nullptr};
         ParticleArray* _levelGhostParticlesOld{nullptr};
         ParticleArray* _levelGhostParticlesNew{nullptr};
+        // fully kinetic: the domain particles that left the level this step, handed to the
+        // level ghost particles of every same-level patch whose band holds them
+        ParticleArray* _bandLeavers{nullptr};
 
         auto& name() const { return _name; }
 
@@ -110,6 +113,14 @@ namespace core
         NO_DISCARD ParticleArray const& levelGhostParticlesNew() const
         {
             return const_cast<ParticlesPack*>(this)->levelGhostParticlesNew();
+        }
+
+
+        NO_DISCARD ParticleArray& bandLeavers()
+        {
+            if (_bandLeavers)
+                return *_bandLeavers;
+            throw std::runtime_error("Error - cannot provide access to bandLeavers");
         }
     };
 

@@ -472,6 +472,26 @@ namespace amr
         }
 
 
+        // fully kinetic, refined levels: the band deposit is not border summed, each patch
+        // deposits its own band, so a particle that left the level must reach every band
+        // holding its cell (docs/superpowers/specs/p4/sawtooth_fix_spec.md, hand-over design)
+        void fillBandLeavers(IonsT& ions, level_t& level, double const fillTime) override
+        {
+            if constexpr (sumsParticleCurrent)
+            {
+                PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillBandLeavers");
+
+                bandLeaverRefiners_.fill(level.getLevelNumber(), fillTime);
+
+                for (auto patch : resourcesManager_->enumerate(level, ions))
+                    for (auto& pop : ions)
+                        pop.bandLeavers().clear();
+            }
+            else
+                HybridMessengerStrategy<HybridModel>::fillBandLeavers(ions, level, fillTime);
+        }
+
+
 
         void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
@@ -991,6 +1011,8 @@ namespace amr
             {
                 currentGhostsRefiners_.registerLevel(hierarchy, level);
                 chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
+                if (levelNumber != rootLevelNumber)
+                    bandLeaverRefiners_.registerLevel(hierarchy, level);
             }
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
@@ -1327,6 +1349,12 @@ namespace amr
             domainGhostPartRefiners_.addStaticRefiners(
                 info->patchGhostParticles, nullptr, info->patchGhostParticles,
                 std::make_shared<ParticleDomainFromGhostFillPattern<GridLayoutT>>());
+
+            // one particle variable per population: the overlap picks its arrays
+            if constexpr (sumsParticleCurrent)
+                bandLeaverRefiners_.addStaticRefiners(
+                    info->patchGhostParticles, nullptr, info->patchGhostParticles,
+                    std::make_shared<ParticleBandLeaverFillPattern<GridLayoutT>>());
 
 
             for (auto const& vecfield : info->ghostFlux)
@@ -1829,6 +1857,8 @@ namespace amr
 
         //! to grab particle leaving neighboring patches and inject into domain
         DomainGhostPartRefinerPool domainGhostPartRefiners_{resourcesManager_};
+        //! fully kinetic: to hand the level leavers to the same-level bands holding them
+        DomainGhostPartRefinerPool bandLeaverRefiners_{resourcesManager_};
 
         SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> ionChargeFluxSynchronizers_{resourcesManager_};

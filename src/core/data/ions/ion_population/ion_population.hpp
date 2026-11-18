@@ -89,6 +89,8 @@ namespace core
             return particles_.levelGhostParticlesNew();
         }
 
+        NO_DISCARD auto& bandLeavers() { return particles_.bandLeavers(); }
+
         NO_DISCARD field_type const& particleDensity() const { return particleDensity_; }
         NO_DISCARD field_type& particleDensity() { return particleDensity_; }
 

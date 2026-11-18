@@ -328,6 +328,11 @@ namespace amr
             strat_->fillIonGhostParticles(ions, level, fillTime);
         }
 
+        void fillBandLeavers(IonsT& ions, level_t& level, double const fillTime)
+        {
+            strat_->fillBandLeavers(ions, level, fillTime);
+        }
+
 
 
         /**

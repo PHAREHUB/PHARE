@@ -39,6 +39,16 @@ public:
 };
 
 
+/** ParticlesBandOverlap is the signal (particles_data.hpp) that the particles that left the
+  level from the source (bandLeavers) go into the level ghost particles of the destination
+  */
+class ParticlesBandOverlap : public ParticlesDomainOverlap
+{
+public:
+    using ParticlesDomainOverlap::ParticlesDomainOverlap;
+};
+
+
 
 /**
  * \brief VariableFillPattern that is used to grab particles leaving neighboring patches
@@ -121,6 +131,67 @@ private:
         PHARE_LOG_SCOPE(2, "ParticleDomainFromGhostFillPattern::computeFillBoxesOverlap");
 
         throw std::runtime_error("no refinement supported or expected");
+    }
+};
+
+
+
+/**
+ * \brief fully kinetic: hands the particles that left the level from a source patch
+ * (bandLeavers) to the level ghost particles of a same-level destination patch.
+ *
+ * A leaver lies in the source ghost layer, outside the level; the destination must hold it
+ * if it lies in the destination ghost layer: the overlap is (grow(src, pgw) * grow(dst, pgw))
+ * minus the destination box. Periodic images come through the transformation. SAMRAI makes
+ * no unshifted copy of a patch onto itself (RefineSchedule.cpp, same_patch_no_shift): the
+ * source keeps its own leavers locally (ion_updater.hpp).
+ */
+template<typename GridLayout_t>
+class ParticleBandLeaverFillPattern : public SAMRAI::xfer::VariableFillPattern
+{
+    std::size_t constexpr static dim = GridLayout_t::dimension;
+    auto constexpr static pgw        = GridLayout_t::options.particle_ghost_width;
+
+public:
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    calculateOverlap(SAMRAI::hier::BoxGeometry const& /*dst_geometry*/,
+                     SAMRAI::hier::BoxGeometry const& src_geometry,
+                     SAMRAI::hier::Box const& dst_patch_box, SAMRAI::hier::Box const& /*src_mask*/,
+                     SAMRAI::hier::Box const& /*fill_box*/, bool const /*overwrite_interior*/,
+                     SAMRAI::hier::Transformation const& transformation) const override
+    {
+        PHARE_LOG_SCOPE(3, "ParticleBandLeaverFillPattern::calculateOverlap");
+
+        SAMRAI::hier::Box src_box
+            = dynamic_cast<SAMRAI::pdat::CellGeometry const&>(src_geometry).getBox();
+        transformation.transform(src_box);
+
+        auto const dst_box = phare_box_from<dim>(dst_patch_box);
+
+        SAMRAI::hier::BoxContainer boxes;
+        if (auto const reach = grow(phare_box_from<dim>(src_box), pgw) * grow(dst_box, pgw))
+            boxes.removeIntersections(samrai_box_from(*reach), samrai_box_from(dst_box));
+
+        return std::make_shared<ParticlesBandOverlap>(boxes, transformation);
+    }
+
+    std::string const& getPatternName() const override { return s_name_id; }
+
+private:
+    // SAMRAI queries the stencil width of any other name (RefineClasses.cpp)
+    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
+
+    SAMRAI::hier::IntVector const& getStencilWidth() override
+    {
+        throw std::runtime_error("ParticleBandLeaverFillPattern: no stencil");
+    }
+
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    computeFillBoxesOverlap(SAMRAI::hier::BoxContainer const&, SAMRAI::hier::BoxContainer const&,
+                            SAMRAI::hier::Box const&, SAMRAI::hier::Box const&,
+                            SAMRAI::hier::PatchDataFactory const&) const override
+    {
+        throw std::runtime_error("ParticleBandLeaverFillPattern: no refinement");
     }
 };
 

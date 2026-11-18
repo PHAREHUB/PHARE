@@ -58,6 +58,10 @@ namespace amr
      * coarser future time step. Used to deposit contribution of these particles
      * to moments in level ghost nodes
      *
+     *- bandLeavers: fully kinetic, the domain particles that left the level during this
+     * step. A ParticlesBandOverlap copies them into the levelGhostParticles of the
+     * same-level patches whose ghost layer holds them
+     *
      */
     template<typename ParticleArray>
     class ParticlesData : public SAMRAI::hier::PatchData
@@ -85,12 +89,14 @@ namespace amr
                                           ghostSafeMapLayer(ghost))}
             , levelGhostParticlesNew{grow(phare_box_from<dim>(getGhostBox()),
                                           ghostSafeMapLayer(ghost))}
+            , bandLeavers{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer(ghost))}
             , pack{name,
                    &domainParticles,
                    &patchGhostParticles,
                    &levelGhostParticles,
                    &levelGhostParticlesOld,
-                   &levelGhostParticlesNew}
+                   &levelGhostParticlesNew,
+                   &bandLeavers}
             , interiorLocalBox_{AMRToLocal(box, this->getGhostBox())}
             , name_{name}
         {
@@ -286,7 +292,7 @@ namespace amr
             auto const& noffset         = offset * -1;
             std::size_t numberParticles = 0;
             for (auto const& overlapBox : pOverlap.getDestinationBoxContainer())
-                numberParticles += patchGhostParticles.nbr_particles_in(
+                numberParticles += sourceOf(pOverlap).nbr_particles_in(
                     shift(phare_box_from<dim>(overlapBox), noffset));
             return sizeof(std::size_t) + numberParticles * sizeof(Particle_t);
         }
@@ -452,6 +458,22 @@ namespace amr
 
         core::ParticlesPack<ParticleArray>* getPointer() { return &pack; }
 
+        // a ParticlesDomainOverlap moves the leavers of a patch domain (patchGhostParticles)
+        // into the destination domain, a ParticlesBandOverlap the leavers of the level
+        // (bandLeavers) into the destination level ghost particles
+        static bool isBand(ParticlesDomainOverlap const& overlap)
+        {
+            return dynamic_cast<ParticlesBandOverlap const*>(&overlap) != nullptr;
+        }
+        auto& sourceOf(ParticlesDomainOverlap const& overlap) const
+        {
+            return isBand(overlap) ? bandLeavers : patchGhostParticles;
+        }
+        auto& destinationOf(ParticlesDomainOverlap const& overlap)
+        {
+            return isBand(overlap) ? levelGhostParticles : domainParticles;
+        }
+
 
 
         // Core interface
@@ -464,6 +486,7 @@ namespace amr
 
         ParticleArray levelGhostParticlesOld;
         ParticleArray levelGhostParticlesNew;
+        ParticleArray bandLeavers;
 
         core::ParticlesPack<ParticleArray> pack;
 
@@ -711,8 +734,8 @@ void ParticlesData<ParticleArray_t>::copy_from_ghost(Args&&... args)
     PHARE_LOG_SCOPE(3, "ParticlesData::copy_from_ghost");
 
     auto&& [pSource, pOverlap] = std::forward_as_tuple(args...);
-    auto& src_particles        = pSource.patchGhostParticles;
-    auto& dst_particles        = domainParticles;
+    auto& src_particles        = pSource.sourceOf(pOverlap);
+    auto& dst_particles        = destinationOf(pOverlap);
     auto const& offset         = as_point<dim>(pOverlap.getTransformation());
     auto const& noffset        = offset * -1;
 
@@ -745,7 +768,7 @@ void ParticlesData<ParticleArray_t>::pack_from_ghost(SAMRAI::tbox::MessageStream
     }
 
     auto& outBuffer     = tmp.clear()();
-    auto& src_particles = patchGhostParticles;
+    auto& src_particles = sourceOf(pOverlap);
     auto const& offset  = as_point<dim>(pOverlap.getTransformation());
     auto const& noffset = offset * -1;
 
@@ -771,7 +794,7 @@ void ParticlesData<ParticleArray_t>::pack_from_ghost(SAMRAI::tbox::MessageStream
 //  and the transform if applicable is performed during packing
 template<typename ParticleArray_t>
 void ParticlesData<ParticleArray_t>::unpack_from_ghost(SAMRAI::tbox::MessageStream& stream,
-                                                       ParticlesDomainOverlap const& /*pOverlap*/)
+                                                       ParticlesDomainOverlap const& pOverlap)
 {
     PHARE_LOG_SCOPE(3, "ParticlesData::unpack_from_ghost");
 
@@ -780,14 +803,14 @@ void ParticlesData<ParticleArray_t>::unpack_from_ghost(SAMRAI::tbox::MessageStre
     auto& particleArray = *tmp.get(numberParticles);
     stream.unpack(particleArray.data(), numberParticles);
 
-    domainParticles.reserve(domainParticles.size() + numberParticles);
+    auto& dst_particles = destinationOf(pOverlap);
+    dst_particles.reserve(dst_particles.size() + numberParticles);
     // we disregard the overlap boxes in this function
     // contrary to unpack_cell_overlap.
     // the reason is that we only get here when we're unpacking
-    // particles that are leaving neighbor domain into and so they
-    // must be in the domain box, no need to check.
+    // particles the source selected in the overlap boxes (pack_from_ghost)
     for (auto const& p : particleArray)
-        domainParticles.push_back(p);
+        dst_particles.push_back(p);
 }
 
 } // namespace PHARE::amr

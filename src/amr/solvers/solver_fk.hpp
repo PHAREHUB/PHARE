@@ -566,6 +566,12 @@ void SolverFK<FKModel, AMR_Types>::moveParticles_(level_t& level, FKModel& model
     if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverFK::moveParticles_");
 
+    // the particles that left the level go into every same-level band holding their cell, as
+    // their own patch kept them (ion_updater.hpp), for the next step's band deposit. Out of the
+    // level, they are not in a nonLevelGhostBox: the erase below leaves them
+    if (level.getLevelNumber() > 0)
+        messenger.fillBandLeavers(ions, level, newTime);
+
     // a level ghost copy pushed into a same-level neighbor's domain is that neighbor's domain
     // particle now: kept here, it would deposit twice (P4 plan D5: the neighbor's deposit reaches
     // this patch through the border sum) and could later be exported a second time

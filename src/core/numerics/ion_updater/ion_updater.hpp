@@ -87,8 +87,7 @@ private:
     // fully_kinetic, which silently turned the switch off
     static_assert(keepsBandLeavers == (GridLayout::options.particle_ghost_width >= 3));
 
-    // dealloced on regridding/load balancing coarsest; with keepsBandLeavers, the band leavers
-    // of the population being updated
+    // dealloced on regridding/load balancing coarsest
     ParticleArray tmp_particles_{Box{}}; //{std::make_unique<ParticleArray>(Box{})};
 };
 
@@ -299,15 +298,17 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         // fully kinetic: a leaver into the level ghost band stays there as a band particle until
         // the band is renewed from the coarser level (lastStep), or the band deposit misses the
         // outflux of the fine steps in between (the boundary node's Gauss residual, a sawtooth).
-        // 1D only for now: in 2D/3D a kept leaver must also be handed to the bands of the other
-        // same-level patches covering its cell, else results depend on the patch layout
-        // (docs/superpowers/specs/p4/sawtooth_fix_spec.md, point 3)
-        if constexpr (keepsBandLeavers and dimension == 1)
+        // The messenger hands the leavers to the bands of the other same-level patches holding
+        // their cell (fillBandLeavers), so results do not depend on the patch layout
+        // (docs/superpowers/specs/p4/sawtooth_fix_spec.md, hand-over design)
+        if constexpr (keepsBandLeavers)
         {
-            auto const bandLeavers
+            auto const leavers
                 = makeRange(domainParticles, not_level_ghosts.iend(), now_ghosts.iend());
-            tmp_particles_.clear();
-            tmp_particles_.insert(tmp_particles_.end(), bandLeavers.begin(), bandLeavers.end());
+            auto& bandLeavers = pop.bandLeavers();
+            bandLeavers.clear();
+            bandLeavers.reserve(leavers.size());
+            std::copy(leavers.begin(), leavers.end(), std::back_inserter(bandLeavers));
         }
 
         domainParticles.erase(now_ghosts); // drop all ghosts
@@ -328,8 +329,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         }
 
         // after the band push: the leavers are at the end of this step already
-        if constexpr (keepsBandLeavers and dimension == 1)
-            for (auto const& particle : tmp_particles_)
+        if constexpr (keepsBandLeavers)
+            for (auto const& particle : pop.bandLeavers())
                 pop.levelGhostParticles().push_back(particle);
 
         interpolator_( //
