@@ -6,5 +6,6 @@ project(test-pharein)
 add_python3_test(test-pharein-simulation simulation_test.py ${PROJECT_SOURCE_DIR})
 add_python3_test(test-pharein-boundary boundary_test.py ${PROJECT_SOURCE_DIR})
 add_python3_test(test-pharein-fully-kinetic fully_kinetic_test.py ${PROJECT_SOURCE_DIR})
+add_python3_test(test-pharein-periodicity periodicity_test.py ${PROJECT_SOURCE_DIR})
 
 
