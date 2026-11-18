@@ -70,6 +70,25 @@ namespace solver
         virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
 
 
+        /**
+         * @brief Compute the external magnetic field B0 on every patch of the level, a no-op
+         * when no external field is declared.
+         *
+         * Always does the work, whether or not the field depends on time: this is what
+         * initialization, new level creation, regridding and restarts need, since B0 is not part
+         * of the messenger info and is therefore never refined, copied or time interpolated. On
+         * restart it is recomputed from the restart's configuration rather than read back.
+         *
+         * B0 must already be allocated on the level.
+         */
+        virtual void initializeExternalField(level_t& level, double time) = 0;
+
+        /**
+         * @brief Same as initializeExternalField, but a no-op for a time independent field.
+         *
+         * This is what the solvers call once the level has been advanced to `time`.
+         */
+        virtual void updateExternalField(level_t& level, double time) = 0;
 
 
         virtual ~IPhysicalModel() = default;

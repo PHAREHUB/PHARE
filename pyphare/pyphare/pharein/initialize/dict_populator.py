@@ -47,6 +47,10 @@ class DictPopulator:
         adder = getattr(self.pp, f"addInitFunction{ndim:d}" + "D")
         adder(path, fn_wrapper(fn))
 
+    def add_space_time_function(self, ndim, path, fn):
+        adder = getattr(self.pp, f"add_space_time_function_{ndim:d}d")
+        adder(path, space_time_fn_wrapper(fn))
+
     def add_enum_int(self, path, enum_name, member_name):
         """Writes the integer value of an enum member exposed by cpp_etc."""
         from pyphare.cpp import cpp_etc_lib
@@ -92,6 +96,22 @@ class fn_wrapper(py_fn_wrapper):
         # convert numpy array to C++ SubSpan
         # couples vector init functions to C++
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
+
+
+# Wrap calls to user space-time functions f(x[, y[, z]], t)
+class space_time_fn_wrapper:
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __call__(self, *args):
+        from pyphare.cpp import cpp_etc_lib
+
+        *spans, t = args
+        xyz = [np.asarray(span) for span in spans]
+        ret = self.fn(*xyz, t)
+        if is_scalar(ret):
+            ret = np.full(xyz[-1].shape, ret, dtype=np.float64)
+        return cpp_etc_lib().makePyArrayWrapper(ret)
 
 
 def dictator():

@@ -11,6 +11,11 @@ from .diagnostics import (
     ParticleDiagnostics,
 )
 from .electron_model import ElectronModel
+from .external_field import (
+    DipoleExternalField,
+    ExternalMagneticField,
+    UserDefinedExternalField,
+)
 from .load_balancer import LoadBalancer
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .mhd_model import MHDModel
@@ -18,8 +23,10 @@ from .simulation import Simulation
 from .uniform_model import UniformModel
 
 __all__ = [
+    "DipoleExternalField",
     "ElectromagDiagnostics",
     "ElectronModel",
+    "ExternalMagneticField",
     "FluidDiagnostics",
     "InfoDiagnostics",
     "LoadBalancer",
@@ -30,6 +37,7 @@ __all__ = [
     "ParticleDiagnostics",
     "Simulation",
     "UniformModel",
+    "UserDefinedExternalField",
 ]
 
 # This exists to allow a condition variable for when we are running PHARE from C++ via phare-exe

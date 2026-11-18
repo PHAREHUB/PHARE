@@ -8,6 +8,16 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+
+#include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
+
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
+
+#include <stdexcept>
+#include <vector>
 
 
 using namespace PHARE::core;
@@ -273,6 +283,53 @@ TEST(aVecField, dataCanBeCopiedIntoAnother)
     EXPECT_DOUBLE_EQ(12, bx2(1, 1, 1));
     EXPECT_DOUBLE_EQ(13, by2(1, 1, 1));
     EXPECT_DOUBLE_EQ(14, bz2(1, 1, 1));
+}
+
+
+
+namespace
+{
+constexpr PHARE::SimOpts mhd_opts{
+    .dimension           = 2,
+    .interp_order        = 1,
+    .reconstruction_type = PHARE::MHDOpts::ReconstructionType::Constant,
+    .slope_limiter_type  = PHARE::MHDOpts::SlopeLimiterType::None,
+    .riemann_solver_type = PHARE::MHDOpts::RiemannSolverType::Rusanov};
+
+using MHDGridLayout_t = PHARE_Types<mhd_opts>::MHD::GridLayout_t;
+} // namespace
+
+
+TEST(VecFieldViewOn, viewsConsecutiveSlicesOfTheBufferWithTheRequestedCentering)
+{
+    using VecField_t = VecFieldMHD<2>;
+    TestGridLayout<MHDGridLayout_t> layout{8};
+    std::vector<double> buffer(alloc_size<VecField_t>(MHDQuantity::Vector::E, layout));
+
+    auto E = view_on<VecField_t>("A0", buffer, MHDQuantity::Vector::E, layout);
+
+    EXPECT_EQ(E.name(), "A0");
+    EXPECT_EQ(E.physicalQuantity(), MHDQuantity::Vector::E);
+    EXPECT_EQ(E[0].data(), buffer.data());
+    std::size_t total = 0;
+    for (std::size_t i = 0; i < E.size(); ++i)
+    {
+        EXPECT_EQ(E[i].shape(), layout.allocSize(E[i].physicalQuantity()));
+        EXPECT_EQ(E[i].data(), buffer.data() + total);
+        total += E[i].size();
+    }
+    EXPECT_EQ(total, buffer.size());
+}
+
+
+TEST(VecFieldViewOn, throwsIfTheBufferIsTooSmall)
+{
+    using VecField_t = VecFieldMHD<2>;
+    TestGridLayout<MHDGridLayout_t> layout{8};
+    std::vector<double> buffer(alloc_size<VecField_t>(MHDQuantity::Vector::E, layout) - 1);
+
+    EXPECT_THROW((void)view_on<VecField_t>("A0", buffer, MHDQuantity::Vector::E, layout),
+                 std::runtime_error);
 }
 
 
