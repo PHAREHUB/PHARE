@@ -19,6 +19,7 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <set>
 #include <optional>
 
 
@@ -44,9 +45,17 @@ namespace amr
 
 
         std::vector<std::map<std::string, ResourcesInfo>*> resources_;
+        std::vector<std::set<int>*> nonRestartIDs_; // see ResourcesManager::excludeFromRestarts
 
-        static auto ALL_IDS()
+        static auto RESTART_IDS()
         {
+            auto const excluded = [](int const id) {
+                for (auto const ids : INSTANCE().nonRestartIDs_)
+                    if (ids->count(id))
+                        return true;
+                return false;
+            };
+
             std::vector<int> ids;
             ids.reserve((core::sum_from(INSTANCE().resources_,
                                         [](auto const& map) { return map->size(); })));
@@ -54,7 +63,8 @@ namespace amr
             assert(INSTANCE().resources_.size());
             for (auto const res_map_ptr : INSTANCE().resources_)
                 for (auto const& [_, info] : *res_map_ptr)
-                    ids.emplace_back(info.id);
+                    if (!excluded(info.id))
+                        ids.emplace_back(info.id);
 
             return ids;
         }
@@ -62,7 +72,7 @@ namespace amr
         static void registerForRestarts()
         {
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-            for (auto const& id : ALL_IDS()) // duplicates don't matter
+            for (auto const& id : RESTART_IDS()) // duplicates don't matter
                 pdrm->registerPatchDataForRestart(id);
         }
     };
@@ -136,6 +146,7 @@ namespace amr
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
             ResourcesManagerGlobals::INSTANCE().resources_.emplace_back(&nameToResourceInfo_);
+            ResourcesManagerGlobals::INSTANCE().nonRestartIDs_.emplace_back(&nonRestartIDs_);
         }
         ~ResourcesManager()
         {
@@ -144,6 +155,10 @@ namespace amr
 
             auto& vec = ResourcesManagerGlobals::INSTANCE().resources_;
             vec.erase(std::remove(vec.begin(), vec.end(), &nameToResourceInfo_), vec.end());
+
+            auto& nonRestart = ResourcesManagerGlobals::INSTANCE().nonRestartIDs_;
+            nonRestart.erase(std::remove(nonRestart.begin(), nonRestart.end(), &nonRestartIDs_),
+                             nonRestart.end());
         }
 
 
@@ -346,12 +361,29 @@ namespace amr
 
 
 
+        /** \brief resources not written to restart files, see
+         * https://github.com/PHAREHUB/PHARE/issues/664
+         *
+         * Their owner must allocate them on restart like on a new level, and set them before
+         * they are read, e.g. "old" copies refreshed in prepareStep, or temporaries.
+         * Resources must be registered before they are excluded.
+         */
+        template<typename... ResourcesViews>
+        void excludeFromRestarts(ResourcesViews&... views)
+        {
+            auto const exclude = [&](auto& view) {
+                for (auto const id : getIDs(view))
+                    nonRestartIDs_.insert(id);
+            };
+            (exclude(views), ...);
+        }
+
         NO_DISCARD auto restart_patch_data_ids() const
         {
-            // see https://github.com/PHAREHUB/PHARE/issues/664
             std::vector<int> ids;
             for (auto const& [key, info] : nameToResourceInfo_)
-                ids.emplace_back(info.id);
+                if (!nonRestartIDs_.count(info.id))
+                    ids.emplace_back(info.id);
             return ids;
         }
 
@@ -650,6 +682,7 @@ namespace amr
         std::shared_ptr<SAMRAI::hier::VariableContext> context_;
         SAMRAI::tbox::Dimension dimension_;
         std::map<std::string, ResourcesInfo> nameToResourceInfo_;
+        std::set<int> nonRestartIDs_; // see excludeFromRestarts
 
         template<typename ResourcesManager, typename... ResourcesViews>
         friend class ResourcesGuard;
