@@ -229,87 +229,219 @@ class MaxwellianFluidModel:
 
     # ------------------------------------------------------------------------------
 
-    def validate(self, sim, rtol=1e-12, transverse_samples=64):
-        """
-        Warn (raise under sim.strict) if a user function is not periodic along a periodic
-        direction: f at the nodes around the lower border, within the ghost width, against f
-        one domain length further, on the whole transverse plane (every primal and dual node in
-        2D, a grid of at most transverse_samples^2 of them in 3D). A jump larger than rtol times
-        the largest |value| in its group, over the domain (B, a population's density, a population's bulk
-        and thermal velocities) is reported with the function, the direction and where it is.
-        A periodic node shared by two patches is evaluated on both sides, so such a jump makes
-        their copies differ from t = 0.
-        """
-        if sim.ndim not in (1, 2, 3):
+    def validate(self, sim, atol=1e-15):
+        phare_utilities.debug_print(f"validating dim={sim.ndim}")
+        if sim.ndim == 1:
+            self.validate1d(sim, atol)
+        elif sim.ndim == 2:
+            self.validate2d(sim, atol)
+        elif sim.ndim == 3:
+            self.validate3d(sim, atol)
+        else:
             raise ValueError("Unknown dimension")
+
+    def validate1d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
         layout = HybridGridLayoutFor(
             domain_box, domain_box.lower, sim.dl, sim.interp_order
         )
-        nbrGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        directions = ["X"]
+        domain = sim.simulation_domain()
+        bx = self.model_dict["bx"]
+        by = self.model_dict["by"]
+        bz = self.model_dict["bz"]
+        is_periodic = True
+
+        dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[0]
+        dual_right = dual_left + domain[0]
+        primal_left = np.arange(-nbrPrimalGhosts, nbrPrimalGhosts) * sim.dl[0]
+        primal_right = primal_left + domain[0]
+
+        direction = directions[0]
+
+        for b_i, b_name in zip((bx, by, bz), ("Bx", "By", "Bz")):
+            if layout.qtyIsDual(b_name, direction):
+                xL, xR = dual_left, dual_right
+            else:
+                xL, xR = primal_left, primal_right
+
+            is_periodic &= np.allclose(b_i(xL), b_i(xR), atol=atol, rtol=0)
+
+        for pop in self.populations:
+            functions = ("density", "vx", "vy", "vz", "vthx", "vthy", "vthz")
+            xL, xR = primal_left, primal_right
+
+            for fn in functions:
+                f = self.model_dict[pop][fn]
+                is_periodic &= np.allclose(f(xL), f(xR), atol=atol, rtol=0)
+
+        if not is_periodic:
+            cpp.print_rank0(
+                "Warning: Simulation is periodic but some functions are not"
+            )
+            if sim.strict:
+                raise RuntimeError("Simulation is not periodic")
+
+    def validate2d(self, sim, atol):
+        domain_box = Box([0] * sim.ndim, sim.cells)
+        layout = HybridGridLayoutFor(
+            domain_box, domain_box.lower, sim.dl, sim.interp_order
+        )
+        nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        directions = ["X", "Y"]
+        domain = sim.simulation_domain()
+        bx = self.model_dict["bx"]
+        by = self.model_dict["by"]
+        bz = self.model_dict["bz"]
+        is_periodic = True
+        not_periodic = []
+
+        def getCoord(L, R, idir):
+            if idir == 0:
+                return (L, np.zeros_like(L)), (R, np.zeros_like(R))
+            else:
+                return (np.zeros_like(L), L), (np.zeros_like(R), R)
+
+        phare_utilities.debug_print("2d periodic validation")
+        for idir in np.arange(sim.ndim):
+            phare_utilities.debug_print("validating direction ...", idir)
+            if sim.periodicities[idir]:
+                phare_utilities.debug_print(f"direction {idir} is periodic?")
+                dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[
+                    idir
+                ]
+                dual_right = dual_left + domain[idir]
+                primal_left = (
+                    np.arange(-nbrPrimalGhosts, nbrPrimalGhosts) * sim.dl[idir]
+                )
+                primal_right = primal_left + domain[idir]
+
+                direction = directions[idir]
+
+                for b_i, b_name in zip((bx, by, bz), ("Bx", "By", "Bz")):
+                    if layout.qtyIsDual(b_name, direction):
+                        L, R = dual_left, dual_right
+                    else:
+                        L, R = primal_left, primal_right
+                    coordsL, coordsR = getCoord(L, R, idir)
+                    check = np.allclose(b_i(*coordsL), b_i(*coordsR), atol=atol, rtol=0)
+
+                    if not check:
+                        not_periodic += [(b_name, idir)]
+                    is_periodic &= check
+
+                for pop in self.populations:
+                    functions = ("density", "vx", "vy", "vz", "vthx", "vthy", "vthz")
+                    L, R = primal_left, primal_right
+                    coordsL, coordsR = getCoord(L, R, idir)
+
+                    for fn in functions:
+                        f = self.model_dict[pop][fn]
+                        fL = f(*coordsL)
+                        fR = f(*coordsR)
+                        check = np.allclose(fL, fR, atol=atol, rtol=0)
+                        phare_utilities.debug_print(
+                            f"checked {fn} : fL = {fL} and fR = {fR} and check = {check}"
+                        )
+                        if not check:
+                            not_periodic += [(fn, idir)]
+                        is_periodic &= check
+
+        if not is_periodic:
+            phare_utilities.debug_print(
+                "Warning: Simulation is periodic but some functions are not : ",
+                not_periodic,
+            )
+            if sim.strict:
+                raise RuntimeError("Simulation is not periodic")
+
+    def validate3d(self, sim, atol):
+        domain_box = Box([0] * sim.ndim, sim.cells)
+        layout = HybridGridLayoutFor(
+            domain_box, domain_box.lower, sim.dl, sim.interp_order
+        )
+        nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X", "Y", "Z"]
         domain = sim.simulation_domain()
-
-        def transverse(idir):
-            nodes = np.arange(0, sim.cells[idir] + 1) * sim.dl[idir]
-            points = np.sort(np.concatenate((nodes, nodes[:-1] + 0.5 * sim.dl[idir])))
-            if sim.ndim == 3 and points.size > transverse_samples:
-                points = points[:: -(-points.size // transverse_samples)]
-            return points
-
-        # (function, name, group): a jump is relative to the largest |f| of its group, so
-        # that a component close to 0 everywhere is not judged on its own round-off
-        functions = [
-            (self.model_dict[b], b.capitalize(), "B") for b in ("bx", "by", "bz")
-        ]
-        for pop in self.populations:
-            functions += [(self.model_dict[pop]["density"], f"{pop} density", pop)]
-            functions += [
-                (self.model_dict[pop][fn], f"{pop} {fn}", f"{pop} velocity")
-                for fn in ("vx", "vy", "vz", "vthx", "vthy", "vthz")
-            ]
-
-        # the size of each group over the domain, on at most 256 nodes per direction
-        everywhere = np.meshgrid(
-            *[transverse(d)[:: -(-transverse(d).size // 256)] for d in range(sim.ndim)],
-            indexing="ij",
-        )
-        scales = {}
-        for f, _, group in functions:
-            scales[group] = max(scales.get(group, 0.0), np.abs(f(*everywhere)).max())
-
+        bx = self.model_dict["bx"]
+        by = self.model_dict["by"]
+        bz = self.model_dict["bz"]
+        is_periodic = True
         not_periodic = []
-        for idir in range(sim.ndim):
-            if not sim.periodicities[idir]:
-                continue
-            jumps = []
-            for f, name, group in functions:
-                qty = name if name in ("Bx", "By", "Bz") else "rho"
-                border = np.arange(-nbrGhosts, nbrGhosts) * sim.dl[idir]
-                if layout.qtyIsDual(qty, directions[idir]):
-                    border = border + 0.5 * sim.dl[idir]
-                axes = [border if d == idir else transverse(d) for d in range(sim.ndim)]
-                left = np.meshgrid(*axes, indexing="ij")
-                right = [
-                    c + domain[idir] if d == idir else c for d, c in enumerate(left)
-                ]
-                fL = np.broadcast_to(f(*left), left[0].shape)
-                fR = np.broadcast_to(f(*right), left[0].shape)
-                jump = np.abs(fL - fR)
-                at = np.unravel_index(jump.argmax(), jump.shape)
-                jumps += [(name, group, jump[at], tuple(float(c[at]) for c in left))]
-                scales[group] = max(scales[group], np.abs(fL).max(), np.abs(fR).max())
-            not_periodic += [
-                f"{name} along {directions[idir]}: jump {jump:.3e} (largest |{group}|"
-                f" {scales[group]:.3e}) between {where} and its image"
-                for name, group, jump, where in jumps
-                if jump > rtol * scales[group]
-            ]
 
-        if not_periodic:
+        def getCoord(L, R, idir):
+            if idir == 0:
+                return (L, np.zeros_like(L), np.zeros_like(L)), (
+                    R,
+                    np.zeros_like(R),
+                    np.zeros_like(R),
+                )
+            elif idir == 1:
+                return (np.zeros_like(L), L, np.zeros_like(L)), (
+                    np.zeros_like(R),
+                    R,
+                    np.zeros_like(R),
+                )
+            else:
+                return (np.zeros_like(L), np.zeros_like(L), L), (
+                    np.zeros_like(R),
+                    np.zeros_like(R),
+                    R,
+                )
+
+        phare_utilities.debug_print("3d periodic validation")
+        for idir in np.arange(sim.ndim):
+            phare_utilities.debug_print("validating direction ...", idir)
+            if sim.periodicities[idir]:
+                phare_utilities.debug_print(f"direction {idir} is periodic?")
+                dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[
+                    idir
+                ]
+                dual_right = dual_left + domain[idir]
+                primal_left = (
+                    np.arange(-nbrPrimalGhosts, nbrPrimalGhosts) * sim.dl[idir]
+                )
+                primal_right = primal_left + domain[idir]
+
+                direction = directions[idir]
+
+                for b_i, b_name in zip((bx, by, bz), ("Bx", "By", "Bz")):
+                    if layout.qtyIsDual(b_name, direction):
+                        L, R = dual_left, dual_right
+                    else:
+                        L, R = primal_left, primal_right
+
+                    coordsL, coordsR = getCoord(L, R, idir)
+                    check = np.allclose(b_i(*coordsL), b_i(*coordsR), atol=atol, rtol=0)
+                    if not check:
+                        not_periodic += [(b_name, idir)]
+                    is_periodic &= check
+
+                for pop in self.populations:
+                    functions = ("density", "vx", "vy", "vz", "vthx", "vthy", "vthz")
+                    L, R = primal_left, primal_right
+                    coordsL, coordsR = getCoord(L, R, idir)
+
+                    for fn in functions:
+                        f = self.model_dict[pop][fn]
+                        fL = f(*coordsL)
+                        fR = f(*coordsR)
+                        check = np.allclose(fL, fR, atol=atol, rtol=0)
+                        phare_utilities.debug_print(
+                            f"checked {fn} : fL = {fL} and fR = {fR} and check = {check}"
+                        )
+                        if not check:
+                            not_periodic += [(fn, idir)]
+                        is_periodic &= check
+
+        if not is_periodic:
             cpp.print_rank0(
-                "Warning: Simulation is periodic but some functions are not:\n  "
-                + "\n  ".join(not_periodic)
+                "Warning: Simulation is periodic but some functions are not : ",
+                not_periodic,
             )
             if sim.strict:
                 raise RuntimeError("Simulation is not periodic")
