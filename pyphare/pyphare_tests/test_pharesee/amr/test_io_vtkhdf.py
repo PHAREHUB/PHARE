@@ -741,6 +741,46 @@ class RewriteInPlaceTest(TmpDirTest):
             out, ids, dst, lix = read(fresh, 1.0, 0)
             assert_exact(self, fresh, out, ids, dst, lix, default_fields(), 1.0, 0, [0.4, 0.4])
 
+    def test_failed_read_after_append_is_not_a_rewrite(self):
+        """The file grew (a dump) and one dataset read fails meanwhile: that call raises
+        the read error, not PhareseeFileChanged, and the next calls work. Each read is
+        failed in turn, so the Steps check meets one."""
+        import h5py
+
+        steps = hierarchy(2)
+        real_get = h5py.Dataset.__getitem__
+        n = 0
+        while True:
+            n += 1
+            p = self.write(f"f{n}.vtkhdf", steps)
+            b = VtkhdfBackend(p)
+            read(b, 0.0, 0)
+            append_vtkhdf(p, [steps[0]], times=[1.0])
+            calls = []
+
+            def get_failing_nth(ds, *a, n=n, calls=calls):
+                calls.append(1)
+                if len(calls) == n:
+                    raise OSError("cannot read (test)")
+                return real_get(ds, *a)
+
+            with mock.patch.object(h5py.Dataset, "__getitem__", get_failing_nth):
+                try:
+                    read(b, 0.0, 0)
+                    read(b, 0.5, 0)
+                    failed = False
+                except OSError as e:
+                    self.assertNotIsInstance(e, PhareseeFileChanged, f"read {n}")
+                    failed = True
+            for t in (0.0, 0.5):
+                for lv in (0, 1):
+                    out, ids, dst, lix = read(b, t, lv)
+                    assert_exact(self, b, out, ids, dst, lix, default_fields(), t, lv,
+                                 [0.4, 0.4])
+            if not failed:  # fewer reads than n: every one was failed once
+                break
+        self.assertGreater(n, 2)
+
     def test_rewrite_detected_before_serving_another_time(self):
         """Time 0 was read; the file is rewritten in place with the same layout; time 0.5
         (never indexed) must not be served from the new run: the steps seen so far are

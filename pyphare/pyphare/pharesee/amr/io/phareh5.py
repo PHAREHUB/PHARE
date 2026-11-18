@@ -680,15 +680,16 @@ class H5Backend:
         return indexcache.header_digest(self._path, start, n)
 
     def _check_time_address(self, key):
-        """The t/<key> header is still where it was at open (else: rewritten)."""
+        """The t/<key> header is still where it was at open (else: rewritten). A failed
+        open or read is raised as it is: it proves nothing, the next call checks again."""
         import h5py
 
-        try:
-            with _open_h5(self._path) as f:
-                tg = h5py.h5g.open(f.id, b"t")
+        with _open_h5(self._path) as f:
+            tg = h5py.h5g.open(f.id, b"t")
+            try:
                 addr = int(tg.links.get_info(key.encode()).u)
-        except (KeyError, OSError, RuntimeError):
-            addr = None
+            except KeyError:
+                addr = None
         if addr != self._time_addr[key]:
             self._mark_rewritten(f"the group t/{key} moved or disappeared")
 
@@ -725,17 +726,14 @@ class H5Backend:
         with self._lock:
             cached = dict(self._indexes)
             seen = dict(self._validation)
-        try:
-            with _open_h5(self._path) as f:
-                tg = h5py.h5g.open(f.id, b"t")
-                addrs = {}
-                for key in seen:
-                    try:
-                        addrs[key] = int(tg.links.get_info(key.encode()).u)
-                    except KeyError:
-                        addrs[key] = None
-        except (OSError, RuntimeError):
+        with _open_h5(self._path) as f:  # a failed open or read is raised, nothing stamped
+            tg = h5py.h5g.open(f.id, b"t")
             addrs = {}
+            for key in seen:
+                try:
+                    addrs[key] = int(tg.links.get_info(key.encode()).u)
+                except KeyError:
+                    addrs[key] = None
         for key, (digest, prints, offsets) in seen.items():
             same = (addrs.get(key) == self._time_addr[key]
                     and self._time_digest(key) == digest
@@ -757,19 +755,20 @@ class H5Backend:
     # every level, all components) rather than by a full walk (seconds per time on 10^4
     # patches); the header digest and the data fingerprint cover the rest.
     def _same_offsets(self, key, levels) -> bool:
-        """Byte offsets of the first and last patch of every level, read again from the file."""
-        try:
-            with _open_h5(self._path) as f:
-                for lvl, li in levels.items():
-                    t = li.payload
-                    for i in {0, len(t.rank) - 1}:
-                        for c, dname in enumerate(t.datasets):
+        """Byte offsets of the first and last patch of every level, read again from the file
+        (a missing dataset: False; a failed open or read is raised)."""
+        with _open_h5(self._path) as f:
+            for lvl, li in levels.items():
+                t = li.payload
+                for i in {0, len(t.rank) - 1}:
+                    for c, dname in enumerate(t.datasets):
+                        try:
                             ds = f[f"t/{key}/pl{lvl}/{t.patch_name(i)}/{dname}"]
-                            off = ds.id.get_offset()
-                            if (-1 if off is None else int(off)) != int(t.offset[c, i]):
-                                return False
-        except (KeyError, OSError, RuntimeError):
-            return False
+                        except KeyError:
+                            return False
+                        off = ds.id.get_offset()
+                        if (-1 if off is None else int(off)) != int(t.offset[c, i]):
+                            return False
         return True
 
     def _level_indexes(self, key) -> dict:

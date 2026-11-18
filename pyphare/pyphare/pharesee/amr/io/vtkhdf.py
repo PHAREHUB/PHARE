@@ -752,7 +752,7 @@ class VtkhdfBackend:
                 for key, table in (("NumberOfAMRBox", "nbox"), ("AMRBoxOffset", "boxoff"),
                                    ("PointDataOffset/data", "dataoff")):
                     same = same and int(st[key][step]) == int(info[table][step])
-        except (KeyError, ValueError, IndexError, OSError):
+        except (KeyError, ValueError, IndexError):  # a failed read (OSError) proves nothing
             same = False
         if not same:
             self._mark_rewritten(f"the Steps tables of time {float(self._times[i])!r} differ")

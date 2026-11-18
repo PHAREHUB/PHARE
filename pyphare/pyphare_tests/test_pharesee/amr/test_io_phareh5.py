@@ -690,6 +690,48 @@ class TestRewriteInPlace(SyntheticBase):
         self.assertEqual(b.times().tolist(), [0.0, 0.5])
         self.assertEqual(H5Backend(path).times().tolist(), [0.0, 0.5, 1.0])
 
+    def test_failed_open_after_append_is_not_a_rewrite(self):
+        """The file grew (a dump) and one open fails meanwhile: that call raises the read
+        error, not PhareseeFileChanged, and the next calls work. Each open is failed in
+        turn, so every check of the seen times meets one."""
+        import h5py
+
+        os.environ["PHARESEE_CACHE"] = "0"
+        ref = self.write("ref.h5", dim=2, patches=self.patches([0.0, 0.5, 1.0]),
+                         domain_cells=[32, 16])
+        real_open = phareh5._open_h5
+        n = 0
+        while True:
+            n += 1
+            path = self.write(f"f{n}.h5", dim=2, patches=self.patches([0.0, 0.5]),
+                              domain_cells=[32, 16])
+            b = H5Backend(path)
+            read_level(b, 0.0, b.index(0.0)[0])
+            with h5py.File(path, "a") as f, h5py.File(ref, "r") as g:
+                g.copy(g["t/1.0000000000"], f["t"], name="1.0000000000")
+            calls = []
+
+            def open_failing_nth(p, n=n, calls=calls):
+                calls.append(p)
+                if len(calls) == n:
+                    raise PhareseeIOError(f"{p}: cannot open (test)")
+                return real_open(p)
+
+            with mock.patch.object(phareh5, "_open_h5", side_effect=open_failing_nth):
+                try:
+                    b.index(0.0)
+                    b.index(0.5)
+                    failed = False
+                except PhareseeIOError as e:
+                    self.assertNotIsInstance(e, PhareseeFileChanged, f"open {n}")
+                    failed = True
+            for t in (0.0, 0.5):
+                for li in b.index(t):
+                    read_level(b, t, li)
+            if not failed:  # fewer opens than n: every one was failed once
+                break
+        self.assertGreater(n, 2)
+
 
 class TestDamagedFiles(SyntheticBase):
     """A9: empty or truncated files give PhareseeIOError / FormatError naming the file."""
