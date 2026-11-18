@@ -47,6 +47,9 @@ first.
 
     # ------------ OPTIONAL BLOCKS
 
+    ph.DipoleExternalField(...)     # external magnetic field B0, declared
+    ph.UserDefinedExternalField(...)  # right after Simulation, before the model
+
     ph.LoadBalancer(
         # tune how work is redistributed across MPI ranks
     )
@@ -60,8 +63,9 @@ first.
     # ------------ END OF OPTIONAL BLOCKS
 
 See :doc:`hybrid_inputs` for ``MaxwellianFluidModel``/``ElectronModel``,
-:doc:`mhd_inputs` for ``MHDModel``, :doc:`diagnostics` for the diagnostics
-blocks, and :doc:`load_balancing` for ``LoadBalancer``. This page covers the
+:doc:`mhd_inputs` for ``MHDModel``, :doc:`external_field` for the external
+field blocks, :doc:`diagnostics` for the diagnostics blocks, and
+:doc:`load_balancing` for ``LoadBalancer``. This page covers the
 ``Simulation`` block itself.
 
 

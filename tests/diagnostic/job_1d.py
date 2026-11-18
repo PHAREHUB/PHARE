@@ -16,10 +16,8 @@ def az(x):
     return x
 
 
-ph.Simulation(
-    **basicSimulatorArgs(dim=1, interp=1, **simInput),
-    external_field={"type": "user-defined", "potential": (None, None, az)},
-)
+ph.Simulation(**basicSimulatorArgs(dim=1, interp=1, **simInput))
+ph.UserDefinedExternalField(a0z=az)
 model = makeBasicModel()
 ph.ElectronModel(closure="isothermal", Te=0.12)
 dump_all_diags(model.populations)

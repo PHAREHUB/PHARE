@@ -7,7 +7,6 @@ from ..core import box as boxm
 from ..core import phare_utilities
 from ..core.box import Box
 from . import boundary, global_vars, timestepper
-from .external_field import resolve_external_field
 
 # ------------------------------------------------------------------------------
 
@@ -720,7 +719,6 @@ def checker(func):
             "riemann",
             "mhd_timestepper",
             "refinement_order",
-            "external_field",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -763,8 +761,6 @@ def checker(func):
         kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
             ndim, **kwargs
         )
-
-        kwargs["external_field"] = resolve_external_field(ndim, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
 
@@ -1148,10 +1144,6 @@ class Simulation:
         * **strict** (``bool``), turns warnings into errors (default False)
         * **dry_run** (``bool``), default=False (or the `PHARE_DRY_RUN` environment variable if set), builds and validates the simulation - constructing models, populating the dict, building the hierarchy - without actually initializing or advancing it. `Simulator.initialize()`, `advance()` and `run()` become no-ops. Useful to check that a script is well-formed without paying for a real run.
         * **domain_boundaries** (``dict``) domain boundaries per location (e.g. "xlower"); a direction is periodic unless both of its locations are given (MHD only)
-        * **external_field** (``dict``), prescribed background magnetic field, e.g.
-          ``{"type": "dipole", "position": (0.5, 0.5), "moment": (0., 1.), "radius": 0.1}``
-          (vectors have one component per dimension)
-          (default is no external field: B0 is then neither allocated nor dumped)
     """
 
     @checker
@@ -1169,6 +1161,7 @@ class Simulation:
         self.diagnostics = {}
         self.model = None
         self.electrons = None
+        self.external_field = None
         self.load_balancer = None
 
         validate_restart_options(self)
@@ -1273,6 +1266,13 @@ class Simulation:
         :meta private:
         """
         self.electrons = electrons
+
+    def set_external_field(self, external_field):
+        """
+
+        :meta private:
+        """
+        self.external_field = external_field
 
 
 # ------------------------------------------------------------------------------
