@@ -75,9 +75,10 @@ def restored_time(restart_options):
     from pyphare import cpp
 
     etc = cpp.cpp_etc_lib()
-    return etc.restored_time(
-        etc.restart_path_for_time(restart_dir(restart_options), label)
-    )
+    folder = etc.restart_path_for_time(restart_dir(restart_options), label)
+    if not Path(folder).is_dir():
+        return label
+    return etc.restored_time(folder)
 
 
 def find_latest_time_from_restarts(restart_options):
