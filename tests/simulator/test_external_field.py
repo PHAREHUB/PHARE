@@ -4,6 +4,7 @@ Functional tests for the external magnetic field B0.
 """
 
 import os
+from functools import partial
 
 import numpy as np
 
@@ -115,10 +116,10 @@ class ExternalFieldTest(SimulatorTest):
             },
         )
         opts.update(kwargs)
-        if external_field is not None:
-            opts["external_field"] = external_field
 
         sim = self.simulation(**opts)
+        if external_field is not None:
+            external_field()
         plasma_model(sim)
         if external_field is not None:
             ph.ElectromagDiagnostics(quantity="B0", write_timestamps=timestamps)
@@ -165,7 +166,7 @@ class ExternalFieldTest(SimulatorTest):
         model.initialize, so its B0 only exists if the level initializer fills it."""
         sim, timestamps = self.config(
             nbr_steps=1,
-            external_field={"type": "user-defined", "potential": (None, None, az)},
+            external_field=partial(ph.UserDefinedExternalField, a0z=az),
             refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
             smallest_patch_size=10,
             largest_patch_size=20,
@@ -183,7 +184,7 @@ class ExternalFieldTest(SimulatorTest):
         the messenger, which knows nothing about B0."""
         sim, timestamps = self.config(
             nbr_steps=10,
-            external_field={"type": "user-defined", "potential": (None, None, az)},
+            external_field=partial(ph.UserDefinedExternalField, a0z=az),
             refinement="tagging",
             max_nbr_levels=2,
             nesting_buffer=1,
@@ -199,11 +200,9 @@ class ExternalFieldTest(SimulatorTest):
         """Covers the end-of-step update: B0 dumped at t must be B0(t), not B0(0)."""
         sim, timestamps = self.config(
             nbr_steps=5,
-            external_field={
-                "type": "user-defined",
-                "potential": (None, None, az_t),
-                "potential_time_derivative": (None, None, dazdt),
-            },
+            external_field=partial(
+                ph.UserDefinedExternalField, a0z=az_t, da0z_dt=dazdt
+            ),
             refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
             smallest_patch_size=10,
             largest_patch_size=20,
@@ -228,12 +227,12 @@ class ExternalFieldTest(SimulatorTest):
         """A time independent field must be computed once and then left alone."""
         sim, timestamps = self.config(
             nbr_steps=5,
-            external_field={
-                "type": "dipole",
-                "position": (-5.0, -5.0),  # outside the domain: no singularity
-                "moment": (0.0, 1.0),
-                "radius": 0.0,
-            },
+            external_field=partial(
+                ph.DipoleExternalField,
+                position=(-5.0, -5.0),  # outside the domain: no singularity
+                moment=(0.0, 1.0),
+                radius=0.0,
+            ),
             refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
             smallest_patch_size=10,
             largest_patch_size=20,
@@ -264,12 +263,12 @@ class ExternalFieldTest(SimulatorTest):
         radius = 1.0
         sim, timestamps = self.config(
             nbr_steps=1,
-            external_field={
-                "type": "dipole",
-                "position": center,
-                "moment": moment,
-                "radius": radius,
-            },
+            external_field=partial(
+                ph.DipoleExternalField,
+                position=center,
+                moment=moment,
+                radius=radius,
+            ),
             refinement_boxes={"L0": {"B0": [(10, 10), (29, 29)]}},
             smallest_patch_size=10,
             largest_patch_size=20,
@@ -310,8 +309,8 @@ class ExternalFieldTest(SimulatorTest):
         timestamps = [restart_time, 4 * time_step]
         out = "phare_outputs/test_external_field_restart"
 
-        def options(external_field, diag_dir, restart_options):
-            opts = dict(
+        def options(diag_dir, restart_options):
+            return dict(
                 time_step=time_step,
                 time_step_nbr=4,
                 cells=cells,
@@ -325,11 +324,10 @@ class ExternalFieldTest(SimulatorTest):
                 },
                 restart_options=restart_options,
             )
-            if external_field is not None:
-                opts["external_field"] = external_field
-            return opts
 
         def setup(sim, external_field):
+            if external_field is not None:
+                external_field()
             plasma_model(sim)
             ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
             if external_field is not None:
@@ -340,7 +338,7 @@ class ExternalFieldTest(SimulatorTest):
             "mode": "overwrite",
             "timestamps": [restart_time],
         }
-        sim = self.simulation(**options(first_field, out, restart_options))
+        sim = self.simulation(**options(out, restart_options))
         setup(sim, first_field)
         Simulator(sim).run().reset()
         first_dir = sim.diag_options["options"]["dir"]
@@ -352,7 +350,7 @@ class ExternalFieldTest(SimulatorTest):
             "restart_time": restart_time,
         }
         ph.global_vars.sim = None
-        sim = ph.Simulation(**options(restarted_field, restarted_dir, restart_options))
+        sim = ph.Simulation(**options(restarted_dir, restart_options))
         setup(sim, restarted_field)
         self.register_diag_dir_for_cleanup(restarted_dir)
         Simulator(sim).run().reset()
@@ -360,22 +358,22 @@ class ExternalFieldTest(SimulatorTest):
 
     def test_restart_declaring_a_field_computes_b0(self):
         run, timestamps = self.restart_pair(
-            None, {"type": "user-defined", "potential": (None, None, az)}
+            None, partial(ph.UserDefinedExternalField, a0z=az)
         )
         for time in timestamps:
             self.assert_b0_is_exact(run, time, min_levels=2)
 
     def test_restart_with_other_parameters_takes_the_new_field(self):
         run, timestamps = self.restart_pair(
-            {"type": "user-defined", "potential": (None, None, az_twice)},
-            {"type": "user-defined", "potential": (None, None, az)},
+            partial(ph.UserDefinedExternalField, a0z=az_twice),
+            partial(ph.UserDefinedExternalField, a0z=az),
         )
         for time in timestamps:
             self.assert_b0_is_exact(run, time, min_levels=2)
 
     def test_restart_dropping_the_field_runs(self):
         run, timestamps = self.restart_pair(
-            {"type": "user-defined", "potential": (None, None, az)}, None
+            partial(ph.UserDefinedExternalField, a0z=az), None
         )
         self.assertFalse(os.path.exists(os.path.join(run.path, "EM_B0.h5")))
         for time in timestamps:
@@ -408,9 +406,9 @@ class ExternalFieldTest(SimulatorTest):
                 "timestamps": [time_step],
             },
         )
-        if external_field is not None:
-            opts["external_field"] = external_field
         sim = self.simulation(**opts)
+        if external_field is not None:
+            external_field()
         plasma_model(sim)
         Simulator(sim).run().reset()
 
@@ -422,9 +420,7 @@ class ExternalFieldTest(SimulatorTest):
         return entries
 
     def test_restart_files_hold_b0_only_when_declared(self):
-        declared = self.restart_entries(
-            {"type": "user-defined", "potential": (None, None, az)}
-        )
+        declared = self.restart_entries(partial(ph.UserDefinedExternalField, a0z=az))
         self.assertIn("HybridModel_B0##default", declared)
         self.assertIn("HybridModel_dB0dt##default", declared)
 
