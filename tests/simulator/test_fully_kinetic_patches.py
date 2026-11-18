@@ -28,6 +28,13 @@ Cause: the copies of a shared node of J were sums of the same terms in different
 corner node has four, so they differed in the last bits; the border sum is now followed by a
 max over the copies.
 
+--two-levels: the same plasma with a periodic B_z bump, refinement by tagging (2 levels, ratio 2,
+patches of 16 on both), divergence_cleaning 0.5, through at least one regrid of level 1. The bump
+splits into two pulses moving at +-c and level 1 follows them. In Debug, every level
+initialization (t = 0, each regrid) stops if two copies of a shared E or B node differ
+(FKLevelInitializer, checkSharedElectromagCopies); the dumps are then compared on both levels as
+above. Registered with --steps 24 --check-every 4.
+
 The fully kinetic modules have no DataWrangler (live patch data), so the copies are read from
 the h5 dumps, which hold each patch with its ghosts in single precision: a difference shows
 once it reaches float32 resolution, a few 1e-8 of the field.
@@ -52,6 +59,9 @@ parser.add_argument("--ppc", type=int, default=20)
 parser.add_argument(
     "--tiled-only", action="store_true", help="no single patch run (no energy check)"
 )
+parser.add_argument(
+    "--two-levels", action="store_true", help="tagging, level 1, cleaning, regrids"
+)
 cli = parser.parse_args(parse_cli_args())
 
 ndim = 2
@@ -66,6 +76,12 @@ Te, Ti = 0.5 / 6.0, 2.5 / 6.0  # T_i / T_e = 5, as the Harris run
 filter_passes = 1
 
 COMPONENTS = [f"{q}{c}" for q in ["E", "B"] for c in ["x", "y", "z"]]
+CELLS, DL = cells, dl  # level 0
+# --two-levels: B_z bump, width ~ 4 dx, periodic: the two sides of the periodic border are
+# bitwise equal (cos is flat at pi)
+BUMP, KAPPA = 0.4, 2 * (cells * dl / (2 * np.pi * 4 * dl)) ** 2
+TAGGING_THRESHOLD = 0.02
+MIN_REGRIDS = 1
 diag_dir = "phare_outputs/fully_kinetic_patches"
 
 # relative E energy difference with the single patch run
@@ -83,7 +99,18 @@ def check_steps():
     return sorted(set(range(0, cli.steps + 1, cli.check_every)) | {cli.steps})
 
 
+def bump(x, y):
+    phase = 2 * np.pi * (x - 0.5 * CELLS * DL) / (CELLS * DL)
+    return BUMP * np.exp(KAPPA * (np.cos(phase) - 1))
+
+
 def config(patch_size):
+    two_levels = {
+        "refinement": "tagging",
+        "max_nbr_levels": 2,
+        "tagging_threshold": TAGGING_THRESHOLD,
+        "divergence_cleaning": 0.5,
+    }
     sim = ph.Simulation(
         time_step=time_step,
         time_step_nbr=cli.steps,
@@ -93,14 +120,18 @@ def config(patch_size):
         model_options=["FullyKineticModel"],
         c_over_va=c_over_va,
         current_filter_passes=filter_passes,
-        divergence_cleaning=0.0,
         smallest_patch_size=patch_size,
         largest_patch_size=patch_size,
         strict=False,  # dx = 2.8 Debye lengths, as the Harris run
         diag_options={
             "format": "phareh5",
-            "options": {"dir": f"{diag_dir}/{patch_size}", "mode": "overwrite"},
+            "options": {
+                "dir": f"{diag_dir}/{patch_size}",
+                "mode": "overwrite",
+                "fine_dump_lvl_max": 1,
+            },
         },
+        **(two_levels if cli.two_levels else {"divergence_cleaning": 0.0}),
     )
 
     def population(charge, mass, T, seed):
@@ -122,7 +153,7 @@ def config(patch_size):
     ph.MaxwellianFluidModel(
         bx=uniform(1.0),
         by=uniform(0.0),
-        bz=uniform(0.0),
+        bz=bump if cli.two_levels else uniform(0.0),
         protons=population(1, 1.0, Ti, 2026),
         electrons=population(-1, mass_e, Te, 2027),
     )
@@ -132,15 +163,18 @@ def config(patch_size):
     return sim
 
 
-def copies(patch_size, component, step):
-    """the copies of the domain nodes of one component, over every patch: node keys
-    (2 x / dl, 2 y / dl modulo the periodic domain, one integer) and values"""
+def copies(patch_size, component, step, level=0):
+    """the copies of the domain nodes of one component on one level, over every patch of it:
+    node keys (2 x / dx, 2 y / dx modulo the periodic domain, one integer) and values"""
+    dl, cells = DL / 2**level, CELLS * 2**level
     time = step * time_step
     hier = hierarchy_from(
         h5_filename=f"{diag_dir}/{patch_size}/EM_{component[0]}.h5", times=f"{time:.10f}"
     )
     keys, values = [], []
-    patches = hier.level(0, time).patches
+    if level not in hier.levels(time):
+        return 0, np.array([], dtype=int), np.array([])
+    patches = hier.level(level, time).patches
     for patch in patches:
         pdata = patch.patch_datas[component]
         lower = np.asarray(patch.box.lower) * dl
@@ -159,9 +193,13 @@ def copies(patch_size, component, step):
     return len(patches), np.concatenate(keys), np.concatenate(values)
 
 
-def mismatch(patch_size, component, step):
-    """largest max - min over the copies of a node, that node (x, y), the field max"""
-    _, keys, values = copies(patch_size, component, step)
+def mismatch(patch_size, component, step, level=0):
+    """largest max - min over the copies of a node, that node (x, y) in level cells, the field
+    max"""
+    _, keys, values = copies(patch_size, component, step, level)
+    if keys.size == 0:
+        return 0.0, None, 0.0
+    cells = CELLS * 2**level
     order = np.argsort(keys, kind="stable")
     keys, values = keys[order], values[order]
     starts = np.flatnonzero(np.r_[True, keys[1:] != keys[:-1]])
@@ -194,10 +232,36 @@ class FullyKineticPatchesTest(SimulatorTest):
         super().tearDown()
 
     def run_with(self, patch_size):
+        """runs cli.steps steps, returns how many times level 1 was regridded"""
         ph.global_vars.sim = None
-        Simulator(config(patch_size)).run().reset()
+        run = Simulator(config(patch_size)).initialize()
+        for _ in range(cli.steps):  # not run(): it resets, the count goes with it
+            run.advance()
+        regrids = run.regrid_count(1) if cli.two_levels else 0
+        run.reset()
+        return regrids
+
+    def test_two_levels(self):
+        if not cli.two_levels:
+            self.skipTest("--two-levels")
+        regrids = self.run_with(tile)
+        print(f"level 1 regridded {regrids} times")
+        worst = {}
+        for step in check_steps():
+            for level in (0, 1):
+                line = []
+                for component in COMPONENTS:
+                    spread, node, scale = mismatch(tile, component, step, level)
+                    key = (level, component)
+                    worst[key] = max(worst.get(key, 0.0), spread / max(scale, 1e-300))
+                    line.append(f"{component} {spread:.2e}/{scale:.2e} at {node}")
+                print(f"step {step} level {level}: " + ", ".join(line), flush=True)
+        self.assertGreaterEqual(regrids, MIN_REGRIDS)
+        self.assertTrue(all(r == 0.0 for r in worst.values()), worst)
 
     def test_shared_nodes_and_single_patch(self):
+        if cli.two_levels:
+            self.skipTest("one level only")
         print(f"dt = {time_step}, c dt / dx = {c_over_va * time_step / dl:.4f}")
         self.run_with(tile)
         if not cli.tiled_only:
