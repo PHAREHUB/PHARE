@@ -98,7 +98,7 @@ class DiagnosticsTest(unittest.TestCase):
         return self._testMethodName.split("_")[-1]
 
     def test_dump_diags_timestamps(self):
-        import h5py  # see doc/conventions.md section 2.1.1
+        import h5py  # see doc/source/dev/conventions.rst
 
         print(f"test_dump_diags dim/interp:{1}/{1}")
 

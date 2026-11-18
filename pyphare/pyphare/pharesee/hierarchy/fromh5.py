@@ -147,7 +147,7 @@ def h5_filename_from(diagInfo):
 
 
 def get_times_from_h5(filepath, as_float=True):
-    import h5py  # see doc/conventions.md section 2.1.1
+    import h5py  # see doc/source/dev/conventions.rst
 
     f = h5py.File(filepath, "r")
     if as_float:
@@ -160,7 +160,7 @@ def get_times_from_h5(filepath, as_float=True):
 
 def pop_attribute_from_h5(path, pop_name, attribute):
     """returns the population attribute, which must be the same in all its files"""
-    import h5py  # see doc/conventions.md section 2.1.1
+    import h5py  # see doc/source/dev/conventions.rst
 
     list_of_qty = [
         "density",
@@ -276,7 +276,7 @@ def add_time_from_h5(hier, filepath, time, **kwargs):
     # add times to 'hier'
     # we may have a different selection box for that time as for already existing times
     # but we need to keep them, per time
-    import h5py  # see doc/conventions.md section 2.1.1
+    import h5py  # see doc/source/dev/conventions.rst
 
     h5f = h5py.File(filepath, "r")
     selection_box = kwargs.get("selection_box")
@@ -300,7 +300,7 @@ def add_data_from_h5(hier, filepath, time):
     if not hier.has_time(time):
         raise TimeNotFoundError(f"{time} does not exist in hierarchy")
 
-    import h5py  # see doc/conventions.md section 2.1.1
+    import h5py  # see doc/source/dev/conventions.rst
 
     h5f = h5py.File(filepath, "r")
 
@@ -320,7 +320,7 @@ def new_from_h5(filepath, times, **kwargs):
     # loads all datasets from the filepath h5 file as patchdatas
     # we authorize user to pass only one selection box for all times
     # but in this case they're all the same
-    import h5py  # see doc/conventions.md section 2.1.1
+    import h5py  # see doc/source/dev/conventions.rst
 
     selection_box = kwargs.get("selection_box", [None] * len(times))
     if none_iterable(selection_box) and all_iterables(times):

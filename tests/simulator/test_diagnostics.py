@@ -128,7 +128,7 @@ def permute(dic):
 
 
 def _h5_time_group_count(h5_filepath):
-    import h5py  # see doc/conventions.md section 2.1.1
+    import h5py  # see doc/source/dev/conventions.rst
 
     with h5py.File(h5_filepath, "r") as h5_file:
         return len(h5_file[h5_time_grp_key].keys())
@@ -203,7 +203,7 @@ class DiagnosticsTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def _check_diags(self, sim, times):
-        import h5py  # see doc/conventions.md section 2.1.1
+        import h5py  # see doc/source/dev/conventions.rst
 
         diag_path = sim.diag_options["options"]["dir"]
         py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
