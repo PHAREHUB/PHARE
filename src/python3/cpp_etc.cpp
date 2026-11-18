@@ -22,7 +22,12 @@
 
 #if PHARE_HAS_HIGHFIVE
 #include "hdf5/detail/h5/h5_file.hpp"
+
+#include "SAMRAI/tbox/HDFDatabase.h"
 #endif
+
+#include <algorithm>
+#include <filesystem>
 
 namespace py = pybind11;
 
@@ -66,6 +71,51 @@ auto pybind_version()
     ss << PYBIND11_VERSION_MINOR << ".";
     ss << PHARE_TO_STR(PYBIND11_VERSION_PATCH);
     return ss.str();
+}
+
+std::string first_restart_file(std::string const& folder)
+{
+    namespace fs = std::filesystem;
+    std::vector<fs::path> files;
+    if (fs::is_directory(folder))
+        for (auto const& entry : fs::recursive_directory_iterator(folder))
+            if (entry.is_regular_file() and entry.path().filename().string().starts_with("proc."))
+                files.push_back(entry.path());
+    if (files.empty())
+        throw std::runtime_error("no restart file under " + folder);
+    return std::ranges::min(files).string();
+}
+
+double restored_time(std::string const& folder)
+{
+    _PHARE_WITH_HIGHFIVE({
+        auto const file = mpi::is_init()
+                              ? PHARE::amr::HierarchyRestarter::getRestartFileFullPath(folder)
+                              : first_restart_file(folder);
+        if (!std::filesystem::exists(file))
+            throw std::runtime_error("no restart file " + file + " under " + folder);
+
+        {
+            PHARE::hdf5::h5::HighFiveFile h5File{file, HighFive::File::ReadOnly, /*para=*/false};
+            auto const phare = h5File.file().getGroup("/phare");
+            if (phare.hasAttribute("time"))
+            {
+                double time = 0;
+                phare.getAttribute("time").read(time);
+                return time;
+            }
+        }
+
+        SAMRAI::tbox::HDFDatabase db{"restored_time"};
+        if (!db.open(file))
+            throw std::runtime_error("cannot open restart file " + file);
+        auto const time
+            = db.getDatabase("TimeRefinementIntegrator")->getDouble("d_integrator_time");
+        db.close();
+        return time;
+    });
+
+    throw std::runtime_error("PHARE not built with highfive support");
 }
 
 auto samrai_version()
@@ -141,6 +191,7 @@ PYBIND11_MODULE(cpp_etc, m)
 
         throw std::runtime_error("PHARE not built with highfive support");
     });
+    m.def("restored_time", restored_time);
     m.def("serialized_simulation_string", [&](std::string const& path) -> std::string {
         _PHARE_WITH_HIGHFIVE({
             auto const& restart_file = samrai_restart_file(path);

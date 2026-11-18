@@ -1179,8 +1179,10 @@ class Simulation:
         raise NotImplementedError("Error: 2D and 3D not implemented yet")
 
     def restart_file_path(self):
+        from pyphare.pharein import restarts
+
         assert self.restart_options is not None
-        return self.restart_options.get("dir", "phare_outputs")
+        return restarts.restart_dir(self.restart_options)
 
     def start_time(self):
         return self.time_stepper.start_time

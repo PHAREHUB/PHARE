@@ -72,23 +72,12 @@ def restored_time(restart_options):
     if label is None:
         return 0
 
-    import h5py
-
     from pyphare import cpp
 
-    folder = cpp.cpp_etc_lib().restart_path_for_time(
-        restart_dir(restart_options), label
+    etc = cpp.cpp_etc_lib()
+    return etc.restored_time(
+        etc.restart_path_for_time(restart_dir(restart_options), label)
     )
-    if cpp.mpi_initialized():
-        files = [Path(cpp.cpp_etc_lib().samrai_restart_file(folder))]
-    else:
-        files = sorted(Path(folder).glob("restore.*/nodes.*/proc.*"))
-
-    for path in files:
-        if path.exists():
-            with h5py.File(path, "r") as f:
-                return float(f["phare"].attrs.get("time", label))
-    return label
 
 
 def find_latest_time_from_restarts(restart_options):

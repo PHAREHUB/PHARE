@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 import numpy as np
 
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.simulator import simulator
 from pyphare.simulator.simulator import Simulator, startMPI
 from tests.simulator import SimulatorTest
@@ -289,6 +292,44 @@ class RestartTimeTest(RecordingTest):
 
         if cpp.mpi_rank() == 0:
             self.assertEqual(len(self.diag_times("diag_B")), nbr + 1)
+
+    def strip_phare_time(self):
+        import h5py
+
+        for path in Path(f"{self.out()}/restarts").glob("*/restore.*/nodes.*/proc.*"):
+            with h5py.File(path, "a") as f:
+                del f["phare"].attrs["time"]
+
+    def test_legacy_restart_resumes_at_the_exact_time(self):
+        dt = 1.0 / 30.0
+        tA = self.run_recording(
+            dict(timestamps=[10 * dt]), time_step=dt, time_step_nbr=30
+        )
+        if cpp.mpi_rank() == 0:
+            self.strip_phare_time()
+        cpp.mpi_barrier()
+        tB = self.run_recording(
+            dict(restart_time="auto"), time_step=dt, time_step_nbr=20
+        )
+        self.assertEqual(tB[0], tA[10])
+        self.assertEqual(len(tB), 21)
+        self.assert_ulp_close(tB, tA[10:])
+
+    def test_restored_time_without_mpi_layout_match(self):
+        tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
+        folder = cpp.cpp_etc_lib().restart_path_for_time(f"{self.out()}/restarts", 0.3)
+        self.assertEqual(cpp.cpp_etc_lib().restored_time(folder), tA[3])
+        if cpp.mpi_rank() == 0:
+            code = (
+                "from pyphare import cpp; "
+                f"print(repr(cpp.cpp_etc_lib().restored_time({folder!r})))"
+            )
+            out = subprocess.run(
+                [sys.executable, "-c", code], capture_output=True, text=True, check=True
+            )
+            self.assertEqual(float(out.stdout.strip().splitlines()[-1]), tA[3])
+        with self.assertRaisesRegex(RuntimeError, "no restart file"):
+            cpp.cpp_etc_lib().restored_time(f"{self.out()}/nowhere")
 
 
 if __name__ == "__main__":
