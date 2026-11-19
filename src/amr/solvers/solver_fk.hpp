@@ -442,7 +442,9 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     advanceFKElectric(level, model, messenger, E, dt, currentTime, skipped, border);
     TimeSetter{level, model, halfTime}(E);
     messenger.fillElectricGhosts(E, level, halfTime);
-    if (!border.empty()) // with the charge at the end of the current's segments, E's time
+    // with the charge at the end of the current's segments, E's time. On the level, not on
+    // `border`: a rank without border nodes still makes the deposit's collective fills
+    if (levelNumber > 0)
     {
         auto& rho = model.state.rho;
         for (auto& patch : rm.enumerate(level, rho, rhoStart_))
