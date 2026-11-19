@@ -110,6 +110,7 @@ class TestPhareh5RealDataMpi3(test_io_phareh5.TestRealData):
 
     ROOT, CASES = SAMPLES_MPI3, ("2d_tagged",)
     MIN_COMPARED = 25  # values at t=0 only there (issue #1526): 30 checks
+    VALUES_UP_TO = 0.0  # not bitwise reproducible on 3 ranks: values at t=0 only
 
 
 class TestVtkhdfRealFilesMpi3(test_io_vtkhdf.RealFilesTest):

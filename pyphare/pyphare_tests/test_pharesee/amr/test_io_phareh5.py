@@ -318,6 +318,14 @@ class TestReads(SyntheticBase):
         plist = [(0, i, (4 * i, 0), (4 * i + 3, 3 + i)) for i in range(6)]
         return self.write(dim=2, patches={0.0: {0: plist}}, domain_cells=[24, 9], **kw)
 
+    def test_negative_dst_refused(self):
+        """A negative start would write from the end of the buffer (numpy slice)."""
+        b = H5Backend(self.make())
+        out = {n: np.zeros(1000) for n in "xyz"}
+        with self.assertRaisesRegex(ValueError, "dst_start"):
+            b.read_into(0.0, 0, [0], out, [-5])
+        self.assertFalse(any(v.any() for v in out.values()))
+
     def test_subset_scattered_arbitrary_dst(self):
         b = H5Backend(self.make())
         li = b.index(0.0)[0]
@@ -690,6 +698,35 @@ class TestRewriteInPlace(SyntheticBase):
         self.assertEqual(b.times().tolist(), [0.0, 0.5])
         self.assertEqual(H5Backend(path).times().tolist(), [0.0, 0.5, 1.0])
 
+    def test_dump_written_while_opening(self):
+        """A dump completes between the stat of the file and the walk of its time headers:
+        the header walk is redone on the grown file, and every time reads exactly."""
+        import h5py
+
+        os.environ["PHARESEE_CACHE"] = "0"
+        path = self.write("o.h5", dim=2, patches=self.patches([0.0, 0.5]), domain_cells=[32, 16])
+        ref = self.write("ref.h5", dim=2, patches=self.patches([0.0, 0.5, 1.0]),
+                         domain_cells=[32, 16])
+        real = H5Backend._read_file_header
+        calls = []
+
+        def dump_then_read(backend):
+            if not calls:
+                with h5py.File(path, "a") as f, h5py.File(ref, "r") as g:
+                    g.copy(g["t/1.0000000000"], f["t"], name="1.0000000000")
+            calls.append(1)
+            return real(backend)
+
+        with mock.patch.object(H5Backend, "_read_file_header", dump_then_read):
+            b = H5Backend(path)
+        self.assertEqual(b.times().tolist(), [0.0, 0.5, 1.0])
+        r = H5Backend(ref)
+        for t in (0.0, 0.5, 1.0):
+            for li, lr in zip(b.index(t), r.index(t)):
+                got, want = read_level(b, t, li)[0], read_level(r, t, lr)[0]
+                for n in "xyz":
+                    np.testing.assert_array_equal(got[n], want[n])
+
     def test_failed_open_after_append_is_not_a_rewrite(self):
         """The file grew (a dump) and one open fails meanwhile: that call raises the read
         error, not PhareseeFileChanged, and the next calls work. Each open is failed in
@@ -829,6 +866,16 @@ class TestTimeKeyRounding(SyntheticBase):
 
 
 class TestDerived(SyntheticBase):
+    def test_yee_division_in_float64(self):
+        """Differences in the file's dtype (float32), divided by dl in float64 whatever
+        the type of dl (a Python float keeps float32 under NumPy 2, a NumPy float64
+        scalar under NumPy 1.x)."""
+        bx = np.array([[0.0, 0.0], [1.0, 1.0], [3.0, 3.0]], np.float32)  # (nx + 1, ny)
+        by = np.zeros((2, 3), np.float32)  # (nx, ny + 1)
+        div = phareh5.yee_divergence([bx, by, None], [0.3, 0.3])
+        self.assertEqual(div.dtype, np.float64)
+        np.testing.assert_array_equal(div[:, 0], np.float64([1.0, 2.0]) / 0.3)
+
     def test_linear_B_curl_and_div_exact(self):
         for dim in (1, 2, 3):
             with self.subTest(dim=dim):
@@ -924,6 +971,7 @@ class TestMasterTables(unittest.TestCase):
 class TestRealData(unittest.TestCase):
     ROOT, CASES = SAMPLES, SAMPLE_CASES  # test_mpi3.py reruns these tests on the 3-rank run
     MIN_COMPARED = 50  # (quantity, time, level) value checks in test_h5_equals_vtkhdf
+    VALUES_UP_TO = np.inf  # last time whose values test_h5_equals_vtkhdf compares
 
     @classmethod
     def setUpClass(cls):
@@ -953,7 +1001,7 @@ class TestRealData(unittest.TestCase):
         """
         compared = 0
         for run in self.runs:
-            values_up_to = 0.0 if "mpi3" in str(run) else np.inf
+            values_up_to = self.VALUES_UP_TO
             for h5 in sorted((run / "h5").glob("*.h5")):
                 vtk = run / "vtk" / (h5.stem + ".vtkhdf")
                 if h5.stem == "tags" or not vtk.exists():

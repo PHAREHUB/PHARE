@@ -234,6 +234,17 @@ class TimeTest(TmpDirTest):
 
 
 class ReadTest(TmpDirTest):
+    def test_negative_dst_refused(self):
+        """A negative start would write from the end of the buffer (numpy slice), with
+        every strategy."""
+        p = self.write("neg.vtkhdf", hierarchy(2))
+        for strategy in ("s1", "s2", "s3"):
+            b = VtkhdfBackend(p, strategy=strategy)
+            out = {n: np.zeros(10000) for n in b.meta().names}
+            with self.assertRaisesRegex(ValueError, "dst_start"):
+                b.read_into(0.0, 0, [0], out, [-5])
+            self.assertFalse(any(v.any() for v in out.values()))
+
     def check_all_strategies(self, dim, style, **kw):
         steps = hierarchy(dim)
         fields = default_fields(3)
@@ -310,6 +321,11 @@ class StrategyTest(TmpDirTest):
 
     @classmethod
     def setUpClass(cls):
+        # S1 is the raw reader: on whatever PHARESEE_RAW_IO the caller has (the tests
+        # that disable it patch it themselves)
+        cls._raw_io = mock.patch.dict(os.environ, {"PHARESEE_RAW_IO": "1"})
+        cls._raw_io.start()
+        cls.addClassCleanup(cls._raw_io.stop)
         # production file, 2 steps, ~2.1 M rows at level 0 in the second (~60 MB):
         # a chunk B-tree with 3 levels; read with small windows to exercise window cuts
         cls._big = tempfile.TemporaryDirectory()
@@ -555,12 +571,47 @@ class RobustnessTest(TmpDirTest):
             VtkhdfBackend(p).index(0.5)
 
     def test_truncated_data(self):
+        """The last step's rows end past the data (checked from its boxes, there is no
+        next offset): left out of times() with a warning; the step before reads exactly."""
         p = self.write("j.vtkhdf", self.steps())
         with _h5py().File(p, "a") as f:
             d = f["VTKHDF/Level0/PointData/data"]
             d.resize((d.shape[0] - 10, 3))
-        with self.assertRaisesRegex(FormatError, "beyond"):
-            VtkhdfBackend(p).index(1.0)
+        with self.assertWarnsRegex(RuntimeWarning, r"time 1\.0.*incomplete"):
+            b = VtkhdfBackend(p)
+        self.assertEqual(b.times().tolist(), [0.0, 0.5])
+        for lv in (0, 1):
+            out, ids, dst, lix = read(b, 0.5, lv)
+            assert_exact(self, b, out, ids, dst, lix, default_fields(), 0.5, lv, [0.4, 0.4])
+
+    def test_discarded_step_offsets_are_not_used(self):
+        """Level 0 got one more step (killed during the dump) whose offsets are fill
+        values (0): the retained last step is checked against its own boxes, not them."""
+        p = self.write("l.vtkhdf", self.steps(), times=[0, 1, 2], incomplete_last="level0")
+        with _h5py().File(p, "a") as f:
+            for key in ("AMRBoxOffset", "PointDataOffset/data"):
+                f[f"VTKHDF/Steps/Level0/{key}"][3] = 0
+        with self.assertWarnsRegex(RuntimeWarning, "last dump incomplete"):
+            b = VtkhdfBackend(p)
+        self.assertEqual(b.times().tolist(), [0, 1, 2])
+        for lv in (0, 1):
+            out, ids, dst, lix = read(b, 2.0, lv)
+            assert_exact(self, b, out, ids, dst, lix, default_fields(), 2.0, lv, [0.4, 0.4])
+
+    def test_saturation_checked_per_table(self):
+        """2**31-1 in an int64 offset table is not int32 saturation, even when another
+        Steps table of the level is int32: the error says what is wrong instead."""
+        p = self.write("s.vtkhdf", self.steps(), offsets_dtype=np.int64)
+        with _h5py().File(p, "a") as f:
+            st = f["VTKHDF/Steps/Level0"]
+            nbox = st["NumberOfAMRBox"][()]
+            del st["NumberOfAMRBox"]
+            st.create_dataset("NumberOfAMRBox", data=nbox.astype(np.int32), maxshape=(None,))
+            st["PointDataOffset/data"][1] = 2**31 - 1
+        with self.assertRaises(FormatError) as e:
+            VtkhdfBackend(p).index(0.0)
+        self.assertNotIn("2**31-1", str(e.exception))
+        self.assertIn("PointDataOffset", str(e.exception))
 
     def test_format_checks(self):
         p = self.write("m.vtkhdf", self.steps())

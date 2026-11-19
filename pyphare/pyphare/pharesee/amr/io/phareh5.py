@@ -288,7 +288,7 @@ def yee_current(B, g, ncells, dl):
             src = B[comp]
             hi = src[(slice(None),) * axis + (slice(1, None),)]
             lo = src[(slice(None),) * axis + (slice(0, -1),)]
-            term = (hi - lo) / dl[axis]
+            term = (hi - lo).astype(np.float64) / dl[axis]  # float64 on NumPy 1.x too
             idx = tuple(
                 slice(None) if (d == axis or d not in deriv_axes) else slice(1, -1)
                 for d in range(dim)
@@ -315,7 +315,7 @@ def yee_divergence(B, dl):
         src = B[a]
         hi = src[(slice(None),) * a + (slice(1, None),)]
         lo = src[(slice(None),) * a + (slice(0, -1),)]
-        term = (hi - lo) / dl[a]
+        term = (hi - lo).astype(np.float64) / dl[a]  # float64 on NumPy 1.x too
         acc = term if acc is None else acc + term
     return acc
 
@@ -388,6 +388,11 @@ class _CachedTime:
 
 
 _PRINT_BYTES = 64
+_OPEN_ATTEMPTS = 3  # header walks tried while dumps keep growing the file
+
+
+class _FileGrew(Exception):
+    """A time header lies past the size recorded at the stat (a dump just completed)."""
 INDEX_CACHE_TIMES = 32  # in-memory indexes kept per file (least recently used evicted)
 
 
@@ -466,17 +471,30 @@ class H5Backend:
         self._validation = {}
         self._rewritten = None  # PhareseeFileChanged once a rewrite was detected
         self._prefetched = set()
-        try:
-            self._read_file_header()
-        except (FormatError, PhareseeIOError, NotImplementedError):
-            raise
-        except (OSError, RuntimeError, KeyError) as e:
-            # damaged metadata (e.g. a file truncated inside its headers) surfaces as
-            # raw h5py errors while walking the groups
+        # the time regions are bounded by the file size at the stat: a dump completed
+        # after it puts a header past that size, and the walk is redone on a new stat (a
+        # dump the walk did not see is found later, as any append)
+        for _ in range(_OPEN_ATTEMPTS):
+            try:
+                self._read_file_header()
+                break
+            except _FileGrew:
+                now = check_identity(self._identity, self._path)  # replaced: refused
+                self._identity = self._opened = now
+            except (FormatError, PhareseeIOError, NotImplementedError):
+                raise
+            except (OSError, RuntimeError, KeyError) as e:
+                # damaged metadata (e.g. a file truncated inside its headers) surfaces as
+                # raw h5py errors while walking the groups
+                raise PhareseeIOError(
+                    f"{self._path}: cannot read the file structure ({e}); the file is "
+                    "damaged or still being written"
+                ) from e
+        else:
             raise PhareseeIOError(
-                f"{self._path}: cannot read the file structure ({e}); the file is damaged "
-                "or still being written"
-            ) from e
+                f"{self._path}: the file changed during each of {_OPEN_ATTEMPTS} attempts to "
+                "read its time headers (dumps being written); try again"
+            )
 
     # ------------------------------------------------------------------ meta
     def _read_file_header(self):
@@ -536,6 +554,8 @@ class H5Backend:
 
         # byte region of each time, bounded by consecutive t/<time> headers
         size = self._identity[2]
+        if any(a >= size for a in self._time_addr.values()):
+            raise _FileGrew  # a dump completed after the stat: __init__ walks again
         sorted_addr = np.array(sorted(self._time_addr.values()) + [size], dtype=np.int64)
         self._region = {}
         for key, a in self._time_addr.items():
@@ -1096,6 +1116,8 @@ class H5Backend:
             raise ValueError(f"file_ids ({ids.size}) and dst_start ({dst.size}) differ in length")
         if ids.size and (ids.min() < 0 or ids.max() >= npatch):
             raise IndexError(f"file_ids out of range [0, {npatch}) at level {li.level}")
+        if dst.size and dst.min() < 0:
+            raise ValueError(f"dst_start must be >= 0, got {int(dst.min())}")
         missing = [n for n in names if n not in out]
         if missing:
             raise KeyError(f"out has no buffer for components {missing}; expected {names}")

@@ -463,12 +463,16 @@ class VtkhdfBackend:
                 continue
             group = root[f"Level{info['level']}"]
             nrows = group["PointData/data"].shape[0]
-            dataoff = info["dataoff"]
-            if info["int32"] and (dataoff[s : s + 2] == _INT32_MAX).any():
-                continue  # saturated offset: index() raises the FormatError that says so
-            end = int(dataoff[s + 1]) if len(dataoff) > s + 1 else None
-            if (int(info["boxoff"][s]) + nb > group["AMRBox"].shape[0]
-                    or int(dataoff[s]) >= nrows or (end is not None and end > nrows)):
+            bo, po = int(info["boxoff"][s]), int(info["dataoff"][s])
+            if any(is32 and int(t[s]) == _INT32_MAX
+                   for t, is32 in zip((info["nbox"], info["boxoff"], info["dataoff"]),
+                                      info["int32"])):
+                continue  # saturated entry: index() raises the FormatError that says so
+            if bo < 0 or bo + nb > group["AMRBox"].shape[0] or po < 0 or po >= nrows:
+                return True
+            # the end from the step's own boxes: entry s + 1 may belong to a discarded dump
+            _, _, rows = self._step_boxes(group["AMRBox"], bo, nb, f"level {info['level']}")
+            if po + int(rows.sum()) > nrows:
                 return True
         return False
 
@@ -519,7 +523,9 @@ class VtkhdfBackend:
             nbox=tabs["NumberOfAMRBox"][0],
             boxoff=tabs["AMRBoxOffset"][0],
             dataoff=tabs["PointDataOffset/data"][0],
-            int32=any(t[1] for t in tabs.values()),
+            # per table: only an int32 table can hold a saturated (clamped) entry
+            int32=(tabs["NumberOfAMRBox"][1], tabs["AMRBoxOffset"][1],
+                   tabs["PointDataOffset/data"][1]),
             offset_dtype=st["AMRBoxOffset"].dtype,
         )
 
@@ -804,15 +810,18 @@ class VtkhdfBackend:
         where = f"level {lvl}, step {s}"
         nbox, boxoff, dataoff = info["nbox"], info["boxoff"], info["dataoff"]
         nb, bo, po = int(nbox[s]), int(boxoff[s]), int(dataoff[s])
-        if info["int32"]:
-            # saturation is checked on int32 tables only (an int64 table
-            # cannot saturate), on entries s and s + 1 (those used for this step).
-            nxt = slice(s, s + 2)
-            if any((t[nxt] == _INT32_MAX).any() for t in (nbox, boxoff, dataoff)):
-                self._fail(
-                    f"{where}: a Steps offset equals 2**31-1 (int32 saturation of a file "
-                    "written before 64-bit offsets): the data of this step cannot be located"
-                )
+        # entry s + 1 is the next step's start only for a retained step: a discarded
+        # (incomplete) dump may have left fill values there
+        has_next = s + 1 < self._nsteps
+        # saturation is checked on int32 tables only (an int64 table cannot saturate),
+        # on the entries used for this step
+        used = slice(s, s + 2 if has_next else s + 1)
+        if any(is32 and (t[used] == _INT32_MAX).any()
+               for t, is32 in zip((nbox, boxoff, dataoff), info["int32"])):
+            self._fail(
+                f"{where}: a Steps offset equals 2**31-1 (int32 saturation of a file "
+                "written before 64-bit offsets): the data of this step cannot be located"
+            )
         if nb < 0 or bo < 0 or po < 0:
             self._fail(f"{where}: negative Steps entry ({nb}, {bo}, {po})")
         if nb == 0:
@@ -823,17 +832,12 @@ class VtkhdfBackend:
             self._fail(
                 f"{where}: AMRBox rows {bo}..{bo + nb} beyond the table ({boxes_ds.shape[0]})"
             )
-        boxes = boxes_ds[bo : bo + nb, : 2 * self._dim].astype(np.int64)
-        lower = np.ascontiguousarray(boxes[:, 0::2])
-        upper = np.ascontiguousarray(boxes[:, 1::2])
-        if (upper < lower).any():
-            self._fail(f"{where}: AMRBox with upper < lower")
-        npts = np.prod(upper - lower + 2, axis=1).astype(np.int64)
-        rows = npts * COPIES[self._dim]
+        lower, upper, rows = self._step_boxes(boxes_ds, bo, nb, where)
+        npts = rows // COPIES[self._dim]
         total = int(rows.sum())
-        if s + 1 < len(boxoff) and int(boxoff[s + 1]) != bo + nb:
+        if has_next and int(boxoff[s + 1]) != bo + nb:
             self._fail(f"{where}: AMRBoxOffset[{s + 1}] != AMRBoxOffset[{s}] + NumberOfAMRBox")
-        if s + 1 < len(dataoff) and int(dataoff[s + 1]) != po + total:
+        if has_next and int(dataoff[s + 1]) != po + total:
             self._fail(
                 f"{where}: PointDataOffset[{s + 1}] = {int(dataoff[s + 1])} != "
                 f"PointDataOffset[{s}] + rows of the boxes = {po + total}"
@@ -843,6 +847,17 @@ class VtkhdfBackend:
             self._fail(f"{where}: rows {po}..{po + total} beyond PointData/data ({nrows} rows)")
         payload = _Payload(step=s, row_start=po + _exclusive_cumsum(rows), npts=npts)
         return LevelIndex(level=lvl, lower=lower, upper=upper, payload=payload)
+
+    def _step_boxes(self, boxes_ds, bo, nb, where):
+        """Lower and upper cell corners of boxes ``bo .. bo + nb`` and the PointData rows
+        of each (nodes times the copies per node)."""
+        boxes = boxes_ds[bo : bo + nb, : 2 * self._dim].astype(np.int64)
+        lower = np.ascontiguousarray(boxes[:, 0::2])
+        upper = np.ascontiguousarray(boxes[:, 1::2])
+        if (upper < lower).any():
+            self._fail(f"{where}: AMRBox with upper < lower")
+        npts = np.prod(upper - lower + 2, axis=1).astype(np.int64)
+        return lower, upper, npts * COPIES[self._dim]
 
     def _find_level(self, time, level):
         for lix in self.index(time):
@@ -901,6 +916,8 @@ class VtkhdfBackend:
         npatch = len(lix.lower)
         if len(ids) and (ids[0] < 0 or ids[-1] >= npatch or (np.diff(ids) <= 0).any()):
             raise ValueError(f"read_into: file_ids must be sorted, unique, in [0, {npatch})")
+        if len(dst) and dst.min() < 0:
+            raise ValueError(f"read_into: dst_start must be >= 0, got {int(dst.min())}")
         if not out or not set(out) <= set(self._names):
             raise ValueError(
                 f"read_into: out must hold some of the components {self._names}, "
