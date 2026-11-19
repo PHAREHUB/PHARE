@@ -484,7 +484,8 @@ class RunPlan:
 
     nbytes    bytes read from the file (all levels and times); not the memory the
               computation will use, which is larger
-    patches   ``{(time, level): number of patches read}``
+    patches   ``{(time, level): number of patches read}`` (patches already in memory, e.g.
+              of a field the caller holds, are not counted)
     """
 
     def __init__(self, what, nbytes, patches):
@@ -684,7 +685,7 @@ class Run(LegacyRun):
         # every quantity served by master's code: nothing of the new reader runs
         self._all_legacy = h5_legacy and (self._format == "h5" or not self._has["vtkhdf"])
         self._backends = {}
-        self._backend_sigs = {}  # path -> (mtime_ns, size) when its backend was opened
+        self._backend_sigs = {}  # path -> (inode, mtime_ns, size) when its backend was opened
         self._sims = {}
         # created when a file is first routed to the new reader: the legacy path never reads
         # the new reader's configuration (PHARESEE_GEOM_CACHE_MB ...)
@@ -747,16 +748,20 @@ class Run(LegacyRun):
         return master
 
     def _backend(self, path):
-        """The backend of ``path``, reopened when the file changed size or mtime since it was
-        opened (a run still writing appends dumps: the new times become visible)."""
+        """The backend of ``path``, reopened when the file changed (inode, size or mtime)
+        since it was opened (a run still writing appends dumps: the new times become
+        visible; a replaced file is read anew)."""
         st = os.stat(path)
-        signature = (st.st_mtime_ns, st.st_size)
+        signature = (st.st_ino, st.st_mtime_ns, st.st_size)
         backend = self._backends.get(path)
         if backend is None or self._backend_sigs.get(path) != signature:
             from pyphare.pharesee.amr.io import open_backend
 
             if backend is not None:
                 self._forget_held_if_rewritten(path, backend)
+                # the simulation is read again from the file as it is now; fields already
+                # returned keep theirs
+                self._sims.pop(path, None)
             backend = self._backends[path] = open_backend(path)
             self._backend_sigs[path] = signature
         return backend
@@ -1207,14 +1212,20 @@ class Run(LegacyRun):
     def GetReconnectionRate(self, times, interp="nearest"):
         """``(t_centred, rates, flux_at_xpoint, xpoint_trajectory)``, master's algorithm.
 
-        New reader: the flux function of every time from ``GetMagneticFlux`` (finest level).
+        New reader: the flux function of every time from ``GetMagneticFlux``, sampled as on
+        master on one grid, the finest level's nodes at the first time (a change of the
+        finest level between dumps does not change the sampling).
         """
         if self._route("EM_B").legacy:
             return self._legacy("GetReconnectionRate", (times, interp), {})
         times = np.asarray(times, dtype=np.float64)
         flux_at_xpoint, xpoint_trajectory = [], []
+        grid = {}
         for t in times:
-            Az, (xn, yn) = self.GetMagneticFlux(t, interp=interp)
+            Az, (xn, yn) = self.GetMagneticFlux(t, interp=interp, **grid)
+            if not grid:
+                Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
+                grid = dict(xn=xn, yn=yn, Xn=Xn, Yn=Yn)
             x_xp, y_xp, idx = self.FindPrimaryXPoint(Az, xn, yn)
             xpoint_trajectory.append([x_xp, y_xp])
             flux_at_xpoint.append(Az[idx])
@@ -1246,6 +1257,8 @@ class Run(LegacyRun):
 
     def GetParticles(self, time, pop_name, hier=None, **kwargs):
         """Particles: master's reader (h5; ValueError on vtkhdf)."""
+        if isinstance(pop_name, (list, tuple)) and not pop_name:
+            return hier  # nothing to read, as master
         first = pop_name[0] if isinstance(pop_name, (list, tuple)) else pop_name
         return self._unavailable("GetParticles", f"ions_pop_{first}_domain", "particles",
                                  (time, pop_name, hier), kwargs)
@@ -1264,14 +1277,21 @@ class Run(LegacyRun):
         for kind in POP_KINDS:
             try:
                 route = self._route(pop_stem(pop_name, kind))
-                meta = self._backend(route.path).meta()
-            except (FileNotFoundError, FormatError):
+            except FileNotFoundError:
                 continue
-            if attribute not in meta.attrs:
-                raise ValueError(f"{meta.path} has no {attribute} attribute, it was probably "
+            try:
+                meta = self._backend(route.path).meta()
+                where, attrs = meta.path, meta.attrs
+            except FormatError:
+                if route.fmt != "h5":
+                    continue
+                # a file the new reader does not read (particles): its root attributes
+                where, attrs = route.path, _h5_root_attrs(route.path)
+            if attribute not in attrs:
+                raise ValueError(f"{where} has no {attribute} attribute, it was probably "
                                  "written by an older PHARE version")
-            values.append(meta.attrs[attribute])
-            sources.append(meta.path)
+            values.append(attrs[attribute])
+            sources.append(where)
         if not values:
             if self._has["h5"] and self._format != "vtkhdf":
                 # only files the new reader does not read (particles): master's reading
@@ -1407,8 +1427,16 @@ class Run(LegacyRun):
         for snap in field.snapshots():
             for ld in snap.levels:
                 nbytes += _missing_bytes(ld, None)
-                patches[(float(ld.time), ld.geom.level)] = int(ld.geom.npatch)
+                patches[(float(ld.time), ld.geom.level)] = len(ld.missing()[0])
         return RunPlan(f"{qty} at t={time}", nbytes, patches)
+
+
+def _h5_root_attrs(path):
+    """Root attributes of the h5 file ``path``."""
+    import h5py
+
+    with h5py.File(path, "r") as f:
+        return dict(f.attrs)
 
 
 def _times_of_file(path):

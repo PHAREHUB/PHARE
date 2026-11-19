@@ -26,6 +26,7 @@ import os
 import tempfile
 import unittest
 import warnings
+from unittest import mock
 
 import numpy as np
 
@@ -875,6 +876,28 @@ class MagneticFluxTest(LegacyEnv, unittest.TestCase):
             self.assertEqual(list(traj[i]), [x, y])
         np.testing.assert_allclose(rates, np.diff(flux) / np.diff(times))
 
+    def test_reconnection_rate_on_one_grid(self):
+        """As master: every time is sampled on the grid of the first one, so a change of
+        the finest level between dumps does not change the sampling of Az."""
+        _, vtk = _dirs("2d_tagged")
+        r = Run(vtk)
+        times = r.times("B")
+        real, grids = r.GetMagneticFlux, []
+
+        def spy(t, **kw):
+            Az, grid = real(t, **kw)
+            grids.append((kw.get("xn") is not None, grid))
+            return Az, grid
+
+        with mock.patch.object(r, "GetMagneticFlux", side_effect=spy):
+            r.GetReconnectionRate(times)
+        self.assertEqual(len(grids), len(times))
+        x0, y0 = grids[0][1]
+        for i, (given, (x, y)) in enumerate(grids[1:], 1):
+            self.assertTrue(given, f"time {i}: grid not passed")
+            np.testing.assert_array_equal(x, x0)
+            np.testing.assert_array_equal(y, y0)
+
 
 def _copy_h5(src, dst, ntimes=None):
     """Copy of the phareh5 file ``src`` at ``dst`` with only its first ``ntimes`` times."""
@@ -984,6 +1007,70 @@ class TestRoutingEdges(LegacyEnv, unittest.TestCase):
                     os.replace(new, dst)
                 np.testing.assert_array_equal(r.GetB(t).x.finest().data, 2 * old)
 
+    def test_replacement_with_same_size_and_mtime_is_read(self):
+        """A file replaced by another one (new inode) of the same size and mtime, no field
+        held: the getter opens the replacement instead of failing on the old backend."""
+        import h5py
+
+        src = os.path.join(self.h5, "EM_B.h5")
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = os.path.join(tmp, "EM_B.h5")
+            _copy_h5(src, dst, ntimes=1)
+            r = Run(tmp)
+            t = float(r.times("B")[0])
+            old = r.GetB(t).x.finest().data
+            new = os.path.join(tmp, "new.h5")
+            _copy_h5(dst, new)
+            with h5py.File(new, "r+") as f:
+                f["t"].visititems(lambda _, o: o.write_direct(2 * o[()])
+                                  if isinstance(o, h5py.Dataset) else None)
+            st = os.stat(dst)
+            self.assertEqual(os.stat(new).st_size, st.st_size)
+            os.utime(new, ns=(st.st_atime_ns, st.st_mtime_ns))
+            os.replace(new, dst)
+            np.testing.assert_array_equal(r.GetB(t).x.finest().data, 2 * old)
+
+    def test_simulation_follows_a_replaced_file(self):
+        """The simulation (GetPe's Te) of a replaced file is read from the replacement;
+        the fields already returned keep the one they had."""
+        src = os.path.join(self.h5, "ions_charge_density.h5")
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = os.path.join(tmp, "ions_charge_density.h5")
+            _copy_h5(src, dst, ntimes=1)
+            r = Run(tmp)
+            t = float(r.times("Ni")[0])
+            first = r.GetNi(t)
+            new = os.path.join(tmp, "new.h5")
+            _copy_h5(dst, new)
+            os.replace(new, dst)
+            second = r.GetNi(t)
+            self.assertIsNot(second.sim, first.sim)
+            self.assertIs(first.sim, first.sim)
+
+    def test_empty_particle_list_returns_hier(self):
+        r = Run(self.h5)
+        t = float(r.times("B")[0])
+        hier = object()
+        self.assertIs(r.GetParticles(t, [], hier=hier), hier)
+        self.assertIs(r.GetParticles(t, (), hier=hier), hier)
+
+    def test_mass_checked_against_particle_files(self):
+        """The particle files of a population must agree with its field files, as on
+        master (pop_attribute_from_h5)."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.symlink(os.path.join(self.h5, "ions_pop_protons_density.h5"),
+                       os.path.join(tmp, "ions_pop_protons_density.h5"))
+            with h5py.File(os.path.join(tmp, "ions_pop_protons_domain.h5"), "w") as f:
+                f.attrs["pop_mass"] = 2.0
+                f.attrs["pop_charge"] = 1.0
+                f.create_group("t")
+            r = Run(tmp)
+            with self.assertRaisesRegex(ValueError, "inconsistent pop_mass"):
+                r.GetMass("protons")
+            self.assertEqual(r.GetCharge("protons"), 1.0)
+
     def test_mass_of_a_particle_only_output(self):
         import h5py
 
@@ -1004,7 +1091,9 @@ class TestRoutingEdges(LegacyEnv, unittest.TestCase):
         B = r.GetB(t)
         B.load()
         self.assertEqual(r.plan("B", t).nbytes, 0)
+        self.assertEqual(sum(r.plan("B", t).patches.values()), 0)  # nothing left to read
         self.assertGreater(r.plan("J", t).nbytes, 0)
+        self.assertGreater(sum(r.plan("J", t).patches.values()), 0)
 
     def test_pickle_keeps_the_simulation(self):
         """A pickled h5 field keeps its (lazy) simulation, before and after it was loaded;
