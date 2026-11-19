@@ -20,6 +20,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -484,6 +485,71 @@ void gaussOnLevelBorder(GridLayout const& layout, double const c2, Field const& 
 }
 
 /**
+ * @brief marderAlongLevelBorder is one Marder step of strength s along the edge of a refined 2D
+ * level, on the faces of the tangential E between consecutive side nodes (count 1, same normal):
+ * E_t(a + 1/2) += s dl_t / 2 (G(b) - G(a)), b = a + e_t, with G = div E - c2 rho of the nodes
+ * before the step (outside faces as filled). The filtered J does not hold back a grid scale
+ * longitudinal E; inside, Gauss's law pins it, but on the edge nodes gaussOnLevelBorder moves any
+ * residual into the outside faces, so a cell-to-cell tangential E random walked along the edge and
+ * the outside faces with it (BORDER-NOISE, border_noise.py). A face between edge nodes enters the
+ * divergence of these two nodes only, so the step is 1D diffusion of G along the edge:
+ * G(a) += s/2 (G(a-1) - 2 G(a) + G(a+1)), stable for 0 <= s <= 1, the cell-to-cell mode
+ * multiplied by 1 - 2s (gone at s = 1/2). The side ends (outer corners, count 2, and inner ones,
+ * not border nodes) get no flux: a corner's residual goes to its outside faces
+ * (gaussOnLevelBorder) as before. Patches holding a face compute the same G from the same copies
+ * of E and rho, so their faces stay equal. A patch cannot update the tangential face past its
+ * outermost border node in its ghost box (G one node further needs a face outside it): the outside
+ * faces gaussOnLevelBorder then sets on that node differ from the owner's, ghosts the fill after
+ * Ampere overwrites before the push (SolverFK::advanceLevel), which reads equal faces.
+ */
+// the strength of marderAlongLevelBorder: the cell-to-cell mode along the edge gone in one step
+inline constexpr double borderMarder = 0.5;
+
+template<typename GridLayout, typename Field, typename VecField>
+void marderAlongLevelBorder(GridLayout const& layout, double const c2, double const s,
+                            Field const& rho, VecField& E,
+                            std::vector<BorderNode<GridLayout::dimension>> const& nodes)
+{
+    constexpr auto dimension = GridLayout::dimension;
+    static_assert(dimension == 2, "TODO 3D: 2D diffusion over the border faces, s/(2 (dim-1))");
+    auto const lower = layout.AMRBox().lower;
+    auto const dl    = layout.meshSize();
+    auto const index = [&](auto const& field, auto const& a) {
+        std::array<std::size_t, dimension> i;
+        for (std::size_t d = 0; d < dimension; ++d)
+            i[d] = layout.physicalStartIndex(field, static_cast<core::Direction>(d)) + a[d]
+                   - lower[d];
+        return i;
+    };
+
+    // G and normal direction of the side nodes, all before the step
+    std::map<std::array<int, dimension>, std::pair<double, std::size_t>> sides;
+    for (auto const& border : nodes)
+        if (border.count == 1)
+        {
+            auto const a = border.node.toArray();
+            auto G       = -c2 * rho(index(rho, a));
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                auto above = index(E[d], a), below = above; // dual along d: a is the face above
+                below[d] -= 1;
+                G += (E[d](above) - E[d](below)) / dl[d];
+            }
+            sides[a] = {G, border.outside[0] ? 0u : 1u};
+        }
+
+    for (auto const& [a, side] : sides)
+    {
+        auto const& [G, normal] = side;
+        auto const t            = 1u - normal;
+        auto b                  = a;
+        b[t] += 1;
+        if (auto const next = sides.find(b); next != sides.end() and next->second.second == normal)
+            E[t](index(E[t], a)) += s * 0.5 * dl[t] * (next->second.first - G);
+    }
+}
+
+/**
  * @brief gaussOnLevelBorderOf is gaussOnLevelBorder on every patch of a level with border nodes
  */
 template<typename FKModel, typename VecField>
@@ -509,7 +575,8 @@ void gaussOnLevelBorderOf(typename FKModel::level_t& level, FKModel& model, VecF
  * it the solver advances one step ahead for a finer level (P4 plan D1). E ghosts are read, not
  * filled; labels are the caller's. The cleaning of a patch skips its nodes in `skipped`
  * (cleaningSkippedNodes; empty without boundary_cleaning_mask). On a refined level the faces of E
- * outside it first take Gauss's law on its edge nodes, `border` (gaussOnLevelBorder).
+ * outside it first take Gauss's law on its edge nodes, `border` (gaussOnLevelBorder), after one
+ * Marder step along the edge on the tangential E (marderAlongLevelBorder, 2D).
  */
 template<typename FKModel, typename Messenger, typename VecField>
 void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
@@ -525,6 +592,13 @@ void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messeng
     auto& rho = model.state.rho;
 
     depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., time);
+    // a 1D border node has no tangential face; TODO 3D (marderAlongLevelBorder)
+    if constexpr (FKModel::dimension == 2)
+        for (auto& patch : rm.enumerate(level, rho, E))
+            if (auto const it = border.find(amr::to_string(patch->getGlobalId()));
+                it != border.end())
+                marderAlongLevelBorder(amr::layoutFromPatch<GridLayout>(*patch), model.c2(),
+                                       borderMarder, rho, E, it->second);
     gaussOnLevelBorderOf(level, model, E, border);
 
     if (model.divergence_cleaning > 0.)

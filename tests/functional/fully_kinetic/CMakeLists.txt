@@ -47,4 +47,8 @@ if(HighFive)
     phare_python3_exec(9 test-fully-kinetic-border-gauss-n${passes} border_gauss.py ${CMAKE_CURRENT_BINARY_DIR} --check --filter-passes ${passes})
     phare_test_labels(test-fully-kinetic-border-gauss-n${passes} physics)
   endforeach()
+  # BORDER-NOISE: the cell-to-cell tangential E on the edge nodes of a 2D fine level is not
+  # above the inside one (N = 1, s = 0.5 + mask, 200 coarse steps, ~8 s Release)
+  phare_python3_exec(9 test-fully-kinetic-border-noise border_noise.py ${CMAKE_CURRENT_BINARY_DIR} --check)
+  phare_test_labels(test-fully-kinetic-border-noise physics)
 endif()
