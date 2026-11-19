@@ -101,6 +101,8 @@ Tests
   (:src:`res/ci/jobs/pull_request/dry_run_functional_tests.sh#L10-L12`).
 * Add a test in the folder's ``CMakeLists.txt``: ``add_phare_test`` (C++),
   ``phare_python3_exec(level name script.py dir)``, ``phare_mpi_python3_exec(level N name script.py dir)``.
+* Tests must support being run concurrently. For example, any test case with IO must write to a
+  unique directory. See ``SimulatorTest.simulation(...)``.
 
 .. code-block:: bash
 
