@@ -39,7 +39,7 @@ namespace amr
         // i.e. that constitute the state of the model between two time steps.
         std::string modelMagnetic;
         std::string modelElectric;
-        std::string modelIonChargeFlux;
+        std::string modelIonChargeFluxE; // ion current on the E nodes, read by Ohm (#1577)
         std::string modelIonDensity;
 
         // store names of vector fields that need to be initialized by refinement
@@ -58,7 +58,7 @@ namespace amr
 
         // below are the descriptions of the vector fields that for which
         // ghosts need to be filled at some point.
-        std::vector<std::string> ghostFlux;
+        std::vector<std::string> ghostFluxE;
         std::vector<std::string> sumBorderFields;
         std::vector<std::string> ghostMagnetic;
         std::vector<std::string> ghostElectric;

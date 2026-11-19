@@ -26,7 +26,7 @@ must be divided by 4. PHARE asks for exactly that bound, and lets the integrator
 
 * ``getMaxFinerLevelDt`` returns the coarse step divided by ``ratio²``; the
   comment in the code gives the whistler reason
-  (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`). The ratio is 2
+  (:src:`src/amr/multiphysics_integrator.hpp#L462-L470`). The ratio is 2
   (:src:`src/amr/amr_constants.hpp#L9`).
 
 How many sub-steps?
@@ -56,7 +56,7 @@ PHARE only gives the bound above. SAMRAI chooses the number of sub-steps
 
    SAMRAI stores :math:`dt_\text{max}` of a fine level when the level is created
    and does not update it later. The level-0 step itself comes from
-   ``computeStableDt`` (:src:`src/amr/multiphysics_integrator.hpp#L435-L461`).
+   ``computeStableDt`` (:src:`src/amr/multiphysics_integrator.hpp#L477-L503`).
    When the level-0 step changes, the number of sub-steps can therefore differ from 4: a test run shows values
    from 2 to 5 as the coarse step changes. The refluxing sums assume 4 (see
    :doc:`refluxing`).
@@ -124,7 +124,7 @@ level 0, finest pair first.
 .. claim C-sc-06
 
 * PHARE's ``standardLevelSynchronization`` loops from the finest level down:
-  coarsen, reflux, refill ghosts (:src:`src/amr/multiphysics_integrator.hpp#L566-L608`).
+  coarsen, reflux, refill ghosts (:src:`src/amr/multiphysics_integrator.hpp#L608-L650`).
   What each of these does is on :doc:`coarsening` and :doc:`refluxing`.
 * At a *regrid point*, every second step of a level that can be refined, the
   same synchronizations happen, then the finer levels are regridded
@@ -148,22 +148,22 @@ Inside one level step
    accumulate flux sum | finest level only, weight 1/ratio² | /dev/refluxing
 
 ``MultiPhysicsIntegrator::advanceLevel``
-(:src:`src/amr/multiphysics_integrator.hpp#L500-L562`) does these, in this
+(:src:`src/amr/multiphysics_integrator.hpp#L542-L604`) does these, in this
 order, every time SAMRAI calls it.
 
 .. claim C-sc-08
 
 * ``firstStep``: hybrid fills the *New* level-ghost particles from the coarser
   level (not on level 0); MHD does nothing
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L508-L530`,
-  :src:`src/amr/messengers/mhd_messenger.hpp#L315-L321`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L522-L544`,
+  :src:`src/amr/messengers/mhd_messenger.hpp#L310-L316`).
 
 .. claim C-sc-09
 
 * The finest level adds its flux sums after each sub-step; every other level
   adds once, during the synchronization, after its own reflux
-  (:src:`src/amr/multiphysics_integrator.hpp#L549-L556`,
-  :src:`src/amr/multiphysics_integrator.hpp#L591-L600`).
+  (:src:`src/amr/multiphysics_integrator.hpp#L591-L598`,
+  :src:`src/amr/multiphysics_integrator.hpp#L633-L642`).
 
 .. claim C-sc-10
 

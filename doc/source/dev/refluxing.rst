@@ -38,13 +38,13 @@ Three phases
 * Each level's sums are zeroed at its first sub-step. The finest level adds
   :math:`1/\text{ratio}^2 = 1/4` times its quantity after every sub-step
   (hybrid: :math:`E_\text{avg}`, MHD: the step's fluxes and E)
-  (:src:`src/amr/multiphysics_integrator.hpp#L526-L532`,
-  :src:`src/amr/multiphysics_integrator.hpp#L550-L556`,
+  (:src:`src/amr/multiphysics_integrator.hpp#L568-L574`,
+  :src:`src/amr/multiphysics_integrator.hpp#L592-L598`,
   :src:`src/amr/solvers/solver_ppc.hpp#L277-L298`,
   :src:`src/amr/solvers/solver_mhd.hpp#L310-L342`).
 * A level that has finer levels adds, once, after its own reflux, so that the
   contribution of all finer levels travels up the chain
-  (:src:`src/amr/multiphysics_integrator.hpp#L591-L600`).
+  (:src:`src/amr/multiphysics_integrator.hpp#L633-L642`).
 
 .. claim C-rx-04
 
@@ -53,7 +53,7 @@ When it runs
 
 .. flow::
 
-   synchronize | hybrid: coarsen E, charge density, charge flux. MHD: nothing | /dev/coarsening
+   synchronize | hybrid: coarsen E, charge density, E-edge charge flux. MHD: nothing | /dev/coarsening
    then
    messenger.reflux | coarsen the summed flux onto the coarse level, refill coarse patch ghosts
    then
@@ -64,7 +64,7 @@ When it runs
    postSynchronize | refill patch ghosts (hybrid)
 
 This is one pass of ``standardLevelSynchronization``, finest pair first
-(:src:`src/amr/multiphysics_integrator.hpp#L575-L609`); when the levels meet is
+(:src:`src/amr/multiphysics_integrator.hpp#L617-L651`); when the levels meet is
 on :doc:`subcycling`.
 
 .. claim C-rx-01
@@ -113,8 +113,8 @@ field redone with it.
    :doc:`coarsening` (average of 2 fine edges along a dual direction, copy
    of the coincident fine node otherwise), then the coarse patch ghosts are
    refilled
-   (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L189-L199`,
-   :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L641-L646`).
+   (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L196-L206`,
+   :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L672-L677`).
 
 .. claim C-rx-05
 
@@ -135,8 +135,8 @@ field redone with it.
 .. claim C-rf-08
 
 * The coarse B is never coarsened from the fine B: B is not in any
-  synchronizer, only E, charge density and charge flux are
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L912-L924`).
+  synchronizer, only E, charge density and the charge flux on the E edges are
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L960-L975`).
   The coarse edge E is an average of fine edges or a copy, so the change of the
   flux through a coarse face is the sum of the changes of its fine faces
   (:src:`src/amr/data/field/coarsening/electric_field_coarsener.hpp#L45-L145`).
@@ -185,8 +185,8 @@ through :math:`x = 2` is the mass the fine cells received.
    :math:`E_\text{tot}` fluxes are coarsened onto the coarse step fluxes (1D
    copy, 2D mean of 2 fine faces, 3D mean of 4), and the summed E onto the
    coarse E; then the patch ghosts of the fluxes are refilled
-   (:src:`src/amr/messengers/mhd_messenger.hpp#L362-L367`,
-   :src:`src/amr/messengers/mhd_messenger.hpp#L601-L615`,
+   (:src:`src/amr/messengers/mhd_messenger.hpp#L357-L362`,
+   :src:`src/amr/messengers/mhd_messenger.hpp#L596-L610`,
    :src:`src/amr/data/field/coarsening/mhd_flux_coarsener.hpp#L46-L149`).
 
 .. claim C-rx-05 C-rf-03
@@ -202,7 +202,7 @@ through :math:`x = 2` is the mass the fine cells received.
 .. claim C-rx-07
 
 * MHD ``synchronize`` is empty: no fine state is averaged onto the coarse state
-  (:src:`src/amr/messengers/mhd_messenger.hpp#L360`). The coarse cells under the
+  (:src:`src/amr/messengers/mhd_messenger.hpp#L355`). The coarse cells under the
   fine level are *recomputed* by the redo, from the coarsened fine fluxes on
   every covered face; they equal the mean of their fine cells only because the
   fine level started from a refinement that keeps the coarse average
@@ -226,7 +226,7 @@ What it guarantees
 .. admonition:: Known issue (MHD, adaptive time step)
    :class: note
 
-   The weight ¼ per sub-step is fixed (:src:`src/amr/multiphysics_integrator.hpp#L553-L555`).
+   The weight ¼ per sub-step is fixed (:src:`src/amr/multiphysics_integrator.hpp#L595-L597`).
    With an adaptive step the number of sub-steps can differ from 4
    (:doc:`subcycling`), and the sum is then no longer the mean flux. The coarse
    and fine levels then no longer match at the border.

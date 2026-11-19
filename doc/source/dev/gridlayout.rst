@@ -63,7 +63,7 @@ The picture
 
 * **One layout per patch**, built on demand by ``layoutFromPatch`` from the SAMRAI patch
   box, mesh size and origin (dl = 1, origin = 0 for SAMRAI's temporary patches that have no
-  geometry) (:src:`src/amr/resources_manager/amr_utils.hpp#L169-L209`).
+  geometry) (:src:`src/amr/resources_manager/amr_utils.hpp#L177-L217`).
 * **Centering table per model**, a compile-time array indexed by the quantity's enum
   (``initLayoutCentering_``, :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L52-L98`).
   MHD differs: ρ, ρv, P, Etot at cell centres

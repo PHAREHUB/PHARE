@@ -31,6 +31,7 @@ namespace core
             , mass_{initializer["mass"].template to<double>()}
             , charge_{initializer["particle_initializer"]["charge"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
+            , fluxE_{name_ + "_fluxE", HybridQuantity::Vector::J}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
             , particleDensity_{name_ + "_particleDensity", HybridQuantity::Scalar::rho}
             , chargeDensity_{name_ + "_chargeDensity", HybridQuantity::Scalar::rho}
@@ -58,13 +59,13 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return core::isUsable(particles_, particleDensity_, chargeDensity_, flux_,
+            return core::isUsable(particles_, particleDensity_, chargeDensity_, flux_, fluxE_,
                                   momentumTensor_);
         }
 
         NO_DISCARD bool isSettable() const
         {
-            return core::isSettable(particles_, particleDensity_, chargeDensity_, flux_,
+            return core::isSettable(particles_, particleDensity_, chargeDensity_, flux_, fluxE_,
                                     momentumTensor_);
         }
 
@@ -95,8 +96,16 @@ namespace core
         NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
         NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
 
+        // the flux on the moment nodes, computed for outputs only (HybridLazyMoments):
+        // the time loop does not keep it up to date (#1577)
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }
+
+        // the number flux on the E nodes, deposited with the weights that gather E to the
+        // particles, so that the work of E on the population is exactly q sum_nodes fluxE.E
+        // (#1577). The ion current, with q, is Ions::chargeFluxE()
+        NO_DISCARD VecField const& fluxE() const { return fluxE_; }
+        NO_DISCARD VecField& fluxE() { return fluxE_; }
 
         NO_DISCARD TensorField const& momentumTensor() const { return momentumTensor_; }
         NO_DISCARD TensorField& momentumTensor() { return momentumTensor_; }
@@ -114,7 +123,7 @@ namespace core
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
             return std::forward_as_tuple(flux_, momentumTensor_, particleDensity_, chargeDensity_,
-                                         particles_);
+                                         particles_, fluxE_);
         }
 
 
@@ -138,6 +147,7 @@ namespace core
         double mass_;
         double charge_;
         VecField flux_;
+        VecField fluxE_;
         TensorField momentumTensor_;
         field_type particleDensity_;
         field_type chargeDensity_;

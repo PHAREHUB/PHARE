@@ -57,6 +57,22 @@ void DiagnosticProperties::forward_file_attribute(std::string const& key, auto& 
 }
 
 
+// fluid quantities the time loop does not keep up to date: computed when written, only when all
+// levels are at the same time (amr::HybridLazyMoments)
+NO_DISCARD inline bool isLazyFluidQuantity(DiagnosticProperties const& diagnostic)
+{
+    if (diagnostic.type != "fluid")
+        return false;
+    auto const& q       = diagnostic.quantity;
+    auto const endsWith = [&](std::string const& end) {
+        return q.size() >= end.size() and q.compare(q.size() - end.size(), end.size(), end) == 0;
+    };
+    // "/ions/pop/<name>/flux", "/ions/charge_flux", "/ions/bulkVelocity", and the momentum tensors
+    return endsWith("/flux") or endsWith("/charge_flux") or endsWith("/bulkVelocity")
+           or endsWith("/momentum_tensor");
+}
+
+
 
 } // namespace PHARE::diagnostic
 

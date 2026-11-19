@@ -59,14 +59,14 @@ at the grid scale) and, when the resistivity is not zero, a diffusive limit. The
 are on :doc:`mhd_time_integration`. Each level's limit is then converted to a
 coarsest-level time step by multiplying it by :math:`4^{\ell}` (level :math:`\ell` takes
 :math:`4^{\ell}` steps per coarsest step, see below), and the smallest over all levels and
-all MPI ranks is used (:src:`src/amr/multiphysics_integrator.hpp#L435-L461`).
+all MPI ranks is used (:src:`src/amr/multiphysics_integrator.hpp#L477-L503`).
 
 Time steps on refined levels
 ----------------------------
 
 A refined level has cells half as large (refinement ratio 2). PHARE divides the time step
 by the *square* of the ratio, so each finer level takes four steps for one step of the
-level above (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`).
+level above (:src:`src/amr/multiphysics_integrator.hpp#L462-L470`).
 The reason is the whistler limit above, :math:`\Delta t \propto \Delta x^2`. How the levels
 are stepped and kept in sync is on :doc:`amr`.
 

@@ -59,7 +59,7 @@ extensions = [
 ]
 
 # :src:`src/amr/.../file.hpp#L42` links to the code at the commit the docs were checked against.
-phare_doc_commit = "dc62fdd4e6c99d31b3f563678a1084267f5b5c10"
+phare_doc_commit = "2d4ea76816a8f8b005d08f6abbc083aeef45c406"
 extlinks = {
     "src": (f"https://github.com/PHAREHUB/PHARE/blob/{phare_doc_commit}/%s", "%s"),
     # :pr:`1278` and :issue:`604` render as "#1278" / "#604", linked to GitHub

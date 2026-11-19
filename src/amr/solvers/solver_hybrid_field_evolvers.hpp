@@ -28,13 +28,15 @@ public:
 
     void operator()(auto& B, auto& J, auto& E, auto& electrons)
     {
-        auto& rm = *model_.resourcesManager;
-        for (auto& patch : rm.enumerate(level_, electrons, B, J, E))
+        auto& rm   = *model_.resourcesManager;
+        auto& ions = model_.state.ions;
+        for (auto& patch : rm.enumerate(level_, electrons, ions, B, J, E))
         {
             auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-            auto& n     = electrons.density();
-            auto& Ve    = electrons.velocity();
-            (*this)(layout, n, Ve, electrons.pressureTerm(), B, J, E);
+            // Ohm takes the electron flux n Ve = Ji - J on the E nodes, formed where J and E
+            // live (#1577), not Ve on the moment nodes
+            (*this)(layout, ions.chargeDensity(), electrons.flux(), electrons.pressureTerm(), B, J,
+                    E);
         }
     }
 

@@ -14,11 +14,16 @@ population holds its moments and, on each :term:`patch`, five ``ParticleArray``
 objects: its domain particles and four kinds of ghost particles.
 
 * ``Ions`` → vector of ``IonPopulation`` + total moments (charge and mass
-  density, bulk velocity, charge flux, momentum tensor)
-  (:src:`src/core/data/ions/ions.hpp#L295-L300`).
-* ``IonPopulation`` → name, mass, charge, density, flux, momentum tensor, and a
-  ``ParticlesPack`` of 5 *pointers*
-  (:src:`src/core/data/ions/ion_population/ion_population.hpp#L137-L144`).
+  density, bulk velocity, charge flux on the moment nodes and on the E edges
+  ``chargeFluxE``, momentum tensor)
+  (:src:`src/core/data/ions/ions.hpp#L326-L332`).
+* ``IonPopulation`` → name, mass, charge, density, flux on the moment nodes, flux
+  on the E edges ``fluxE``, momentum tensor, and a ``ParticlesPack`` of 5 *pointers*
+  (:src:`src/core/data/ions/ion_population/ion_population.hpp#L146-L154`).
+* The time loop keeps the densities and the E-edge fluxes up to date (Ohm reads
+  them, :doc:`/dev/moments`); the fluxes on the moment nodes, the bulk velocity
+  and the momentum tensors are computed only for outputs
+  (:doc:`/dev/output_moments`).
 * ``ParticlesData`` (SAMRAI patch data, one per patch) owns the 5 arrays; the
   resources manager points the pack at them on each patch
   (:src:`src/amr/data/particles/particles_data.hpp#L460-L466`,

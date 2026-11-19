@@ -15,6 +15,7 @@ add_no_mpi_python3_test(mhd_only_api test_mhd_only_api.py ${CMAKE_CURRENT_BINARY
 add_no_mpi_python3_test(time_step test_time_step.py ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(patch_overlap test_patch_overlap.py ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(multi_species_momentum test_multi_species_momentum.py ${CMAKE_CURRENT_BINARY_DIR})
+add_no_mpi_python3_test(level_ghost_moments test_level_ghost_moments.py ${CMAKE_CURRENT_BINARY_DIR})
 
 if (useExceptionsInsteadOfMPIAbort)
   add_no_mpi_python3_test(exceptions test_exceptions.py ${CMAKE_CURRENT_BINARY_DIR})
@@ -24,6 +25,8 @@ if(HighFive)
   ## These test use dump diagnostics so require HighFive!
   phare_python3_exec(9       diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       restarts    test_restarts.py     ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  add_no_mpi_python3_test(restart_missing_data test_restart_missing_data.py ${CMAKE_CURRENT_BINARY_DIR})
+  add_no_mpi_python3_test(lazy_outputs test_lazy_outputs.py ${CMAKE_CURRENT_BINARY_DIR})
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       simulator_lifecycle test_simulator_lifecycle.py ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2

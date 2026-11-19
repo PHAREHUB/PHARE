@@ -48,7 +48,7 @@ Look at patch A's ghost layer: blue where patch B is, orange outside level 1.
   (:src:`src/amr/data/field/field_data_factory.hpp#L27`).
 * **One fill does both:** a ``GhostField`` :term:`schedule` copies from the
   level (periodic copies included), then refines from the coarser level where
-  no patch is (:src:`src/amr/messengers/refiner.hpp#L86-L90`).
+  no patch is (:src:`src/amr/messengers/refiner.hpp#L97-L101`).
 * **Time:** patch ghosts are copied at the same time; level ghosts are
   interpolated in time (:ref:`dev-one-time-step-coarse-first`).
 * **Domain edges:** periodic → copied from the other side; otherwise boundary
@@ -93,7 +93,7 @@ Look at the right-hand ghost nodes: once copied in step 2, step 3 leaves
 them alone.
 
 * Before each fill, ghost nodes are set to NaN (``setNaNsOnFieldGhosts``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L969-L1002`;
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L1020-L1053`;
   the comment explains the mechanism).
 * ``fineBoundaryRepresentsVariable = false`` makes SAMRAI copy *before*
   refining (:src:`src/amr/data/field/field_variable.hpp#L34-L39`).
@@ -126,18 +126,20 @@ Hybrid level; predictor 1, predictor 2, corrector are the solver stages
    * - J
      - **never filled**: Ampère computes it on the cells plus one ghost layer
      - (none)
-   * - ion moments, per population
+   * - density and E-edge flux, per population
      - summed across patch borders, plus level ghost particles
      - after each push (:doc:`/dev/moments`)
-   * - total charge density, flux
-     - made equal on shared border nodes
-     - after each push
+   * - total charge density, E-edge ion current
+     - refined levels: copy + refine, in time (``fillIonMomentGhosts``); after
+       synchronization: patch ghosts copied
+     - after each push, at level creation and regrid; ``postSynchronize``
 
-Functions: :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L351-L497`.
+Functions: :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L380-L495`,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L683-L696`.
 MHD levels fill their state this way (``fillStateGhosts``,
-:src:`src/amr/messengers/mhd_messenger.hpp#L376-L387`); the MHD E ghosts are
+:src:`src/amr/messengers/mhd_messenger.hpp#L371-L382`); the MHD E ghosts are
 only set at physical boundaries (``NoOverlapFillPattern``,
-:src:`src/amr/messengers/mhd_messenger.hpp#L523-L536`).
+:src:`src/amr/messengers/mhd_messenger.hpp#L518-L531`).
 
 
 The tricks
@@ -161,7 +163,7 @@ J is computed, not communicated
 
 **Fix.** No refiner for J: each patch runs Ampère on its cells plus one ghost
 layer, from freshly filled B
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L834-L835`). So
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L895-L896`). So
 B ghosts are filled right after each Faraday update.
 
 

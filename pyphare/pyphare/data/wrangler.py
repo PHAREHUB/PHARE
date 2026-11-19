@@ -18,6 +18,13 @@ class DataWrangler:
         return self.cpp.getNumberOfLevels()
 
     def getPatchLevel(self, lvl):
+        """Accessors to the data of one level of the running simulation.
+
+        The population fluxes and the bulk velocity (getFx/getFy/getFz, getPopFluxes,
+        getVix/getViy/getViz, getBulkVelocity) are computed on the first such call after an
+        advance, and kept until the next one. That computation communicates between MPI
+        ranks: every rank must make these calls.
+        """
         return self.cpp.getPatchLevel(lvl)
 
     def _lvl0FullContiguous(self, input, is_primal=True):
