@@ -14,7 +14,7 @@ __all__ = [
 
 # Transitional: pharesee is moving to pyphare.pharesee.amr. This bridge lets scripts that
 # test isinstance(..., PatchHierarchy) keep working meanwhile; it is not a full subclass
-# (FROM, dist_plot, resolve_selection_boxes are missing, see doc/source/pharesee/
+# (FROM, dist_plot, resolve_selection_boxes are missing, see doc/source/data_analysis/
 # amr_reader.rst "Differences from the previous reader") and goes away with this package.
 def _register_amr_fields():
     """make the fields of pyphare.pharesee.amr virtual subclasses of the classes above,
