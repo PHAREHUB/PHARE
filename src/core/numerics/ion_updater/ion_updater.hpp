@@ -111,9 +111,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 {
-    ions.computeChargeDensity();
-    ions.computeBulkVelocity();
-    ions.computeChargeFlux();
+    ions.computeLoopMoments();
 }
 
 // this is to detach how we partition particles from the updater directly
@@ -204,7 +202,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
             = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_, layout,
                             boxing.noop, boxing.inNonLevelGhostBox);
 
-        interpolator_(allowed, pop.particleDensity(), pop.flux(), pop.fluxE(), layout);
+        interpolator_.depositDensityAndFluxE(allowed, pop.particleDensity(), pop.fluxE(), layout);
 
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
@@ -219,8 +217,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
                 = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_,
                                 layout, boxing.inGhostBox, boxing.inOwnedDomain);
 
-            interpolator_(enteredInDomain, pop.particleDensity(), pop.flux(), pop.fluxE(),
-                          layout);
+            interpolator_.depositDensityAndFluxE(enteredInDomain, pop.particleDensity(),
+                                                 pop.fluxE(), layout);
         };
 
         // After this function is done domain particles overlaping ghost layers of neighbor patches
@@ -307,10 +305,10 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                 makeRange(particleArray, inGhostLayerRange.iend(), particleArray.size()));
         }
 
-        interpolator_( //
-            domainParticles, pop.particleDensity(), pop.flux(), pop.fluxE(), layout);
-        interpolator_( //
-            patchGhost, pop.particleDensity(), pop.flux(), pop.fluxE(), layout);
+        interpolator_.depositDensityAndFluxE( //
+            domainParticles, pop.particleDensity(), pop.fluxE(), layout);
+        interpolator_.depositDensityAndFluxE( //
+            patchGhost, pop.particleDensity(), pop.fluxE(), layout);
     }
 }
 

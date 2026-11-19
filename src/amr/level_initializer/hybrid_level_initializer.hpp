@@ -117,9 +117,7 @@ namespace solver
                 // now all domain nodes are complete (ghost nodes may not be, and are not
                 // read), the total ion moments
                 // can safely be computed.
-                ions.computeChargeDensity();
-                ions.computeBulkVelocity();
-                ions.computeChargeFlux();
+                ions.computeLoopMoments();
             }
 
             // the level ghost particles above complete the domain nodes, border included, but

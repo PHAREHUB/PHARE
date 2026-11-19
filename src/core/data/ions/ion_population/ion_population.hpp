@@ -96,6 +96,8 @@ namespace core
         NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
         NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
 
+        // the flux on the moment nodes, computed for outputs only (HybridLazyMoments):
+        // the time loop does not keep it up to date (#1577)
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }
 

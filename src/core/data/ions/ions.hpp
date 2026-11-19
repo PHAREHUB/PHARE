@@ -163,15 +163,21 @@ namespace core
         }
 
 
-        // sum_s q_s F_s on the moment nodes (outputs) and sum_s q_s fluxE_s on the E nodes (Ohm)
-        void computeChargeFlux()
+        // the totals the time loop keeps up to date, from the population densities and E-node
+        // fluxes: the charge density and the E-node charge flux, which Ohm reads, and the mass
+        // density, which the bulk velocity of the outputs divides by (HybridLazyMoments) and the
+        // mass_density output writes. The population fluxes on the moment nodes, their total and
+        // the bulk velocity are computed only for outputs; until then they hold the value of the
+        // last output (NaN on a level that never had one: fields are allocated NaN)
+        void computeLoopMoments()
         {
-            computeChargeFluxOnMomentNodes();
+            computeChargeDensity();
+            computeMassDensity();
             computeChargeFluxOnENodes();
         }
 
-        // sum_s q_s F_s on the moment nodes only. The E-node sum is left alone: the time loop
-        // completes it (border sums, coarse-fine ghosts, sync) and Ohm reads it.
+        // sum_s q_s F_s on the moment nodes, for outputs. The E-node sum is left alone: the time
+        // loop completes it (border sums, coarse-fine ghosts, sync) and Ohm reads it.
         void computeChargeFluxOnMomentNodes()
         {
             sumChargeWeighted_(chargeFlux_,

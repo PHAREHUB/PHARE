@@ -26,6 +26,7 @@ if(HighFive)
   phare_python3_exec(9       diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       restarts    test_restarts.py     ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   add_no_mpi_python3_test(restart_missing_data test_restart_missing_data.py ${CMAKE_CURRENT_BINARY_DIR})
+  add_no_mpi_python3_test(lazy_outputs test_lazy_outputs.py ${CMAKE_CURRENT_BINARY_DIR})
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       simulator_lifecycle test_simulator_lifecycle.py ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2

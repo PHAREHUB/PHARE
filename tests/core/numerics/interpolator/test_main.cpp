@@ -807,10 +807,15 @@ struct AnEnodeDeposit : public ::testing::Test
 
     void deposit()
     {
+        // the time loop's deposit
         rho.zero();
-        F.zero();
         fluxE.zero();
-        interp(makeIndexRange(particles), rho, F, fluxE, layout);
+        interp.depositDensityAndFluxE(makeIndexRange(particles), rho, fluxE, layout);
+        // the moment-node flux, as the outputs deposit it (HybridLazyMoments)
+        Grid_t rhoF{"rhoF", layout, HybridQuantity::Scalar::rho};
+        rhoF.zero();
+        F.zero();
+        interp(makeIndexRange(particles), rhoF, F, layout);
     }
 
     // sum over every node of the ghost box: the deposit only writes where the gather reads
@@ -850,6 +855,29 @@ TYPED_TEST(AnEnodeDeposit, IsTheTransposeOfTheGather)
     auto const gathered = this->gatheredWork();
     auto const onGrid   = this->gridWork([&](auto c, auto const& i) { return this->fluxE[c](i); });
     EXPECT_NEAR(onGrid, gathered, 1e-13 * std::abs(gathered)) << gathered << " " << onGrid;
+}
+
+
+// an E component on the moment nodes is deposited by the fused density kernel with the moment
+// flux's arithmetic: the same bits as the moment flux (the time loop's results do not depend on
+// whether the moment flux is deposited alongside)
+TYPED_TEST(AnEnodeDeposit, OnMomentNodesIsTheMomentFluxBitwise)
+{
+    this->deposit();
+    std::size_t compared = 0;
+    for (std::uint8_t c = 0; c < 3; ++c)
+    {
+        if (this->layout.centering(this->fluxE[c].physicalQuantity())
+            != this->layout.centering(this->F[c].physicalQuantity()))
+            continue;
+        ++compared;
+        auto const& fE = this->fluxE[c];
+        auto const& F  = this->F[c];
+        ASSERT_EQ(fE.size(), F.size());
+        for (std::size_t i = 0; i < F.size(); ++i)
+            ASSERT_EQ(fE.data()[i], F.data()[i]) << int(c) << " " << i;
+    }
+    EXPECT_EQ(compared, TestFixture::dim == 3 ? 0u : TestFixture::dim == 2 ? 1u : 2u);
 }
 
 

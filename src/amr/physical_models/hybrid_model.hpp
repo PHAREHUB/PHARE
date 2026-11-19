@@ -169,12 +169,11 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
 {
     auto& hybridInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
-    // only the charge density and the charge flux, which give the electron velocity,
-    // are communicated. The mass density and the bulk velocity are diagnostics only
-    hybridInfo.modelMagnetic      = state.electromag.B.name();
-    hybridInfo.modelElectric      = state.electromag.E.name();
-    hybridInfo.modelIonDensity    = state.ions.chargeDensityName();
-    hybridInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
+    // only the charge density and the E-node charge flux, which Ohm reads, are communicated.
+    // The moment-node fluxes, the mass density and the bulk velocity are outputs only
+    hybridInfo.modelMagnetic       = state.electromag.B.name();
+    hybridInfo.modelElectric       = state.electromag.E.name();
+    hybridInfo.modelIonDensity     = state.ions.chargeDensityName();
     hybridInfo.modelIonChargeFluxE = state.ions.chargeFluxE().name();
 
     hybridInfo.initElectric.emplace_back(state.electromag.E.name());
@@ -194,7 +193,6 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
 
     for (auto const& pop : state.ions)
     {
-        hybridInfo.ghostFlux.emplace_back(pop.flux().name());
         hybridInfo.ghostFluxE.emplace_back(pop.fluxE().name());
         hybridInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
     }

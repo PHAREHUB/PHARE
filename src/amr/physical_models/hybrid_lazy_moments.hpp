@@ -89,35 +89,32 @@ public:
 
         for (auto& patch : rm.enumerate(*level, ions, density_))
         {
-            auto const layout    = layoutFromPatch<GridLayout>(*patch);
-            auto const* owned    = levelNumber > 0 ? &ownership.at(patch->getGlobalId()) : nullptr;
-            auto const ownedOnly = [&](auto& particles) {
-                return particles | std::views::filter([&](auto const& particle) {
-                           return owned->owns(particle.iCell);
-                       });
-            };
+            auto const layout = layoutFromPatch<GridLayout>(*patch);
+            auto const* ghostOwnership
+                = levelNumber > 0 ? &ownership.at(patch->getGlobalId()) : nullptr;
 
             for (auto& pop : ions)
             {
                 if (todo.flux)
                 {
                     // the density goes to a scratch field: the time loop owns the populations'
-                    // densities, and the same fused arithmetic gives the flux it deposits
+                    // densities
                     pop.flux().zero();
                     density_.zero();
                     interpolate(pop.domainParticles(), density_, pop.flux(), layout);
-                    if (owned)
-                        interpolate(ownedOnly(pop.levelGhostParticlesOld()), density_, pop.flux(),
-                                    layout);
+                    if (ghostOwnership)
+                        interpolate(core::owned(pop.levelGhostParticlesOld(), *ghostOwnership),
+                                    density_, pop.flux(), layout);
                 }
                 if (todo.momentumTensor)
                 {
                     pop.momentumTensor().zero();
                     interpolateMomentumTensor(pop.domainParticles(), pop.momentumTensor(), layout,
                                               pop.mass());
-                    if (owned)
-                        interpolateMomentumTensor(ownedOnly(pop.levelGhostParticlesOld()),
-                                                  pop.momentumTensor(), layout, pop.mass());
+                    if (ghostOwnership)
+                        interpolateMomentumTensor(
+                            core::owned(pop.levelGhostParticlesOld(), *ghostOwnership),
+                            pop.momentumTensor(), layout, pop.mass());
                 }
             }
         }

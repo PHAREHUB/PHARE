@@ -183,6 +183,7 @@ private:
     std::map<std::string, std::size_t> nextCompute_;
     std::map<std::string, std::size_t> nextWrite_;
     std::map<std::string, std::size_t> nextWriteElapsed_;
+    bool lazySkipLogged_ = false;
 
     std::time_t const start_time_{mpi::unix_timestamp_now()};
 };
@@ -223,13 +224,31 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
 }
 
 
+// writes one level, at any point of a step (levels may be at different times): the fluid
+// quantities computed only when written (isLazyFluidQuantity) cannot be computed there and are
+// not written, so their files have no data at that time rather than stale data
 template<typename Writer>
 void DiagnosticsManager<Writer>::dump_level(std::size_t level, double timeStamp)
 {
     std::vector<DiagnosticProperties*> activeDiagnostics;
+    std::string skipped;
 
     for (auto& diag : diagnostics_)
-        activeDiagnostics.emplace_back(&diag);
+    {
+        if (isLazyFluidQuantity(diag))
+            skipped += " " + diag.quantity;
+        else
+            activeDiagnostics.emplace_back(&diag);
+    }
+
+    if (!skipped.empty() and !lazySkipLogged_)
+    {
+        PHARE_LOG_LINE_STR("dump_level at t=" + std::to_string(timeStamp)
+                           + " (and later ones): not written, they are computed only when all "
+                             "levels are at the same time:"
+                           + skipped);
+        lazySkipLogged_ = true;
+    }
 
     writer_->dump_level(level, activeDiagnostics, timeStamp);
 }
@@ -241,9 +260,13 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        if (needsCompute_(diag, timeStamp, timeStep))
+        // every write computes first, whatever triggered it (timestamp or elapsed time): some
+        // quantities are computed only when written (isLazyFluidQuantity)
+        bool const compute = needsCompute_(diag, timeStamp, timeStep);
+        bool const write   = needsWrite_(diag, timeStamp, timeStep);
+        if (compute or write)
             writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
-        if (needsWrite_(diag, timeStamp, timeStep))
+        if (write)
             activeDiagnostics.emplace_back(&diag);
     }
 
