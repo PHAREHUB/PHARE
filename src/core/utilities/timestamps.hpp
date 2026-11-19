@@ -2,11 +2,16 @@
 #define PHARE_CORE_UTILITIES_TIMESTAMPS_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 
 #include "initializer/data_provider.hpp"
 
 #include <cassert>
+#include <cmath>
 #include <cstdint>
+#include <limits>
+#include <optional>
+#include <stdexcept>
 #include <string>
 
 
@@ -16,9 +21,64 @@ namespace PHARE::core
 enum class TimeStepType : std::uint8_t { constant, adaptive };
 
 
+// Returns the dt such that start + dt, rounded to a double, equals end bit-wise.
+inline double dt_between(double const start, double const end)
+{
+    // a step must move the clock forward
+    if (!(end > start))
+        throw std::runtime_error("dt_between: end " + to_string_exact(end) + " is not after start "
+                                 + to_string_exact(start));
+
+    auto constexpr inf = std::numeric_limits<double>::infinity();
+
+    // searches a dt such that start + dt == goal
+    auto const solve = [&](double const goal) -> std::optional<double> {
+        // first guess: when start >= goal / 2 the subtraction is exact (Sterbenz lemma)
+        // and start + dt == goal at once; this covers every constant step and almost
+        // every adaptive one
+        auto dt = goal - start;
+        // otherwise goal - start was rounded and start + dt may miss goal by an ulp;
+        // each iteration corrects dt; a few suffice, 8 bounds the loop
+        for (int iteration = 0; iteration < 8; ++iteration)
+        {
+            auto const landed = start + dt;
+            if (landed == goal)
+                return dt;
+            // landed is close to goal (within a factor 2), so goal - landed is exact
+            // (Sterbenz lemma): it is the miss, add it to dt
+            auto const corrected = dt + (goal - landed);
+            // if the miss is at most half an ulp of dt, adding it changes nothing:
+            // move dt by one ulp towards goal instead
+            dt = (corrected == dt) ? std::nextafter(dt, landed < goal ? inf : -inf) : corrected;
+        }
+        return std::nullopt;
+    };
+
+    // land exactly on end when some dt can
+    if (auto const dt = solve(end))
+        return *dt;
+    // round-half-even tie: every start + dt near end falls halfway between two doubles
+    // and rounds to the even one; end is odd so it is skipped, aim one ulp above it
+    if (auto const dt = solve(std::nextafter(end, inf)))
+        return *dt;
+
+    throw std::runtime_error("dt_between: no dt goes from " + to_string_exact(start) + " to "
+                             + to_string_exact(end));
+}
+
+
+inline bool reaches_target(double const time, double const target)
+{
+    return time == target
+           or time == std::nextafter(target, std::numeric_limits<double>::infinity());
+}
+
+
 struct ITimeStamper
 {
     virtual double operator+=(double const& new_dt) noexcept = 0;
+
+    NO_DISCARD virtual std::size_t steps() const noexcept = 0;
 
     virtual ~ITimeStamper() {}
 };
@@ -38,6 +98,8 @@ public:
         assert(dt_ == new_dt);
         return last_time_ + dt_ * ++idx_;
     }
+
+    NO_DISCARD std::size_t steps() const noexcept override { return idx_; }
 
 private:
     double dt_        = 0;
@@ -59,6 +121,7 @@ public:
     {
         assert(new_dt > 0);
         dt_ = new_dt;
+        ++steps_;
 
         // Kahan Summation Algorithm
         // 1. Subtract the accumulated floating-point error from the new increment
@@ -75,10 +138,13 @@ public:
         return (last_time_ = temp);
     }
 
+    NO_DISCARD std::size_t steps() const noexcept override { return steps_; }
+
 private:
     double dt_                 = 0;
     double last_time_          = 0;
     double error_compensation_ = 0; // Tracks the lost bits
+    std::size_t steps_         = 0;
 };
 
 
@@ -93,6 +159,9 @@ struct TimeStamperFactory
             return std::make_unique<KahanTimeStamper>(0.);
 
         assert(time_step_dict.contains("value"));
+        if (!dict.contains("time_step_nbr"))
+            throw std::runtime_error(
+                "TimeStamperFactory: a constant time_step needs time_step_nbr");
         auto time_step = time_step_dict["value"].template to<double>();
 
         return std::make_unique<ConstantTimeStamper>(time_step);

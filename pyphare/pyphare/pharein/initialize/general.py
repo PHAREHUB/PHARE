@@ -1,5 +1,6 @@
 import os
 
+from pyphare.pharein import restarts
 from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
@@ -161,10 +162,7 @@ def populate_restarts(dp, sim, serialized_sim):
 
     restart_options = sim.restart_options
     restarts_path = "simulation/restarts/"
-    restart_file_path = "phare_outputs"
-
-    if "dir" in restart_options:
-        restart_file_path = restart_options["dir"]
+    restart_file_path = restarts.restart_dir(restart_options)
 
     if "restart_time" in restart_options:
         from pyphare.cpp import cpp_etc_lib
@@ -189,7 +187,6 @@ def populate_restarts(dp, sim, serialized_sim):
             restarts_path + "restart_ids", _patch_data_ids(restart_file_load_path)
         )
         dp.add_string(restarts_path + "loadPath", restart_file_load_path)
-        dp.add_double(restarts_path + "restart_time", restart_time)
 
     if "mode" in restart_options:
         dp.add_string(restarts_path + "mode", restart_options["mode"])

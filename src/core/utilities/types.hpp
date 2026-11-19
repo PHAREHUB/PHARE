@@ -179,6 +179,14 @@ namespace core
         T var;
     };
 
+    NO_DISCARD inline std::string to_string_exact(double const value)
+    {
+        std::ostringstream out;
+        out.precision(17);
+        out << value;
+        return out.str();
+    }
+
     template<typename T>
     NO_DISCARD std::string to_string_with_precision(T const& a_value, std::size_t const len)
     {

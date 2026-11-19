@@ -28,7 +28,7 @@ def try_delete_obsolete_restarts(simulator):
         return  # nothing to do
 
     keep_last = restart_options["keep_last"]
-    directory = restart_options.get("dir", ".")
+    directory = restart_dir(restart_options)
 
     dirs = []
     for path_object in Path(directory).iterdir():
@@ -54,6 +54,10 @@ def try_delete_obsolete_restarts(simulator):
             warnings.warn(f"Failed to remove restart directory {dirs[i]}: {e}")
 
 
+def restart_dir(restart_options):
+    return restart_options.get("dir", "phare_outputs")
+
+
 def restart_time(restart_options):
     if "restart_time" in restart_options:
         if restart_options["restart_time"] == "auto":
@@ -62,8 +66,25 @@ def restart_time(restart_options):
     return None
 
 
+def restored_time(restart_options):
+    restart_options = restart_options or {}
+    label = restart_options.get("restart_time")
+    if label is None:
+        return 0
+
+    from pyphare import cpp
+
+    etc = cpp.cpp_etc_lib()
+    folder = etc.restart_path_for_time(restart_dir(restart_options), label)
+    if not Path(folder).is_dir():
+        return label
+    return etc.restored_time(folder)
+
+
 def find_latest_time_from_restarts(restart_options):
-    directory = restart_options.get("dir", ".")
+    directory = restart_dir(restart_options)
+    if not Path(directory).is_dir():
+        return None
 
     dirs = []
     for path_object in Path(directory).iterdir():
@@ -96,18 +117,22 @@ def validate(sim):
             )
 
     if "timestamps" in restart_options:
-        restart_options["timestamps"] = phare_utilities.np_array_ify(
-            restart_options["timestamps"]
-        )
         init_time = sim.start_time()
+        final_time = sim.time_stepper.final_time
+        timestamps = phare_utilities.snap_to(
+            phare_utilities.np_array_ify(restart_options["timestamps"]),
+            init_time,
+            final_time,
+        )
+        if sim.is_from_restart():
+            timestamps = timestamps[timestamps != init_time]
+        restart_options["timestamps"] = timestamps
 
-        timestamps = restart_options["timestamps"]
         if np.any(timestamps < init_time):
             raise RuntimeError(
                 f"Error: timestamp({timestamps[timestamps < init_time]}) "
                 f"cannot be less than simulation.init_time({init_time}))"
             )
-        final_time = sim.time_stepper.final_time
         if np.any(timestamps > final_time):
             raise RuntimeError(
                 f"Error: timestamp({timestamps[timestamps > final_time]}) "
@@ -117,15 +142,12 @@ def validate(sim):
             raise RuntimeError(
                 "Error: restart_options timestamps not in ascending order)"
             )
-        if sim.time_stepper.mode == "constant" and not np.all(
-            np.abs(
-                timestamps / sim.time_stepper.time_step
-                - np.rint(timestamps / sim.time_stepper.time_step)
-                < 1e-9
-            )
+        if sim.time_stepper.mode == "constant" and not phare_utilities.on_step_grid(
+            timestamps, init_time, sim.time_stepper.time_step
         ):
             raise RuntimeError(
                 "Error: restart_options timestamps is inconsistent with simulation.time_step"
+                f" (steps of {sim.time_stepper.time_step} from start time {init_time})"
             )
 
         sim.restart_options["timestamps"] = conserve_existing(sim)

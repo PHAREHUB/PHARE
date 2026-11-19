@@ -1077,12 +1077,12 @@ class Simulation:
     restarts from a previous checkpoint.
 
         * **restart_options** (``dict``), default=None (no restart files are read or written at all)
-            * **dir** (``str``), default="./", path for restart files
+            * **dir** (``str``), default="phare_outputs", path for restart files
             * **mode** (``str``), default="conserve", mode of the restart files
                 * "conserve"  - (default), will conserve existing files
                 * "overwrite" - will overwrite existing files
 
-            * **restart_time** (``float`` or ``"auto"``), default=None (fresh start, not a restart), time at which to restart the simulation. If "auto", the latest available restart file in `dir` is used.
+            * **restart_time** (``float`` or ``"auto"``), default=None (fresh start, not a restart), time of the restart directory to load, whose name holds the time to 5 decimals. If "auto", the latest available restart file in `dir` is used.
             * **timestamps** (``list``), default=None, list of simulation times at which to dump a restart file. Must be in ascending order and consistent with `time_step`. If neither this nor `elapsed_timestamps` is set, no restart file is ever dumped.
             * **elapsed_timestamps** (``list`` of ``float`` seconds or ``datetime.timedelta``), default=None, dump a restart file every time this much wall-clock time has elapsed since the simulation started, instead of at fixed simulation times. Can be combined with `timestamps`.
             * **keep_last** (``int``), default=None (keep every restart directory ever written, nothing is deleted). If set, only the `keep_last` most recent restart directories are kept - older ones are deleted automatically as new ones are written. It is a count rather than a bool because it expresses *how many* to retain, not just whether to prune at all.
@@ -1179,8 +1179,10 @@ class Simulation:
         raise NotImplementedError("Error: 2D and 3D not implemented yet")
 
     def restart_file_path(self):
+        from pyphare.pharein import restarts
+
         assert self.restart_options is not None
-        return self.restart_options.get("dir", "phare_outputs")
+        return restarts.restart_dir(self.restart_options)
 
     def start_time(self):
         return self.time_stepper.start_time

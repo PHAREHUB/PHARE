@@ -359,10 +359,7 @@ namespace solver
 
                     auto level = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
-                    {
-                        auto time = dict_["restarts"]["restart_time"].template to<double>();
-                        load_balancer_manager_->allocate(*patch, time);
-                    }
+                        load_balancer_manager_->allocate(*patch, restartTime_);
                     // if load balance on restart advance
                     load_balancer_manager_->estimate(*level, getModel_(ilvl));
                 }
@@ -636,10 +633,13 @@ namespace solver
             load_balancer_manager_ = std::move(lbm);
         }
 
+        void setRestartTime(double const time) { restartTime_ = time; }
+
 
 
     private:
         bool restartInitialized_ = false;
+        double restartTime_      = 0;
         int nbrOfLevels_;
         std::unordered_map<std::size_t, double> subcycleEndTimes_;
         std::unordered_map<std::size_t, double> subcycleStartTimes_;

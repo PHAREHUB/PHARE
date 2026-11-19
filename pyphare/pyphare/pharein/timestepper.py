@@ -19,7 +19,9 @@ from ..core import phare_utilities
 
 
 def _restart_start_time(restart_options):
-    return (restart_options or {}).get("restart_time", 0)
+    from . import restarts
+
+    return restarts.restored_time(restart_options)
 
 
 @dataclass
@@ -44,6 +46,7 @@ class TimeStepper(ABC):
         avoid a circular import between this module and pharein.initialize.
         """
         dp.add_enum_int("simulation/time_step/mode", "TimeStepType", self.mode)
+        dp.add_double("simulation/start_time", self.start_time)
         dp.add_double("simulation/final_time", self.final_time)
 
 
@@ -188,6 +191,8 @@ def resolve_time_stepper(**kwargs):
 
     start_time = _restart_start_time(kwargs.get("restart_options"))
     final_time = kwargs.get("final_time")
+    if final_time is not None:
+        final_time = float(phare_utilities.snap_to(final_time, start_time))
     time_step_nbr = kwargs.get("time_step_nbr")
 
     if isinstance(ts, dict):

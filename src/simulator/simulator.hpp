@@ -196,7 +196,6 @@ private:
 
 
 
-    double restart_time(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&, auto&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
@@ -225,14 +224,6 @@ namespace
 //-----------------------------------------------------------------------------
 //                           Definitions
 //-----------------------------------------------------------------------------
-
-template<auto opts>
-double Simulator<opts>::restart_time(initializer::PHAREDict const& dict)
-{
-    return cppdict::get_value(dict, "simulation/restarts/restart_time", 0.);
-}
-
-
 
 template<auto opts>
 void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto& model)
@@ -304,11 +295,23 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
     auto const lbm_id = lbm_->getId(); // moved on next line
     multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
 
-    startTime_ = restart_time(dict);
-    integrator_
-        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
-                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
+    integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
+                                               loadBalancer, finalTime_, lb_info, lbm_id);
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
+
+    startTime_   = integrator_->currentTime();
+    currentTime_ = startTime_;
+
+    // check SAMRAI and PHARE's time consistency after a restart
+    if (auto const phareStartTime = cppdict::get_value(dict, "simulation/start_time", startTime_);
+        phareStartTime != startTime_)
+        throw std::runtime_error(
+            "Simulator: PHARE start time " + core::to_string_exact(phareStartTime)
+            + " differs from the restored time " + core::to_string_exact(startTime_)
+            + " of restart folder "
+            + cppdict::get_value(dict, "simulation/restarts/loadPath", std::string{}));
+
+    multiphysInteg_->setRestartTime(startTime_);
 }
 
 
@@ -409,11 +412,6 @@ void Simulator<opts>::setup(PHARE::initializer::PHAREDict const& dict)
     finalTime_      = dict["simulation"]["final_time"].template to<double>();
     functors_       = functors_setup(dict);
     multiphysInteg_ = std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_);
-
-    currentTime_ = restart_time(dict);
-    // finalTime_ is computed in Python as start_time + time_step_nbr * time_step
-    // (start_time == restart_time), so it already accounts for the restart offset.
-
 
     // we would need a different restart manager for mhd and hybrid if both models are used
 
@@ -526,7 +524,7 @@ void Simulator<opts>::initialize()
         {
             double const dt = multiphysInteg_->computeStableDt(
                 *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            dt_ = finalTime_ > currentTime_ ? std::min(dt, finalTime_ - currentTime_) : dt;
         }
     }
     catch (core::DictionaryException const& ex)
@@ -573,15 +571,30 @@ double Simulator<opts>::advance()
         if (!integrator_)
             throw std::runtime_error("Error - no valid integrator in the simulator");
 
+        if (!(currentTime_ < finalTime_))
+            throw std::runtime_error(
+                "Simulator::advance: the simulation is already at its final time "
+                + core::to_string_exact(finalTime_));
+
+        bool last = false;
         if (timeStepType_ == core::TimeStepType::adaptive)
         {
-            double const dt = multiphysInteg_->computeStableDt(
+            double constexpr sliver = 1e-6;
+            double const stable     = multiphysInteg_->computeStableDt(
                 *hierarchy_, solver::CFLNumbers{cflWave_, cflDiffusive_});
-            dt_ = std::min(dt, finalTime_ - currentTime_);
+            double const remaining = finalTime_ - currentTime_;
+            last                   = remaining - stable <= sliver * stable;
+            dt_                    = last ? remaining : stable;
         }
 
-        integrator_->advance(dt_);
-        currentTime_ = startTime_ + ((*timeStamper) += dt_);
+        auto const stamped = startTime_ + ((*timeStamper) += dt_);
+        if (timeStepType_ == core::TimeStepType::constant)
+            last = timeStamper->steps() == static_cast<std::size_t>(timeStepNbr_);
+
+        auto const next = last ? finalTime_ : std::min(stamped, finalTime_);
+
+        integrator_->advanceTo(next);
+        currentTime_ = integrator_->currentTime();
     }
     catch (core::DictionaryException const& ex)
     {

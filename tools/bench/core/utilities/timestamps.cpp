@@ -30,6 +30,7 @@ public:
     double operator+=(double const& new_dt) noexcept override
     {
         assert(new_dt > 0);
+        ++steps_;
 
         if (new_dt != dt_)
         {
@@ -40,7 +41,10 @@ public:
         return (last_time_ = last_change_ + (dt_ * ++n_same_));
     }
 
+    NO_DISCARD std::size_t steps() const noexcept override { return steps_; }
+
 private:
+    std::size_t steps_  = 0;
     std::size_t n_same_ = 0;
     double dt_          = 0;
     double last_change_ = 0;
@@ -64,6 +68,7 @@ public:
     {
         assert(new_dt > 0);
         dt_ = new_dt;
+        ++steps_;
 
         // cascade the new timestep into the lower-precision tail first
         double const interim_tail = time_tail_ + dt_;
@@ -78,10 +83,13 @@ public:
         return time_head_ + time_tail_;
     }
 
+    NO_DISCARD std::size_t steps() const noexcept override { return steps_; }
+
 private:
-    double dt_        = 0;
-    double time_head_ = 0; // macroscopic time
-    double time_tail_ = 0; // sub-CFL micro-fractions
+    std::size_t steps_ = 0;
+    double dt_         = 0;
+    double time_head_  = 0; // macroscopic time
+    double time_tail_  = 0; // sub-CFL micro-fractions
 };
 
 
