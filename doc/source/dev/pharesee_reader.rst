@@ -40,14 +40,15 @@ reader.
      - previous (Yee-centred)
      - ``ValueError`` (the file holds nodes only)
    * - ``GetJ``
-     - new; ``stencil="yee"`` (default, the code's J) or ``"node"``
+     - new; ``stencil="yee"`` (default, the code's J) or ``"node"``;
+       ``all_primal=False``: previous
      - new; ``"node"`` only
    * - ``GetDivB``
      - 2D: ``stencil="yee"`` (default) gives the previous reader's per-cell divB;
        ``stencil="node"`` and 1D/3D: new
      - new, ``"node"``
    * - ``GetPe``
-     - new
+     - new; ``all_primal=False``: previous
      - ``ValueError`` (no simulation parameters in the file)
    * - ``GetMagneticFlux``, ``GetReconnectionRate``
      - new
@@ -56,9 +57,12 @@ reader.
        ``GetParticleCount``
      - previous
      - ``ValueError`` (not written in vtkhdf)
-   * - anything, with ``Run(path, legacy=True)`` or ``PHARESEE_LEGACY=1``
+   * - anything, with ``Run(path, legacy=True)``
      - previous
-     - new (the previous reader cannot read vtkhdf)
+     - ``ValueError`` (the previous reader cannot read vtkhdf)
+   * - anything, with ``PHARESEE_LEGACY=1``
+     - previous
+     - new (the variable applies to ``.h5`` only)
 
 The node divergence (``stencil="node"``) has ``mask_faces=True`` by default: nodes
 next to a coarse-fine face, where a one-sided difference or ghost values were

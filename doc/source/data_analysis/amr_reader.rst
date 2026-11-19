@@ -108,8 +108,9 @@ Same calls, but these behaviours changed on purpose. Tell us if one blocks you.
      - ``ValueError`` saying a time is needed
    * - ``field == 1.0``, ``bool(field)``, ``iter(field)``
      - a single bool / empty iteration
-     - ``TypeError``: one truth value of AMR data (overlapping levels) is ambiguous; use
-       ``np.any``/``np.all``, ``field.max()``, ``field.times()``
+     - ``TypeError``: one truth value of AMR data (overlapping levels) is ambiguous;
+       compare with ``np.isclose``/``np.equal``, then ``np.all``/``np.any``; or
+       ``field.max()``, ``field.times()``
    * - ``B.levels()`` or ``B.plot()`` on a field of several times
      - the first time, silently
      - ``ValueError`` asking for ``time=``
@@ -270,8 +271,9 @@ Common mistakes
   per-patch ``dataset``) or ``AttributeError: the dataset of a file-backed patch
   view is read-only`` (replacing it) — copy first: ``copy.deepcopy(patch_data)``
   or ``field.copy()``.
-* ``TypeError`` from ``if B.x == 1.0:`` or ``if B:`` — compare with ``np.all``,
-  ``np.any``, ``B.x.max()``.
+* ``TypeError`` from ``if B.x == 1.0:`` or ``if B:`` — compare element by element
+  with ``np.isclose(B.x, 1.0)`` or ``np.equal(B.x, 1.0)``, then reduce with
+  ``np.all``/``np.any``; or use ``B.x.max()``.
 * ``ValueError`` on a ``.vtkhdf`` run with ``legacy=True``, ``merged=True``,
   ``all_primal=False``, ``GetPe``, ``GetPressure``, ``GetParticles`` — the
   previous reader cannot read vtkhdf, and these quantities are not in the file;
