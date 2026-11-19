@@ -38,6 +38,7 @@ import sys
 from argparse import Namespace
 
 import numpy as np
+from pyphare import cpp
 
 import fine_gauss_2d as fg2
 from fine_gauss import DT, RATIO
@@ -95,7 +96,9 @@ def main():
         f" {rms[half:].max() / rms[:half].max():.2f}; run {seconds:.1f} s",
         flush=True,
     )
-    shutil.rmtree(diag_dir, ignore_errors=True)
+    cpp.mpi_barrier()  # every rank reads the dumps above
+    if cpp.mpi_rank() == 0:
+        shutil.rmtree(diag_dir, ignore_errors=True)
     failed = [
         message
         for bad, message in (
