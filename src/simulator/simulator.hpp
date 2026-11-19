@@ -302,15 +302,15 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
     startTime_   = integrator_->currentTime();
     currentTime_ = startTime_;
 
-    if (auto const pythonStartTime = cppdict::get_value(dict, "simulation/start_time", startTime_);
-        pythonStartTime != startTime_)
+    // check SAMRAI and PHARE's time consistency after a restart
+    if (auto const phareStartTime = cppdict::get_value(dict, "simulation/start_time", startTime_);
+        phareStartTime != startTime_)
         throw std::runtime_error(
-            "Simulator: Python start time " + core::to_string_exact(pythonStartTime)
+            "Simulator: PHARE start time " + core::to_string_exact(phareStartTime)
             + " differs from the restored time " + core::to_string_exact(startTime_)
             + " of restart folder "
-            + cppdict::get_value(dict, "simulation/restarts/loadPath", std::string{})
-            + "; a folder holding dumps for several MPI layouts makes Python read another"
-              " layout's time");
+            + cppdict::get_value(dict, "simulation/restarts/loadPath", std::string{}));
+
     multiphysInteg_->setRestartTime(startTime_);
 }
 
