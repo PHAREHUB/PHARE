@@ -209,32 +209,33 @@ def binomial(rho, passes):
 
 
 def fine_e(diag_dir, t):
-    """{(2 x / dx_f, 2 y / dx_f): value} of Ex and Ey on the fine level, the values of a patch's
-    own box first (a ghost never overwrites them), and the largest disagreement between two
-    patches on a shared node"""
+    """per fine patch (its name in the dumps), {(2 x / dx_f, 2 y / dx_f): value} of its Ex and Ey,
+    ghosts included: a level border face is a ghost of every patch along it, and each patch
+    advances its own (its band deposit), so the residual of a node reads its owner's. And the
+    largest disagreement between two patches on a node of the box of one of them"""
     dl = DL / RATIO
     hier = hierarchy_from(h5_filename=f"{diag_dir}/EM_E.h5", times=f"{t:.10f}")
-    E, mismatch = {"x": {}, "y": {}}, 0.0
+    E, own, mismatch = {}, {"x": {}, "y": {}}, 0.0
     for patch in hier.level(1, t).patches:
         lower, upper = patch.box.lower * dl, (patch.box.upper + 1) * dl
+        E[patch.id] = {}
         for c in "xy":
             pdata = patch.patch_datas[f"E{c}"]
             x, y = pdata.meshgrid()
-            values = pdata.dataset[:]
-            own = (
+            keys = [(round(2 * px / dl), round(2 * py / dl)) for px, py in zip(x.ravel(), y.ravel())]
+            values = pdata.dataset[:].ravel().astype(float)
+            E[patch.id][c] = dict(zip(keys, values))
+            mine = (
                 (x > lower[0] - 1e-9)
                 & (x < upper[0] + 1e-9)
                 & (y > lower[1] - 1e-9)
                 & (y < upper[1] + 1e-9)
-            )
-            for px, py, v, mine in zip(
-                x.ravel(), y.ravel(), values.ravel(), own.ravel()
-            ):
-                key = (round(2 * px / dl), round(2 * py / dl))
-                if key in E[c] and E[c][key][1] and mine:
-                    mismatch = max(mismatch, abs(E[c][key][0] - float(v)))
-                if key not in E[c] or (mine and not E[c][key][1]):
-                    E[c][key] = (float(v), mine)
+            ).ravel()
+            for key, v, m in zip(keys, values, mine):
+                if m:
+                    if key in own[c]:
+                        mismatch = max(mismatch, abs(own[c][key] - v))
+                    own[c].setdefault(key, v)
     return E, mismatch
 
 
@@ -275,12 +276,8 @@ def fine_residual(diag_dir, t, order, passes):
     div = np.zeros((n, n))
     for a, b in itertools.product(range(n), repeat=2):
         i, j = 2 * (lo + a), 2 * (lo + b)
-        div[a, b] = (
-            E["x"][(i + 1, j)][0]
-            - E["x"][(i - 1, j)][0]
-            + E["y"][(i, j + 1)][0]
-            - E["y"][(i, j - 1)][0]
-        ) / dl
+        Ex, Ey = E[owners[a, b]]["x"], E[owners[a, b]]["y"]
+        div[a, b] = (Ex[(i + 1, j)] - Ex[(i - 1, j)] + Ey[(i, j + 1)] - Ey[(i, j - 1)]) / dl
     return div - C_OVER_VA**2 * rho, mismatch
 
 

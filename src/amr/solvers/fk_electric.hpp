@@ -17,6 +17,7 @@
 #include <SAMRAI/hier/BoxLevel.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <unordered_map>
@@ -25,6 +26,113 @@
 
 namespace PHARE::solver
 {
+// per direction d, faces of E_d (or J_d) as AMR indexes: the cell along d, the node along the
+// others
+template<std::size_t dimension>
+using Faces = std::array<std::vector<core::Point<int, dimension>>, dimension>;
+
+template<std::size_t dimension>
+using PatchFaces = std::unordered_map<std::string /*patch id*/, Faces<dimension>>;
+
+/**
+ * @brief levelBorderFaces returns the faces of E_d a patch holds just outside `region` (the patch
+ * and its same-level neighbours, nonLevelGhostBox), d the direction across the side: the first
+ * ghost face of each side, where no cell along it (2^(dim-1) around the face) is in the region,
+ * corners included. Gauss's law on the edge nodes of a refined level reads them, and no patch of
+ * the level advances them. Refilled from the coarser E, they changed the residual of those nodes
+ * at the rate of the coarse/fine mismatch, which the cleaning mask kept (BORDER-GAUSS,
+ * border_gauss.md): the solver advances them with the level's Ampere (ampereOnFaces) and keeps
+ * them through the ghost fills, so that the residual of an edge node changes as its charge does.
+ */
+template<typename Box_t>
+auto levelBorderFaces(Box_t const& cells, std::vector<Box_t> const& region)
+{
+    constexpr auto dimension = Box_t::dimension;
+    constexpr auto corners   = std::size_t{1} << dimension;
+
+    Faces<dimension> faces;
+    for (std::size_t d = 0; d < dimension; ++d)
+        for (auto const cell : {cells.lower[d] - 1, cells.upper[d] + 1})
+        {
+            auto side = cells; // the nodes along the other directions
+            for (std::size_t e = 0; e < dimension; ++e)
+                side.upper[e] += e != d;
+            side.lower[d] = side.upper[d] = cell;
+            core::for_each_point(side, [&](auto const& face) {
+                bool outside = true;
+                for (std::size_t corner = 0; corner < corners; ++corner)
+                    if (((corner >> d) & 1u) == 0)
+                    {
+                        auto around = face;
+                        for (std::size_t e = 0; e < dimension; ++e)
+                            around[e] -= static_cast<int>((corner >> e) & 1u);
+                        outside = outside and !core::isIn(around, region);
+                    }
+                if (outside)
+                    faces[d].push_back(face);
+            });
+        }
+    return faces;
+}
+
+// the local index in `field` (E_d or J_d) of the face of AMR index `face`
+template<typename GridLayout, typename Field, typename Point_t>
+auto localFace(GridLayout const& layout, Field const& field, Point_t const& face)
+{
+    std::array<std::size_t, GridLayout::dimension> index;
+    for (std::size_t d = 0; d < GridLayout::dimension; ++d)
+        index[d] = layout.physicalStartIndex(field, static_cast<core::Direction>(d)) + face[d]
+                   - layout.AMRBox().lower[d];
+    return index;
+}
+
+// one binomial pass (1/4, 1/2, 1/4 in every direction) of `field` at the local `index`, as
+// core::BinomialFilter computes it on the physical nodes
+template<typename Field, std::size_t dimension>
+double binomialAt(Field const& field, std::array<std::size_t, dimension> const& index)
+{
+    constexpr std::array<double, 3> w{0.25, 0.5, 0.25};
+    std::size_t stencil = 1;
+    for (std::size_t d = 0; d < dimension; ++d)
+        stencil *= 3;
+    double sum = 0.;
+    for (std::size_t k = 0; k < stencil; ++k)
+    {
+        auto at       = index;
+        double weight = 1.;
+        for (std::size_t d = 0, rest = k; d < dimension; ++d, rest /= 3)
+        {
+            at[d] = at[d] + rest % 3 - 1;
+            weight *= w[rest % 3];
+        }
+        sum += weight * field(at);
+    }
+    return sum;
+}
+
+/**
+ * @brief ampereOnFaces is the Ampere-Maxwell update of AmpereMaxwell on the given faces of E (the
+ * level border faces of the patch), E_d += dt c2 ((curl B)_d - J_d): their B ghosts and J (band
+ * deposit) exist there.
+ */
+template<typename GridLayout, typename VecField>
+void ampereOnFaces(GridLayout const& layout, double const c2, VecField const& B, VecField const& J,
+                   VecField& E, double const dt, Faces<GridLayout::dimension> const& faces)
+{
+    auto const curlB = core::curl(layout, B);
+    auto const coef  = dt * c2;
+    for (std::size_t d = 0; d < GridLayout::dimension; ++d)
+        for (auto const& face : faces[d])
+        {
+            auto const index = localFace(layout, E[d], face);
+            auto const mesh  = core::MeshIndex<GridLayout::dimension>{index};
+            auto const curl  = d == 0 ? curlB.x(mesh) : d == 1 ? curlB.y(mesh) : curlB.z(mesh);
+            E[d](index) += coef * (curl - J[d](index));
+        }
+}
+
+
+
 /**
  * @brief depositFKCurrent sets the fully kinetic model current J on a level: the Esirkepov
  * current of every owned domain particle, over its segment x - back (dt/2) v -> x + front (dt/2) v,
@@ -55,7 +163,8 @@ namespace PHARE::solver
  */
 template<typename FKModel, typename Messenger>
 void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
-                      double const dt, double const back, double const front, double const time)
+                      double const dt, double const back, double const front, double const time,
+                      PatchFaces<FKModel::dimension> const& borderFaces = {})
 {
     PHARE_LOG_SCOPE(1, "depositFKCurrent");
 
@@ -140,7 +249,29 @@ void depositFKCurrent(typename FKModel::level_t& level, FKModel& model, Messenge
         }
     };
 
-    filter(J, [&]() { messenger.fillCurrentGhosts(J, level, time); });
+    // J as `filter`, and its level border faces (levelBorderFaces) filtered as physical faces,
+    // from the band deposit around them: the residual of an edge node reads the filtered charge
+    // and the J its outside face is advanced with (ampereOnFaces). Exact at N = 1; at N > 1 the
+    // second ghost layer is not filtered again, as the band nodes
+    for (std::size_t pass = 0; pass < model.current_filter_passes; ++pass)
+    {
+        messenger.fillCurrentGhosts(J, level, time);
+        for (auto& patch : rm.enumerate(level, J))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            auto const it     = borderFaces.find(amr::to_string(patch->getGlobalId()));
+            std::array<std::vector<double>, FKModel::dimension> faceJ;
+            if (it != borderFaces.end())
+                for (std::size_t d = 0; d < FKModel::dimension; ++d)
+                    for (auto const& face : it->second[d])
+                        faceJ[d].push_back(binomialAt(J[d], localFace(layout, J[d], face)));
+            core::BinomialFilter{layout}(J);
+            if (it != borderFaces.end())
+                for (std::size_t d = 0; d < FKModel::dimension; ++d)
+                    for (std::size_t f = 0; f < faceJ[d].size(); ++f)
+                        J[d](localFace(layout, J[d], it->second[d][f])) = faceJ[d][f];
+        }
+    }
     if (cleaning)
         filter(rho, [&]() { messenger.fillChargeDensityGhosts(rho, level, rhoTime); });
 }
@@ -206,7 +337,9 @@ auto regionEdgeNodes(Box_t const& cells, std::vector<Box_t> const& region)
 
 
 template<std::size_t dimension>
-using PatchBoxes = std::unordered_map<std::string /*patch id*/, std::vector<core::Box<int, dimension>>>;
+using PatchBoxes
+    = std::unordered_map<std::string /*patch id*/, std::vector<core::Box<int, dimension>>>;
+
 
 /**
  * @brief finerLevelCoverage returns the cells of level ln the next finer level covers, the cells
@@ -306,17 +439,46 @@ auto cleaningSkippedNodes(SAMRAI::hier::PatchHierarchy const& hierarchy, int con
 
 
 /**
+ * @brief levelBorderFacesOf returns levelBorderFaces for every local patch of a refined level ln
+ * that has any; none on the root.
+ */
+template<typename GridLayout>
+auto levelBorderFacesOf(SAMRAI::hier::PatchHierarchy const& hierarchy, int const ln)
+{
+    constexpr auto dimension = GridLayout::dimension;
+    PatchFaces<dimension> faces;
+    if (ln == 0)
+        return faces;
+    auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, ln);
+    for (auto const& patch : *hierarchy.getPatchLevel(ln))
+    {
+        auto patchFaces
+            = levelBorderFaces(amr::phare_box_from<dimension>(patch->getBox()),
+                               amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors));
+        if (std::any_of(patchFaces.begin(), patchFaces.end(),
+                        [](auto const& v) { return !v.empty(); }))
+            faces[amr::to_string(patch->getGlobalId())] = std::move(patchFaces);
+    }
+    return faces;
+}
+
+
+
+/**
  * @brief advanceFKElectric is steps 1 and 2 of SolverFK: J and rho from the particles at time
  * (depositFKCurrent), then E, at time - dt/2, cleaned (Marder, d from model.divergence_cleaning on
  * this level's mesh) and advanced to time + dt/2 (Ampere-Maxwell). E is the model E, or the copy of
  * it the solver advances one step ahead for a finer level (P4 plan D1). E ghosts are read, not
  * filled; labels are the caller's. The cleaning of a patch skips its nodes in `skipped`
- * (cleaningSkippedNodes; empty without boundary_cleaning_mask).
+ * (cleaningSkippedNodes; empty without boundary_cleaning_mask). On a refined level the Ampere
+ * update also advances the level border faces of E (`borderFaces`, levelBorderFaces), and J is
+ * filtered there too.
  */
 template<typename FKModel, typename Messenger, typename VecField>
 void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messenger& messenger,
                        VecField& E, double const dt, double const time,
-                       PatchBoxes<FKModel::dimension> const& skipped)
+                       PatchBoxes<FKModel::dimension> const& skipped,
+                       PatchFaces<FKModel::dimension> const& borderFaces)
 {
     using GridLayout = FKModel::gridlayout_type;
 
@@ -325,7 +487,7 @@ void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messeng
     auto& J   = model.state.J;
     auto& rho = model.state.rho;
 
-    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., time);
+    depositFKCurrent(level, model, messenger, dt, /*back=*/1., /*front=*/1., time, borderFaces);
 
     if (model.divergence_cleaning > 0.)
         for (auto& patch : rm.enumerate(level, rho, E))
@@ -344,6 +506,9 @@ void advanceFKElectric(typename FKModel::level_t& level, FKModel& model, Messeng
     {
         auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
         core::AmpereMaxwell{layout, model.c2()}(B, J, E, dt);
+        if (auto const it = borderFaces.find(amr::to_string(patch->getGlobalId()));
+            it != borderFaces.end())
+            ampereOnFaces(layout, model.c2(), B, J, E, dt, it->second);
     }
 }
 

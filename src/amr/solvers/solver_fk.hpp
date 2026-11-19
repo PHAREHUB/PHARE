@@ -82,6 +82,13 @@ namespace PHARE::solver
  * synchronization: none on a level whose finer level is new, the old one for one more step on a
  * level whose finer level was removed. The skipped nodes are built when the level, or the kept
  * region, changes. Without the option nothing is built and nothing skipped.
+ *
+ * On a refined level, the first ghost face of E_d outside the level across each side (corners
+ * included, fk_electric.hpp, levelBorderFaces) is advanced by step 2 like a physical face, from the
+ * B ghosts and the band J, and kept through the ghost fills, which would replace it by the coarser
+ * E: Gauss's law on the edge nodes of the level reads it, and refilled it changed their residual at
+ * the rate of the coarse/fine mismatch (BORDER-GAUSS, docs/superpowers/specs/p4/border_gauss.md).
+ * A new level object takes the coarser E there at its first fill.
  */
 template<typename FKModel, typename AMR_Types>
 class SolverFK : public ISolver<AMR_Types>, public SAMRAI::tbox::Serializable
@@ -137,7 +144,10 @@ public:
         auto& restarts = *SamraiLifeCycle::getRestartManager();
         if (restarts.isFromRestart())
             if (auto const root = restarts.getRootDatabase(); root->keyExists(restartName_))
+            {
                 coveredFromRestart_(*root->getDatabase(restartName_));
+                borderFacesFromRestart_(*root->getDatabase(restartName_));
+            }
         restarts.registerRestartItem(restartName_, this);
     }
 
@@ -148,8 +158,9 @@ public:
 
     // in the restart file, the cells each level's finer level synchronized at the end of the
     // last step (boundary_cleaning_mask), which a regrid at the end of that step has replaced
-    // by the time the file is written. Every other record of the solver is rewritten by the
-    // first step before it is read
+    // by the time the file is written, and the kept values of the level border faces of E,
+    // which no fill can give back. Every other record of the solver is rewritten by the first
+    // step before it is read
     void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& db) const override
     {
         for (auto const& [levelNumber, mask] : cleaningMasks_)
@@ -162,6 +173,12 @@ public:
             if (!bounds.empty()) // SAMRAI errors on writing 0 size arrays
                 db->putIntegerVector(coveredKey_ + std::to_string(levelNumber), bounds);
         }
+        for (auto const& [levelNumber, state] : borderFaces_)
+            if (!state.level.expired()) // not of a level a regrid replaced
+                for (auto const& [patchId, values] : state.kept)
+                    if (!values.empty())
+                        db->putDoubleVector(facesKey_ + std::to_string(levelNumber) + "_" + patchId,
+                                            values);
     }
 
 
@@ -271,11 +288,14 @@ public:
         auto& fkMessenger = dynamic_cast<Messenger&>(messenger);
         auto& E           = fkModel.state.electromag.E;
         auto const dt     = time - oldTime_.at(level.getLevelNumber());
+        auto& borderFaces = borderFacesOf_(hierarchy, level.getLevelNumber());
 
+        restoreBorderFaces_(level, fkModel, E, borderFaces); // a synchronization may have filled
         for (auto& patch : fkModel.resourcesManager->enumerate(level, E, Eahead_))
             Eahead_.copyData(E); // with its ghosts, read by the cleaning
         advanceFKElectric(level, fkModel, fkMessenger, Eahead_, dt, time,
-                          skippedNodes_(hierarchy, level.getLevelNumber(), fkModel));
+                          skippedNodes_(hierarchy, level.getLevelNumber(), fkModel),
+                          borderFaces.faces);
         TimeSetter{level, fkModel, time + 0.5 * dt}(Eahead_);
     }
 
@@ -340,6 +360,69 @@ private:
     };
     std::unordered_map<int, CleaningMask> cleaningMasks_;
 
+    // the level border faces of E of a refined level object (levelBorderFaces), and their values
+    // after the last Ampere update, per patch: none yet on a new level object
+    struct BorderFaces
+    {
+        std::weak_ptr<level_t> level;
+        PatchFaces<dimension> faces;
+        std::unordered_map<std::string, std::vector<double>> kept; // directions in turn
+    };
+    std::unordered_map<int, BorderFaces> borderFaces_;
+    // the kept values of the restart file, for the first level object of each level number
+    std::unordered_map<int, std::unordered_map<std::string, std::vector<double>>> restartFaces_;
+
+    BorderFaces& borderFacesOf_(hierarchy_t const& hierarchy, int const levelNumber)
+    {
+        auto const level = hierarchy.getPatchLevel(levelNumber);
+        auto& state      = borderFaces_[levelNumber];
+        if (state.level.lock() != level)
+        {
+            state = {level, levelBorderFacesOf<GridLayout>(hierarchy, levelNumber),
+                     std::move(restartFaces_[levelNumber])};
+            restartFaces_.erase(levelNumber);
+        }
+        return state;
+    }
+
+    // after the Ampere update of the faces: their values, which the next fills would replace
+    void keepBorderFaces_(level_t& level, FKModel& model, VecFieldT& E, BorderFaces& state)
+    {
+        state.kept.clear();
+        for (auto& patch : model.resourcesManager->enumerate(level, E))
+            if (auto const it = state.faces.find(amr::to_string(patch->getGlobalId()));
+                it != state.faces.end())
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                auto& values      = state.kept[it->first];
+                for (std::size_t d = 0; d < dimension; ++d)
+                    for (auto const& face : it->second[d])
+                        values.push_back(E[d](localFace(layout, E[d], face)));
+            }
+    }
+
+    // after a ghost fill: the kept values back on the faces (none on a new level object)
+    void restoreBorderFaces_(level_t& level, FKModel& model, VecFieldT& E, BorderFaces const& state)
+    {
+        for (auto& patch : model.resourcesManager->enumerate(level, E))
+            if (auto const it = state.kept.find(amr::to_string(patch->getGlobalId()));
+                it != state.kept.end())
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                auto const& faces = state.faces.at(it->first);
+                std::size_t count = 0;
+                for (auto const& facesAlong : faces)
+                    count += facesAlong.size();
+                if (count != it->second.size()) // a restart file of other patches
+                    throw std::runtime_error("SolverFK: kept border faces do not match patch "
+                                             + it->first);
+                auto value = it->second.begin();
+                for (std::size_t d = 0; d < dimension; ++d)
+                    for (auto const& face : faces[d])
+                        E[d](localFace(layout, E[d], face)) = *value++;
+            }
+    }
+
     // the masks of the restart file: their covered cells, the level objects are new (stale)
     void coveredFromRestart_(SAMRAI::tbox::Database& db)
     {
@@ -361,8 +444,22 @@ private:
             }
     }
 
+    // the kept border face values of the restart file (`kept` of BorderFaces, per patch)
+    void borderFacesFromRestart_(SAMRAI::tbox::Database& db)
+    {
+        for (auto const& key : db.getAllKeys())
+            if (key.starts_with(facesKey_))
+            {
+                auto const rest = key.substr(facesKey_.size());
+                auto const cut  = rest.find('_');
+                restartFaces_[std::stoi(rest.substr(0, cut))][rest.substr(cut + 1)]
+                    = db.getDoubleVector(key);
+            }
+    }
+
     static inline std::string const restartName_ = "SolverFK";
     static inline std::string const coveredKey_  = "covered_level_";
+    static inline std::string const facesKey_    = "border_faces_level_";
 };
 
 
@@ -397,9 +494,12 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     // that fill predates the coarser level's reflux, which changed its B^n: refilled here, the
     // Ampere update reads the refluxed B^n (Bold_ of the messenger, at t_n: no interpolation), and
     // later substeps the same values as their previous fill
+    // (the level border faces of E keep the level's own values)
+    auto& borderFaces = borderFacesOf_(hierarchy, levelNumber);
     if (levelNumber > 0)
     {
         messenger.fillElectricGhosts(E, level, currentTime - 0.5 * dt);
+        restoreBorderFaces_(level, model, E, borderFaces);
         messenger.fillMagneticGhosts(B, level, currentTime);
     }
 
@@ -407,9 +507,11 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     auto const& skipped = skippedNodes_(hierarchy, levelNumber, model);
 
     // 1. and 2.
-    advanceFKElectric(level, model, messenger, E, dt, currentTime, skipped);
+    advanceFKElectric(level, model, messenger, E, dt, currentTime, skipped, borderFaces.faces);
     TimeSetter{level, model, halfTime}(E);
+    keepBorderFaces_(level, model, E, borderFaces);
     messenger.fillElectricGhosts(E, level, halfTime);
+    restoreBorderFaces_(level, model, E, borderFaces);
 
     // 3. B^{n+1/2}, and the E^{n+1/2} copy the particles are pushed with
     auto const halfDt = 0.5 * dt;
@@ -433,7 +535,8 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     {
         for (auto& patch : rm.enumerate(level, E, Eahead_))
             Eahead_.copyData(E); // with its ghosts, read by the cleaning
-        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime, skipped);
+        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime, skipped,
+                          borderFaces.faces);
         TimeSetter{level, model, newTime + 0.5 * dt}(Eahead_);
     }
 
