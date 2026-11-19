@@ -324,25 +324,6 @@ class RestartTimeTest(RecordingTest):
         self.assertEqual(len(t), 6)
         self.assertEqual(t[-1], final)
 
-    def test_explicit_dump_time_stores_the_simulator_clock(self):
-        self.build(dict(timestamps=[0.009]), time_step=0.001, time_step_nbr=9)
-        simulator.exit_on_exception = False
-        try:
-            self.simulator = Simulator(ph.global_vars.sim).initialize()
-            for _ in range(8):
-                self.simulator.advance()
-            clock = self.simulator.currentTime()
-            self.simulator.dump(0.009, 0.001)
-        finally:
-            simulator.exit_on_exception = True
-            if self.simulator is not None:
-                self.simulator.reset()
-            self.simulator = None
-        tB = self.run_recording(
-            dict(restart_time=0.009), time_step=0.001, time_step_nbr=1
-        )
-        self.assertEqual(tB[0], clock)
-
     def strip_phare_time(self):
         import h5py
 

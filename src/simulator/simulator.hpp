@@ -99,7 +99,7 @@ public:
     bool dump_restarts(double timestamp, double timestep) override
     {
         if (rMan)
-            return rMan->dump(timestamp, timestep, currentTime_);
+            return rMan->dump(timestamp, timestep);
         return false;
     }
 
