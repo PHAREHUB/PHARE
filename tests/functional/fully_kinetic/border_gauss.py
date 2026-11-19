@@ -19,12 +19,17 @@ GATE = 1e-6: round-off and the single precision of the dumped E (4e-8 to 6e-8 of
 Interior: the change of F over a substep, round-off too, printed. With N > 1 filter passes the
 band nodes are not filtered again (fk_electric.hpp, depositFKCurrent): not exact, not gated.
 
-Report, at the coarse times: the messenger replaces the band by the coarser particles refined at
-the end of each coarse step (lastStep), after the last E fill of the step, which moves the charge
-of the edge nodes until the next fill sets the faces again: the edge F of a coarse time dump is
-that charge jump. Printed: the rms over the edge nodes of F_k - F_1 at coarse step k and its growth
-exponent p (rms ~ (k - 1)^p, least squares): ~0 for jumps that do not add up; 0.54 when the faces
-kept their values (ad46f273b), 0.88 when refilled from the coarse E.
+Gate 2 (--check), at the coarse times: the messenger replaces the band by the coarser particles
+refined at the end of each coarse step (lastStep), after the last E fill of the step, which moves
+the charge of the edge nodes until the next fill sets the faces again: the edge F of a coarse time
+dump is that one refresh jump and must not carry over to the next coarse step. Over coarse steps
+k = 1..8: (a) rms edge F_k / scale <= CAP = 0.1, (b) mean over k of corr(F_k, F_{k-1}) on the
+edge nodes <= MEMORY = 0.5. Measured (Release): max rms 1.3e-2 (N=1) and 3.7e-2 (N=0, unfiltered
+band noise), corr -0.45 and -0.32; N=1 over 40 steps: 4.4e-2 max rms (the jump grows with the
+band noise, k^~0.6, not by adding up: corr stays < 0). Faces refilled from the coarse E
+(c0bdf7c24): rms 0.21 from step 1 (0.33 at 40), corr +1.00. A bound on the growth (max rms over
+the second half of the steps / first half) does not tell them apart (1.54 here over 40 steps,
+1.22 refilled): printed only.
 """
 
 import argparse
@@ -38,6 +43,8 @@ import fine_gauss_2d as fg2
 from fine_gauss import DT, RATIO
 
 GATE = 1e-6
+CAP = 0.1
+MEMORY = 0.5
 
 
 def main():
@@ -71,21 +78,44 @@ def main():
         np.abs(residual(t + DT / RATIO) - residual(t))[~edge].max() for t in times[1:-1]
     )
     coarse = [residual(t)[edge] for t in times[1:]]
-    walk = np.array([np.sqrt(np.mean((f - coarse[0]) ** 2)) for f in coarse[1:]])
-    k = np.arange(2, len(coarse) + 1)
-    exponent = np.polyfit(np.log(k - 1), np.log(np.maximum(walk, 1e-30)), 1)[0]
+    rms = np.array([np.sqrt(np.mean(f**2)) for f in coarse])
+    memory = np.mean(
+        [
+            np.dot(f, g) / np.sqrt(np.dot(f, f) * np.dot(g, g))
+            for f, g in zip(coarse[1:], coarse)
+        ]
+    )
+    half = len(rms) // 2
     print(
         f"border gauss N={case.filter_passes}: max |F| / scale on the edge at the mid steps"
         f" {edge_value:.2e} (gate {GATE:.0e}), max |dF| / scale over a substep inside"
-        f" {inner_change:.2e}; at coarse steps 1..{args.steps}: max |F| / scale on the edge"
-        f" {max(np.abs(f).max() for f in coarse):.2e}, rms edge (F_k - F_1) / scale, k = 2.."
-        f"{args.steps}: {' '.join(f'{w:.2e}' for w in walk)}, ~ (k - 1)^{exponent:.2f};"
-        f" run {seconds:.1f} s",
+        f" {inner_change:.2e}; at coarse steps 1..{args.steps}: rms edge F / scale"
+        f" {' '.join(f'{r:.2e}' for r in rms)} (max {rms.max():.2e}, cap {CAP}), mean"
+        f" corr(F_k, F_k-1) {memory:+.2f} (gate {MEMORY}), second / first half max rms"
+        f" {rms[half:].max() / rms[:half].max():.2f}; run {seconds:.1f} s",
         flush=True,
     )
     shutil.rmtree(diag_dir, ignore_errors=True)
-    if args.check and edge_value > GATE:
-        sys.exit(f"border gauss: edge |F| / scale {edge_value:.2e} > {GATE:.0e} at a mid step")
+    failed = [
+        message
+        for bad, message in (
+            (
+                edge_value > GATE,
+                f"edge |F| / scale {edge_value:.2e} > {GATE:.0e} at a mid step",
+            ),
+            (
+                rms.max() > CAP,
+                f"rms edge F / scale {rms.max():.2e} > {CAP} at a coarse step",
+            ),
+            (
+                memory > MEMORY,
+                f"edge F carries over coarse steps, corr {memory:+.2f} > {MEMORY}",
+            ),
+        )
+        if bad
+    ]
+    if args.check and failed:
+        sys.exit("border gauss: " + "; ".join(failed))
 
 
 if __name__ == "__main__":
