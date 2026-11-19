@@ -1018,7 +1018,7 @@ namespace core
         // (see for_each_point in core/utilities/box/box_spans.hpp)
         void evalOnAnyBox(auto const& box, auto& fn) const
         {
-            for_each_point(box, [&](auto& point) {
+            for_each_point(box, [&](auto& point) PHARE_LAMBDA_ALWAYS_INLINE {
                 if constexpr (dimension == 1)
                     fn(point[0]);
                 else if constexpr (dimension == 2)
