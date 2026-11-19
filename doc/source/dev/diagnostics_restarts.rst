@@ -42,15 +42,20 @@ When a dump happens
 
 * ``Simulator.initialize`` dumps once, ``Simulator.advance`` after every
   step; restarts first, then diagnostics
-  (:src:`pyphare/pyphare/simulator/simulator.py#L130-L165`,
-  :src:`pyphare/pyphare/simulator/simulator.py#L230-L238`).
+  (:src:`pyphare/pyphare/simulator/simulator.py#L130-L166`,
+  :src:`pyphare/pyphare/simulator/simulator.py#L234-L242`).
 * A requested time ``t_req`` is due when ``t_req − t < dt``; all passed
   times are consumed at once (``needsAction_``,
-  :src:`src/diagnostic/diagnostic_manager.hpp#L124-L144`; restarts:
+  :src:`src/diagnostic/diagnostic_manager.hpp#L128-L148`; restarts:
   :src:`src/restarts/restarts_manager.hpp#L74-L94`).
 * Data are labelled with the step time ``t``, not ``t_req``.
+* A diagnostic is computed before it is written, whatever made the write due
+  (``DiagnosticsManager::dump``,
+  :src:`src/diagnostic/diagnostic_manager.hpp#L257-L280`): population fluxes, bulk
+  velocity, charge flux and momentum tensors are computed only there
+  (:doc:`/dev/output_moments`).
 * ``t`` is ``start + dt × step`` (constant ``dt``) or a compensated sum
-  (adaptive ``dt``) (:src:`src/simulator/simulator.hpp#L577`,
+  (adaptive ``dt``) (:src:`src/simulator/simulator.hpp#L584`,
   :src:`src/core/utilities/timestamps.hpp#L30-L100`): a dump is never
   missed or doubled, but could fire one step early (panel 2).
 
@@ -84,9 +89,9 @@ Writing in parallel (``phareh5``)
 * Pass 1 gathers each dataset's path and size from all ranks
   (``create_data_set_per_mpi``, :src:`src/hdf5/detail/h5/h5_file.hpp#L138-L158`;
   attributes: :src:`src/hdf5/detail/h5/h5_file.hpp#L204-L258`); pass 2
-  walks the patches and writes (:src:`src/diagnostic/detail/h5writer.hpp#L295-L364`).
+  walks the patches and writes (:src:`src/diagnostic/detail/h5writer.hpp#L302-L371`).
 * The writer is picked by ``format``: ``"phareh5"`` (default) or
-  ``"pharevtkhdf"`` (:src:`src/diagnostic/diagnostics.hpp#L47-L66`).
+  ``"pharevtkhdf"`` (:src:`src/diagnostic/diagnostics.hpp#L49-L68`).
   VTKHDF writes no ``particle``, ``meta``, ``info`` diagnostics, silently in
   a release build (:src:`src/diagnostic/detail/vtkh5_writer.hpp#L70-L86`).
 
@@ -120,12 +125,12 @@ A rank with no patch still takes part
    **Problem.** A rank skipping an empty level would leave the others waiting in the collective calls.
 
    **Fix.** Every rank gets an entry, possibly empty, for every level up to the finest of all ranks
-   (:src:`src/diagnostic/detail/h5writer.hpp#L320-L324`).
+   (:src:`src/diagnostic/detail/h5writer.hpp#L327-L331`).
 
 Wall-clock times come from rank 0
    **Problem.** ``elapsed_timestamps`` compared to each node's clock: ranks could disagree.
 
-   **Fix.** ``mpi::unix_timestamp_now`` broadcasts rank 0's clock (:src:`src/mpi/mpi_utils.cpp#L93-L96`).
+   **Fix.** ``mpi::unix_timestamp_now`` broadcasts rank 0's clock (:src:`src/mpi/mpi_utils.cpp#L100-L103`).
 
 Open the restart file before the hierarchy exists
    **Problem.** SAMRAI's ``PatchHierarchy`` constructor checks whether the run is a restart.
@@ -133,14 +138,27 @@ Open the restart file before the hierarchy exists
    **Fix.** ``amr::Hierarchy`` inherits first from ``HierarchyRestarter``, which opens the file
    (:src:`src/amr/wrappers/hierarchy.hpp#L36-L73`, :src:`src/amr/wrappers/hierarchy.hpp#L112`).
 
+Restart files that lack data are refused
+   **Problem.** A restart file restores only the patch data it holds; data registered since it
+   was written stays unallocated, and the first read of it crashes.
+
+   **Fix.** After loading, every registered resource must be allocated on every patch, else the
+   run stops with an error naming the missing data. The decision is shared by all ranks
+   (``mpi::any``), so none is left waiting for one that stopped (``checkRestartRestoredAllData_``,
+   :src:`src/amr/multiphysics_integrator.hpp#L347-L381`). Files written before :issue:`1577`
+   (no ion current on the E edges) cannot be loaded.
+
 Fine-level and emergency dumps
    **Problem.** Normal dumps happen only at level 0 step ends; a crash loses the state that caused it.
 
-   **Fix.** ``fine_dump_lvl_max``: a refined level dumps all its diagnostics at its own sub-step ends,
-   ignoring write timestamps (:src:`src/amr/multiphysics_integrator.hpp#L464-L480`,
-   :src:`src/diagnostic/diagnostic_manager.hpp#L222-L231`). ``allow_emergency_dumps``: some errors
-   dump all levels first (:src:`src/simulator/simulator.hpp#L607-L618`), only in builds where errors
-   are exceptions (``devMode``, :doc:`/dev/hpc_internals`).
+   **Fix.** ``fine_dump_lvl_max``: a refined level dumps its diagnostics at its own sub-step ends,
+   ignoring write timestamps (:src:`src/amr/multiphysics_integrator.hpp#L506-L522`,
+   :src:`src/diagnostic/diagnostic_manager.hpp#L227-L254`). ``allow_emergency_dumps``: some errors
+   dump all levels first (:src:`src/simulator/simulator.hpp#L614-L625`), only in builds where errors
+   are exceptions (``devMode``, :doc:`/dev/hpc_internals`). Both write one level at a time
+   (``dump_level``), when levels may be at different times: they skip the quantities computed on
+   demand (``isLazyFluidQuantity``, :src:`src/diagnostic/diagnostic_props.hpp#L60-L73`) and say
+   so once in the log, so these files have no data at that time rather than stale data.
 
 .. note:: Known issues
 
@@ -152,6 +170,7 @@ Fine-level and emergency dumps
 Go deeper
 ---------
 
+* :doc:`/dev/output_moments` — the ion moments computed only when a diagnostic writes them.
 * :doc:`/dev/hpc_internals` — what is collective, errors across ranks.
 
 Related

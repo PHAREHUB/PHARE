@@ -64,7 +64,7 @@ How it works
 * **Discovery.** An object lists its parts with ``getCompileTimeResourcesViewList()``
   (:src:`src/core/data/electromag/electromag.hpp#L59-L64`) or
   ``getRunTimeResourcesViewList()``
-  (:src:`src/core/data/ions/ions.hpp#L261-L271`); ``registerResources`` walks the tree
+  (:src:`src/core/data/ions/ions.hpp#L292-L301`); ``registerResources`` walks the tree
   (:src:`src/amr/resources_manager/resources_manager.hpp#L169-L199`).
 * **Registration, once.** ``registerResource_`` builds a SAMRAI variable; the id is kept by name
   (:src:`src/amr/resources_manager/resources_manager.hpp#L571-L588`).
@@ -82,11 +82,11 @@ What the SAMRAI side holds
 
 * ``FieldData``: a ``GridLayout`` and the ``Grid``; ``getPointer()`` returns it
   (:src:`src/amr/data/field/field_data.hpp#L25-L52`,
-  :src:`src/amr/data/field/field_data.hpp#L294`).
+  :src:`src/amr/data/field/field_data.hpp#L321`).
 * ``ParticlesData``: five particle arrays and a ``ParticlesPack`` of pointers to them
   (:src:`src/amr/data/particles/particles_data.hpp#L460-L468`).
 * ``TensorFieldData``: the grids of all components
-  (:src:`src/amr/data/tensorfield/tensor_field_data.hpp#L319`).
+  (:src:`src/amr/data/tensorfield/tensor_field_data.hpp#L346`).
 
 Times and restarts
 ------------------

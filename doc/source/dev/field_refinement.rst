@@ -89,7 +89,7 @@ coarse values each fine value is built from.
   this rule; only Bx gets the second stage (below).
 * The fine index :math:`f` belongs to coarse index :math:`\lfloor f/2 \rfloor`,
   also when :math:`f` is negative
-  (``toCoarseIndex``, :src:`src/amr/resources_manager/amr_utils.hpp#L132-L138`).
+  (``toCoarseIndex``, :src:`src/amr/resources_manager/amr_utils.hpp#L140-L146`).
 
 .. claim C-fr-01 C-fr-02 C-ex-01 C-ex-02 C-ex-04 C-ex-05
 
@@ -148,9 +148,13 @@ Who is refined, with which operator
      - none: Ampère on each level
      - none: computed from the refined B
    * - hybrid
-     - ion density and flux
+     - ion density and flux, per population
      - none: deposited from particles (:doc:`/dev/level_ghost_particles`)
      - none
+   * - hybrid
+     - total charge density, E-edge ion current
+     - domain: summed from the populations; ghost nodes: composite rule above
+     - composite rule above, in time (``fillIonMomentGhosts``, :doc:`/dev/moments`)
    * - MHD
      - :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}`
      - composite rule (conservative variables)
@@ -173,8 +177,8 @@ Who is refined, with which operator
 * Hybrid operators: ``fieldRefineOp_`` and ``EfieldRefineOp_`` use the composite
   fill, ``BInitRefineOp_`` and ``BRefineOp_`` the magnetic one
   (``makeRefineOperators_``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L761-L780`);
-  MHD: :src:`src/amr/messengers/mhd_messenger.hpp#L498-L519`.
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L807-L826`);
+  MHD: :src:`src/amr/messengers/mhd_messenger.hpp#L493-L514`.
 
 B is refined in two stages to keep div B = 0
 --------------------------------------------

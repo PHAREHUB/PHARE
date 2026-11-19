@@ -30,7 +30,7 @@ The picture
    initialize(), advance() in a loop | | /dev/one_time_step
 
 Steps 1 to 4 happen in that order inside ``Simulator.setup()``
-(:src:`pyphare/pyphare/simulator/simulator.py#L105-L121`).
+(:src:`pyphare/pyphare/simulator/simulator.py#L104-L121`).
 
 
 How it works
@@ -59,7 +59,7 @@ How it works
    SAMRAI hierarchy.
 #. **C++ builds the simulator.** The module's ``make_simulator`` creates
    ``Simulator<options>`` and calls its ``setup`` with the dictionary
-   (``makeSimulator``, :src:`src/simulator/simulator.hpp#L629-L635`).
+   (``makeSimulator``, :src:`src/simulator/simulator.hpp#L636-L642`).
    Every C++ object then reads its own part of the dictionary in its
    constructor (solvers, messengers, diagnostics, ...).
 
@@ -114,7 +114,7 @@ hierarchy and finds the simulator with ``makeSimulatorAtRuntime``
 (:src:`src/simulator/simulator_runtime.hpp#L19-L32`). That function loops
 over a fixed, short list of combinations compiled into the executable,
 ``phare_exe_default_simulators()``
-(:src:`src/simulator/simulator_def.hpp#L169-L184`): 1D, 2D and 3D, orders 1
+(:src:`src/simulator/simulator_def.hpp#L170-L185`): 1D, 2D and 3D, orders 1
 to 3, the default refined particle number, hybrid only. Use the Python
 ``Simulator`` for any other combination: for a run outside this list,
 ``makeSimulatorAtRuntime`` finds no simulator and returns an empty pointer.

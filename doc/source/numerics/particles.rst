@@ -75,7 +75,10 @@ cost, wider ghost regions.
 The same shape is used both ways (the usual particle-in-cell choice):
 
 * **particles → grid** (*deposition*): density += weight × shape, flux +=
-  weight × velocity × shape, on the nodes the cloud covers.
+  weight × velocity × shape, on the nodes the cloud covers. For Ohm's law the hybrid solver
+  also deposits the flux on the positions of each electric-field component, with the very
+  weights that interpolate that component to the particle: then the work of E on the
+  particles is exactly the grid sum of that flux times E (:doc:`hybrid_ohm`).
 * **grid → particles** (*interpolation*): E and B at the particle are the
   shape-weighted average of nearby values, each component at its place on the
   staggered grid (:doc:`/numerics/grid`).

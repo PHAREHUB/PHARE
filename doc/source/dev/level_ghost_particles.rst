@@ -10,8 +10,8 @@ Level ghost particles
 
 **In one sentence:** level ghost particles are coarse particles, split onto the
 fine grid and kept in a thin layer just outside a refined :term:`level`, so that
-plasma can flow *into* the level and the ion :term:`moments` near its border are
-complete.
+plasma can flow *into* the level and the ion :term:`moments` on its border nodes are
+complete (the nodes beyond the border come from the coarser level, :doc:`/dev/moments`).
 
 Where they live
 ---------------
@@ -40,7 +40,7 @@ Where they live
   :src:`src/core/models/options/hybrid_options.hpp#L25`).
 * Filled with SAMRAI's ``PatchLevelBorderFillPattern``: patch box grown by the
   ghost width, minus the whole level (``RefinerType::LevelBorderParticles``,
-  :src:`src/amr/messengers/refiner.hpp#L188-L193`).
+  :src:`src/amr/messengers/refiner.hpp#L161-L166`).
 * Root level (level 0) has none: its border is the physical boundary.
 
 Why they are needed
@@ -113,18 +113,19 @@ One coarse step, three arrays
    finish(fig, [a1, a2, a3])
 
 * ``firstStep``: New is split from the coarse level, which has already
-  advanced (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L508-L532`).
+  advanced (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L522-L546`).
 * Every fine substep pushes the copy; entrants become domain particles, leavers
   are erased (``IonUpdater::updateAndDepositAll_``,
-  :src:`src/core/numerics/ion_updater/ion_updater.hpp#L291-L304`).
-* ``fillIonPopMomentGhosts`` deposits Old × (1−α) and New × α, with
+  :src:`src/core/numerics/ion_updater/ion_updater.hpp#L293-L306`).
+* ``fillIonPopMomentGhosts``: each patch deposits the Old and New particles it owns
+  (next tricks), Old × (1−α) and New × α, into the density and the E-edge flux, with
   α = (t_fine − t_start)/(t_end − t_start)
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L457-L495`,
-  ``timeInterpCoef_`` :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L949-L953`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L448-L495`,
+  ``timeInterpCoef_`` :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L1000-L1004`).
 * ``lastStep``: swap, empty New, reset the copy
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L542-L565`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L556-L579`).
 * 4 substeps: the fine dt is the coarse dt / 2² (``getMaxFinerLevelDt``,
-  :src:`src/amr/multiphysics_integrator.hpp#L420-L428`).
+  :src:`src/amr/multiphysics_integrator.hpp#L462-L470`).
 
 The tricks
 ----------
@@ -135,22 +136,34 @@ Three arrays, not one
 **Problem.** The pushed copy empties during the substeps: nothing refills the
 layer from outside, so it cannot give the border moments.
 **Fix.** Old and New give the moments (time interpolation); the copy gives
-the entrants (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L481-L492`).
+the entrants (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L484-L491`).
+
+One patch deposits each particle
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Problem.** Level ghost particles are split into the whole particle ghost box of every
+patch: a particle in the ghost boxes of two patches has a copy on each, and the border sum
+would add both.
+**Fix.** Only the first of these patches, in the order of their box corners, deposits it
+(``LevelGhostOwnership``, :src:`src/core/numerics/moments/level_ghost_ownership.hpp#L11-L30`);
+the order does not depend on the MPI ranks, and periodic images agree on it. Built with the
+level's schedules (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L703-L716`).
+:pr:`1580` (level ghosts deposited once).
 
 New is split once per coarse step
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** Splitting is a SAMRAI refine :term:`schedule` across levels and
 :term:`MPI` ranks: too costly at every substep.
-**Fix.** Split once at ``firstStep`` (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L523`), then interpolate in time; α outside
-[0, 1] throws (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L462-L470`).
+**Fix.** Split once at ``firstStep`` (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L537`), then interpolate in time; α outside
+[0, 1] throws (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L463-L471`).
 
 Domain particles that leave the level are dropped
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** Keeping them would count that plasma twice (also in Old/New).
 **Fix.** Only leavers in the *non-level-ghost box* become patch ghosts; the
-others are erased (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L265-L289`).
+others are erased (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L267-L291`).
 
 Entrants of the first push are deposited, not kept
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -158,14 +171,14 @@ Entrants of the first push are deposited, not kept
 **Problem.** The first push only predicts moments; particles stay at time n
 (:doc:`/dev/ppc_order`).
 **Fix.** A temporary copy is pushed; entrants are deposited and thrown away
-(:src:`src/core/numerics/ion_updater/ion_updater.hpp#L208-L233`).
+(:src:`src/core/numerics/ion_updater/ion_updater.hpp#L208-L235`).
 
 Regrid fills Old by splitting only
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** A SAMRAI regrid schedule for Old caused occasional MPI failures.
 **Fix.** ``regrid`` uses a plain fill (``fillTransient``)
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L280`).
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L273-L287`).
 :issue:`604` (levelGhostOld regrid failures).
 
 Restarts keep them
@@ -178,17 +191,20 @@ A limit: fast particles
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 The copy is filled once per coarse step
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L560-L562`), so
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L574-L576`), so
 a particle farther out than the layer cannot enter during that coarse step.
 Entry is complete only if particles move less than the layer width over 4 fine
 steps. Border moments are not affected (they come from Old and New).
 
-.. admonition:: Known issue
-   :class: note
+A copy enters through one patch only
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   Near a corner of the level border, two neighbour patches both hold a copy of
-   the same level ghost particle; it can enter twice. Fix proposed in
-   :pr:`1579` (corner duplicate fix).
+**Problem.** Near a corner of the level border, two neighbour patches both hold a copy of
+the same level ghost particle: it could enter twice.
+**Fix.** After the push, a patch keeps in its copy only the particles still in level ghost
+cells outside every same-level neighbour (``inLevelGhostLayer``,
+:src:`src/core/numerics/ion_updater/ion_updater.hpp#L165-L172`): one entering a neighbour's
+cell is dropped, the neighbour's own copy enters there. :pr:`1579` (corner duplicate fix).
 
 Go deeper
 ---------

@@ -47,11 +47,11 @@ What the partitioner sees
   workload (:src:`src/amr/load_balancing/load_balancer_manager.hpp#L23-L45`); without it SAMRAI counts cells.
 * Hybrid levels: particles per cell (``nppc``,
   :src:`src/amr/load_balancing/concrete_load_balancer_strategy_nppc.hpp#L77-L81`) or 1 (``homogeneous``);
-  MHD levels: always 1 (:src:`src/simulator/simulator.hpp#L275-L295`).
+  MHD levels: always 1 (:src:`src/simulator/simulator.hpp#L282-L302`).
 * Refreshed after each ``advanceLevel``, each new level, each restart load
-  (:src:`src/amr/multiphysics_integrator.hpp#L338-L341`, :src:`src/amr/multiphysics_integrator.hpp#L558`).
+  (:src:`src/amr/multiphysics_integrator.hpp#L339-L342`, :src:`src/amr/multiphysics_integrator.hpp#L600`).
 * One ``CascadePartitioner``, tolerance ``tol``, used by SAMRAI's ``GriddingAlgorithm`` for every level
-  (:src:`src/simulator/simulator.hpp#L257-L263`, :src:`src/amr/wrappers/integrator.hpp#L184-L186`).
+  (:src:`src/simulator/simulator.hpp#L264-L270`, :src:`src/amr/wrappers/integrator.hpp#L184-L186`).
   A new finest level is shared by cell count (SAMRAI uses the workload only for levels that already exist).
 
 When level 0 is re-partitioned
@@ -112,12 +112,12 @@ A private SAMRAI sum, redone
 Not with refinement boxes
    **Problem.** Re-partitioning with user refinement boxes made SAMRAI abort in ``RefineSchedule``.
 
-   **Fix.** ``Simulator::finalize_init`` refuses the combination (:src:`src/simulator/simulator.hpp#L264-L273`).
+   **Fix.** ``Simulator::finalize_init`` refuses the combination (:src:`src/simulator/simulator.hpp#L271-L280`).
 
 After a level 0 re-split, every level is stale
    **Problem.** SAMRAI reports levels (0, 0) changed, but finer levels read level 0.
 
-   **Fix.** Every messenger is notified (:src:`src/amr/multiphysics_integrator.hpp#L372-L377`), see
+   **Fix.** Every messenger is notified (:src:`src/amr/multiphysics_integrator.hpp#L414-L419`), see
    :doc:`/dev/messengers`.
 
 Go deeper

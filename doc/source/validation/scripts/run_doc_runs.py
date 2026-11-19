@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Runs every documentation run of the MHD pages and rewrites validation/data/*.txt.
+"""Runs every documentation run of the MHD and hybrid pages and rewrites validation/data/*.txt.
 
     python3 run_doc_runs.py --build <PHARE build dir> [--quick] [--jobs N] [--only PATTERN]
     python3 run_doc_runs.py --build <PHARE build dir> --check [--quick]
     python3 run_doc_runs.py --list-modules
 
-The runs (all serial, one MPI rank, 1D):
+The runs (all serial, one MPI rank, 1D unless said):
   R1  convergence of each reconstruction on a small Alfven wave      mhd_convergence_scan.py   -> mhd_convergence_*.txt
   R2  the shock tube with different reconstructions / Riemann solvers  mhd_shock_solvers.py      -> mhd_shock_*.txt
   R3  order in time, MP5, 64 cells, ten periods                       mhd_convergence_scan.py   -> mhd_time_order_*.txt
+  R4  hybrid energy budget, 2D uniform plasma (numerics/hybrid_ohm)  hybrid_energy.py          -> hybrid_energy_*.txt
 
-Every data file starts with a header: PHARE commit (git rev-parse HEAD at run time), build directory, command, date.
+Every data file starts with a header: PHARE commit (git rev-parse HEAD at run time, and whether src/ and pyphare/ match it), build directory, command, date.
 --check does not touch the committed files: it reruns into a temporary folder and compares with them (relative
 tolerance per quantity, see TOLERANCES; errors at the single-precision output floor are not compared, so a build that
 writes double precision, or another compiler, can be checked); the exit status is non-zero on any drift or failure.
@@ -66,6 +67,11 @@ for st, dts in [("Euler", ["0.0001953125", "0.000390625", "0.00078125", "0.00156
 
 RUNS.append(("mhd_divb_init.txt", DIVB, ["init", "OUT"], "2_Linear_VanLeer_Rusanov_false"))
 RUNS.append(("mhd_divb_amr.txt", DIVB, ["amr", "OUT"], "2_Linear_VanLeer_Rusanov_false"))
+ENERGY = "hybrid_energy.py"
+RUNS.append(("hybrid_energy_z_o1.txt", ENERGY, ["z", "1", "0.01", "20", "OUT"], "2_1_4"))
+RUNS.append(("hybrid_energy_z_o3.txt", ENERGY, ["z", "3", "0.01", "20", "OUT"], "2_3_4"))
+RUNS.append(("hybrid_energy_xy_o1_dt0.01.txt", ENERGY, ["xy", "1", "0.01", "2", "OUT"], "2_1_4"))
+RUNS.append(("hybrid_energy_xy_o1_dt0.005.txt", ENERGY, ["xy", "1", "0.005", "2", "OUT"], "2_1_4"))
 
 # --check tolerances. The committed files were written with single-precision diagnostics (float32 output, ~1e-13
 # resolution on B ~ 1e-6); a CI build may write double precision and use another compiler (gcc, clang, -O3). So:
@@ -79,6 +85,11 @@ TOLERANCES = {"L1": 0.10, "local_order": 0.15, "rho": 1e-3, "By": 1e-3}   # rela
 DIVB_REL = 1e-2          # divergences of order 1e-3..1e-1 (single-precision output noise is ~1e-4 relative or less)
 DIVB_ABS_BOUNDS = {3: 5e-5, 4: 1e-6}   # mhd_divb_amr: |div fine - div parent| and flux mismatch must stay below these
 SHOCK_ABS = 1e-5  # absolute floor for the shock-tube profiles (single vs double output, compiler)
+# hybrid energy: particle noise makes the runs chaotic, so another compiler gives other bits. Checked: the
+# physics bounds of the page (ions + B gain below ENERGY_GAIN_MAX % of E0 at every sample, ions cool at
+# the last time), and dK at the last time within ENERGY_DK_REL of the committed value.
+ENERGY_GAIN_MAX = 1e-4
+ENERGY_DK_REL = 0.25
 
 
 def quick_args(name, argv):
@@ -101,16 +112,13 @@ def git_head():
         return "unknown"
 
 
-PINNED = "dc62fdd4e"
-
-
 def code_state():
-    """The code the runs are made on: the pinned commit, and whether src/ and pyphare/ in the working tree are identical to it."""
+    """The code the runs are made on: HEAD, and whether src/ and pyphare/ in the working tree are identical to it."""
     try:
-        same = subprocess.run(["git", "-C", str(REPO), "diff", "--quiet", PINNED, "--", "src", "pyphare"]).returncode == 0
+        same = subprocess.run(["git", "-C", str(REPO), "diff", "--quiet", "HEAD", "--", "src", "pyphare"]).returncode == 0
     except Exception:
         same = False
-    return f"code {PINNED} (branch HEAD {git_head()[:9]}; src/ and pyphare/ identical to it: {'yes' if same else 'NO'})"
+    return f"code {git_head()[:9]} (src/ and pyphare/ identical to it: {'yes' if same else 'NO'})"
 
 
 def header(build, command):
@@ -171,6 +179,21 @@ def compare(name, new, old):
                 for c, bound in DIVB_ABS_BOUNDS.items():
                     if float(r[c]) > bound:
                         problems.append(f"{name} row {r[0]} column {c}: {float(r[c]):.3g} above {bound:g}")
+            continue
+        if name.startswith("hybrid_energy_"):
+            values = [float(x) for x in r[1:4]]
+            if not all(math.isfinite(x) for x in values):
+                problems.append(f"{name} t={r[0]}: non-finite energy {r[1:4]}")
+                continue
+            gain, dK = values[2], values[0]
+            # the bound holds at every sample: the page plots the whole history
+            if abs(gain) > ENERGY_GAIN_MAX:
+                problems.append(f"{name} t={r[0]}: |gain| {abs(gain):.3g} % above {ENERGY_GAIN_MAX:g}")
+            if r is rows_new[-1]:
+                if dK > 0:
+                    problems.append(f"{name} t={r[0]}: the ions heat (dK = {dK:.3g} %)")
+                if abs(dK - float(o[1])) > ENERGY_DK_REL * abs(float(o[1])):
+                    problems.append(f"{name} t={r[0]}: dK {dK:.4g} vs committed {float(o[1]):.4g}")
             continue
         if name.startswith("mhd_shock_"):
             for label, c in (("rho", 1), ("By", 2)):

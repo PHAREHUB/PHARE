@@ -44,7 +44,7 @@ The picture
 
 * ``Grid`` owns the array and can hand out a ``Field`` view of itself
   (:src:`src/core/data/grid/grid.hpp#L15-L26`); patch data (``FieldData``) holds a ``Grid``
-  (:src:`src/amr/data/field/field_data.hpp#L338`).
+  (:src:`src/amr/data/field/field_data.hpp#L365`).
 * ``Field<dim, Quantity>`` is an ``NdArrayView`` plus a name and a quantity
   (:src:`src/core/data/field/field.hpp#L24-L100`); copying it copies the pointer.
 * ``resourcesManager->enumerate(level, B, E, ...)`` sets every listed view for each patch;

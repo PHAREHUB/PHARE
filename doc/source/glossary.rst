@@ -46,8 +46,9 @@ Physics and models
 
    moments
       Density and flux (density times velocity) computed from the particles
-      of a population, on the grid. The momentum tensor is computed too, for
-      diagnostics only. See :doc:`/dev/moments`.
+      of a population, on the grid. The time loop keeps the density, on the
+      moment nodes, and the flux, on the E edges; the flux on the moment nodes
+      and the momentum tensor are computed for outputs only. See :doc:`/dev/moments`.
 
    normalization
       PHARE works in dimensionless units built from a reference magnetic field
@@ -149,8 +150,9 @@ Mesh and adaptive mesh refinement
    coarsening
       Replacing coarse-level values by values taken from the finer level, where
       a finer level exists. In the hybrid solver the electric field is averaged
-      along each edge from the fine edges, the ion moments are copied from the
-      fine node that sits on the coarse node, and the magnetic field is not
+      along each edge from the fine edges, and so is the ion current on the E
+      edges; the charge density is copied from the fine node that sits on the
+      coarse node, and the magnetic field is not
       coarsened: it is recomputed by :term:`reflux`. See :doc:`/dev/coarsening`.
 
    tagging
@@ -300,7 +302,7 @@ Running and code
    collective call
       An MPI operation that every rank must make, in the same order. If one
       rank skips it, the others wait forever. PHARE's helpers for these are
-      in :src:`src/mpi/mpi_utils.hpp#L22-L47` (for example ``mpi::collect``).
+      in :src:`src/mpi/mpi_utils.hpp#L22-L50` (for example ``mpi::collect``).
 
    load balancing
       Moving patches between ranks so that each rank has a similar amount of

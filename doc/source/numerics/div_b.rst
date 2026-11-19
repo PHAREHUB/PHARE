@@ -199,8 +199,8 @@ Creating the fine level
 A new fine level, or one rebuilt by a regrid, is *not* sampled again from the user
 functions: its B is refined from the coarse level, so each fine cell starts with the
 divergence of its coarse parent (hybrid:
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L761-L780`; MHD:
-:src:`src/amr/messengers/mhd_messenger.hpp#L498-L519`). Only the second-order operator exists
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L807-L826`; MHD:
+:src:`src/amr/messengers/mhd_messenger.hpp#L493-L514`). Only the second-order operator exists
 (``refinement_order`` must be 2).
 
 The B refinement has two stages (hybrid and MHD):
@@ -294,8 +294,8 @@ A fine level needs B in its level ghost cells during every sub-step. They are fi
 this order: the coarse B is first interpolated in time, between its values at the start
 and at the end of the coarse step, then the result is refined with the two-stage
 operator (SAMRAI does the time interpolation on the coarse data before the refinement:
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L822-L830`,
-:src:`src/amr/messengers/mhd_messenger.hpp#L553-L590`). A time mix of two fields with
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L878-L886`,
+:src:`src/amr/messengers/mhd_messenger.hpp#L549-L585`). A time mix of two fields with
 the same divergence has that divergence, so the refined ghost cells get the divergence of
 their coarse parent, with one exception: the ghost cells that touch the fine interior.
 There, the face on the border itself belongs to the fine level and is advanced, not
@@ -326,7 +326,7 @@ fine level (refluxing, :doc:`/dev/refluxing`):
   coarse level repeats one Euler update from its saved start state with them, B through
   Faraday with that E
   (:src:`src/amr/solvers/solver_mhd.hpp#L345-L357`,
-  :src:`src/amr/messengers/mhd_messenger.hpp#L362-L367`).
+  :src:`src/amr/messengers/mhd_messenger.hpp#L357-L362`).
 
 Two consequences:
 

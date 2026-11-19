@@ -52,15 +52,15 @@ What every rank must do together
    * - Collective call (step order)
      - Code
    * - adaptive ``dt``: ``mpi::min``
-     - ``MultiPhysicsIntegrator::computeStableDt`` (:src:`src/amr/multiphysics_integrator.hpp#L435-L460`)
+     - ``MultiPhysicsIntegrator::computeStableDt`` (:src:`src/amr/multiphysics_integrator.hpp#L477-L502`)
    * - level 0 load gather (``auto`` only, when due)
      - ``tolerance_rebalance_check`` (:src:`src/amr/wrappers/integrator.hpp#L113-L119`), :doc:`load_balancing`
    * - ``mpi::any_errors`` (exception builds)
      - after the particle push (:src:`src/amr/solvers/solver_ppc.hpp#L614-L615`), the MHD level advance
        (:src:`src/amr/solvers/solver_mhd.hpp#L381-L382`), end of ``initialize`` and of each step
-       (:src:`src/simulator/simulator.hpp#L542`, :src:`src/simulator/simulator.hpp#L596`)
+       (:src:`src/simulator/simulator.hpp#L549`, :src:`src/simulator/simulator.hpp#L603`)
    * - wall-clock checks: rank 0's clock
-     - ``mpi::unix_timestamp_now`` (:src:`src/mpi/mpi_utils.cpp#L93-L96`)
+     - ``mpi::unix_timestamp_now`` (:src:`src/mpi/mpi_utils.cpp#L100-L103`)
    * - restart dump: barrier; diagnostics dump: HDF5 metadata
      - :src:`src/restarts/detail/h5writer.hpp#L59`, :doc:`diagnostics_restarts`
    * - Python data access
@@ -68,18 +68,18 @@ What every rank must do together
        reading data on rank 0 only would hang.
 
 PHARE's own MPI helpers are in ``src/mpi/mpi_utils.hpp``
-(:src:`src/mpi/mpi_utils.hpp#L22-L47`, :src:`src/mpi/mpi_utils.hpp#L115-L120`): ``collect``, ``max``,
+(:src:`src/mpi/mpi_utils.hpp#L22-L50`, :src:`src/mpi/mpi_utils.hpp#L118-L123`): ``collect``, ``max``,
 ``min``, ``any``, ``barrier``, ``all_get_from_rank_0``.
 
 Errors across ranks
 -------------------
 
 * **Default build:** ``PHARE_LOG_ERROR`` prints ``MPI ABORT: PHARE ERROR: …`` and calls ``MPI_Abort``
-  (``mpi::log_error``, :src:`src/mpi/mpi_utils.cpp#L65-L71`); ``any_errors`` is always false.
+  (``mpi::log_error``, :src:`src/mpi/mpi_utils.cpp#L66-L72`); ``any_errors`` is always false.
 * **Exception builds** (``useExceptionsInsteadOfMPIAbort``, forced by ``devMode``, :src:`res/cmake/def.cmake#L25-L31`): the
   failing rank prints to standard error; at the next ``any_errors`` all ranks close diagnostics and throw
-  (:src:`src/simulator/simulator.hpp#L596-L602`); Python prints on rank 0 and exits with code 1 while
-  ``exit_on_exception`` is true (the default, :src:`pyphare/pyphare/simulator/simulator.py#L314-L318`).
+  (:src:`src/simulator/simulator.hpp#L603-L609`); Python prints on rank 0 and exits with code 1 while
+  ``exit_on_exception`` is true (the default, :src:`pyphare/pyphare/simulator/simulator.py#L344-L348`).
 
 Timers
 ------

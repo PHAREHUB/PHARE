@@ -62,7 +62,9 @@ Ohm's law (:doc:`/theory/hybridpic`):
    \mathbf{E}^{n+1} &= \mathcal{O}(\mathbf{B}^{n+1}, n^{n+1}, \mathbf{F}^{n+1})
    \end{aligned}
 
-Here :math:`n` is the ion charge density and :math:`\mathbf{F}` the ion charge flux. The
+Here :math:`n` is the ion charge density and :math:`\mathbf{F}` the ion charge flux; Ohm's law
+uses the version of it deposited on the positions of E, so that it conserves energy
+(:doc:`hybrid_ohm`). The
 first push only serves to predict the moments; its particles are thrown away. The second
 push is the real one.
 

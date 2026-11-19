@@ -54,13 +54,14 @@ The mechanism
 * **Push 2 only** (the real push): leavers in a neighbour's cells go to the
   patch ghost array, all leavers leave the domain array
   (``IonUpdater::updateAndDepositAll_``,
-  :src:`src/core/numerics/ion_updater/ion_updater.hpp#L258-L289`).
-* Domain and patch ghost particles are deposited (L306-L309); density and flux
-  are then summed over patch borders (:doc:`/dev/moments`).
+  :src:`src/core/numerics/ion_updater/ion_updater.hpp#L260-L291`).
+* Domain and patch ghost particles are deposited
+  (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L308-L311`); density and
+  E-edge flux are then summed over patch borders (:doc:`/dev/moments`).
 * ``fillIonGhostParticles`` runs the grab schedule, then clears every patch
-  ghost array (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L375-L383`).
+  ghost array (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L380-L388`).
 * Push 1 also exchanges moments (border sums, level ghosts) but **no particles**
-  (:src:`src/amr/solvers/solver_ppc.hpp#L620-L664`).
+  (:src:`src/amr/solvers/solver_ppc.hpp#L620-L665`).
 * The receiving patch does not deposit the particle in this step: A already did.
 
 The tricks
@@ -71,7 +72,7 @@ Deposit before handing over
 
 **Problem.** A crossing particle must be counted once, though it changes owner.
 **Fix.** A deposits it from its patch ghost array; the border sum adds that to
-B's copy of the shared nodes (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L306-L309`).
+B's copy of the shared nodes (:src:`src/core/numerics/ion_updater/ion_updater.hpp#L308-L311`).
 
 The exchange region
 ^^^^^^^^^^^^^^^^^^^
@@ -89,9 +90,9 @@ One owner per cell
 **Problem.** SAMRAI can make same-level patches overlap: particles would be pushed
 and deposited twice.
 **Fix.** A cell belongs to the covering patch with the smallest global id
-(``makeNonOwnedBoxes``, :src:`src/amr/resources_manager/amr_utils.hpp#L246-L280`);
+(``makeNonOwnedBoxes``, :src:`src/amr/resources_manager/amr_utils.hpp#L254-L288`);
 after the grab each patch drops particles in cells it does not own
-(:src:`src/amr/solvers/solver_ppc.hpp#L651-L656`). :pr:`1334`.
+(:src:`src/amr/solvers/solver_ppc.hpp#L652-L657`). :pr:`1334`.
 
 Periodic neighbours
 ^^^^^^^^^^^^^^^^^^^
@@ -113,7 +114,7 @@ Cell maps cover that margin (``particleMapMargin``,
    :class: note
 
    Same-level neighbours are searched with a width of 1 cell
-   (:src:`src/amr/resources_manager/amr_utils.hpp#L216-L220`) while the particle
+   (:src:`src/amr/resources_manager/amr_utils.hpp#L224-L228`) while the particle
    ghost width is 2 at orders 2-3: a neighbour touching the ghost box only at a
    corner can be missed, and a particle pushed there is erased. Fix proposed in
    :pr:`1593` (corner neighbour search).
