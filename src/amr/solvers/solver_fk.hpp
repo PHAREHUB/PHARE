@@ -82,6 +82,13 @@ namespace PHARE::solver
  * synchronization: none on a level whose finer level is new, the old one for one more step on a
  * level whose finer level was removed. The skipped nodes are built when the level, or the kept
  * region, changes. Without the option nothing is built and nothing skipped.
+ *
+ * On a refined level, after each fill of E^{n-1/2} (step 1) and E^{n+1/2} (after step 2), the
+ * first faces of E outside the level take Gauss's law on its edge nodes, with the charge at E's
+ * time (fk_electric.hpp, gaussOnLevelBorder): the fills give them the coarser E, while the charge
+ * of those nodes follows the fine particles (BORDER-GAUSS, docs/superpowers/specs/p4/
+ * border_gauss.md). No state: the next fill replaces them, the charge sets them again. A band
+ * refresh (lastStep) moves the charge of the edge nodes until the next step's fill.
  */
 template<typename FKModel, typename AMR_Types>
 class SolverFK : public ISolver<AMR_Types>, public SAMRAI::tbox::Serializable
@@ -93,6 +100,7 @@ private:
     using Electromag       = FKModel::electromag_type;
     using Ions             = FKModel::ions_type;
     using VecFieldT        = FKModel::vecfield_type;
+    using FieldT           = FKModel::field_type;
     using GridLayout       = FKModel::gridlayout_type;
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
@@ -118,6 +126,10 @@ private:
     VecFieldT Epartial_{this->name() + "_Epartial", core::HybridQuantity::Vector::E};
     VecFieldT Ehat_{this->name() + "_Ehat", core::HybridQuantity::Vector::E};
     VecFieldT Bmid_{this->name() + "_Bmid", core::HybridQuantity::Vector::B};
+
+    // the model rho of step 1 (the start of the segments, which the diagnostics dump), kept while
+    // the charge at their end sets the faces of E^{n+1/2} outside a refined level
+    FieldT rhoStart_{this->name() + "_rhoStart", core::HybridQuantity::Scalar::rho};
     std::unordered_map<int, double> oldTime_;
 
     IonUpdater_t ionUpdater_;
@@ -196,6 +208,7 @@ public:
         rm.registerResources(Epartial_);
         rm.registerResources(Ehat_);
         rm.registerResources(Bmid_);
+        rm.registerResources(rhoStart_);
     }
 
     void allocate(IPhysicalModel_t& model, patch_t& patch, double const allocateTime) const override
@@ -208,6 +221,7 @@ public:
         rm.allocate(Epartial_, patch, allocateTime);
         rm.allocate(Ehat_, patch, allocateTime);
         rm.allocate(Bmid_, patch, allocateTime);
+        rm.allocate(rhoStart_, patch, allocateTime);
     }
 
     // B^n for the reflux of a level with a finer one (the step itself keeps B^n in the model B
@@ -275,7 +289,8 @@ public:
         for (auto& patch : fkModel.resourcesManager->enumerate(level, E, Eahead_))
             Eahead_.copyData(E); // with its ghosts, read by the cleaning
         advanceFKElectric(level, fkModel, fkMessenger, Eahead_, dt, time,
-                          skippedNodes_(hierarchy, level.getLevelNumber(), fkModel));
+                          skippedNodes_(hierarchy, level.getLevelNumber(), fkModel),
+                          borderNodes_(hierarchy, level.getLevelNumber()));
         TimeSetter{level, fkModel, time + 0.5 * dt}(Eahead_);
     }
 
@@ -305,13 +320,13 @@ public:
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_, Epartial_, Ehat_,
-                                     Bmid_);
+                                     Bmid_, rhoStart_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         return std::forward_as_tuple(electromagHalf_, fluxSumE_, Eahead_, Bold_, Epartial_, Ehat_,
-                                     Bmid_);
+                                     Bmid_, rhoStart_);
     }
 
 
@@ -321,6 +336,22 @@ private:
 
     PatchBoxes<dimension> const& skippedNodes_(hierarchy_t const& hierarchy, int const levelNumber,
                                                FKModel const& model);
+
+    // the level border nodes of a level (levelBorderNodesOf), built once per level object
+    PatchBorderNodes<dimension> const& borderNodes_(hierarchy_t const& hierarchy,
+                                                    int const levelNumber)
+    {
+        auto const level      = hierarchy.getPatchLevel(levelNumber);
+        auto& [object, nodes] = borderNodeCache_[levelNumber];
+        if (object.lock() != level)
+        {
+            object = level;
+            nodes  = levelBorderNodesOf<GridLayout>(hierarchy, levelNumber);
+        }
+        return nodes;
+    }
+    std::unordered_map<int, std::pair<std::weak_ptr<level_t>, PatchBorderNodes<dimension>>>
+        borderNodeCache_;
     void keepCoveredRegion_(hierarchy_t const& hierarchy, int const levelNumber,
                             FKModel const& model);
 
@@ -407,9 +438,21 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     auto const& skipped = skippedNodes_(hierarchy, levelNumber, model);
 
     // 1. and 2.
-    advanceFKElectric(level, model, messenger, E, dt, currentTime, skipped);
+    auto const& border = borderNodes_(hierarchy, levelNumber);
+    advanceFKElectric(level, model, messenger, E, dt, currentTime, skipped, border);
     TimeSetter{level, model, halfTime}(E);
     messenger.fillElectricGhosts(E, level, halfTime);
+    if (!border.empty()) // with the charge at the end of the current's segments, E's time
+    {
+        auto& rho = model.state.rho;
+        for (auto& patch : rm.enumerate(level, rho, rhoStart_))
+            rhoStart_.copyData(rho);
+        depositFKCharge(level, model, messenger, dt, /*shift=*/1., halfTime);
+        gaussOnLevelBorderOf(level, model, E, border);
+        for (auto& patch : rm.enumerate(level, rho, rhoStart_))
+            rho.copyData(rhoStart_);
+        TimeSetter{level, model, currentTime - 0.5 * dt}(rho);
+    }
 
     // 3. B^{n+1/2}, and the E^{n+1/2} copy the particles are pushed with
     auto const halfDt = 0.5 * dt;
@@ -433,7 +476,7 @@ void SolverFK<FKModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy, in
     {
         for (auto& patch : rm.enumerate(level, E, Eahead_))
             Eahead_.copyData(E); // with its ghosts, read by the cleaning
-        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime, skipped);
+        advanceFKElectric(level, model, messenger, Eahead_, dt, newTime, skipped, border);
         TimeSetter{level, model, newTime + 0.5 * dt}(Eahead_);
     }
 
