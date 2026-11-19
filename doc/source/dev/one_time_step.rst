@@ -87,11 +87,12 @@ Levels are stepped coarsest first
 Look at the numbers: level 0 first, then each level-1 step is followed by four
 level-2 steps.
 
-* A level twice finer takes 4 sub-steps when the level-0 time step does not
-  change, which is always the case in hybrid: ``getMaxFinerLevelDt`` asks for
+* With a fixed time step, the only one in hybrid, a level twice finer takes 4
+  sub-steps: ``getMaxFinerLevelDt`` asks for
   :math:`\Delta t / \text{ratio}^2` (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`,
-  ratio fixed at 2, :src:`src/amr/amr_constants.hpp#L9`). MHD with an adaptive
-  time step can take another number: see :doc:`/dev/subcycling`.
+  ratio fixed at 2, :src:`src/amr/amr_constants.hpp#L9`). With an adaptive
+  time step (MHD) each finer level sizes its sub-steps from its own stable
+  step: see :doc:`/dev/subcycling`.
 * So when a fine level steps, its coarser level is **already at its new
   time**: fine ghosts are interpolated in time (next section).
 

@@ -334,7 +334,8 @@ Two consequences:
   under it, because the redo is a curl again (the section on one level).
 * **The two levels agree on the border.** The circulation of E around a coarse face is the
   sum of the circulations around the fine faces inside it: the fine edges in the middle
-  count twice with opposite signs. With the ¼ weights of four equal sub-steps, the change
+  count twice with opposite signs. With the same weights on every fine edge (¼ for four
+  equal sub-steps, each sub-step's share of the coarse step in general), the change
   of the magnetic flux through a coarse face equals the sum of the changes through its
   fine faces. As the refinement starts them equal, they stay equal, and the field made of
   both levels has no flux missing at the border.
@@ -375,9 +376,9 @@ Two consequences:
 
 The figure uses a face of the coarse level (grey) that contains two fine faces (blue). The
 coarse corners copy the end values of the fine level, and the middle corner cancels in the
-sum of the two fine changes of flux ΔΦ. For a fixed time step this holds exactly; with an
-adaptive time step in MHD the number of fine sub-steps can differ from four, and the sums
-no longer match: this is the known issue noted on :doc:`/dev/refluxing`.
+sum of the two fine changes of flux ΔΦ. This holds exactly for a fixed or an adaptive time
+step: every fine sub-step is weighted by its share of the coarse step
+(:doc:`/dev/refluxing`).
 
 .. _divb-measured:
 

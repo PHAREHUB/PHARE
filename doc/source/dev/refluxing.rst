@@ -18,7 +18,7 @@ Why
 ---
 
 The coarse level stepped first, across the coarse–fine border, with coarse
-data. The fine level, with four times smaller steps, knows what really crossed
+data. The fine level, with smaller steps, knows what really crossed
 that border. Refluxing hands the coarse level this better answer, so that the
 coarse level agrees with the fine level at the border (conservation, see the
 guarantees below), and :math:`\nabla\cdot B` stays zero.
@@ -26,8 +26,9 @@ guarantees below), and :math:`\nabla\cdot B` stays zero.
 Three phases
 ------------
 
-1. **Accumulate.** After each fine sub-step the fine level adds a quarter of its
-   own flux (hybrid: of :math:`E_\text{avg}`) to a running sum.
+1. **Accumulate.** After each fine sub-step the fine level adds its own flux
+   (hybrid: :math:`E_\text{avg}`) to a running sum, weighted by the sub-step's
+   share of the coarse step: a quarter with four equal sub-steps.
 2. **Coarsen.** At the meeting time the sum is copied or averaged onto the
    coarse faces (or edges) it covers.
 3. **Redo.** The coarse level repeats its update over the whole coarse step,
@@ -36,7 +37,10 @@ Three phases
 .. claim C-rx-02
 
 * Each level's sums are zeroed at its first sub-step. The finest level adds
-  :math:`1/\text{ratio}^2 = 1/4` times its quantity after every sub-step
+  :math:`\delta t/\Delta t` times its quantity after every sub-step,
+  :math:`\delta t` being the sub-step and :math:`\Delta t` the coarse step it
+  belongs to (:math:`1/\text{ratio}^2 = 1/4` with a fixed time step;
+  ``substepWeight_``, :pr:`1570`)
   (hybrid: :math:`E_\text{avg}`, MHD: the step's fluxes and E)
   (:src:`src/amr/multiphysics_integrator.hpp#L526-L532`,
   :src:`src/amr/multiphysics_integrator.hpp#L550-L556`,
@@ -174,7 +178,8 @@ MHD
 Look at the border face: with a fixed time step, the mass leaving coarse cell 1
 through :math:`x = 2` is the mass the fine cells received.
 
-1. **Accumulate:** each fine sub-step adds ¼·its step flux, a time average over
+1. **Accumulate:** each fine sub-step adds its step flux times its share of the
+   coarse step (¼ with a fixed time step), the step flux being a time average over
    that sub-step (the Runge–Kutta stage fluxes are weighted, the weights sum to 1 for all four integrators)
    (:src:`src/amr/solvers/solver_mhd.hpp#L310-L327`,
    :src:`src/amr/solvers/time_integrator/tvdrk2_integrator.hpp#L35-L40`).
@@ -214,24 +219,15 @@ What it guarantees
 ------------------
 
 * Hybrid and MHD: the coarse level uses the fine answer at the border.
-* MHD with a fixed time step: the flux the outside coarse cell sees equals the
-  fine time-integrated flux, because four sub-steps of :math:`\Delta t/4`,
-  each weighted by ¼, make the mean flux, and the mean times :math:`\Delta t`
-  is the fine time integral.
+* MHD, fixed or adaptive time step: the flux the outside coarse cell sees
+  equals the fine time-integrated flux, because sub-steps :math:`\delta t_k`
+  weighted by :math:`\delta t_k/\Delta t` make the time-averaged flux, and that
+  average times :math:`\Delta t` is the fine time integral. With a fixed step
+  these are four sub-steps of :math:`\Delta t/4`, each weighted by ¼.
 * MHD, any time step: the level-0 total changes only through physical
   boundaries (each coarse face has one flux, used by both its cells).
 
 .. claim C-rf-02 C-rf-05
-
-.. admonition:: Known issue (MHD, adaptive time step)
-   :class: note
-
-   The weight ¼ per sub-step is fixed (:src:`src/amr/multiphysics_integrator.hpp#L553-L555`).
-   With an adaptive step the number of sub-steps can differ from 4
-   (:doc:`subcycling`), and the sum is then no longer the mean flux. The coarse
-   and fine levels then no longer match at the border.
-
-.. claim C-rx-03 C-sc-04
 
 Next: :doc:`coarsening`, what else goes from fine to coarse at the meeting time.
 

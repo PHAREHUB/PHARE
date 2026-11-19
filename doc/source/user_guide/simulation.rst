@@ -227,8 +227,12 @@ Give exactly two of the three. ``time_step`` can also be a dictionary:
 * ``{"mode": "adaptive", "cfl_wave": 0.5, "cfl_diffusive": 0.5}`` recomputes
   the time step at every step from a stability limit (:term:`CFL <CFL condition>`). It needs
   ``final_time`` and cannot be combined with ``time_step_nbr``.
-  ``cfl_wave`` is required and other keys are refused. ``cfl_diffusive``
-  defaults to ``cfl_wave``. Both must be positive.
+  ``cfl_wave`` is required. ``cfl_diffusive`` defaults to ``cfl_wave``. Both
+  must be positive. ``fine_level_substeps_max`` and ``level0_dt_shrink_max``
+  (integers ≥ 1, default 1000) stop the run when the stable step of a refined
+  level becomes that many times smaller than the level above, or when the
+  coarsest level's becomes that many times smaller than its first one. Other
+  keys are refused.
   Diagnostics then need explicit ``write_timestamps`` (there is no fixed
   step to build a default output grid from).
 
@@ -239,11 +243,6 @@ Give exactly two of the three. ``time_step`` can also be a dictionary:
    start of the run with ``Adaptive time-stepping not ready in hybrid.``
    (written to the log file, the terminal only shows an MPI abort). Use a
    fixed ``time_step`` for hybrid runs.
-
-   In an MHD run, use the adaptive time step on a single level only: with
-   refinement (``refinement_boxes`` or ``"tagging"``) the levels stop
-   conserving mass and energy (see :doc:`amr`). Use a fixed ``time_step``
-   there.
 
 Hybrid numerics
 ~~~~~~~~~~~~~~~
