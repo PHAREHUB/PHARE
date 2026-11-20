@@ -119,10 +119,7 @@ namespace solver
             PHARE_LOG_SCOPE(3, "HybridLevelInitializer::initRefined_");
             auto& level = amr_types::getLevel(*hierarchy, levelNumber);
             messenger.initLevel(hierarchy, model, level, time);
-            keepOwnedParticles_(hierarchy, levelNumber, level, model);
-            depositMoments_(levelNumber, level, model, messenger, time);
-            computeJ_(level, model, time);
-            messenger.prepareStep(model, level, time);
+            finishRefined_(hierarchy, levelNumber, level, model, messenger, time);
         }
 
         // a finer level onto new boxes: its data moved where the old level was, refined from
@@ -134,6 +131,14 @@ namespace solver
             PHARE_LOG_SCOPE(3, "HybridLevelInitializer::regridRefined_");
             auto& level = amr_types::getLevel(*hierarchy, levelNumber);
             messenger.regrid(hierarchy, levelNumber, oldLevel, model, time);
+            finishRefined_(hierarchy, levelNumber, level, model, messenger, time);
+        }
+
+        // a finer level's particles and fields in place (initLevel or regrid): the particles
+        // kept on their owning patch, the moments deposited, J, the old copies for the next step
+        void finishRefined_(hierarchy_ptr const& hierarchy, int const levelNumber, auto& level,
+                            HybridModel& model, HybridMessenger& messenger, double const time)
+        {
             keepOwnedParticles_(hierarchy, levelNumber, level, model);
             depositMoments_(levelNumber, level, model, messenger, time);
             computeJ_(level, model, time);
