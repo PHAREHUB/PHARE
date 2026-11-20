@@ -15,7 +15,6 @@ from pyphare.simulator.simulator import Simulator
 from tests.simulator import populate_simulation
 
 ndim, interp = 2, 1
-cells = 20  # basicSimulatorArgs
 ppc = 100  # makeBasicModel / defaultPopulationSettings
 out = Path("phare_outputs/test_data_wrangler")
 
@@ -42,16 +41,16 @@ class DataWranglerTest(unittest.TestCase):
                 self.assertEqual(pdata.dataset.shape, tuple(pdata.size))
                 self.assertTrue(np.isfinite(pdata.dataset).all())
 
-        out.mkdir(parents=True, exist_ok=True)
-        hier.plot(filename=str(out / "density.png"), qty="density", levels=(0,))
+        # each rank only holds its own patches, plotting under MPI comes with #1171
+        if cpp.mpi_size() == 1:
+            out.mkdir(parents=True, exist_ok=True)
+            hier.plot(filename=str(out / "density.png"), qty="density", levels=(0,))
 
+        # level 0 has no level ghosts, each patch holds the particles loaded in its cells
         hier = hierarchy_from_sim(self.simulator, qty="particles", pop="protons")
-        total = sum(
-            p.patch_datas["protons_particles"].dataset.size()
-            for p in hier.level(0).patches
-        )
-        expected = ppc * cells**ndim
-        self.assertGreaterEqual(total, expected * 0.95 / cpp.mpi_size())
+        for patch in hier.level(0).patches:
+            particles = patch.patch_datas["protons_particles"].dataset
+            self.assertEqual(particles.size(), ppc * patch.box.nCells())
 
     def test_1d(self):
         for interp in range(1, 4):
