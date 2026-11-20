@@ -11,12 +11,19 @@
 #include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
+#include "diagnostic/computers/diagnostic_computers.hpp"
+
 #include "dict.hpp"
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
-#include <type_traits>
+#include <functional>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
 #include <utility>
+#include <variant>
 
 namespace PHARE::diagnostic
 {
@@ -27,6 +34,95 @@ public:
     inline virtual ~IModelView();
 };
 IModelView::~IModelView() {}
+
+
+/** \brief {diagnostic.quantity path -> field} registry of a model ("/ions/charge_density",
+ * "/ions/pop/<name>/momentum_tensor", "/mhd/rho", ...). Each ModelView builds one from the real
+ * population names, so callers do a single map lookup, and every writer (h5, vtk) dispatches on
+ * it.
+ *
+ * To add a diagnostic of a quantity the model stores, add one entry to `fields` in the
+ * ModelView's makeAccessors_(): every writer picks it up. If it has to be computed before it can
+ * be written, also add an entry to the ModelView's makeComputers_().
+ */
+template<typename ModelView_t, typename Field, typename... OtherFields>
+struct QuantityAccessors
+{
+    using Field_t      = Field;
+    using FieldVariant = std::variant<Field*, OtherFields*...>;
+    using FieldFn      = std::function<FieldVariant(ModelView_t&)>;
+
+    struct Entry
+    {
+        std::string name; // bare quantity name, e.g. "density", "momentum_tensor"
+        FieldFn get;
+    };
+
+    // writers must not skip a declared diagnostic silently
+    void check(std::string const& qty) const
+    {
+        if (!fields.count(qty))
+            throw std::runtime_error("unsupported " + kind + " diagnostic quantity " + qty);
+    }
+
+    // action(field, name), throws if qty has no registered accessor
+    template<typename Action>
+    void dispatch(std::string const& qty, ModelView_t& modelView, Action&& action) const
+    {
+        check(qty);
+        auto const& entry = fields.at(qty);
+        std::visit([&](auto* field) { action(*field, entry.name); }, entry.get(modelView));
+    }
+
+    std::string kind; // "fluid" or "mhd", for errors
+    std::unordered_map<std::string, Entry> fields{};
+};
+
+
+/** \brief {diagnostic.quantity path -> computer} registry for the quantities that need a
+ * computation pass before they can be read through the accessors (the momentum tensors, MHD V
+ * and P). Computers take the levels and time of the writer, any model parameter (e.g. gamma) is
+ * captured when the registry is built, so all models share one signature.
+ */
+template<typename ModelView_t>
+struct QuantityComputers
+{
+    using Computer = std::function<void(ModelView_t&, std::size_t, std::size_t, double)>;
+
+    NO_DISCARD bool contains(std::string const& qty) const { return computers.count(qty) > 0; }
+
+    // returns false if qty has no registered computer
+    bool compute(std::string const& qty, ModelView_t& modelView, std::size_t minLvl,
+                 std::size_t maxLvl, double timestamp) const
+    {
+        auto const it = computers.find(qty);
+        if (it == computers.end())
+            return false;
+        it->second(modelView, minLvl, maxLvl, timestamp);
+        return true;
+    }
+
+    std::unordered_map<std::string, Computer> computers;
+};
+
+
+// the field types of a model's diagnostics, hybrid also has the ions' tensor fields
+template<typename ModelView_t, typename Model>
+struct ModelAccessors
+{
+    using type
+        = QuantityAccessors<ModelView_t, typename Model::field_type, typename Model::vecfield_type>;
+};
+
+template<typename ModelView_t, typename Model>
+    requires solver::is_hybrid_model_v<Model>
+struct ModelAccessors<ModelView_t, Model>
+{
+    using type
+        = QuantityAccessors<ModelView_t, typename Model::field_type, typename Model::vecfield_type,
+                            typename Model::ions_type::tensorfield_type>;
+};
+
 
 
 template<typename Derived, typename Hierarchy, typename Model>
@@ -45,11 +141,33 @@ public:
                         std::vector<double>, std::vector<std::size_t>, std::string,
                         std::vector<std::string>>;
 
+    using Accessors = ModelAccessors<Derived, Model>::type;
+    using Computers = QuantityComputers<Derived>;
+
     BaseModelView(Hierarchy& hierarchy, Model& model)
         : model_{model}
         , hierarchy_{hierarchy}
     {
     }
+
+    // the diagnostic quantities of the model, built on first use by the ModelView's
+    //  makeAccessors_() / makeComputers_()
+    NO_DISCARD Accessors& accessors()
+    {
+        if (!accessors_)
+            accessors_ = std::make_unique<Accessors>(derived().makeAccessors_());
+        return *accessors_;
+    }
+
+    NO_DISCARD Computers& computers()
+    {
+        if (!computers_)
+            computers_ = std::make_unique<Computers>(derived().makeComputers_());
+        return *computers_;
+    }
+
+    // whether qty has to be computed before it is written
+    NO_DISCARD bool computes(std::string const& qty) { return computers().contains(qty); }
 
     template<typename Action>
     void onLevels(Action&& action, std::size_t const minlvl = 0,
@@ -142,15 +260,19 @@ protected:
 private:
     Derived& derived() { return static_cast<Derived&>(*this); }
     Derived const& derived() const { return static_cast<Derived const&>(*this); }
+
+    std::unique_ptr<Accessors> accessors_;
+    std::unique_ptr<Computers> computers_;
 };
 
 
-template<typename Hierarchy, typename Model, typename Enable = void>
+template<typename Hierarchy, typename Model>
 class ModelView;
 
 
 template<typename Hierarchy, typename Model>
-class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
+    requires solver::is_hybrid_model_v<Model>
+class ModelView<Hierarchy, Model>
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
     using Super        = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
@@ -161,6 +283,9 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Mod
 public:
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
+
+    using Accessors = Super::Accessors;
+    using Computers = Super::Computers;
 
     ModelView(Hierarchy& hierarchy, Model& model)
         : Super{hierarchy, model}
@@ -283,20 +408,93 @@ protected:
     Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
     VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
     TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
+
+private:
+    friend Super; // builds the registries with makeAccessors_() / makeComputers_()
+
+    Accessors makeAccessors_()
+    {
+        Accessors acc{.kind = "fluid"};
+        auto& fields = acc.fields;
+        auto& ions   = getIons();
+
+        fields["/ions/charge_density"]
+            = {"charge_density", [](ModelView& mv) -> Accessors::FieldVariant {
+                   return &mv.getIons().chargeDensity();
+               }};
+        fields["/ions/mass_density"]
+            = {"mass_density", [](ModelView& mv) -> Accessors::FieldVariant {
+                   return &mv.getIons().massDensity();
+               }};
+        fields["/ions/bulkVelocity"]
+            = {"bulkVelocity",
+               [](ModelView& mv) -> Accessors::FieldVariant { return &mv.getIons().velocity(); }};
+        fields["/ions/charge_flux"] = {"charge_flux", [](ModelView& mv) -> Accessors::FieldVariant {
+                                           return &mv.getIons().chargeFlux();
+                                       }};
+        fields["/ions/momentum_tensor"]
+            = {"momentum_tensor", [](ModelView& mv) -> Accessors::FieldVariant {
+                   return &mv.getIons().momentumTensor();
+               }};
+
+        for (std::size_t idx = 0; idx < ions.size(); ++idx)
+        {
+            std::string const tree{"/ions/pop/" + ions[idx].name() + "/"};
+            fields[tree + "density"] = {"density", [idx](ModelView& mv) -> Accessors::FieldVariant {
+                                            return &mv.getIons()[idx].particleDensity();
+                                        }};
+            fields[tree + "charge_density"]
+                = {"charge_density", [idx](ModelView& mv) -> Accessors::FieldVariant {
+                       return &mv.getIons()[idx].chargeDensity();
+                   }};
+            fields[tree + "flux"] = {"flux", [idx](ModelView& mv) -> Accessors::FieldVariant {
+                                         return &mv.getIons()[idx].flux();
+                                     }};
+            fields[tree + "momentum_tensor"]
+                = {"momentum_tensor", [idx](ModelView& mv) -> Accessors::FieldVariant {
+                       return &mv.getIons()[idx].momentumTensor();
+                   }};
+        }
+        return acc;
+    }
+
+    Computers makeComputers_()
+    {
+        Computers comp;
+        auto& computers = comp.computers;
+
+        computers["/ions/momentum_tensor"]
+            = [](ModelView& mv, std::size_t minLvl, std::size_t maxLvl, double timestamp) {
+                  compute_momentum_tensor(mv, minLvl, maxLvl, timestamp);
+              };
+
+        auto& ions = getIons();
+        for (std::size_t idx = 0; idx < ions.size(); ++idx)
+            computers["/ions/pop/" + ions[idx].name() + "/momentum_tensor"]
+                = [idx](ModelView& mv, std::size_t minLvl, std::size_t maxLvl, double timestamp) {
+                      compute_pop_momentum_tensor(mv, idx, minLvl, maxLvl, timestamp);
+                  };
+        return comp;
+    }
 };
 
 
 template<typename Hierarchy, typename Model>
-class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>>>
+    requires solver::is_mhd_model_v<Model>
+class ModelView<Hierarchy, Model>
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
+    using Super    = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
     using Field    = Model::field_type;
     using VecField = Model::vecfield_type;
 
 public:
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
-    using BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>::BaseModelView;
+    using Super::Super;
+
+    using Accessors = Super::Accessors;
+    using Computers = Super::Computers;
 
     NO_DISCARD const Field& getRho() const { return this->model_.state.rho; }
 
@@ -364,7 +562,47 @@ protected:
 
     Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
     VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
+
+private:
+    friend Super; // builds the registries with makeAccessors_() / makeComputers_()
+
+    Accessors makeAccessors_()
+    {
+        Accessors acc{.kind = "mhd"};
+        auto& fields = acc.fields;
+
+        fields["/mhd/rho"]
+            = {"rho", [](ModelView& mv) -> Accessors::FieldVariant { return &mv.getRho(); }};
+        fields["/mhd/V"]
+            = {"V", [](ModelView& mv) -> Accessors::FieldVariant { return &mv.getV(); }};
+        fields["/mhd/P"]
+            = {"P", [](ModelView& mv) -> Accessors::FieldVariant { return &mv.getP(); }};
+        fields["/mhd/rhoV"]
+            = {"rhoV", [](ModelView& mv) -> Accessors::FieldVariant { return &mv.getRhoV(); }};
+        fields["/mhd/Etot"]
+            = {"Etot", [](ModelView& mv) -> Accessors::FieldVariant { return &mv.getEtot(); }};
+        return acc;
+    }
+
+    // the solver's V/P lag the conservative variables after a step and V_diag_/P_diag_ are never
+    // updated by it: both are recomputed from the conservative variables before a dump
+    Computers makeComputers_()
+    {
+        Computers comp;
+        auto const gamma = this->model_.gamma_;
+
+        comp.computers["/mhd/V"]
+            = [](ModelView& mv, std::size_t minLvl, std::size_t maxLvl, double timestamp) {
+                  compute_mhd_velocity(mv, minLvl, maxLvl, timestamp);
+              };
+        comp.computers["/mhd/P"]
+            = [gamma](ModelView& mv, std::size_t minLvl, std::size_t maxLvl, double timestamp) {
+                  compute_mhd_pressure(mv, gamma, minLvl, maxLvl, timestamp);
+              };
+        return comp;
+    }
 };
+
 
 
 } // namespace PHARE::diagnostic

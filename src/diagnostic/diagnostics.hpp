@@ -43,6 +43,11 @@ struct NullOpDiagnosticsManager : public IDiagnosticsManager
         throw std::runtime_error("NOOP");
     }
 
+    void emergency_dump_level(std::size_t /*level*/, double /*timestamp*/) override
+    {
+        throw std::runtime_error("NOOP");
+    }
+
     void flush() override {} // no files
 };
 
