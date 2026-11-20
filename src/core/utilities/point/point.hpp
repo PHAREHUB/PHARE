@@ -3,7 +3,8 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/meta/type_equality_meta.hpp"
+#include "core/utilities/meta/container_meta.hpp"
 
 #include <array>
 #include <vector>
@@ -16,24 +17,6 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename T, typename Index, typename Attempt = void>
-    struct has_subscript_operator : std::false_type
-    {
-    };
-
-
-    template<typename T, typename Index>
-    struct has_subscript_operator<
-        T, Index, tryToInstanciate<decltype(std::declval<T>()[std::declval<Index>()])>>
-        : std::true_type
-    {
-    };
-
-
-    template<typename T, typename Index = int>
-    using is_subscriptable = std::enable_if_t<has_subscript_operator<T, Index>::value, dummy::type>;
-
-
     template<typename Type, std::size_t dim>
     class Point
     {
@@ -56,7 +39,7 @@ namespace core
         {
         }
 
-        template<typename Container, is_subscriptable<Container> = dummy::value>
+        template<Subscriptable Container>
         Point(Container c)
         {
             for (std::size_t i = 0; i < dim; ++i)

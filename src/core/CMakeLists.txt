@@ -59,7 +59,10 @@ set( SOURCES_INC
      utilities/algorithm.hpp
      utilities/constants.hpp
      utilities/index/index.hpp
-     utilities/meta/meta_utilities.hpp
+     utilities/meta/type_equality_meta.hpp
+     utilities/meta/constexprifier.hpp
+     utilities/meta/container_meta.hpp
+     utilities/meta/enum_meta.hpp
      utilities/partitionner/partitionner.hpp
      utilities/point/point.hpp
      utilities/range/range.hpp

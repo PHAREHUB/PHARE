@@ -84,15 +84,15 @@ namespace amr
      * - ParticleArray
      *
      * Several kinds of ResourcesView can register their resources to the ResourcesManager
-     * and are identified by the following type traits:
+     * and are identified by the following concepts:
      *
-     * - has_runtime_subresourceview_list <ResourcesView>
-     * - has_compiletime_subresourcesview_list <ResourcesView>
+     * - HasRunTimeSubResources<ResourcesView>
+     * - HasCompileTimeSubResources<ResourcesView>
      *
      *
      * for example:
      *
-     * - has_compiletime_subresourcesview_list<Electromag> is true because it holds 2 VecFields that
+     * - HasCompileTimeSubResources<Electromag> is true because it holds 2 VecFields that
      * hold Field objects.
      *
      * ResourcesManager is used to register ResourceUsers to the SAMRAI system, this is done
@@ -169,15 +169,15 @@ namespace amr
         template<typename ResourcesView>
         void registerResources(ResourcesView& obj)
         {
-            if constexpr (is_resource<ResourcesView>::value)
+            if constexpr (IsResource<ResourcesView>)
             {
                 registerResource_(obj);
             }
             else
             {
-                static_assert(has_sub_resources_v<ResourcesView>);
+                static_assert(HasSubResources<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+                if constexpr (HasRunTimeSubResources<ResourcesView>)
                 {
                     for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
                     {
@@ -185,7 +185,7 @@ namespace amr
                     }
                 }
 
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+                if constexpr (HasCompileTimeSubResources<ResourcesView>)
                 {
                     // unpack the tuple subResources and apply for each element registerResources()
                     // (recursively)
@@ -211,15 +211,15 @@ namespace amr
         void allocate(ResourcesView& obj, SAMRAI::hier::Patch& patch,
                       double const allocateTime) const
         {
-            if constexpr (is_resource<ResourcesView>::value)
+            if constexpr (IsResource<ResourcesView>)
             {
                 allocate_(obj, patch, allocateTime);
             }
             else
             {
-                static_assert(has_sub_resources_v<ResourcesView>);
+                static_assert(HasSubResources<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+                if constexpr (HasRunTimeSubResources<ResourcesView>)
                 {
                     for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
                     {
@@ -227,7 +227,7 @@ namespace amr
                     }
                 }
 
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+                if constexpr (HasCompileTimeSubResources<ResourcesView>)
                 {
                     // unpack the tuple subResources and apply for each element registerResources()
                     std::apply([this, &patch, allocateTime](auto&... subResource) //
@@ -458,7 +458,7 @@ namespace amr
         template<typename ResourcesView>
         void getIDs_(ResourcesView& obj, std::vector<int>& IDs) const
         {
-            if constexpr (is_resource<ResourcesView>::value)
+            if constexpr (IsResource<ResourcesView>)
             {
                 auto foundIt = nameToResourceInfo_.find(obj.name());
                 if (foundIt == nameToResourceInfo_.end())
@@ -467,7 +467,7 @@ namespace amr
             }
             else
             {
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+                if constexpr (HasRunTimeSubResources<ResourcesView>)
                 {
                     for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
                     {
@@ -476,7 +476,7 @@ namespace amr
                     }
                 }
 
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+                if constexpr (HasCompileTimeSubResources<ResourcesView>)
                 {
                     // unpack the tuple subResources and apply for each element
                     // registerResources()
@@ -525,13 +525,13 @@ namespace amr
         {
             using ResourcesView = decltype(obj);
 
-            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+            if constexpr (HasRunTimeSubResources<ResourcesView>)
                 for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
                     fn(runtimeResource, args...);
 
             // unpack the tuple subResources and apply for each element registerResources()
             //  (recursively)
-            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+            if constexpr (HasCompileTimeSubResources<ResourcesView>)
                 std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
                            obj.getCompileTimeResourcesViewList());
         }
@@ -540,13 +540,13 @@ namespace amr
         template<typename ResourcesView>
         void setResources_(ResourcesView& obj, SAMRAI::hier::Patch const& patch) const
         {
-            if constexpr (is_resource<ResourcesView>::value)
+            if constexpr (IsResource<ResourcesView>)
             {
                 setResourcesInternal_(obj, patch);
             }
             else
             {
-                static_assert(has_sub_resources_v<ResourcesView>);
+                static_assert(HasSubResources<ResourcesView>);
 
                 handle_sub_resources( //
                     [&](auto&&... args) { this->setResources_(args...); }, obj, patch);
@@ -556,13 +556,13 @@ namespace amr
         template<typename ResourcesView>
         void unsetResources_(ResourcesView& obj) const
         {
-            if constexpr (is_resource<ResourcesView>::value)
+            if constexpr (IsResource<ResourcesView>)
             {
                 unsetResourcesInternal_(obj);
             }
             else
             {
-                static_assert(has_sub_resources_v<ResourcesView>);
+                static_assert(HasSubResources<ResourcesView>);
                 handle_sub_resources([&](auto&&... args) { this->unsetResources_(args...); }, obj);
             }
         }
