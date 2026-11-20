@@ -185,7 +185,14 @@ public:
                 constexpr auto c = static_cast<Component>(i());
                 auto& Ec         = E(c);
                 auto const& Edc  = Ediss(c);
-                layout_.evalOnBox(Ec, [&](auto&... args) { Ec(args...) += Edc(args...); });
+                layout_.evalOnLines(Ec,
+                                    [&](MeshIndex<dimension> const& first, std::uint32_t const n) {
+                                        double* ec        = &Ec(first);
+                                        double const* edc = &Edc(first);
+                                        PHARE_VECTORIZE_IVDEP
+                                        for (std::uint32_t k = 0; k < n; ++k)
+                                            ec[k] += edc[k];
+                                    });
             });
         }
     }

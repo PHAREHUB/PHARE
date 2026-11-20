@@ -119,13 +119,8 @@ public:
             riemann_fluxes_<direction>(ct_state, state, fluxes, centred);
 
             if (is_resistive_ || is_hyper_resistive_)
-                layout_.evalOnBox(
-                    fluxes.template expose_centering<direction>(), [&](auto&... indices) {
-                        auto F              = fluxes.template get_dir<direction>({indices...});
-                        auto const [Et, Bt] = transverse_on_face_<direction>(
-                            dissipative_electric_state.E(), state.B, {indices...});
-                        equations_.template dissipative_contributions<direction>(Et, Bt, F.Etot);
-                    });
+                dissipative_energy_flux_<direction>(dissipative_electric_state.E(), state.B,
+                                                    fluxes);
         });
     }
 
@@ -413,10 +408,31 @@ private:
         }
     }
 
+    // the Poynting flux of the dissipative E added to the energy flux through the faces normal
+    // to direction: E and B projected to the faces, as (Et x Bt) along direction with the
+    // transverse components a, b in cyclic order
     template<auto direction>
-    auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
+    void dissipative_energy_flux_(auto const& E, auto const& B, auto& fluxes) const
     {
-        auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
+        constexpr auto face = Reconstructor_t::template faceQuantity<direction>();
+
+        auto line = [&]<auto EaQty, auto EbQty, auto BaQty, auto BbQty>(
+                        auto const& Ea, auto const& Eb, auto const& Ba, auto const& Bb) {
+            layout_.evalOnLines(
+                fluxes.template expose_centering<direction>(),
+                [&](MeshIndex<dimension> const& first, std::uint32_t const n) {
+                    auto F0       = fluxes.template get_dir<direction>(first);
+                    double* fE    = &F0.Etot;
+                    auto const ea = GridLayout::template projectLine<EaQty, face>(Ea, first);
+                    auto const eb = GridLayout::template projectLine<EbQty, face>(Eb, first);
+                    auto const ba = GridLayout::template projectLine<BaQty, face>(Ba, first);
+                    auto const bb = GridLayout::template projectLine<BbQty, face>(Bb, first);
+
+                    PHARE_VECTORIZE_IVDEP
+                    for (std::uint32_t k = 0; k < n; ++k)
+                        fE[k] += ea(k) * bb(k) - eb(k) * ba(k);
+                });
+        };
 
         auto const& Ex = E[Component::X];
         auto const& Ey = E[Component::Y];
@@ -426,29 +442,14 @@ private:
         auto const& Bz = B[Component::Z];
 
         if constexpr (direction == Direction::X)
-            return std::make_pair(
-                PerIndexVector<double>{
-                    nan, GridLayout::template project<Scalar::Ey, Scalar::Bx>(Ey, idx),
-                    GridLayout::template project<Scalar::Ez, Scalar::Bx>(Ez, idx)},
-                PerIndexVector<double>{
-                    nan, GridLayout::template project<Scalar::By, Scalar::Bx>(By, idx),
-                    GridLayout::template project<Scalar::Bz, Scalar::Bx>(Bz, idx)});
+            line.template operator()<Scalar::Ey, Scalar::Ez, Scalar::By, Scalar::Bz>(Ey, Ez, By,
+                                                                                     Bz);
         else if constexpr (direction == Direction::Y)
-            return std::make_pair(
-                PerIndexVector<double>{
-                    GridLayout::template project<Scalar::Ex, Scalar::By>(Ex, idx), nan,
-                    GridLayout::template project<Scalar::Ez, Scalar::By>(Ez, idx)},
-                PerIndexVector<double>{
-                    GridLayout::template project<Scalar::Bx, Scalar::By>(Bx, idx), nan,
-                    GridLayout::template project<Scalar::Bz, Scalar::By>(Bz, idx)});
+            line.template operator()<Scalar::Ez, Scalar::Ex, Scalar::Bz, Scalar::Bx>(Ez, Ex, Bz,
+                                                                                     Bx);
         else
-            return std::make_pair(
-                PerIndexVector<double>{
-                    GridLayout::template project<Scalar::Ex, Scalar::Bz>(Ex, idx),
-                    GridLayout::template project<Scalar::Ey, Scalar::Bz>(Ey, idx), nan},
-                PerIndexVector<double>{
-                    GridLayout::template project<Scalar::Bx, Scalar::Bz>(Bx, idx),
-                    GridLayout::template project<Scalar::By, Scalar::Bz>(By, idx), nan});
+            line.template operator()<Scalar::Ex, Scalar::Ey, Scalar::Bx, Scalar::By>(Ex, Ey, Bx,
+                                                                                     By);
     }
 
     GridLayout layout_;
