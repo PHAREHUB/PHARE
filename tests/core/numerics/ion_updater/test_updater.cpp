@@ -3,6 +3,7 @@
 #include "simulator/simulator_def.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/ion_updater/reference/ion_updater.hpp"
 #include "core/numerics/moments/level_ghost_ownership.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -157,11 +158,16 @@ static auto init_dict = createDict();
 
 
 
-template<std::size_t dim, std::size_t interporder>
+template<std::size_t dim, std::size_t interporder, bool reference_ = false>
 struct DimInterp
 {
     static constexpr auto dimension    = dim;
     static constexpr auto interp_order = interporder;
+    static constexpr auto reference    = reference_;
+
+    template<typename... Args>
+    using IonUpdater = std::conditional_t<reference, PHARE::core::reference::IonUpdater<Args...>,
+                                          PHARE::core::IonUpdater<Args...>>;
 };
 
 
@@ -384,8 +390,8 @@ struct IonUpdaterTest : public ::testing::Test
     using ParticleArray = PHARETypes::Hybrid::ParticleArray_t;
     using ParticleInitializerFactory = PHARETypes::Hybrid::ParticleInitializerFactory_t;
 
-    using IonUpdater_t = IonUpdater<Ions, Electromag, GridLayout>;
-    using Boxing_t     = UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using IonUpdater_t = DimInterpT::template IonUpdater<Ions, Electromag, GridLayout>;
+    using Boxing_t     = UpdaterSelectionBoxing<GridLayout, ParticleArray>;
 
 
     double dt{0.01};
@@ -681,7 +687,14 @@ struct IonUpdaterTest : public ::testing::Test
 
 
 
-using DimInterps = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
+// clang-format off
+using DimInterps = ::testing::Types<
+    DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>
+  , DimInterp<1, 1, /*reference*/ true>
+  , DimInterp<1, 2, /*reference*/ true>
+  , DimInterp<1, 3, /*reference*/ true>
+>;
+// clang-format on
 
 
 TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
@@ -1133,8 +1146,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     }
 };
 
-using DimInterps1D = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
-TYPED_TEST_SUITE(IonUpdaterOwnershipTest, DimInterps1D, );
+TYPED_TEST_SUITE(IonUpdaterOwnershipTest, DimInterps, );
 
 
 
@@ -1244,7 +1256,13 @@ struct IonUpdaterNeighbourDomainTest : public IonUpdaterOwnershipTest<DimInterpT
 {
 };
 
-using DimInterps1DTwoGhosts = ::testing::Types<DimInterp<1, 2>, DimInterp<1, 3>>;
+// clang-format off
+using DimInterps1DTwoGhosts = ::testing::Types<
+    DimInterp<1, 2>, DimInterp<1, 3>
+  , DimInterp<1, 2, /*reference*/ true>
+  , DimInterp<1, 3, /*reference*/ true>
+>;
+// clang-format on
 TYPED_TEST_SUITE(IonUpdaterNeighbourDomainTest, DimInterps1DTwoGhosts, );
 
 TYPED_TEST(IonUpdaterNeighbourDomainTest, levelGhostEnteringNeighbourDomainIsDropped)

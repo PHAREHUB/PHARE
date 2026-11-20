@@ -190,7 +190,7 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using Boxing_t = core::UpdaterSelectionBoxing<GridLayout, ParticleArray>;
     struct LevelBoxing
     {
         std::weak_ptr<level_t> level; // identity of the level the boxes were built for
