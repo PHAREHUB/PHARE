@@ -12,6 +12,7 @@
 #include "amr/samrai.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/particles/particles_restart.hpp"
 #include <amr/data/particles/particles_variable_fill_pattern.hpp>
 
 
@@ -115,23 +116,9 @@ namespace amr
         {
             Super::putToRestart(restart_db);
 
-            using Packer = core::ParticlePacker<dim>;
-
-            auto putParticles = [&](std::string name, auto& particles) {
-                // SAMRAI errors on writing 0 size arrays
-                if (particles.size() == 0)
-                    return;
-
+            auto putParticles = [&](std::string const& name, auto& particles) {
                 particles.sortMapping();
-
-                Packer packer(particles);
-                core::ContiguousParticles<dim> soa{particles.size()};
-                packer.pack(soa);
-
-                std::size_t part_idx = 0;
-                core::apply(soa.as_tuple(), [&](auto const& arg) {
-                    putVectorToRestart(*restart_db, name + "_" + packer.keys()[part_idx++], arg);
-                });
+                ParticlesRestart::put(*restart_db, name, particles);
             };
 
             putParticles("domainParticles", domainParticles);
@@ -145,38 +132,8 @@ namespace amr
         {
             Super::getFromRestart(restart_db);
 
-            using Packer = core::ParticlePacker<dim>;
-
-            auto getParticles = [&](std::string const name, auto& particles) {
-                std::array<bool, Packer::n_keys> keys_exist = core::generate_from(
-                    [&](auto const& key) { return restart_db->keyExists(name + "_" + key); },
-                    Packer::keys());
-
-                bool all  = core::all(keys_exist);
-                bool none = core::none(keys_exist);
-                if (!(all or none))
-                    throw std::runtime_error("ParticlesData::getFromRestart has been given an "
-                                             "invalid input file, inconsistent state detected");
-
-                if (none) // can't read what doesn't exist
-                    return;
-
-                auto n_particles
-                    = restart_db->getArraySize(name + "_" + Packer::arbitrarySingleValueKey());
-                core::ContiguousParticles<dim> soa{n_particles};
-
-                {
-                    std::size_t part_idx = 0;
-                    core::apply(soa.as_tuple(), [&](auto& arg) {
-                        getVectorFromRestart(*restart_db, name + "_" + Packer::keys()[part_idx++],
-                                             arg);
-                    });
-                }
-
-                assert(particles.size() == 0);
-                particles.reserve(n_particles);
-                for (std::size_t i = 0; i < n_particles; ++i)
-                    particles.push_back(soa.copy(i));
+            auto getParticles = [&](std::string const& name, auto& particles) {
+                ParticlesRestart::get(*restart_db, name, particles);
             };
 
             getParticles("domainParticles", domainParticles);
