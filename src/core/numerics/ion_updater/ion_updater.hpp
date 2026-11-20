@@ -2,24 +2,28 @@
 #define PHARE_ION_UPDATER_HPP
 
 
+#include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
-#include "core/numerics/pusher/pusher.hpp"
+#include "core/numerics/pusher/boris.hpp"
 #include "core/numerics/moments/moments.hpp"
-#include "core/numerics/pusher/pusher_factory.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
-#include "core/numerics/boundary_condition/boundary_condition.hpp"
 
 #include "initializer/data_provider.hpp"
 
 
-#include <memory>
+#include <array>
+#include <string>
+#include <sstream>
+#include <cstddef>
+#include <stdexcept>
+#include <functional>
 
 
 namespace PHARE::core
 {
-enum class UpdaterMode { domain_only = 1, all = 2 };
+enum class UpdaterMode { in_place = 0, copy };
 
 template<typename Ions, typename Electromag, typename GridLayout>
 class IonUpdater
@@ -30,37 +34,29 @@ public:
     static constexpr auto dimension    = GridLayout::dimension;
     static constexpr auto interp_order = GridLayout::options.interp_order;
 
-    using Box               = PHARE::core::Box<int, dimension>;
-    using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
-    using VecField          = Ions::vecfield_type;
-    using ParticleArray     = Ions::particle_array_type;
-    using Particle_t        = ParticleArray::Particle_t;
-    using PartIterator      = ParticleArray::iterator;
-    using ParticleRange     = IndexRange<ParticleArray>;
-    using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
-    using Pusher = PHARE::core::Pusher<dimension, ParticleRange, Electromag, Interpolator,
-                                       BoundaryCondition, GridLayout>;
+    using Box           = PHARE::core::Box<int, dimension>;
+    using Interpolator  = PHARE::core::Interpolator<dimension, interp_order>;
+    using VecField      = Ions::vecfield_type;
+    using ParticleArray = Ions::particle_array_type;
+    using Particle_t    = ParticleArray::Particle_t;
+    using PartIterator  = ParticleArray::iterator;
+    using ParticleRange = IndexRange<ParticleArray>;
+
+    class Pusher;
 
 private:
-    constexpr static auto makePusher
-        = PHARE::core::PusherFactory::makePusher<dimension, ParticleRange, Electromag, Interpolator,
-                                                 BoundaryCondition, GridLayout>;
-
-    std::unique_ptr<Pusher> pusher_;
     Interpolator interpolator_;
 
 public:
     IonUpdater(PHARE::initializer::PHAREDict const& dict)
-        : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
     {
+        if (dict["pusher"]["name"].template to<std::string>() != "modified_boris")
+            throw std::runtime_error("Error : Invalid Pusher name");
     }
 
     template<typename Boxing_t>
-    void updatePopulations(Ions& ions, Electromag const& em, Boxing_t const& boxing, double dt,
-                           UpdaterMode = UpdaterMode::all);
-
-
-    void updateIons(Ions& ions);
+    void updatePopulations(UpdaterMode const mode, Ions& ions, Electromag const& em,
+                           Boxing_t const& boxing, double const dt);
 
 
     void reset()
@@ -72,10 +68,12 @@ public:
 
 private:
     template<typename Boxing_t>
-    void updateAndDepositDomain_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
+    void updateAndDepositDomain_(Ions& ions, Electromag const& em, Boxing_t const& boxing,
+                                 double const dt);
 
     template<typename Boxing_t>
-    void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
+    void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing,
+                              double const dt);
 
 
     // dealloced on regridding/load balancing coarsest
@@ -84,36 +82,56 @@ private:
 
 
 
+template<typename Ions, typename Electromag, typename GridLayout>
+class IonUpdater<Ions, Electromag, GridLayout>::Pusher
+{
+public:
+    using ParticleSelector = std::function<ParticleRange(ParticleRange&)>;
+
+    Pusher(double const dt, double const charge, double const mass, GridLayout const& layout)
+        : layout_{layout}
+        , coef1_{charge * 0.5 * dt / mass}
+        , halfDtOverDl_{
+              for_N_make_array<dimension>([&](auto i) { return 0.5 * dt / layout.meshSize()[i]; })}
+    {
+    }
+
+    // This move function should be considered when being used so that all particles are pushed
+    // twice - see: https://github.com/PHAREHUB/PHARE/issues/571
+    auto move(auto const& rangeIn, auto& rangeOut, auto const& emFields, auto& interpolator,
+              auto const& firstSelector, auto const& secondSelector) const;
+
+private:
+    void prePushStep_(auto const& rangeIn, auto& rangeOut) const;
+    void postPushStep_(auto& range, std::size_t const idx) const;
+
+    GridLayout const layout_;
+    double const coef1_;
+    std::array<double, dimension> const halfDtOverDl_;
+};
+
+
+
 
 template<typename Ions, typename Electromag, typename GridLayout>
 template<typename Boxing_t>
-void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Electromag const& em,
-                                                                 Boxing_t const& boxing, double dt,
-                                                                 UpdaterMode mode)
+void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(UpdaterMode const mode, Ions& ions,
+                                                                 Electromag const& em,
+                                                                 Boxing_t const& boxing,
+                                                                 double const dt)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updatePopulations");
 
     resetMoments(ions);
-    pusher_->setMeshAndTimeStep(boxing.layout.meshSize(), dt);
 
-    if (mode == UpdaterMode::domain_only)
+    if (mode == UpdaterMode::copy)
     {
-        updateAndDepositDomain_(ions, em, boxing);
+        updateAndDepositDomain_(ions, em, boxing, dt);
     }
     else
     {
-        updateAndDepositAll_(ions, em, boxing);
+        updateAndDepositAll_(ions, em, boxing, dt);
     }
-}
-
-
-
-template<typename Ions, typename Electromag, typename GridLayout>
-void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
-{
-    ions.computeChargeDensity();
-    ions.computeBulkVelocity();
-    ions.computeChargeFlux();
 }
 
 // this is to detach how we partition particles from the updater directly
@@ -187,7 +205,8 @@ template<typename Ions, typename Electromag, typename GridLayout>
 template<typename Boxing_t>
 void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ions,
                                                                        Electromag const& em,
-                                                                       Boxing_t const& boxing)
+                                                                       Boxing_t const& boxing,
+                                                                       double const dt)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositDomain_");
 
@@ -195,14 +214,15 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
     for (auto& pop : ions)
     {
+        Pusher const pusher{dt, pop.charge(), pop.mass(), layout};
+
         auto& domain = (tmp_particles_ = pop.domainParticles()); // make local copy
 
         // first push all domain particles twice
         // accumulate those inNonLevelGhostBox
         auto outRange = makeIndexRange(domain);
-        auto allowed  = outRange
-            = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_, layout,
-                            boxing.noop, boxing.inNonLevelGhostBox);
+        auto allowed = outRange = pusher.move(outRange, outRange, em, interpolator_, boxing.noop,
+                                              boxing.inNonLevelGhostBox);
 
         interpolator_(allowed, pop.particleDensity(), pop.flux(), layout);
 
@@ -215,9 +235,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
             auto outRange = makeIndexRange(tmp_particles_);
 
-            auto enteredInDomain
-                = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_,
-                                layout, boxing.inGhostBox, boxing.inOwnedDomain);
+            auto enteredInDomain = pusher.move(outRange, outRange, em, interpolator_,
+                                               boxing.inGhostBox, boxing.inOwnedDomain);
 
             interpolator_(enteredInDomain, pop.particleDensity(), pop.flux(), layout);
         };
@@ -246,7 +265,8 @@ template<typename Ions, typename Electromag, typename GridLayout>
 template<typename Boxing_t>
 void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                                                                     Electromag const& em,
-                                                                    Boxing_t const& boxing)
+                                                                    Boxing_t const& boxing,
+                                                                    double const dt)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositAll_");
 
@@ -258,12 +278,13 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
     // finally all particles in non level ghost box are to be interpolated on mesh.
     for (auto& pop : ions)
     {
+        Pusher const pusher{dt, pop.charge(), pop.mass(), layout};
+
         auto& domainParticles = pop.domainParticles();
         auto domainPartRange  = makeIndexRange(domainParticles);
 
-        auto inDomain
-            = pusher_->move(domainPartRange, domainPartRange, em, pop.charge(), pop.mass(),
-                            interpolator_, layout, boxing.noop, boxing.inOwnedDomain);
+        auto inDomain = pusher.move(domainPartRange, domainPartRange, em, interpolator_,
+                                    boxing.noop, boxing.inOwnedDomain);
 
         auto now_ghosts = makeRange(domainParticles, inDomain.iend(), domainParticles.size());
         auto const not_level_ghosts = boxing.inNonLevelGhostBox(now_ghosts);
@@ -293,10 +314,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
 
         if (pop.levelGhostParticles().size())
         {
-            auto particleRange = makeIndexRange(pop.levelGhostParticles());
-            auto inGhostLayerRange
-                = pusher_->move(particleRange, particleRange, em, pop.charge(), pop.mass(),
-                                interpolator_, layout, boxing.inGhostBox, boxing.inLevelGhostLayer);
+            auto particleRange     = makeIndexRange(pop.levelGhostParticles());
+            auto inGhostLayerRange = pusher.move(particleRange, particleRange, em, interpolator_,
+                                                 boxing.inGhostBox, boxing.inLevelGhostLayer);
 
             auto& particleArray = particleRange.array();
             particleArray.export_particles(domainParticles,
@@ -313,6 +333,118 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
     }
 }
 
+
+
+template<typename Ions, typename Electromag, typename GridLayout>
+auto IonUpdater<Ions, Electromag, GridLayout>::Pusher::move(auto const& rangeIn, auto& rangeOut,
+                                                            auto const& emFields,
+                                                            auto& interpolator,
+                                                            auto const& firstSelector,
+                                                            auto const& secondSelector) const
+{
+    PHARE_LOG_SCOPE(3, "Boris::move_no_bc");
+
+
+    // push the particles of half a step
+    // rangeIn : t=n, rangeOut : t=n+1/2
+    // Do not partition on this step - this is to keep all domain and ghost
+    //   particles consistent. see: https://github.com/PHAREHUB/PHARE/issues/571
+    prePushStep_(rangeIn, rangeOut);
+    rangeOut = firstSelector(rangeOut);
+
+    for (auto idx = rangeOut.ibegin(); idx < rangeOut.iend(); ++idx)
+    {
+        auto& currPart = rangeOut.array()[idx];
+
+        //  get electromagnetic fields interpolated on the particles of rangeOut stop at newEnd.
+        //  get the particle velocity from t=n to t=n+1
+        auto const& local_em = interpolator(currPart, emFields, layout_);
+        boris::accelerate(currPart, local_em, coef1_);
+
+        // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
+        // and get a pointer to the first leaving particle
+        try
+        {
+            postPushStep_(rangeOut, idx);
+        }
+        catch (DictionaryException const& bex)
+        {
+            auto ex            = bex;
+            auto const& [e, b] = local_em;
+            for (std::uint16_t i = 0; i < 3; ++i)
+                ex("E_" + std::to_string(i), std::to_string(e[i]));
+            for (std::uint16_t i = 0; i < 3; ++i)
+                ex("B_" + std::to_string(i), std::to_string(b[i]));
+            ex("level", std::to_string(layout_.levelNumber()));
+            throw ex;
+        }
+    }
+
+    return secondSelector(rangeOut);
+}
+
+
+
+template<typename Ions, typename Electromag, typename GridLayout>
+void IonUpdater<Ions, Electromag, GridLayout>::Pusher::prePushStep_(auto const& rangeIn,
+                                                                    auto& rangeOut) const
+{
+    auto& inParticles  = rangeIn.array();
+    auto& outParticles = rangeOut.array();
+    for (auto inIdx = rangeIn.ibegin(), outIdx = rangeOut.ibegin(); inIdx < rangeIn.iend();
+         ++inIdx, ++outIdx)
+    {
+        // in the first push, this is the first time
+        // we push to rangeOut, which contains crap
+        // the push will only touch the particle position
+        // but the next step being the acceleration of
+        // rangeOut, we need to copy rangeIn weights
+        // and velocity. This is done here although
+        // not strictly speaking this function's business
+        // to take advantage that we're already looping
+        // over rangeIn particles.
+
+        outParticles[outIdx].weight = inParticles[inIdx].weight;
+        outParticles[outIdx].v      = inParticles[inIdx].v;
+
+        try
+        {
+            // advance from the input position, the output may hold another one
+            auto const newCell
+                = boris::advance(inParticles[inIdx], outParticles[outIdx], halfDtOverDl_);
+            if (newCell != outParticles[outIdx].iCell)
+                outParticles.change_icell(newCell, outIdx);
+        }
+        catch (boris::MoveTwoCellException const& e)
+        {
+            std::stringstream ss;
+            ss << "PrePush Particle moved 2 cells with delta/vel: ";
+            ss << e.delta << "/" << e.vel << std::endl;
+            DictionaryException ex{"cause", ss.str()};
+            throw ex;
+        }
+    }
+}
+
+template<typename Ions, typename Electromag, typename GridLayout>
+void IonUpdater<Ions, Electromag, GridLayout>::Pusher::postPushStep_(auto& range,
+                                                                     std::size_t const idx) const
+{
+    try
+    {
+        auto& particles    = range.array();
+        auto const newCell = boris::advance(particles[idx], halfDtOverDl_);
+        if (newCell != particles[idx].iCell)
+            particles.change_icell(newCell, idx);
+    }
+    catch (boris::MoveTwoCellException const& e)
+    {
+        std::stringstream ss;
+        ss << "PostPush Particle moved 2 cells with delta/vel: ";
+        ss << e.delta << "/" << e.vel << std::endl;
+        throw DictionaryException{}("cause", ss.str());
+    }
+}
 
 
 } // namespace PHARE::core
