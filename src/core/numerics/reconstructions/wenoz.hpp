@@ -65,13 +65,19 @@ public:
     // lower and upper face values of the centre cell of a 2 * (nghosts - 1) + 1 stencil
     static auto faces_of(auto const& u)
     {
-        // both faces share the smoothness indicators, only the linear weights differ
-        auto const [r0, r1, r2] = wenoz_ratios_(u[0], u[1], u[2], u[3], u[4]);
+        // both faces share the scaled weights x_k, only the linear weights d_k differ; one
+        // divide serves both normalisations: 1/sR = sL / (sR * sL)
+        auto const [x0, x1, x2] = wenoz_scaled_(u[0], u[1], u[2], u[3], u[4]);
 
-        return std::make_pair(recons_wenoz_R_from_(u[0], u[1], u[2], u[3], u[4],
-                                                   normalized_(r0, r1, r2, dR0, dR1, dR2)),
-                              recons_wenoz_L_from_(u[0], u[1], u[2], u[3], u[4],
-                                                   normalized_(r0, r1, r2, dL0, dL1, dL2)));
+        auto const sR = dR0 * x0 + dR1 * x1 + dR2 * x2;
+        auto const sL = dL0 * x0 + dL1 * x1 + dL2 * x2;
+        auto const nR = recons_wenoz_R_from_(u[0], u[1], u[2], u[3], u[4],
+                                             std::make_tuple(dR0 * x0, dR1 * x1, dR2 * x2));
+        auto const nL = recons_wenoz_L_from_(u[0], u[1], u[2], u[3], u[4],
+                                             std::make_tuple(dL0 * x0, dL1 * x1, dL2 * x2));
+
+        auto const inv = 1. / (sR * sL);
+        return std::make_pair(nR * (sL * inv), nL * (sR * inv));
     }
 
 private:
@@ -85,15 +91,15 @@ private:
     static auto recons_wenoz_L_(auto const ull, auto const ul, auto const u, auto const ur,
                                 auto const urr)
     {
-        auto const [r0, r1, r2] = wenoz_ratios_(ull, ul, u, ur, urr);
-        return recons_wenoz_L_from_(ull, ul, u, ur, urr, normalized_(r0, r1, r2, dL0, dL1, dL2));
+        auto const [x0, x1, x2] = wenoz_scaled_(ull, ul, u, ur, urr);
+        return recons_wenoz_L_from_(ull, ul, u, ur, urr, normalized_(x0, x1, x2, dL0, dL1, dL2));
     }
 
     static auto recons_wenoz_R_(auto const ull, auto const ul, auto const u, auto const ur,
                                 auto const urr)
     {
-        auto const [r0, r1, r2] = wenoz_ratios_(ull, ul, u, ur, urr);
-        return recons_wenoz_R_from_(ull, ul, u, ur, urr, normalized_(r0, r1, r2, dR0, dR1, dR2));
+        auto const [x0, x1, x2] = wenoz_scaled_(ull, ul, u, ur, urr);
+        return recons_wenoz_R_from_(ull, ul, u, ur, urr, normalized_(x0, x1, x2, dR0, dR1, dR2));
     }
 
     static auto recons_wenoz_L_from_(auto const ull, auto const ul, auto const u, auto const ur,
@@ -116,9 +122,11 @@ private:
                + wR2 * ((1. / 3.) * urr - (7. / 6.) * ur + (11. / 6.) * u);
     }
 
-    // 1 + tau5 / (beta_k + eps): the stencil-dependent part of the WENO-Z weights, independent
-    // of which face is reconstructed
-    static auto wenoz_ratios_(auto const ull, auto const ul, auto const u, auto const ur,
+    // x_k = (1 + tau5 / (beta_k + eps)) * prod_j (beta_j + eps): the stencil-dependent part of
+    // the WENO-Z weights, independent of which face is reconstructed. The common factor
+    // prod_j (beta_j + eps) cancels in the normalisation and removes the divides. It stays
+    // representable since beta_j + eps >= 1e-40 and beta_j ~ |du|^2 (|du| << 1e25).
+    static auto wenoz_scaled_(auto const ull, auto const ul, auto const u, auto const ur,
                               auto const urr)
     {
         static constexpr auto eps = 1.e-40;
@@ -132,8 +140,12 @@ private:
 
         auto const tau5 = std::abs(beta0 - beta2);
 
-        return std::make_tuple(1. + tau5 / (beta0 + eps), 1. + tau5 / (beta1 + eps),
-                               1. + tau5 / (beta2 + eps));
+        auto const D0 = beta0 + eps;
+        auto const D1 = beta1 + eps;
+        auto const D2 = beta2 + eps;
+
+        return std::make_tuple((D0 + tau5) * (D1 * D2), (D1 + tau5) * (D0 * D2),
+                               (D2 + tau5) * (D0 * D1));
     }
 
     static auto normalized_(auto const r0, auto const r1, auto const r2, auto const d0,
@@ -143,9 +155,9 @@ private:
         auto const alpha1 = d1 * r1;
         auto const alpha2 = d2 * r2;
 
-        auto const sum_alpha = alpha0 + alpha1 + alpha2;
+        auto const inv_sum = 1. / (alpha0 + alpha1 + alpha2);
 
-        return std::make_tuple(alpha0 / sum_alpha, alpha1 / sum_alpha, alpha2 / sum_alpha);
+        return std::make_tuple(alpha0 * inv_sum, alpha1 * inv_sum, alpha2 * inv_sum);
     }
 };
 
