@@ -66,32 +66,26 @@ public:
         : ISolver<AMR_Types>{"MHDSolver"}
         , fluxes_{{"rho_fx", MHDQuantity::Scalar::ScalarFlux_x},
                   {"rhoV_fx", MHDQuantity::Vector::VecFlux_x},
-                  {"B_fx", MHDQuantity::Vector::VecFlux_x},
                   {"Etot_fx", MHDQuantity::Scalar::ScalarFlux_x},
 
                   {"rho_fy", MHDQuantity::Scalar::ScalarFlux_y},
                   {"rhoV_fy", MHDQuantity::Vector::VecFlux_y},
-                  {"B_fy", MHDQuantity::Vector::VecFlux_y},
                   {"Etot_fy", MHDQuantity::Scalar::ScalarFlux_y},
 
                   {"rho_fz", MHDQuantity::Scalar::ScalarFlux_z},
                   {"rhoV_fz", MHDQuantity::Vector::VecFlux_z},
-                  {"B_fz", MHDQuantity::Vector::VecFlux_z},
                   {"Etot_fz", MHDQuantity::Scalar::ScalarFlux_z}}
         , evolve_{dict}
         , fluxSum_{{"sumRho_fx", MHDQuantity::Scalar::ScalarFlux_x},
                    {"sumRhoV_fx", MHDQuantity::Vector::VecFlux_x},
-                   {"sumB_fx", MHDQuantity::Vector::VecFlux_x},
                    {"sumEtot_fx", MHDQuantity::Scalar::ScalarFlux_x},
 
                    {"sumRho_fy", MHDQuantity::Scalar::ScalarFlux_y},
                    {"sumRhoV_fy", MHDQuantity::Vector::VecFlux_y},
-                   {"sumB_fy", MHDQuantity::Vector::VecFlux_y},
                    {"sumEtot_fy", MHDQuantity::Scalar::ScalarFlux_y},
 
                    {"sumRho_fz", MHDQuantity::Scalar::ScalarFlux_z},
                    {"sumRhoV_fz", MHDQuantity::Vector::VecFlux_z},
-                   {"sumB_fz", MHDQuantity::Vector::VecFlux_z},
                    {"sumEtot_fz", MHDQuantity::Scalar::ScalarFlux_z}}
         , gamma_{dict["to_primitive"]["heat_capacity_ratio"].template to<double>()}
         , eta_{dict["constrained_transport"]["resistivity"].template to<double>()}
@@ -154,42 +148,36 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::registerResources(
 
     mhdmodel.resourcesManager->registerResources(fluxes_.rho_fx);
     mhdmodel.resourcesManager->registerResources(fluxes_.rhoV_fx);
-    mhdmodel.resourcesManager->registerResources(fluxes_.B_fx);
     mhdmodel.resourcesManager->registerResources(fluxes_.Etot_fx);
 
     if constexpr (dimension >= 2)
     {
         mhdmodel.resourcesManager->registerResources(fluxes_.rho_fy);
         mhdmodel.resourcesManager->registerResources(fluxes_.rhoV_fy);
-        mhdmodel.resourcesManager->registerResources(fluxes_.B_fy);
         mhdmodel.resourcesManager->registerResources(fluxes_.Etot_fy);
 
         if constexpr (dimension == 3)
         {
             mhdmodel.resourcesManager->registerResources(fluxes_.rho_fz);
             mhdmodel.resourcesManager->registerResources(fluxes_.rhoV_fz);
-            mhdmodel.resourcesManager->registerResources(fluxes_.B_fz);
             mhdmodel.resourcesManager->registerResources(fluxes_.Etot_fz);
         }
     }
 
     mhdmodel.resourcesManager->registerResources(fluxSum_.rho_fx);
     mhdmodel.resourcesManager->registerResources(fluxSum_.rhoV_fx);
-    mhdmodel.resourcesManager->registerResources(fluxSum_.B_fx);
     mhdmodel.resourcesManager->registerResources(fluxSum_.Etot_fx);
 
     if constexpr (dimension >= 2)
     {
         mhdmodel.resourcesManager->registerResources(fluxSum_.rho_fy);
         mhdmodel.resourcesManager->registerResources(fluxSum_.rhoV_fy);
-        mhdmodel.resourcesManager->registerResources(fluxSum_.B_fy);
         mhdmodel.resourcesManager->registerResources(fluxSum_.Etot_fy);
 
         if constexpr (dimension == 3)
         {
             mhdmodel.resourcesManager->registerResources(fluxSum_.rho_fz);
             mhdmodel.resourcesManager->registerResources(fluxSum_.rhoV_fz);
-            mhdmodel.resourcesManager->registerResources(fluxSum_.B_fz);
             mhdmodel.resourcesManager->registerResources(fluxSum_.Etot_fz);
         }
     }
@@ -209,42 +197,36 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::allocate(
 
     mhdmodel.resourcesManager->allocate(fluxes_.rho_fx, patch, allocateTime);
     mhdmodel.resourcesManager->allocate(fluxes_.rhoV_fx, patch, allocateTime);
-    mhdmodel.resourcesManager->allocate(fluxes_.B_fx, patch, allocateTime);
     mhdmodel.resourcesManager->allocate(fluxes_.Etot_fx, patch, allocateTime);
 
     if constexpr (dimension >= 2)
     {
         mhdmodel.resourcesManager->allocate(fluxes_.rho_fy, patch, allocateTime);
         mhdmodel.resourcesManager->allocate(fluxes_.rhoV_fy, patch, allocateTime);
-        mhdmodel.resourcesManager->allocate(fluxes_.B_fy, patch, allocateTime);
         mhdmodel.resourcesManager->allocate(fluxes_.Etot_fy, patch, allocateTime);
 
         if constexpr (dimension == 3)
         {
             mhdmodel.resourcesManager->allocate(fluxes_.rho_fz, patch, allocateTime);
             mhdmodel.resourcesManager->allocate(fluxes_.rhoV_fz, patch, allocateTime);
-            mhdmodel.resourcesManager->allocate(fluxes_.B_fz, patch, allocateTime);
             mhdmodel.resourcesManager->allocate(fluxes_.Etot_fz, patch, allocateTime);
         }
     }
 
     mhdmodel.resourcesManager->allocate(fluxSum_.rho_fx, patch, allocateTime);
     mhdmodel.resourcesManager->allocate(fluxSum_.rhoV_fx, patch, allocateTime);
-    mhdmodel.resourcesManager->allocate(fluxSum_.B_fx, patch, allocateTime);
     mhdmodel.resourcesManager->allocate(fluxSum_.Etot_fx, patch, allocateTime);
 
     if constexpr (dimension >= 2)
     {
         mhdmodel.resourcesManager->allocate(fluxSum_.rho_fy, patch, allocateTime);
         mhdmodel.resourcesManager->allocate(fluxSum_.rhoV_fy, patch, allocateTime);
-        mhdmodel.resourcesManager->allocate(fluxSum_.B_fy, patch, allocateTime);
         mhdmodel.resourcesManager->allocate(fluxSum_.Etot_fy, patch, allocateTime);
 
         if constexpr (dimension == 3)
         {
             mhdmodel.resourcesManager->allocate(fluxSum_.rho_fz, patch, allocateTime);
             mhdmodel.resourcesManager->allocate(fluxSum_.rhoV_fz, patch, allocateTime);
-            mhdmodel.resourcesManager->allocate(fluxSum_.B_fz, patch, allocateTime);
             mhdmodel.resourcesManager->allocate(fluxSum_.Etot_fz, patch, allocateTime);
         }
     }

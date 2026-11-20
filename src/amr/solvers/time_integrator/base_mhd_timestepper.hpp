@@ -33,17 +33,14 @@ public:
     BaseMHDTimestepper(PHARE::initializer::PHAREDict const& dict, std::size_t const n_extra_states)
         : butcherFluxes_{{"timeRho_fx", core::MHDQuantity::Scalar::ScalarFlux_x},
                          {"timeRhoV_fx", core::MHDQuantity::Vector::VecFlux_x},
-                         {"timeB_fx", core::MHDQuantity::Vector::VecFlux_x},
                          {"timeEtot_fx", core::MHDQuantity::Scalar::ScalarFlux_x},
 
                          {"timeRho_fy", core::MHDQuantity::Scalar::ScalarFlux_y},
                          {"timeRhoV_fy", core::MHDQuantity::Vector::VecFlux_y},
-                         {"timeB_fy", core::MHDQuantity::Vector::VecFlux_y},
                          {"timeEtot_fy", core::MHDQuantity::Scalar::ScalarFlux_y},
 
                          {"timeRho_fz", core::MHDQuantity::Scalar::ScalarFlux_z},
                          {"timeRhoV_fz", core::MHDQuantity::Vector::VecFlux_z},
-                         {"timeB_fz", core::MHDQuantity::Vector::VecFlux_z},
                          {"timeEtot_fz", core::MHDQuantity::Scalar::ScalarFlux_z}}
         , butcherE_{"timeE", core::MHDQuantity::Vector::E}
     {

@@ -163,6 +163,17 @@ struct get_value_type<T>
 template<typename T>
 using value_type_t = get_value_type<T>::type;
 
+// one face's flux values, by reference
+template<typename Float>
+struct FaceFlux
+{
+    Float& rho;
+    PerIndexVector<Float&> rhoV;
+    Float& Etot;
+};
+
+// the Godunov face fluxes of the hydro variables; B has none, it evolves through the
+// constrained-transport electric field
 template<typename Field, typename VecField>
 struct AllFluxes
 {
@@ -173,8 +184,8 @@ struct AllFluxes
         requires((ViewVector<Field>) && (ViewVector<VecField>))
     {
         return AllFluxes<value_type_t<Field>, value_type_t<VecField>>{
-            rho_fx[i], rhoV_fx[i], B_fx[i],   Etot_fx[i], rho_fy[i], rhoV_fy[i],
-            B_fy[i],   Etot_fy[i], rho_fz[i], rhoV_fz[i], B_fz[i],   Etot_fz[i]};
+            rho_fx[i],  rhoV_fx[i], Etot_fx[i], rho_fy[i], rhoV_fy[i],
+            Etot_fy[i], rho_fz[i],  rhoV_fz[i], Etot_fz[i]};
     }
 
     template<auto direction>
@@ -184,26 +195,20 @@ struct AllFluxes
         using Float = Field::value_type;
 
         if constexpr (direction == Direction::X)
-            return PerIndex<Float&>{
-                rho_fx(index),
-                {rhoV_fx(Component::X)(index), rhoV_fx(Component::Y)(index),
-                 rhoV_fx(Component::Z)(index)},
-                {B_fx(Component::X)(index), B_fx(Component::Y)(index), B_fx(Component::Z)(index)},
-                Etot_fx(index)};
+            return FaceFlux<Float>{rho_fx(index),
+                                   {rhoV_fx[Component::X](index), rhoV_fx[Component::Y](index),
+                                    rhoV_fx[Component::Z](index)},
+                                   Etot_fx(index)};
         else if constexpr (direction == Direction::Y)
-            return PerIndex<Float&>{
-                rho_fy(index),
-                {rhoV_fy(Component::X)(index), rhoV_fy(Component::Y)(index),
-                 rhoV_fy(Component::Z)(index)},
-                {B_fy(Component::X)(index), B_fy(Component::Y)(index), B_fy(Component::Z)(index)},
-                Etot_fy(index)};
+            return FaceFlux<Float>{rho_fy(index),
+                                   {rhoV_fy[Component::X](index), rhoV_fy[Component::Y](index),
+                                    rhoV_fy[Component::Z](index)},
+                                   Etot_fy(index)};
         else if constexpr (direction == Direction::Z)
-            return PerIndex<Float&>{
-                rho_fz(index),
-                {rhoV_fz(Component::X)(index), rhoV_fz(Component::Y)(index),
-                 rhoV_fz(Component::Z)(index)},
-                {B_fz(Component::X)(index), B_fz(Component::Y)(index), B_fz(Component::Z)(index)},
-                Etot_fz(index)};
+            return FaceFlux<Float>{rho_fz(index),
+                                   {rhoV_fz[Component::X](index), rhoV_fz[Component::Y](index),
+                                    rhoV_fz[Component::Z](index)},
+                                   Etot_fz(index)};
     }
 
     template<auto direction>
@@ -221,13 +226,12 @@ struct AllFluxes
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         if constexpr (dimension == 1)
-            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx);
+            return std::forward_as_tuple(rho_fx, rhoV_fx, Etot_fx);
         else if constexpr (dimension == 2)
-            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
-                                         Etot_fy);
+            return std::forward_as_tuple(rho_fx, rhoV_fx, Etot_fx, rho_fy, rhoV_fy, Etot_fy);
         else if constexpr (dimension == 3)
-            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
-                                         Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
+            return std::forward_as_tuple(rho_fx, rhoV_fx, Etot_fx, rho_fy, rhoV_fy, Etot_fy, rho_fz,
+                                         rhoV_fz, Etot_fz);
         else
             throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
@@ -235,13 +239,12 @@ struct AllFluxes
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         if constexpr (dimension == 1)
-            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx);
+            return std::forward_as_tuple(rho_fx, rhoV_fx, Etot_fx);
         else if constexpr (dimension == 2)
-            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
-                                         Etot_fy);
+            return std::forward_as_tuple(rho_fx, rhoV_fx, Etot_fx, rho_fy, rhoV_fy, Etot_fy);
         else if constexpr (dimension == 3)
-            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
-                                         Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
+            return std::forward_as_tuple(rho_fx, rhoV_fx, Etot_fx, rho_fy, rhoV_fy, Etot_fy, rho_fz,
+                                         rhoV_fz, Etot_fz);
         else
             throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
@@ -250,37 +253,31 @@ struct AllFluxes
     {
         rho_fx.zero();
         rhoV_fx.zero();
-        B_fx.zero();
         Etot_fx.zero();
         if constexpr (dimension >= 2)
         {
             rho_fy.zero();
             rhoV_fy.zero();
-            B_fy.zero();
             Etot_fy.zero();
         }
         if constexpr (dimension == 3)
         {
             rho_fz.zero();
             rhoV_fz.zero();
-            B_fz.zero();
             Etot_fz.zero();
         }
     }
 
     Field rho_fx;
     VecField rhoV_fx;
-    VecField B_fx;
     Field Etot_fx;
 
     Field rho_fy;
     VecField rhoV_fy;
-    VecField B_fy;
     Field Etot_fy;
 
     Field rho_fz;
     VecField rhoV_fz;
-    VecField B_fz;
     Field Etot_fz;
 };
 
@@ -288,17 +285,14 @@ struct AllFluxesNames
 {
     std::string rho_fx;
     std::string rhoV_fx;
-    std::string B_fx;
     std::string Etot_fx;
 
     std::string rho_fy;
     std::string rhoV_fy;
-    std::string B_fy;
     std::string Etot_fy;
 
     std::string rho_fz;
     std::string rhoV_fz;
-    std::string B_fz;
     std::string Etot_fz;
 
     AllFluxesNames() = default;
@@ -307,15 +301,12 @@ struct AllFluxesNames
     explicit AllFluxesNames(AllFluxesT const& f)
         : rho_fx{f.rho_fx.name()}
         , rhoV_fx{f.rhoV_fx.name()}
-        , B_fx{f.B_fx.name()}
         , Etot_fx{f.Etot_fx.name()}
         , rho_fy{f.rho_fy.name()}
         , rhoV_fy{f.rhoV_fy.name()}
-        , B_fy{f.B_fy.name()}
         , Etot_fy{f.Etot_fy.name()}
         , rho_fz{f.rho_fz.name()}
         , rhoV_fz{f.rhoV_fz.name()}
-        , B_fz{f.B_fz.name()}
         , Etot_fz{f.Etot_fz.name()}
     {
     }
@@ -327,21 +318,18 @@ void operate(AllFluxes<Field, VecField>& dst, AllFluxes<Field, VecField> const& 
 {
     operate<Op>(dst.rho_fx, src.rho_fx, args...);
     operate<Op>(dst.rhoV_fx, src.rhoV_fx, args...);
-    operate<Op>(dst.B_fx, src.B_fx, args...);
     operate<Op>(dst.Etot_fx, src.Etot_fx, args...);
 
     if constexpr (AllFluxes<Field, VecField>::dimension >= 2)
     {
         operate<Op>(dst.rho_fy, src.rho_fy, args...);
         operate<Op>(dst.rhoV_fy, src.rhoV_fy, args...);
-        operate<Op>(dst.B_fy, src.B_fy, args...);
         operate<Op>(dst.Etot_fy, src.Etot_fy, args...);
     }
     if constexpr (AllFluxes<Field, VecField>::dimension == 3)
     {
         operate<Op>(dst.rho_fz, src.rho_fz, args...);
         operate<Op>(dst.rhoV_fz, src.rhoV_fz, args...);
-        operate<Op>(dst.B_fz, src.B_fz, args...);
         operate<Op>(dst.Etot_fz, src.Etot_fz, args...);
     }
 }

@@ -1,6 +1,7 @@
 #ifndef CORE_NUMERICS_MHD_EQUATIONS_HPP
 #define CORE_NUMERICS_MHD_EQUATIONS_HPP
 
+#include "core/def.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
@@ -19,7 +20,7 @@ public:
     }
 
     template<auto direction>
-    auto compute(auto const& u) const
+    PHARE_ALWAYS_INLINE auto compute(auto const& u) const
     {
         auto const rho = u.rho;
         auto const V   = u.V;
@@ -39,7 +40,7 @@ public:
             auto F_By    = B.y * V.x - V.y * B.x;
             auto F_Bz    = B.z * V.x - V.z * B.x;
             auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.x
-                           - B.x * (V.x * B.x + V.y * B.y + V.z * B.z);
+                          - B.x * (V.x * B.x + V.y * B.y + V.z * B.z);
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -53,7 +54,7 @@ public:
             auto F_By    = 0.0;
             auto F_Bz    = B.z * V.y - V.z * B.y;
             auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.y
-                           - B.y * (V.x * B.x + V.y * B.y + V.z * B.z);
+                          - B.y * (V.x * B.x + V.y * B.y + V.z * B.z);
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -67,14 +68,14 @@ public:
             auto F_By    = B.y * V.z - V.y * B.z;
             auto F_Bz    = 0.0;
             auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.z
-                           - B.z * (V.x * B.x + V.y * B.y + V.z * B.z);
+                          - B.z * (V.x * B.x + V.y * B.y + V.z * B.z);
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
     }
 
     template<auto direction>
-    auto compute(auto const& u, auto const& J) const
+    PHARE_ALWAYS_INLINE auto compute(auto const& u, auto const& J) const
     {
         PerIndex f = compute<direction>(u);
 
@@ -85,24 +86,18 @@ public:
     }
 
     template<auto direction>
-    void dissipative_contributions(auto const& Et, auto const& Bt, auto& F_B, auto& F_Etot) const
+    void dissipative_contributions(auto const& Et, auto const& Bt, auto& F_Etot) const
     {
         if constexpr (direction == Direction::X)
         {
-            F_B.y += -Et.z;
-            F_B.z += Et.y;
             F_Etot += Et.y * Bt.z - Et.z * Bt.y;
         }
         if constexpr (direction == Direction::Y)
         {
-            F_B.x += Et.z;
-            F_B.z += -Et.x;
             F_Etot += Et.z * Bt.x - Et.x * Bt.z;
         }
         if constexpr (direction == Direction::Z)
         {
-            F_B.x += -Et.y;
-            F_B.y += Et.x;
             F_Etot += Et.x * Bt.y - Et.y * Bt.x;
         }
     }
