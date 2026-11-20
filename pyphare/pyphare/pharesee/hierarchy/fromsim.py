@@ -14,10 +14,15 @@ from .patchlevel import PatchLevel
 def make_layout_for(simulator, patch, qty, dl):
     model = "mhd" if str(qty).startswith("mhd") else "hybrid"
     box = Box(patch.lower, patch.upper)
-    origin = patch.origin
+    origin = np.asarray(patch.origin.split(","), dtype=float)  # "x,y,z" from C++
     if model == "hybrid":
-        # check for particle quantity?
-        return gridlayout.HybridGridLayoutFor(box, origin, dl, simulator.interp_order())
+        return gridlayout.HybridGridLayoutFor(
+            box,
+            origin,
+            dl,
+            simulator.interp_order(),
+            is_particle_layout=(qty == "particles"),
+        )
     return gridlayout.MHDGridLayoutFor(
         box, origin, dl, simulator.simulation.reconstruction
     )
@@ -28,9 +33,9 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 
-    root_cell_width = simulator.cell_width()
+    root_cell_width = np.asarray(simulator.cell_width())
     domain_box = Box([0] * len(root_cell_width), simulator.domain_box())
-    assert len(domain_box.ndim) == len(simulator.domain_box().ndim)
+    assert domain_box.ndim == len(simulator.domain_box())
 
     for ilvl in range(nbr_levels):
         lvl_cell_width = root_cell_width / refinement_ratio**ilvl
@@ -39,13 +44,18 @@ def hierarchy_from_sim(simulator, qty, pop=""):
         getters = quantidic(ilvl, dw)
 
         if isFieldQty(qty):
-            wpatches = getters[qty]()
+            if qty.startswith("flux_"):
+                if pop == "":
+                    raise ValueError("must specify pop argument for flux")
+                wpatches = getters[qty](pop)
+            else:
+                wpatches = getters[qty]()
             for patch in wpatches:
-                patch_datas = {}
                 layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
-                pdata = FieldData(layout, field_qties[qty], patch.data)
-                patch_datas[qty] = pdata
-                patches[ilvl].append(Patch(patch_datas))
+                pdata = FieldData(layout, field_qties[qty], None)
+                # C++ gives the field flat, with its ghost nodes
+                pdata.dataset = np.asarray(patch.data).reshape(pdata.size)
+                patches[ilvl].append(Patch({qty: pdata}))
 
         elif qty == "particles":
             if pop == "":
@@ -66,14 +76,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                 patch_datas = {}
 
                 layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
-                v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
-
-                domain_particles = Particles(
-                    icells=np.asarray(patch.data.iCell),
-                    deltas=np.asarray(patch.data.delta),
-                    v=v,
-                    weights=np.asarray(patch.data.weight),
-                )
+                domain_particles = _particles_from(patch.data, lvl_cell_width)
 
                 patch_datas[pop + "_particles"] = ParticleData(
                     layout, domain_particles, pop
@@ -89,16 +92,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for ghostParticles in ["levelGhost"]:
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
-                        v = np.asarray(dwpatch.data.v)
-                        s = v.size
-                        v = v[:].reshape(int(s / 3), 3)
-
-                        patchGhost_part = Particles(
-                            icells=np.asarray(dwpatch.data.iCell),
-                            deltas=np.asarray(dwpatch.data.delta),
-                            v=v,
-                            weights=np.asarray(dwpatch.data.weight),
-                        )
+                        patchGhost_part = _particles_from(dwpatch.data, lvl_cell_width)
 
                         box = Box(dwpatch.lower, dwpatch.upper)
 
@@ -116,3 +110,16 @@ def hierarchy_from_sim(simulator, qty, pop=""):
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
     return PatchHierarchy({simulator.currentTime(): patch_levels}, domain_box)
+
+
+def _particles_from(contiguous, dl):
+    """Particles from C++ ContiguousParticles, whose members are flat arrays"""
+    ndim = len(dl)
+    weights = np.asarray(contiguous.weight)
+    return Particles(
+        icells=np.asarray(contiguous.iCell).reshape(-1, ndim),
+        deltas=np.asarray(contiguous.delta).reshape(-1, ndim),
+        v=np.asarray(contiguous.v).reshape(-1, 3),
+        weights=weights,
+        dl=np.zeros((weights.size, ndim)) + dl,
+    )
