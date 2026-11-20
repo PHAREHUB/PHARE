@@ -864,11 +864,10 @@ namespace amr
                                                     info->initElectric);
 
             // level 0 only, never refined: an op for the schedule to be valid
+            momentRebalanceRefiners_.addStaticRefiners(info->rebalancedMomentFields, fieldRefineOp_,
+                                                       info->rebalancedMomentFields);
             momentRebalanceRefiners_.addStaticRefiners(
-                info->rebalancedMomentFields, fieldRefineOp_, info->rebalancedMomentFields);
-            momentRebalanceRefiners_.addStaticRefiners(info->rebalancedMomentVecFields,
-                                                       EfieldRefineOp_,
-                                                       info->rebalancedMomentVecFields);
+                info->rebalancedMomentVecFields, EfieldRefineOp_, info->rebalancedMomentVecFields);
 
 
             domainParticlesRefiners_.addStaticRefiners(

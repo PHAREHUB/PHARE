@@ -192,8 +192,8 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
         hybridInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
     }
 
-    hybridInfo.rebalancedMomentFields = {state.ions.chargeDensityName(),
-                                         state.ions.massDensityName()};
+    hybridInfo.rebalancedMomentFields
+        = {state.ions.chargeDensityName(), state.ions.massDensityName()};
     hybridInfo.rebalancedMomentVecFields
         = {state.ions.chargeFlux().name(), state.ions.velocity().name()};
     for (auto const& pop : state.ions)

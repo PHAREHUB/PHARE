@@ -73,16 +73,15 @@ namespace solver
                     regridRefined_(hierarchy, levelNumber, oldLevel, hybridModel, hybMessenger,
                                    initDataTime);
                 else
-                    initRefined_(hierarchy, levelNumber, hybridModel, hybMessenger,
-                                 initDataTime);
+                    initRefined_(hierarchy, levelNumber, hybridModel, hybMessenger, initDataTime);
             }
         }
 
     private:
         // level 0 from the initial condition: particles loaded, B and E ghosts, the moments
         // deposited, J, then E from Ohm's law
-        void initL0_(hierarchy_ptr const& hierarchy, HybridModel& model,
-                     HybridMessenger& messenger, double const time)
+        void initL0_(hierarchy_ptr const& hierarchy, HybridModel& model, HybridMessenger& messenger,
+                     double const time)
         {
             PHARE_LOG_SCOPE(3, "HybridLevelInitializer::initL0_");
             auto& level = amr_types::getLevel(*hierarchy, 0);
@@ -114,8 +113,8 @@ namespace solver
 
         // a new finer level from its coarser level: B, E and the particles refined (E: by
         // initLevel), its level ghost particles split, the moments deposited, J
-        void initRefined_(hierarchy_ptr const& hierarchy, int const levelNumber,
-                          HybridModel& model, HybridMessenger& messenger, double const time)
+        void initRefined_(hierarchy_ptr const& hierarchy, int const levelNumber, HybridModel& model,
+                          HybridMessenger& messenger, double const time)
         {
             PHARE_LOG_SCOPE(3, "HybridLevelInitializer::initRefined_");
             auto& level = amr_types::getLevel(*hierarchy, levelNumber);
@@ -143,8 +142,8 @@ namespace solver
 
         // overlapping patches were each filled over their whole domain, keep particles only on
         // the patch owning their cell
-        void keepOwnedParticles_(hierarchy_ptr const& hierarchy, int const levelNumber,
-                                 auto& level, HybridModel& model)
+        void keepOwnedParticles_(hierarchy_ptr const& hierarchy, int const levelNumber, auto& level,
+                                 HybridModel& model)
         {
             auto& ions           = model.state.ions;
             auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
