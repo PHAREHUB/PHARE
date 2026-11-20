@@ -17,6 +17,7 @@
 #include "initializer/data_provider.hpp"
 
 #include <exception>
+#include <stdexcept>
 
 namespace PHARE
 {
@@ -48,126 +49,164 @@ namespace solver
         {
         }
 
+        // one function per context: level 0 made from the initial condition or rebalanced, a
+        // finer level made from its coarser level or regridded
         virtual void initialize(hierarchy_ptr const& hierarchy, int levelNumber,
                                 level_ptr const& oldLevel, IPhysicalModelT& model,
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                                 bool isRegridding) override
         {
-            core::Interpolator<dimension, interp_order> interpolate_;
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
-
+            PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level");
+            auto& hybridModel  = static_cast<HybridModel&>(model);
             auto& hybMessenger = dynamic_cast<HybridMessenger&>(messenger);
 
-            PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level");
-            if (isRegridding)
+            if (isRootLevel(levelNumber))
             {
-                PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
-                PHARE_LOG_START(3, "hybridLevelInitializer::initialize : regriding block");
-                messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
-                PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : regriding block");
+                if (isRegridding)
+                    rebalanceL0_(hierarchy, oldLevel, hybridModel, hybMessenger, initDataTime);
+                else
+                    initL0_(hierarchy, hybridModel, hybMessenger, initDataTime);
             }
             else
             {
-                if (isRootLevel(levelNumber))
-                {
-                    PHARE_LOG_START(3, "hybridLevelInitializer::initialize : root level init");
-                    model.initialize(level);
-                    messenger.fillRootGhosts(model, level, initDataTime);
-                    PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : root level init");
-                }
+                if (isRegridding)
+                    regridRefined_(hierarchy, levelNumber, oldLevel, hybridModel, hybMessenger,
+                                   initDataTime);
                 else
-                {
-                    PHARE_LOG_START(3, "hybridLevelInitializer::initialize : initlevel");
-                    messenger.initLevel(hierarchy, model, level, initDataTime);
-                    PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
-                }
+                    initRefined_(hierarchy, levelNumber, hybridModel, hybMessenger,
+                                 initDataTime);
             }
+        }
 
-            auto& ions = hybridModel.state.ions;
-            auto& rm   = *hybridModel.resourcesManager;
+    private:
+        // level 0 from the initial condition: particles loaded, B and E ghosts, the moments
+        // deposited, J, then E from Ohm's law
+        void initL0_(hierarchy_ptr const& hierarchy, HybridModel& model,
+                     HybridMessenger& messenger, double const time)
+        {
+            PHARE_LOG_SCOPE(3, "HybridLevelInitializer::initL0_");
+            auto& level = amr_types::getLevel(*hierarchy, 0);
+            model.initialize(level);
+            messenger.fillRootGhosts(model, level, time);
+            keepOwnedParticles_(hierarchy, 0, level, model);
+            depositMoments_(0, level, model, messenger, time);
+            computeJ_(level, model, time);
+            computeE_(level, model, messenger, time);
+            messenger.prepareStep(model, level, time);
+        }
 
-            // overlapping patches were each filled over their whole domain,
-            // keep particles only on the patch owning their cell
+        // level 0 onto new owners: no cell is new to it, everything is moved, the moments too
+        // (messenger.regrid). They are not deposited again: their totals are the ones
+        // synchronized from level 1, a deposit of level 0's particles would replace them
+        void rebalanceL0_(hierarchy_ptr const& hierarchy, level_ptr const& oldLevel,
+                          HybridModel& model, HybridMessenger& messenger, double const time)
+        {
+            PHARE_LOG_SCOPE(3, "HybridLevelInitializer::rebalanceL0_");
+            if (!oldLevel)
+                throw std::runtime_error("HybridLevelInitializer: level 0 regridded without "
+                                         "its old level");
+            auto& level = amr_types::getLevel(*hierarchy, 0);
+            messenger.regrid(hierarchy, 0, oldLevel, model, time);
+            keepOwnedParticles_(hierarchy, 0, level, model);
+            computeJ_(level, model, time);
+            messenger.prepareStep(model, level, time);
+        }
+
+        // a new finer level from its coarser level: B, E and the particles refined (E: by
+        // initLevel), its level ghost particles split, the moments deposited, J
+        void initRefined_(hierarchy_ptr const& hierarchy, int const levelNumber,
+                          HybridModel& model, HybridMessenger& messenger, double const time)
+        {
+            PHARE_LOG_SCOPE(3, "HybridLevelInitializer::initRefined_");
+            auto& level = amr_types::getLevel(*hierarchy, levelNumber);
+            messenger.initLevel(hierarchy, model, level, time);
+            keepOwnedParticles_(hierarchy, levelNumber, level, model);
+            depositMoments_(levelNumber, level, model, messenger, time);
+            computeJ_(level, model, time);
+            messenger.prepareStep(model, level, time);
+        }
+
+        // a finer level onto new boxes: its data moved where the old level was, refined from
+        // the coarser level elsewhere, the moments deposited, J
+        void regridRefined_(hierarchy_ptr const& hierarchy, int const levelNumber,
+                            level_ptr const& oldLevel, HybridModel& model,
+                            HybridMessenger& messenger, double const time)
+        {
+            PHARE_LOG_SCOPE(3, "HybridLevelInitializer::regridRefined_");
+            auto& level = amr_types::getLevel(*hierarchy, levelNumber);
+            messenger.regrid(hierarchy, levelNumber, oldLevel, model, time);
+            keepOwnedParticles_(hierarchy, levelNumber, level, model);
+            depositMoments_(levelNumber, level, model, messenger, time);
+            computeJ_(level, model, time);
+            messenger.prepareStep(model, level, time);
+        }
+
+        // overlapping patches were each filled over their whole domain, keep particles only on
+        // the patch owning their cell
+        void keepOwnedParticles_(hierarchy_ptr const& hierarchy, int const levelNumber,
+                                 auto& level, HybridModel& model)
+        {
+            auto& ions           = model.state.ions;
             auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
-            for (auto& patch : rm.enumerate(level, ions))
+            for (auto& patch : model.resourcesManager->enumerate(level, ions))
                 ions.eraseDomainParticlesIn(
                     amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
+        }
 
-            // a level 0 rebalance moved the moments with the rest (messenger.regrid): no cell is
-            // new to the level, and a deposit of its particles would replace the totals
-            // synchronized from level 1 with its own
-            bool const isRebalance = isRegridding and isRootLevel(levelNumber) and oldLevel;
-            if (!isRebalance)
+        // the moments from the particles: the domain ones, the level ghost ones (held by every
+        // patch whose ghost box covers them, deposited by one of them), the border sums, then
+        // the totals. Moments are not time interpolated: their level ghost nodes come from the
+        // level ghost particles
+        void depositMoments_(int const levelNumber, auto& level, HybridModel& model,
+                             HybridMessenger& messenger, double const time)
+        {
+            core::Interpolator<dimension, interp_order> interpolate;
+            auto& ions = model.state.ions;
+            auto& rm   = *model.resourcesManager;
+            for (auto& patch : rm.enumerate(level, ions))
             {
-                // now all particles are here, we must compute moments. Level ghost particles are
-                // held by every patch whose ghost box covers them, only one of them deposits them.
-                for (auto& patch : rm.enumerate(level, ions))
-                {
-                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                    core::resetMoments(ions);
-                    core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
-                }
-                if (!isRootLevel(levelNumber))
-                    hybMessenger.depositLevelGhostParticlesOld(ions, level);
-
-                // at this point flux and density is computed for all pops
-                // but nodes on ghost box overlaps are not complete because they lack
-                // contribution of neighbor particles.
-                // The following two calls will += flux and density on these overlaps.
-                hybMessenger.fillFluxBorders(ions, level, initDataTime);
-                hybMessenger.fillDensityBorders(ions, level, initDataTime);
-
-                for (auto& patch : rm.enumerate(level, ions))
-                {
-                    // now all domain nodes are complete (ghost nodes may not be, and are not
-                    // read), the total ion moments
-                    // can safely be computed.
-                    ions.computeChargeDensity();
-                    ions.computeBulkVelocity();
-                    ions.computeChargeFlux();
-                }
+                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                core::resetMoments(ions);
+                core::depositParticles(ions, layout, interpolate, core::DomainDeposit{});
             }
+            if (!isRootLevel(levelNumber))
+                messenger.depositLevelGhostParticlesOld(ions, level);
 
-            // moments are not time interpolated: their level ghost nodes come from the
-            // deposit of level ghost particles above. Only E and B ghosts are, from the
-            // Bold_ and Eold_ copies saved by prepareStep() (see end of this function).
+            // nodes on ghost box overlaps lack the neighbours' contributions: += them
+            messenger.fillFluxBorders(ions, level, time);
+            messenger.fillDensityBorders(ions, level, time);
 
-
-            // J is never messenger-communicated: compute it locally via Ampere on
-            // physical+1 (exactly the layer Ohm reads) on EVERY level, init and
-            // regrid paths included. B ghosts are filled on all paths above, so the
-            // first ghost layer of J is the curl of those B ghosts.
-            TimeSetter setTime{level, hybridModel, initDataTime};
-
-            auto& B = hybridModel.state.electromag.B;
-            auto& J = hybridModel.state.J;
-
-            Ampere_t{level, hybridModel}(B, J);
-            setTime(J);
-
-            // E only needs computing on a fresh root level: it is regridded on
-            // regrid paths and initLevel has done it on new finer levels
-            if (!isRegridding and isRootLevel(levelNumber))
+            // every domain node complete, the totals
+            for (auto& patch : rm.enumerate(level, ions))
             {
-                auto& E         = hybridModel.state.electromag.E;
-                auto& electrons = hybridModel.state.electrons;
-
-                for (auto& patch : rm.enumerate(level, electrons))
-                    electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
-
-                Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
-                setTime(E);
-                hybMessenger.fillElectricGhosts(E, level, 0.);
+                ions.computeChargeDensity();
+                ions.computeBulkVelocity();
+                ions.computeChargeFlux();
             }
+        }
 
+        // J is never communicated: Ampere on physical+1 (the layer Ohm reads) on every level and
+        // path, from the B ghosts each path filled
+        void computeJ_(auto& level, HybridModel& model, double const time)
+        {
+            TimeSetter setTime{level, model, time};
+            Ampere_t{level, model}(model.state.electromag.B, model.state.J);
+            setTime(model.state.J);
+        }
 
-            // quantities have been computed on the level, like the moments
-            // that we later in the code need to get on level ghost nodes via
-            // space and TIME interpolation. We thus need to save current values
-            // in "old" messenger temporaries.
-            // NOTE :  this may probably be skipped for finest level since, TBC at some point
-            hybMessenger.prepareStep(hybridModel, level, initDataTime);
+        // E from Ohm's law, on a level 0 made from the initial condition only: moved by a
+        // rebalance or a regrid, refined by initLevel elsewhere
+        void computeE_(auto& level, HybridModel& model, HybridMessenger& messenger,
+                       double const time)
+        {
+            TimeSetter setTime{level, model, time};
+            auto& E         = model.state.electromag.E;
+            auto& electrons = model.state.electrons;
+            for (auto& patch : model.resourcesManager->enumerate(level, electrons))
+                electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
+            Ohm_t{ohm_info, level, model}(model.state.electromag.B, model.state.J, E, electrons);
+            setTime(E);
+            messenger.fillElectricGhosts(E, level, 0.);
         }
     };
 } // namespace solver
