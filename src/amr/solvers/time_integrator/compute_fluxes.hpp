@@ -35,8 +35,7 @@ class ComputeFluxes
         = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall, FVMethod_t::uct_coefficients>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
-    using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
-    using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
+    using ToPrimitiveConverter_t = Dispatchers_t::ToPrimitiveConverter_t;
 
     using VecField    = MHDModel::vecfield_type;
     using Equations_t = FVMethod_t::Equations_t;
@@ -47,7 +46,6 @@ public:
         : fVMethodInfo_{FVMethodInfo_t::FROM(dict["fv_method"])}
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
-        , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
         , needsCurrent_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()}
     {
         // eta/nu are duplicated into both info structs
@@ -80,10 +78,6 @@ public:
         FVMethod_t{level, model, fVMethodInfo_}(ct_, dissipative_electric_state_, state, fluxes);
         TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.J);
 
-        // unecessary if we decide to store both primitive and conservative variables
-        ToConservativeConverter_t{level, model}(state, to_conservative_gamma_);
-        TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.rhoV, state.Etot);
-
         ConstrainedTransport_t{level, model,
                                constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
 
@@ -110,7 +104,6 @@ private:
     core::UpwindConstrainedTransportState<VecField> ct_{Hall};
     core::DissipativeElectricFieldState<VecField> dissipative_electric_state_{isDissipative_};
     double to_primitive_gamma_;
-    double to_conservative_gamma_;
     bool needsCurrent_;
 };
 } // namespace PHARE::solver
