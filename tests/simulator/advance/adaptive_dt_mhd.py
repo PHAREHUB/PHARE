@@ -31,10 +31,21 @@ def box_sim(
     hall=False,
     extra_diag_options=None,
     write_timestamps=None,
+    vx=None,
+    by=None,
+    tagging_threshold=None,
 ):
-    refinement_boxes = {"L0": {"B0": [[10, 10], [29, 29]]}}
-    if levels == 3:
-        refinement_boxes["L1"] = {"B0": [[30, 30], [49, 49]]}
+    if tagging_threshold is None:
+        refinement_boxes = {"L0": {"B0": [[10, 10], [29, 29]]}}
+        if levels == 3:
+            refinement_boxes["L1"] = {"B0": [[30, 30], [49, 49]]}
+        refinement = dict(refinement_boxes=refinement_boxes)
+    else:
+        refinement = dict(
+            refinement="tagging",
+            max_nbr_levels=levels,
+            tagging_threshold=tagging_threshold,
+        )
 
     diag_options = {"dir": diag_dir, "mode": "overwrite"}
     diag_options.update(extra_diag_options or {})
@@ -49,7 +60,7 @@ def box_sim(
         **time_args,
         cells=(CELLS, CELLS),
         dl=(DL, DL),
-        refinement_boxes=refinement_boxes,
+        **refinement,
         diag_options={"format": "phareh5", "options": diag_options},
         strict=True,
         nesting_buffer=1,
@@ -73,7 +84,14 @@ def box_sim(
         return 0.1
 
     ph.MHDModel(
-        density=density, vx=zero, vy=zero, vz=zero, bx=bx, by=zero, bz=zero, p=pressure
+        density=density,
+        vx=vx or zero,
+        vy=zero,
+        vz=zero,
+        bx=bx,
+        by=by or zero,
+        bz=zero,
+        p=pressure,
     )
 
     if write_timestamps is None:
