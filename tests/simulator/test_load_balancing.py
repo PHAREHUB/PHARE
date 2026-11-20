@@ -364,18 +364,18 @@ class LoadBalancingTest(SimulatorTest):
         rebalanced = run(f"{diag_outputs}/rebalanced", every=1)
         not_rebalanced = run(f"{diag_outputs}/not_rebalanced", every=0)
 
-        if cpp.mpi_rank() == 0:
-            for qty in ["B", "E"]:
-                a = level_arrays(rebalanced, qty, steps * time_step)
-                b = level_arrays(not_rebalanced, qty, steps * time_step)
-                self.assertEqual(a.keys(), b.keys())
-                scale = max(np.nanmax(np.abs(v)) for v in a.values())
-                for key in a:
-                    self.assertEqual(a[key].shape, b[key].shape, key)
-                    both = ~np.isnan(a[key]) & ~np.isnan(b[key])
-                    diff = np.max(np.abs(a[key][both] - b[key][both])) / scale
-                    print(f"{qty} {key}: max relative difference {diff:.2e}")
-                    self.assertLess(diff, 1e-10, f"{qty} {key}")
+        # every rank compares (reads only): no rank waits on another
+        for qty in ["B", "E"]:
+            a = level_arrays(rebalanced, qty, steps * time_step)
+            b = level_arrays(not_rebalanced, qty, steps * time_step)
+            self.assertEqual(a.keys(), b.keys())
+            scale = max(np.nanmax(np.abs(v)) for v in a.values())
+            for key in a:
+                self.assertEqual(a[key].shape, b[key].shape, key)
+                both = ~np.isnan(a[key]) & ~np.isnan(b[key])
+                diff = np.max(np.abs(a[key][both] - b[key][both])) / scale
+                print(f"{qty} {key}: max relative difference {diff:.2e}")
+                self.assertLess(diff, 1e-10, f"{qty} {key}")
 
     @unittest.skip("should change with moments")
     @data(
