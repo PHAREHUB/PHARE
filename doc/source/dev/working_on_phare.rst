@@ -127,6 +127,7 @@ Conventions
 * An issue first, one issue per PR, small PRs, tests with the code: ``CONTRIBUTING.md`` and the PR template
   (Issue / What this implements / Design / Tests).
 * Formatting, lint, Python dependencies and imports: :doc:`conventions`.
+* C++ sources: :doc:`cpp_conventions`.
 
 .. admonition:: In preparation
    :class: in-preparation
