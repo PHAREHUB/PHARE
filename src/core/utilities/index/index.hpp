@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_UTILITIES_INDEX_INDEX_HPP
 #define PHARE_CORE_UTILITIES_INDEX_INDEX_HPP
 
+#include <array>
 #include <cstddef>
 
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -69,10 +70,39 @@ namespace core
 
 
         */
-    NO_DISCARD MeshIndex<1> make_index(std::uint32_t i);
-    NO_DISCARD MeshIndex<2> make_index(std::uint32_t i, std::uint32_t j);
-    NO_DISCARD MeshIndex<3> make_index(std::uint32_t i, std::uint32_t j, std::uint32_t k);
+    // inline: stencil neighbours (GridLayout::next/previous) build one of these per access
+    NO_DISCARD inline MeshIndex<1> make_index(std::uint32_t i)
+    {
+        return MeshIndex<1>(i);
+    }
 
+    NO_DISCARD inline MeshIndex<2> make_index(std::uint32_t i, std::uint32_t j)
+    {
+        return MeshIndex<2>(i, j);
+    }
+
+    NO_DISCARD inline MeshIndex<3> make_index(std::uint32_t i, std::uint32_t j, std::uint32_t k)
+    {
+        return MeshIndex<3>(i, j, k);
+    }
+
+
+
+    // calls fn(MeshIndex) for every index of the inclusive box [lo, hi], last dimension fastest
+    template<std::size_t dim>
+    void for_each_index(std::array<int, dim> const& lo, std::array<int, dim> const& hi, auto&& fn)
+    {
+        for (int i = lo[0]; i <= hi[0]; ++i)
+            if constexpr (dim == 1)
+                fn(make_index(i));
+            else
+                for (int j = lo[1]; j <= hi[1]; ++j)
+                    if constexpr (dim == 2)
+                        fn(make_index(i, j));
+                    else
+                        for (int k = lo[2]; k <= hi[2]; ++k)
+                            fn(make_index(i, j, k));
+    }
 
 } // namespace core
 } // namespace PHARE

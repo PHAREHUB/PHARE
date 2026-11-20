@@ -171,6 +171,17 @@ public:
     NO_DISCARD auto& operator[](std::size_t i) { return components_[i]; }
     NO_DISCARD auto& operator[](std::size_t i) const { return components_[i]; }
 
+    // operator()(Component) without the usability check, for hot loops over a tensor that is
+    // known to be usable: the check's throw keeps such loops from vectorising
+    NO_DISCARD auto& operator[](Component component)
+    {
+        return components_[_get_index_for(component)];
+    }
+    NO_DISCARD auto& operator[](Component component) const
+    {
+        return components_[_get_index_for(component)];
+    }
+
 
     void copyData(TensorField const& source)
     {
