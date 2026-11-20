@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
+#include "core/numerics/riemann_solvers/uct_coefficients.hpp"
 #include <cstdlib>
 
 namespace PHARE::core
@@ -12,6 +13,9 @@ template<bool Hall>
 class HLL
 {
 public:
+    static constexpr UCTCoefficients uct_coefficients{.halfAdvective  = false,
+                                                      .equalDiffusive = true};
+
     HLL(double const gamma)
         : gamma_{gamma}
     {

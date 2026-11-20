@@ -31,7 +31,8 @@ class ComputeFluxes
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
-    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
+    using ConstrainedTransport_t
+        = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall, FVMethod_t::uct_coefficients>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;

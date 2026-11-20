@@ -98,7 +98,8 @@ public:
     template<typename T>
     using Rec = core_type::template Rec<T>;
 
-    constexpr static auto Hall = core_type::Hall;
+    constexpr static auto Hall             = core_type::Hall;
+    constexpr static auto uct_coefficients = core_type::uct_coefficients;
 
     explicit FVMethodTransformer(level_t& level, auto& model, info_type const& info)
         : level{level}
@@ -198,11 +199,12 @@ public:
 
 
 
-template<typename GridLayout, typename Model, template<typename> typename Reconstruction, auto Hall>
+template<typename GridLayout, typename Model, template<typename> typename Reconstruction, auto Hall,
+         auto UCTCoefs>
 class ConstrainedTransportTransformer
 {
     using level_t   = Model::amr_types::level_t;
-    using core_type = core::UpwindConstrainedTransport<GridLayout, Reconstruction, Hall>;
+    using core_type = core::UpwindConstrainedTransport<GridLayout, Reconstruction, Hall, UCTCoefs>;
 
 public:
     using info_type = core_type::Info_t;
@@ -275,9 +277,9 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
 
     using DissipativeElectricField_t = DissipativeElectricFieldTransformer<Model>;
 
-    template<template<typename> typename Reconstruction, auto Hall>
+    template<template<typename> typename Reconstruction, auto Hall, auto UCTCoefs>
     using ConstrainedTransport_t
-        = ConstrainedTransportTransformer<GridLayout, Model, Reconstruction, Hall>;
+        = ConstrainedTransportTransformer<GridLayout, Model, Reconstruction, Hall, UCTCoefs>;
 
     using RKUtils_t = RKUtilsTransformer<Model>;
 };

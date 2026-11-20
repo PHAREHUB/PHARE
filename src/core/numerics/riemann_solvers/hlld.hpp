@@ -5,6 +5,7 @@
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
+#include "core/numerics/riemann_solvers/uct_coefficients.hpp"
 
 #include <cstdlib>
 #include <type_traits>
@@ -17,6 +18,8 @@ template<bool Hall>
 class HLLD
 {
 public:
+    static constexpr UCTCoefficients uct_coefficients{};
+
     HLLD(double const gamma)
         : gamma_{gamma}
     {

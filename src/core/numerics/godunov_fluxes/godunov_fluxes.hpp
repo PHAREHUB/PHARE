@@ -11,6 +11,7 @@
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/reconstructions/reconstructor.hpp"
 #include "core/numerics/reconstructions/stencil.hpp"
+#include "core/numerics/riemann_solvers/uct_coefficients.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -85,6 +86,9 @@ public:
     using Rec = Reconstruction<T>;
 
     constexpr static auto Hall = Equations::hall;
+
+    // the upwind coefficients the face pass stores for the constrained transport
+    constexpr static UCTCoefficients uct_coefficients = RiemannSolver::uct_coefficients;
 
     static_assert(GridLayout::options.field_ghost_width >= Reconstruction_t::nghosts + 1,
                   "MHD ghost width too small for the reconstruction stencil plus ampere's layer");
@@ -326,10 +330,14 @@ private:
                     vty[k] = riemann.vt.y;
                 if constexpr (storeZ)
                     vtz[k] = riemann.vt.z;
-                aLp[k]  = riemann.uct_coefs[0];
-                aRp[k]  = riemann.uct_coefs[1];
-                dLp[k]  = riemann.uct_coefs[2];
-                dRp[k]  = riemann.uct_coefs[3];
+                if constexpr (!uct_coefficients.halfAdvective)
+                {
+                    aLp[k] = riemann.uct_coefs[0];
+                    aRp[k] = riemann.uct_coefs[1];
+                }
+                dLp[k] = riemann.uct_coefs[2];
+                if constexpr (!uct_coefficients.equalDiffusive)
+                    dRp[k] = riemann.uct_coefs[3];
             };
 
             if constexpr (Hall)
