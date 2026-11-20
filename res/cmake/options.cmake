@@ -67,6 +67,9 @@ option(withCaliper "Use LLNL Caliper" OFF)
 option(withPhlop "Use phlop for scope timings and such" OFF)
 
 
+# CXX def -DPHARE_SUMMARY_MODE=1 for heavy simulation summaries, see model_stats.hpp
+
+
 # -DuseExceptionsInsteadOfMPIAbort=ON
 option(useExceptionsInsteadOfMPIAbort "Exceptions use AllReduce!" OFF)
 
