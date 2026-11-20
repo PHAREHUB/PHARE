@@ -152,6 +152,18 @@ public:
         }
     }
 
+    // with the fluxes A + w B, see core::FiniteVolumeEuler
+    void operator()(Model::state_type& state, Model::state_type& statenew, auto& A, double const w,
+                    auto& B, double const dt)
+    {
+        auto& rm = *model.resourcesManager;
+        for (auto& patch : rm.enumerate(level, state, statenew, A, B))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            core_type{layout}(state, statenew, A, w, B, dt);
+        }
+    }
+
 
     level_t& level;
     Model& model;

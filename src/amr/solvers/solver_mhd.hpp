@@ -351,6 +351,9 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::advanceLevel(
 
     try
     {
+        // the step's fluxes feed the flux sum of a level with a coarser one and the reflux of a
+        // level with a finer one
+        evolve_.keepFluxes(levelNumber != 0 || hierarchy.finerLevelExists(levelNumber));
         evolve_(mhdModel, mhdModel.state, fluxes_, fromCoarser, *level, currentTime, newTime);
 
         PHARE_DEBUG_DO({ mhdNaNCheck_(mhdModel, *level, currentTime); })

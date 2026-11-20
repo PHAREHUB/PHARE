@@ -18,6 +18,7 @@ public:
     TVDRK2Integrator(PHARE::initializer::PHAREDict const& dict)
         : Super{dict, /*n_extra_states=*/1}
         , euler_{dict}
+        , compute_fluxes_{dict}
     {
     }
 
@@ -27,20 +28,16 @@ public:
     {
         auto& state1 = this->extra_states_[0];
 
-        this->resetButcherFluxes_(model, level);
-
         // U1 = Euler(Un)
         euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w0_);
+        this->setButcherFluxes_(model, state.E, fluxes, level, w0_);
 
-        // U1 = Euler(U1)
-        euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);
+        // only F(U1) is needed: the update below starts again from Un
+        compute_fluxes_(model, state1, fluxes, bc, level, newTime);
 
-        this->accumulateButcherFluxes_(model, state1.E, fluxes, level, w1_);
-
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, newTime - currentTime);
+        this->finalUpdate_(model, state, state1.E, fluxes, w1_, bc, level, newTime,
+                           newTime - currentTime);
     }
 
     void registerResources(MHDModel& model) override
@@ -63,7 +60,8 @@ private:
     static constexpr auto w1_{0.5};
 
     Euler<FVMethodStrategy, MHDModel> euler_;
-    EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
+    // shares its resources with euler_
+    ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;
 };
 
 } // namespace PHARE::solver

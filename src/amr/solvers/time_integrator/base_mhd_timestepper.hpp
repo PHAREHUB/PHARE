@@ -3,6 +3,7 @@
 
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -94,6 +95,10 @@ public:
         return extra_states_;
     }
 
+    // whether the step's time-integrated fluxes are read after the step (flux sum, reflux): when
+    // not, the last stage's update reads them as a sum it never stores
+    void keepFluxes(bool const keep) { keepFluxes_ = keep; }
+
     auto exposeFluxes() { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
     auto exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
@@ -109,6 +114,18 @@ protected:
         }
     }
 
+    // first stage: assigning the weighted fluxes replaces zeroing then accumulating them
+    void setButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
+                           double const coef = 1.0)
+    {
+        auto& rm = *model.resourcesManager;
+        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_, fluxes, E))
+        {
+            core::operate<core::SetEqualProduct>(butcherFluxes_, fluxes, coef);
+            core::operate<core::SetEqualProduct>(butcherE_, E, coef);
+        }
+    }
+
     void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
                                   double const coef = 1.0)
     {
@@ -120,6 +137,25 @@ protected:
         }
     }
 
+    // Un+1 = Un - dt div(butcher + coef F), B with the E accumulated likewise
+    void finalUpdate_(MHDModel& model, MHDStateT& state, auto& E, auto& fluxes, double const coef,
+                      Messenger& bc, auto& level, double const newTime, double const dt)
+    {
+        auto& rm = *model.resourcesManager;
+        if (keepFluxes_)
+        {
+            accumulateButcherFluxes_(model, E, fluxes, level, coef);
+            EulerUsingComputedFlux<MHDModel>{}(model, state, state, butcherE_, butcherFluxes_, bc,
+                                               level, newTime, dt);
+            return;
+        }
+        for (auto& _ : rm.enumerate(level, butcherE_, E))
+            core::operate<core::PlusEqualsProduct>(butcherE_, E, coef);
+        EulerUsingComputedFlux<MHDModel>{}(model, state, state, butcherE_, butcherFluxes_, coef,
+                                           fluxes, bc, level, newTime, dt);
+    }
+
+    bool keepFluxes_ = true;
     std::vector<MHDStateT> extra_states_;
     core::AllFluxes<FieldT, VecFieldT> butcherFluxes_;
     VecFieldT butcherE_;
