@@ -406,37 +406,82 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
         auto const& By    = B(core::Component::Y);
         auto const& Bz    = B(core::Component::Z);
 
-        // wave cfl constraint
-        layout.evalOnBox(rho, [&](auto&... args) mutable {
-            core::MeshIndex<dimension> const index{args...};
+        // wave cfl constraint: wave / invDtWave for the cells of a line, then their minimum
+        static thread_local std::vector<double> lineDt;
+        layout.evalOnLines(rho, [&](core::MeshIndex<dimension> const& first,
+                                    std::uint32_t const n) {
+            if (lineDt.size() < n)
+                lineDt.resize(n);
+            double* const dtl = lineDt.data();
 
-            auto const r  = rho(index);
-            auto const vx = rhoVx(index) / r;
-            auto const vy = rhoVy(index) / r;
-            auto const vz = rhoVz(index) / r;
+            auto const at = [&](auto const& F) -> double const* { return &F(first); };
+            // GridLayout::project's weights to the cell centre, and its points as pointers along
+            // the line
+            auto const projection = [&]<auto src>(auto const& F) {
+                constexpr auto wps = core::recenteringStencil<GridLayout::centering(src),
+                                                              GridLayout::centering(Scalar::rho)>();
+                std::array<double, wps.size()> coefs;
+                std::array<double const*, wps.size()> points;
+                for (std::size_t w = 0; w < wps.size(); ++w)
+                {
+                    coefs[w]  = wps[w].coef;
+                    points[w] = &F(first + wps[w].indexes);
+                }
+                return std::make_pair(coefs, points);
+            };
+            auto const [cx, px] = projection.template operator()<Scalar::Bx>(Bx);
+            auto const [cy, py] = projection.template operator()<Scalar::By>(By);
+            auto const [cz, pz] = projection.template operator()<Scalar::Bz>(Bz);
+            double const *pr = at(rho), *pvx = at(rhoVx), *pvy = at(rhoVy), *pvz = at(rhoVz),
+                         *pE = at(Etot);
 
-            auto const bx = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
-            auto const by = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
-            auto const bz = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
-
-            auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
-            auto const BdotB = bx * bx + by * by + bz * bz;
-
-            std::array<double, 3> const v{vx, vy, vz};
-            std::array<double, 3> const b{bx, by, bz};
-
-            // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
-            double invDtWave = 0;
-            for (std::size_t d = 0; d < dimension; ++d)
+            PHARE_VECTORIZE_IVDEP
+            for (std::uint32_t k = 0; k < n; ++k)
             {
-                auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
-                // Hall whistler
-                auto const cw = isHall_ ? std::numbers::pi
+                auto const r  = pr[k];
+                auto const vx = pvx[k] / r;
+                auto const vy = pvy[k] / r;
+                auto const vz = pvz[k] / r;
+
+                // pack expansions, so that the loop over k is the innermost one
+                auto const projected
+                    = [&]<std::size_t... w>(auto const& coefs, auto const& points,
+                                            std::index_sequence<w...>) PHARE_LAMBDA_ALWAYS_INLINE {
+                          double value = 0.;
+                          ((value += coefs[w] * points[w][k]), ...);
+                          return value;
+                      };
+                auto const bx = projected(
+                    cx, px, std::make_index_sequence<std::tuple_size_v<decltype(cx)>>{});
+                auto const by = projected(
+                    cy, py, std::make_index_sequence<std::tuple_size_v<decltype(cy)>>{});
+                auto const bz = projected(
+                    cz, pz, std::make_index_sequence<std::tuple_size_v<decltype(cz)>>{});
+
+                auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, pE[k]);
+                auto const BdotB = bx * bx + by * by + bz * bz;
+
+                std::array<double, 3> const v{vx, vy, vz};
+                std::array<double, 3> const b{bx, by, bz};
+
+                // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
+                auto const waveRate = [&](std::size_t d) PHARE_LAMBDA_ALWAYS_INLINE {
+                    auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
+                    // Hall whistler
+                    auto const cw = isHall_
+                                        ? std::numbers::pi
                                               * core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
                                         : 0.0;
-                invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
+                    return (std::abs(v[d]) + cfast + cw) / meshSize[d];
+                };
+                double invDtWave = 0;
+                [&]<std::size_t... d>(std::index_sequence<d...>) PHARE_LAMBDA_ALWAYS_INLINE {
+                    ((invDtWave += waveRate(d)), ...);
+                }(std::make_index_sequence<dimension>{});
+                dtl[k] = wave / invDtWave;
             }
-            dt = std::min(dt, wave / invDtWave);
+            for (std::uint32_t k = 0; k < n; ++k)
+                dt = std::min(dt, dtl[k]);
         });
     }
 
