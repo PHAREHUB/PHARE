@@ -237,7 +237,9 @@ def level_arrays(diag_dir, qty, time):
                     ghosts = (np.array(data.shape) - cells - primal) // 2
                     if arr is None:
                         arr = np.full(upper - lower + 1 + primal, np.nan)
-                    src = tuple(slice(g, g + n + q) for g, n, q in zip(ghosts, cells, primal))
+                    src = tuple(
+                        slice(g, g + n + q) for g, n, q in zip(ghosts, cells, primal)
+                    )
                     at = tuple(
                         slice(lo - l0, lo - l0 + n + q)
                         for lo, l0, n, q in zip(p.attrs["lower"], lower, cells, primal)
@@ -356,7 +358,8 @@ class LoadBalancingTest(SimulatorTest):
                     quantity=qty, write_timestamps=[steps * time_step]
                 )
             Simulator(sim).run().reset()
-            return sim.diag_options["options"]["dir"]  # the test's own, see simulation()
+            # the test's own directory, see simulation()
+            return sim.diag_options["options"]["dir"]
 
         rebalanced = run(f"{diag_outputs}/rebalanced", every=1)
         not_rebalanced = run(f"{diag_outputs}/not_rebalanced", every=0)
