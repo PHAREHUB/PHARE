@@ -215,9 +215,10 @@ def get_particles(diag_dir, time=0):
 
 
 def level_arrays(diag_dir, qty, time):
-    """{(level, component): array}: each level's domain nodes of qty ("B", "E") at time, from
-    all its patches, on the level's bounding box (nan where no patch is): comparable whatever
-    the patches. A component's centering and ghost width come from its datasets' shapes"""
+    """{(level, component): (lower, values, covered)}: each level's domain nodes of qty ("B",
+    "E") at time, from all its patches, on the level's bounding box from its lower corner,
+    covered where a patch is: comparable whatever the patches. A component's centering and
+    ghost width come from its datasets' shapes"""
     import h5py
 
     out = {}
@@ -229,14 +230,15 @@ def level_arrays(diag_dir, qty, time):
             upper = np.max([p.attrs["upper"] for p in patches], axis=0)
             for c in "xyz":
                 key = f"EM_{qty}_{c}"
-                arr = None
+                values = covered = None
                 for p in patches:
                     data = p[key][()]
                     cells = p.attrs["upper"] - p.attrs["lower"] + 1
                     primal = (np.array(data.shape) - cells) % 2
                     ghosts = (np.array(data.shape) - cells - primal) // 2
-                    if arr is None:
-                        arr = np.full(upper - lower + 1 + primal, np.nan)
+                    if values is None:
+                        values = np.zeros(upper - lower + 1 + primal)
+                        covered = np.zeros(values.shape, dtype=bool)
                     src = tuple(
                         slice(g, g + n + q) for g, n, q in zip(ghosts, cells, primal)
                     )
@@ -244,8 +246,9 @@ def level_arrays(diag_dir, qty, time):
                         slice(lo - l0, lo - l0 + n + q)
                         for lo, l0, n, q in zip(p.attrs["lower"], lower, cells, primal)
                     )
-                    arr[at] = data[src]
-                out[(level, c)] = arr
+                    values[at] = data[src]
+                    covered[at] = True
+                out[(level, c)] = (tuple(lower), values, covered)
     return out
 
 
@@ -369,11 +372,15 @@ class LoadBalancingTest(SimulatorTest):
             a = level_arrays(rebalanced, qty, steps * time_step)
             b = level_arrays(not_rebalanced, qty, steps * time_step)
             self.assertEqual(a.keys(), b.keys())
-            scale = max(np.nanmax(np.abs(v)) for v in a.values())
+            scale = max(np.max(np.abs(v[covered])) for _, v, covered in a.values())
             for key in a:
-                self.assertEqual(a[key].shape, b[key].shape, key)
-                both = ~np.isnan(a[key]) & ~np.isnan(b[key])
-                diff = np.max(np.abs(a[key][both] - b[key][both])) / scale
+                (lower_a, va, ca), (lower_b, vb, cb) = a[key], b[key]
+                self.assertEqual(lower_a, lower_b, key)  # the same place
+                self.assertEqual(va.shape, vb.shape, key)
+                self.assertTrue(np.array_equal(ca, cb), key)  # the same nodes covered
+                self.assertTrue(np.all(np.isfinite(va[ca])), key)
+                self.assertTrue(np.all(np.isfinite(vb[cb])), key)
+                diff = np.max(np.abs(va[ca] - vb[cb])) / scale
                 print(f"{qty} {key}: max relative difference {diff:.2e}")
                 self.assertLess(diff, 1e-10, f"{qty} {key}")
 
