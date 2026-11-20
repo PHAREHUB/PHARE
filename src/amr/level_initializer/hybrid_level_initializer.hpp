@@ -94,32 +94,39 @@ namespace solver
                 ions.eraseDomainParticlesIn(
                     amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
 
-            // now all particles are here, we must compute moments. Level ghost particles are
-            // held by every patch whose ghost box covers them, only one of them deposits them.
-            for (auto& patch : rm.enumerate(level, ions))
+            // a level 0 rebalance moved the moments with the rest (messenger.regrid): no cell is
+            // new to the level, and a deposit of its particles would replace the totals
+            // synchronized from level 1 with its own
+            bool const isRebalance = isRegridding and isRootLevel(levelNumber) and oldLevel;
+            if (!isRebalance)
             {
-                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                core::resetMoments(ions);
-                core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
-            }
-            if (!isRootLevel(levelNumber))
-                hybMessenger.depositLevelGhostParticlesOld(ions, level);
+                // now all particles are here, we must compute moments. Level ghost particles are
+                // held by every patch whose ghost box covers them, only one of them deposits them.
+                for (auto& patch : rm.enumerate(level, ions))
+                {
+                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                    core::resetMoments(ions);
+                    core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
+                }
+                if (!isRootLevel(levelNumber))
+                    hybMessenger.depositLevelGhostParticlesOld(ions, level);
 
-            // at this point flux and density is computed for all pops
-            // but nodes on ghost box overlaps are not complete because they lack
-            // contribution of neighbor particles.
-            // The following two calls will += flux and density on these overlaps.
-            hybMessenger.fillFluxBorders(ions, level, initDataTime);
-            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+                // at this point flux and density is computed for all pops
+                // but nodes on ghost box overlaps are not complete because they lack
+                // contribution of neighbor particles.
+                // The following two calls will += flux and density on these overlaps.
+                hybMessenger.fillFluxBorders(ions, level, initDataTime);
+                hybMessenger.fillDensityBorders(ions, level, initDataTime);
 
-            for (auto& patch : rm.enumerate(level, ions))
-            {
-                // now all domain nodes are complete (ghost nodes may not be, and are not
-                // read), the total ion moments
-                // can safely be computed.
-                ions.computeChargeDensity();
-                ions.computeBulkVelocity();
-                ions.computeChargeFlux();
+                for (auto& patch : rm.enumerate(level, ions))
+                {
+                    // now all domain nodes are complete (ghost nodes may not be, and are not
+                    // read), the total ion moments
+                    // can safely be computed.
+                    ions.computeChargeDensity();
+                    ions.computeBulkVelocity();
+                    ions.computeChargeFlux();
+                }
             }
 
             // moments are not time interpolated: their level ghost nodes come from the

@@ -47,6 +47,11 @@ namespace amr
         std::vector<std::string> initMagnetic;
         std::vector<std::string> initElectric;
 
+        // the ion moments, moved as they are when level 0 is rebalanced: it has no new cell to
+        // deposit particles on, and its total moments are the ones synchronized from level 1
+        std::vector<std::string> rebalancedMomentFields;
+        std::vector<std::string> rebalancedMomentVecFields;
+
         // below are the names of the populations that need to be communicated
         // this is for initialization
         std::vector<std::string> interiorParticles;

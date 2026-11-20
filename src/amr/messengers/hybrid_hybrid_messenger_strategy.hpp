@@ -264,6 +264,12 @@ namespace amr
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
+            // a level 0 rebalance moves the moments too (ghost nodes included): the level has
+            // no new cell, and its totals are the ones synchronized from level 1, which a
+            // deposit of its particles would lose (see HybridLevelInitializer)
+            if (isRegriddingL0)
+                momentRebalanceRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+
 
             // we now call only levelGhostParticlesOld.fill() and not .regrid()
             // regrid() would refine from next coarser in regions of level not overlaping
@@ -857,6 +863,13 @@ namespace amr
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
                                                     info->initElectric);
 
+            // level 0 only, never refined: an op for the schedule to be valid
+            momentRebalanceRefiners_.addStaticRefiners(
+                info->rebalancedMomentFields, fieldRefineOp_, info->rebalancedMomentFields);
+            momentRebalanceRefiners_.addStaticRefiners(info->rebalancedMomentVecFields,
+                                                       EfieldRefineOp_,
+                                                       info->rebalancedMomentVecFields);
+
 
             domainParticlesRefiners_.addStaticRefiners(
                 info->interiorParticles, interiorParticleRefineOp_, info->interiorParticles);
@@ -1032,6 +1045,9 @@ namespace amr
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
+
+        //! the ion moments of level 0, moved by a rebalance
+        InitRefinerPool momentRebalanceRefiners_{resourcesManager_};
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost;
