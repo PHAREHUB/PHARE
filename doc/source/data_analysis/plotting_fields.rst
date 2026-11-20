@@ -55,8 +55,15 @@ Two ways to plot, depending on what the getter returns (see
 The ``plot`` method
 -------------------
 
-``hierarchy.plot(**kwargs)`` calls ``plot1d`` for a 1D run and ``plot2d`` for a
-2D run (nothing is drawn for 3D). You always pass options as keywords.
+``hierarchy.plot(**kwargs)`` draws a 1D or a 2D field and returns
+``(fig, ax)``. A 3D field raises ``ValueError``: take a cut first (see
+:doc:`amr_reader`). You always pass options as keywords; an unknown keyword
+raises ``TypeError``.
+
+.. note:: A hierarchy read with ``all_primal=False`` or ``legacy=True`` comes
+   from the previous reader, whose ``plot`` differs: it returns nothing in 1D
+   (one legend entry per patch, ``L0P0``), draws nothing in 3D, and ignores
+   unknown keywords.
 
 Which ``qty``? A hierarchy can hold several quantities: the components of a
 vector field are called ``"x"``, ``"y"``, ``"z"`` (so ``B.plot(qty="y")`` draws
@@ -76,8 +83,8 @@ To put several plots in one figure, create the axes yourself and pass ``ax``:
    run.GetNi(50.0).plot(qty="value", time=50.0, ax=ax[1], ylabel="Ni")
    fig.savefig("two_panels.png")
 
-1D options (``plot1d``)
-^^^^^^^^^^^^^^^^^^^^^^^
+1D options
+^^^^^^^^^^
 
 .. list-table::
    :header-rows: 1
@@ -90,8 +97,8 @@ To put several plots in one figure, create the axes yourself and pass ``ax``:
      - quantity to draw (see above); required if the hierarchy holds several
      - the only one
    * - ``time``
-     - time to draw
-     - first time of the hierarchy
+     - time to draw; required if the hierarchy holds several
+     - the only one
    * - ``levels``
      - tuple of refinement levels to draw, for example ``(0, 1)``
      - ``(0,)``
@@ -108,16 +115,15 @@ To put several plots in one figure, create the axes yourself and pass ``ax``:
      - axis limits, a pair
      - automatic
    * - ``legend``
-     - any value other than ``None`` draws a legend (one label per patch,
-       ``L0P0`` = level 0, patch 0)
+     - any value other than ``None`` draws a legend (one label per level,
+       ``L0`` = level 0)
      - no legend
    * - ``filename``
      - save the figure under this name
      - not saved
 
-``plot1d`` draws the patches of the chosen levels one by one: where the levels
-overlap, you see both. It returns nothing; keep your own ``fig, ax`` (with the
-``ax`` option) if you need them afterwards.
+The 1D plot draws each chosen level as one line, broken at the patch ends:
+where the levels overlap, you see both.
 
 
 2D plots
@@ -205,8 +211,8 @@ Drawing a map
 
 ``plot`` returns ``(fig, ax)`` in 2D. A colour bar is always added to the right.
 
-2D options (``plot2d``)
-^^^^^^^^^^^^^^^^^^^^^^^
+2D options
+^^^^^^^^^^
 
 .. list-table::
    :header-rows: 1
@@ -219,8 +225,8 @@ Drawing a map
      - quantity to draw
      - the only one, if the hierarchy holds one
    * - ``time``
-     - time to draw
-     - first time of the hierarchy
+     - time to draw; required if the hierarchy holds several
+     - the only one
    * - ``levels``
      - refinement levels to draw
      - all levels
@@ -232,14 +238,16 @@ Drawing a map
      - ``"Spectral_r"``
    * - ``vmin``, ``vmax``
      - colour range
-     - minimum and maximum of the quantity over all levels, at the hierarchy's first time (ghost points included), widened by 1e-6; this matters only for a hierarchy that holds several times
+     - minimum and maximum of the quantity over the levels in view (finite
+       values only)
    * - ``plot_patches``
      - ``True`` draws the edge of every patch
      - ``False``
    * - ``patchcolors``, ``lw``, ``ls``
      - edge colour, width and style of patches, one per level: a dict
-       ``{level: value}`` or a list, **not** a single value (``lw=2`` stops
-       with ``TypeError: 'int' object is not iterable``)
+       ``{level: value}``, a list, or one value for all levels (with the
+       previous reader a single value stops with ``TypeError: 'int' object is
+       not iterable``)
      - ``"k"``, 1, ``"-"``
    * - ``aspect``
      - matplotlib aspect of the axes
@@ -258,7 +266,13 @@ Drawing a map
      - not saved, 200
 
 Zoom with ``xlim`` and ``ylim``, for example
-``Ni.plot(qty="value", time=5.0, xlim=(0, 10), ylim=(0, 10))``.
+``Ni.plot(qty="value", time=5.0, xlim=(0, 10), ylim=(0, 10))``: only the
+patches under the zoom are read.
+
+The picture is built at a resolution matched to the axes, so a whole-domain
+map of a large run does not read every fine patch; zooming brings the finest
+level back. ``robust``, ``symmetric``, ``norm``, ``max_level``, ``fill`` and
+``interpolation`` give more control: see :doc:`amr_reader`.
 
 A map of a merged field (``GetB(t, merged=True)``) is made with
 ``numpy.meshgrid`` and ``pcolormesh``:
@@ -303,14 +317,15 @@ before importing ``pyplot``:
 Common mistakes
 ---------------
 
-* ``ValueError: multiple quantities in patch, please specify a quantity in x y z``
-  (1D) — you forgot ``qty`` on a vector field. Add ``qty="y"``.
-* ``KeyError: None`` (2D, same cause) — add ``qty``.
-* ``KeyError: 'By'`` — on a hierarchy the components are ``"x"``, ``"y"``,
-  ``"z"``, not ``"Bx"``... (the names ``"Bx"``... are for ``merged=True``).
-* ``KeyError: "Unable to synchronously open object (object '7.0000000000'
-  doesn't exist)"`` — you asked for a time that was not written;
-  check ``run.times("B")``.
+* ``ValueError: multiple quantities in the field, please specify a quantity in
+  x y z`` — you forgot ``qty`` on a vector field. Add ``qty="y"``.
+* ``ValueError: VectorField EM_B holds 2 times [0.0, 5.0]; pass time=...`` —
+  the hierarchy was read at several times: add ``time=``.
+* ``KeyError: 'By'`` with ``legacy=True`` — the previous reader names the
+  components ``"x"``, ``"y"``, ``"z"`` (``"Bx"``... with ``all_primal=False``).
+  The default getters accept both names.
+* ``TimeNotFoundError: ... no data at time 7.0; nearest times: ...`` — you asked
+  for a time that was not written; check ``run.times("B")``.
 * ``AttributeError: 'dict' object has no attribute 'domain_box'`` — you used
   ``merged=True`` with an ion quantity (known issue above).
 

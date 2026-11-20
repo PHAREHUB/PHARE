@@ -12,6 +12,23 @@ __all__ = [
 ]
 
 
+# Transitional: pharesee is moving to pyphare.pharesee.amr. This bridge lets scripts that
+# test isinstance(..., PatchHierarchy) keep working meanwhile; it is not a full subclass
+# (FROM, dist_plot, resolve_selection_boxes are missing, see doc/source/data_analysis/
+# amr_reader.rst "Differences from the previous reader") and goes away with this package.
+def _register_amr_fields():
+    """make the fields of pyphare.pharesee.amr virtual subclasses of the classes above,
+    so that isinstance(B, PatchHierarchy / ScalarField / VectorField) holds for them"""
+    from pyphare.pharesee.amr import field as amr_field
+
+    from .tensorfield import AnyTensorField
+
+    PatchHierarchy.register(amr_field.AMRField)
+    ScalarField.register(amr_field.ScalarField)
+    VectorField.register(amr_field.VectorField)
+    AnyTensorField.register(amr_field.TensorField)
+
+
 def hierarchy_from(
     simulator=None,
     qty=None,
@@ -53,3 +70,7 @@ def hierarchy_from(
         return hierarchy_from_func(func, hier, **kwargs)
 
     raise ValueError("can't make hierarchy")
+
+
+# last, so that the whole package is defined if amr.field imports from it
+_register_amr_fields()

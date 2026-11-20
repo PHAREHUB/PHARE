@@ -203,7 +203,9 @@ Check: level 1 patch above, ``5.0 = 20 * 0.25``.
 
 **Time.** A hierarchy can hold several output times. The time is not stored in
 the patch: it is the key you use to get the levels, ``hierarchy.levels(t)``.
-Without a time, you get the first one.
+Without a time, a hierarchy holding one time gives that one; one holding
+several times gives the first with ``all_primal=False``, and a ``ValueError``
+asking for the time with the default getters.
 
 **Quantities (patch data).** Each patch carries one *patch data* per
 quantity (here ``Bx``, ``By``, ``Bz``). Fields are stored in a ``FieldData``
@@ -248,9 +250,9 @@ How to
 **Choose a time.** ``B = run.GetB(0.0)`` reads that one time. To read several
 times into one hierarchy, give a list, ``run.GetB([0.0, 0.1], all_primal=False)``,
 then ``B.times()`` lists them and ``B.levels(0.1)`` selects one. Note
-that ``B.times()`` returns the times as text (``'0.0000000000'``), while
-``run.times("B")`` returns numbers. Both ``0.1`` and the text can be
-used to select.
+that with ``all_primal=False`` ``B.times()`` returns the times as text
+(``'0.0000000000'``); with the default getters, and in ``run.times("B")``, they
+are numbers. Both ``0.1`` and the text can be used to select.
 
 **x coordinates of a patch field.** ``pd.x`` (and ``pd.y``, ``pd.z`` in 2D
 and 3D) with the ghosts, ``pd.x[g:-g]`` without. They have as many entries as
@@ -295,7 +297,7 @@ Main attributes and methods
    * - ``hierarchy.finest_level(time=None)``
      - the highest level number
    * - ``hierarchy.times()``
-     - the output times, as an array of text
+     - the output times: numbers, or text with ``all_primal=False``
    * - ``hierarchy.quantities()``
      - names of the patch data, e.g. ``['Bx', 'By', 'Bz']``
    * - ``hierarchy.domain_box``, ``hierarchy.ndim``
@@ -360,7 +362,12 @@ Common mistakes
   the arrays include ghost points, and a refined region has data on both the
   coarse and the fine level, so it is counted twice. Use the data without
   ghosts and, where levels overlap, only the finest one (``merged=True`` does
-  this).
+  this, and so do ``B.x.mean()`` and ``B.x.integral()`` with the default
+  getters, see :doc:`amr_reader`).
+* ``ValueError: assignment destination is read-only`` (writing into
+  ``pd.dataset``) or ``AttributeError: the dataset of a file-backed patch view
+  is read-only`` (replacing it) — with the default getters the data is shared
+  between fields. Copy it first: ``copy.deepcopy(pd)``.
 
 .. seealso:: How ghost cells are filled: :doc:`/dev/ghost_cells`. To plot a
    hierarchy, see :doc:`plotting_fields`.

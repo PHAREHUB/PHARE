@@ -1,9 +1,12 @@
+import abc
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 from ...core import box as boxm
 from ...core.box import Box
 from ...core.phare_utilities import deep_copy, listify, refinement_ratio
+from ..amr.errors import TimeNotFoundError
 from .patch import Patch
 from .patchlevel import PatchLevel
 
@@ -14,11 +17,9 @@ def format_timestamp(timestamp):
     return f"{timestamp:.10f}"
 
 
-class TimeNotFoundError(ValueError):
-    """raised when a requested time has no corresponding diagnostic dump"""
-
-
-class PatchHierarchy:
+# ABCMeta only so that pyphare.pharesee.amr fields can be registered as virtual
+# subclasses (isinstance(field, PatchHierarchy) is True); no abstract method is added
+class PatchHierarchy(metaclass=abc.ABCMeta):  # noqa: B024
     """is a collection of patch levels"""
 
     def __init__(

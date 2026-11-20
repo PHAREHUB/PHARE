@@ -57,6 +57,9 @@ the C++ side.
        prints) before MPI is started.
      - set by the launcher
 
+The variables that change how ``pharesee`` reads the output files
+(``PHARESEE_*``) are listed in :doc:`/data_analysis/amr_reader`.
+
 Examples
 --------
 
