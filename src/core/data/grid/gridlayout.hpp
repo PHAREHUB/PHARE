@@ -673,6 +673,7 @@ namespace core
         }
 
 
+
         /**
          * @brief Returns the index of @p index mirrored across a boundary.
          *
@@ -755,6 +756,34 @@ namespace core
             requires(has_physicalQuantity_v<HasQuantity>)
         {
             return centering(hasQuantity.physicalQuantity());
+        }
+
+        // project<src, dst> along a line of consecutive points from `first`, each stencil point
+        // read through its own line pointer so that the line loop vectorises
+        template<auto src, auto dst>
+        struct ProjectionLine
+        {
+            static constexpr auto wps
+                = recenteringStencil<GridLayout::centering(src), GridLayout::centering(dst)>();
+            std::array<double const*, wps.size()> at;
+
+            PHARE_ALWAYS_INLINE double operator()(std::uint32_t const k) const
+            {
+                double result = 0.;
+                for (std::size_t i = 0; i < wps.size(); ++i)
+                    result += wps[i].coef * at[i][k];
+                return result;
+            }
+        };
+
+        template<auto src, auto dst, typename Field>
+        NO_DISCARD static ProjectionLine<src, dst> projectLine(Field const& field,
+                                                               MeshIndex<dimension> const& first)
+        {
+            ProjectionLine<src, dst> line;
+            for (std::size_t i = 0; i < line.wps.size(); ++i)
+                line.at[i] = &field(first + line.wps[i].indexes);
+            return line;
         }
 
 
@@ -974,6 +1003,20 @@ namespace core
         void evalOnBox(Field& field, Fn&& fn) const
         {
             evalOnAnyBox(domainBoxFor(field), fn);
+        }
+
+        // fn(first, n) for each line of the field's physical box along the last (contiguous)
+        // dimension, first being the line's first index and n its number of points: the kernel
+        // walks its fields through raw line pointers, in a loop the compiler can vectorise
+        template<typename Field, typename Fn>
+        void evalOnLines(Field const& field, Fn&& fn) const
+        {
+            for_each_span(domainBoxFor(field), [&](auto const& start, std::uint32_t const n) {
+                MeshIndex<dimension> first;
+                for (std::size_t d = 0; d < dimension; ++d)
+                    first[d] = start[d];
+                fn(first, n);
+            });
         }
 
         template<typename Field, typename Fn>

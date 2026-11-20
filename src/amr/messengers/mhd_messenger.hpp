@@ -80,8 +80,6 @@ namespace amr
             resourcesManager_->registerResources(EtotOld_);
 
             resourcesManager_->registerResources(Bold_);
-
-            // also magnetic fluxes ? or should we use static refiners instead ?
         }
 
         virtual ~MHDMessenger() = default;

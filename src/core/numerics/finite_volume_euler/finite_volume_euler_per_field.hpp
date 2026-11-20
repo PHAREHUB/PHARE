@@ -2,10 +2,13 @@
 #define PHARE_CORE_NUMERICS_FINITE_VOLUME_EULER_HPP
 
 
+#include "core/def.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
+#include <array>
 #include <tuple>
 
 
@@ -28,69 +31,78 @@ public:
     template<typename Field, typename... Fluxes>
     void operator()(Field const& U, Field& Unew, Fluxes const&... fluxes) const
     {
-        layout_.evalOnBox(Unew, [&](auto&... args) mutable {
-            finite_volume_euler_(U, Unew, {args...}, fluxes...);
+        constexpr auto nFluxes = sizeof...(Fluxes);
+        std::array<std::array<QtyCentering, dimension>, nFluxes> const centerings{
+            layout_.centering(fluxes.physicalQuantity())...};
+        std::array<double, nFluxes> coefs;
+        for (std::size_t d = 0; d < nFluxes; ++d)
+            coefs[d] = dt_ * layout_.inverseMeshSize(static_cast<Direction>(d));
+
+        // each flux F_d is read at the cell's index and at its next index along d
+        layout_.evalOnLines(Unew, [&](MeshIndex<dimension> const& first, std::uint32_t const n) {
+            std::array<double const*, nFluxes> here, next;
+            for_N<nFluxes>([&](auto d) {
+                auto const& F = std::get<d>(std::forward_as_tuple(fluxes...));
+                auto shifted  = first;
+                shifted[d]    = layout_.nextIndex(centerings[d][d], first[d]);
+                here[d]       = &F(first);
+                next[d]       = &F(shifted);
+            });
+            double const* u = &U(first);
+            double* unew    = &Unew(first);
+
+            PHARE_VECTORIZE_IVDEP
+            for (std::uint32_t k = 0; k < n; ++k)
+            {
+                double v = u[k];
+                for (std::size_t d = 0; d < nFluxes; ++d)
+                    v = v - coefs[d] * (next[d][k] - here[d][k]);
+                unew[k] = v;
+            }
+        });
+    }
+
+    // as operator(), with the fluxes A_d + w B_d formed face by face (pairs {A_d, B_d})
+    template<typename Field, typename... Pairs>
+    void weighted(Field const& U, Field& Unew, double const w, Pairs const&... pairs) const
+    {
+        constexpr auto nFluxes = sizeof...(Pairs);
+        std::array<std::array<QtyCentering, dimension>, nFluxes> const centerings{
+            layout_.centering(pairs.first.physicalQuantity())...};
+        std::array<double, nFluxes> coefs;
+        for (std::size_t d = 0; d < nFluxes; ++d)
+            coefs[d] = dt_ * layout_.inverseMeshSize(static_cast<Direction>(d));
+
+        layout_.evalOnLines(Unew, [&](MeshIndex<dimension> const& first, std::uint32_t const n) {
+            std::array<double const*, nFluxes> hereA, nextA, hereB, nextB;
+            for_N<nFluxes>([&](auto d) {
+                auto const& [A, B] = std::get<d>(std::forward_as_tuple(pairs...));
+                auto shifted       = first;
+                shifted[d]         = layout_.nextIndex(centerings[d][d], first[d]);
+                hereA[d]           = &A(first);
+                nextA[d]           = &A(shifted);
+                hereB[d]           = &B(first);
+                nextB[d]           = &B(shifted);
+            });
+            double const* u = &U(first);
+            double* unew    = &Unew(first);
+
+            PHARE_VECTORIZE_IVDEP
+            for (std::uint32_t k = 0; k < n; ++k)
+            {
+                double v = u[k];
+                for (std::size_t d = 0; d < nFluxes; ++d)
+                    v = v
+                        - coefs[d]
+                              * ((nextA[d][k] + nextB[d][k] * w) - (hereA[d][k] + hereB[d][k] * w));
+                unew[k] = v;
+            }
         });
     }
 
 private:
     GridLayout layout_;
     double dt_;
-
-    template<typename Field, typename... Fluxes>
-    void finite_volume_euler_(Field const& U, Field& Unew, MeshIndex<Field::dimension> index,
-                              Fluxes const&... fluxes) const
-    {
-        auto&& flux_tuple = std::forward_as_tuple(fluxes...);
-
-        auto&& F_x          = std::get<0>(flux_tuple);
-        auto fluxCenteringX = layout_.centering(F_x.physicalQuantity());
-
-        if constexpr (dimension == 1)
-        {
-            Unew(index)
-                = U(index)
-                  - (dt_ * layout_.inverseMeshSize(Direction::X))
-                        * (F_x(layout_.nextIndex(fluxCenteringX[dirX], index[0])) - F_x(index));
-        }
-        else if constexpr (dimension >= 2)
-        {
-            auto&& F_y          = std::get<1>(flux_tuple);
-            auto fluxCenteringY = layout_.centering(F_y.physicalQuantity());
-
-            if constexpr (dimension == 2)
-            {
-                Unew(index)
-                    = U(index)
-                      - (dt_ * layout_.inverseMeshSize(Direction::X))
-                            * (F_x(layout_.nextIndex(fluxCenteringX[dirX], index[0]), index[1])
-                               - F_x(index))
-                      - (dt_ * layout_.inverseMeshSize(Direction::Y))
-                            * (F_y(index[0], layout_.nextIndex(fluxCenteringY[dirY], index[1]))
-                               - F_y(index));
-            }
-            else if constexpr (dimension == 3)
-            {
-                auto&& F_z          = std::get<2>(flux_tuple);
-                auto fluxCenteringZ = layout_.centering(F_z.physicalQuantity());
-
-                Unew(index)
-                    = U(index)
-                      - (dt_ * layout_.inverseMeshSize(Direction::X))
-                            * (F_x(layout_.nextIndex(fluxCenteringX[dirX], index[0]), index[1],
-                                   index[2])
-                               - F_x(index))
-                      - (dt_ * layout_.inverseMeshSize(Direction::Y))
-                            * (F_y(index[0], layout_.nextIndex(fluxCenteringY[dirY], index[1]),
-                                   index[2])
-                               - F_y(index))
-                      - (dt_ * layout_.inverseMeshSize(Direction::Z))
-                            * (F_z(index[0], index[1],
-                                   layout_.nextIndex(fluxCenteringZ[dirZ], index[2]))
-                               - F_z(index));
-            }
-        }
-    }
 };
 
 } // namespace PHARE::core

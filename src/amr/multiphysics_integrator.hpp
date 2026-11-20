@@ -527,7 +527,11 @@ namespace solver
                 solver.resetFluxSum(model, *level);
             }
 
-            solver.prepareStep(model, *level, currentTime);
+            // the solver's prepareStep only saves what its reflux reads, and a level is refluxed
+            // only from a finer one; finer levels are created after a step's synchronization,
+            // never during the step
+            if (iLevel < hierarchy->getFinestLevelNumber())
+                solver.prepareStep(model, *level, currentTime);
             fromCoarser.prepareStep(model, *level, currentTime);
 
             solver.advanceLevel(*hierarchy, iLevel, model, fromCoarser, currentTime, newTime);

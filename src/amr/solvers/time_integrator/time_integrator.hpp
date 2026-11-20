@@ -62,6 +62,8 @@ public:
         (*impl_)(model, state, fluxes, bc, level, currentTime, newTime);
     }
 
+    void keepFluxes(bool const keep) { impl_->keepFluxes(keep); }
+
     void registerResources(MHDModel& model) { impl_->registerResources(model); }
 
     void allocate(MHDModel& model, auto& patch, double const allocateTime) const
