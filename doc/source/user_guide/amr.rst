@@ -38,15 +38,13 @@ You choose where the fine levels go in one of two ways:
   patches around them. The fine regions follow the physics. Hybrid and
   :term:`MHD` runs use the same criterion, on the magnetic field.
 
-.. warning::
+.. note::
 
-   In an MHD run, do not combine refinement (boxes or tagging) with an
-   *adaptive* time step (``time_step={"mode": "adaptive", ...}``). The number
-   of fine steps per coarse step then changes from step to step, and the
-   coarse level is corrected as if it were always 4: mass and energy are no
-   longer conserved across levels (in a test run, the total mass drifted by
-   6e-4 in 5 steps, then the run produced NaN). Use a fixed ``time_step`` with
-   refinement. Details: :doc:`/numerics/amr` (field coarsening).
+   In an MHD run with an *adaptive* time step
+   (``time_step={"mode": "adaptive", ...}``), each refined level takes as many
+   sub-steps per coarse step as its own stability limit requires, and the
+   coarse level is still corrected conservatively. Details:
+   :doc:`/numerics/amr`.
 
 
 Minimal example: boxes you choose

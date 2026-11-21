@@ -174,12 +174,9 @@ also offers an *adaptive* step, recomputed at every step (and once at start-up):
 
    time_step={"mode": "adaptive", "cfl_wave": 0.8}
 
-.. warning::
-
-   Use the adaptive step on a single level only. With refined levels the number of fine
-   sub-steps varies and the coarse level is no longer corrected consistently: mass and energy
-   are not conserved across levels (known issue, see :doc:`amr`). With refinement, give a
-   fixed ``time_step``.
+With refined levels, each finer level sizes its sub-steps from its own stable step, and the
+coarse level is corrected with the fine fluxes weighted by each sub-step's share of the
+coarse step, so mass, momentum and energy stay conserved across levels (:doc:`amr`).
 
 On each level, PHARE computes the smallest over the cells of
 
@@ -191,14 +188,19 @@ On each level, PHARE computes the smallest over the cells of
    \Delta t_{\text{diff}} = \frac{C_{\text{diff}}}{2\eta\sum_d 1/\Delta x_d^2},
 
 where :math:`c_{f,d}` is the fast magnetosonic speed along direction :math:`d` and
-:math:`c_{w,d}` a whistler speed at the grid scale, only with ``hall=True``. The whistler
-speed is
+:math:`c_{w,d}` what the whistler adds to the Alfvén speed at the grid scale, only with
+``hall=True``:
 
 .. math::
 
-   c_w = \pi\,\frac{|\mathbf B|}{\rho}\Big(\sqrt{1+\tfrac{1}{4\Delta x^2}}+\tfrac{1}{2\Delta x}\Big),
+   c_{w,d} = v_A\Big(\sqrt{1+x_d^2}+x_d-1\Big),\qquad
+   x_d = \frac{\pi}{2\,\Delta x_d\sqrt{\rho}},\qquad
+   v_A = \frac{|\mathbf B|}{\sqrt{\rho}}.
 
-which grows like :math:`1/\Delta x` and makes the step go as :math:`\Delta x^2`. The
+:math:`v_A(\sqrt{1+x^2}+x)` is the phase speed of a whistler of wavenumber
+:math:`\pi/\Delta x`, the ion inertial length being :math:`1/\sqrt{\rho}`; the Alfvén part
+is already in :math:`c_{f,d}`. On fine grids :math:`x_d` is large, :math:`c_{w,d}` grows
+like :math:`1/\Delta x` and the step goes as :math:`\Delta x^2` (:pr:`1570`). The
 diffusive limit only applies when ``eta`` is not zero; hyper-resistivity gives no limit
 (:src:`src/amr/solvers/solver_mhd.hpp#L386-L459`,
 :src:`src/core/numerics/riemann_solvers/mhd_speeds.hpp#L23-L27`).
@@ -206,8 +208,8 @@ diffusive limit only applies when ``eta`` is not zero; hyper-resistivity gives n
 positive numbers (the docstring advises values in (0, 1], 1 being the estimated limit; ``cfl_diffusive`` defaults to
 ``cfl_wave``) (:src:`pyphare/pyphare/pharein/simulation.py#L889-L900`). The estimate is not a
 guarantee: in the documentation run above the first- and second-order integrators failed at Courant
-numbers of 0.2 (``Euler``) and 0.8 (``TVDRK2``). How each level's limit becomes a
-step of the coarsest level, and what the sub-steps of the finer levels do, are on
+numbers of 0.2 (``Euler``) and 0.8 (``TVDRK2``). How the coarsest level's limit becomes
+its step and the finer levels' limits set their sub-steps is on
 :doc:`time_integration` and :doc:`/dev/subcycling`; how the fine-level flux sums are used to
 correct the coarse level is on :doc:`/dev/refluxing`.
 

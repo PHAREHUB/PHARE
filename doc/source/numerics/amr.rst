@@ -54,7 +54,7 @@ Recursive time integration
 
 The hybrid equations carry whistler waves, whose stable time step scales like
 :math:`\Delta x^2`. A level twice finer therefore uses a time step four times
-smaller, and takes 4 sub-steps for each step of the level below, as long as the level-0 step does not change, which is always the case in hybrid. With an adaptive step (MHD only) the number can differ (:doc:`/dev/subcycling`).
+smaller, and takes 4 sub-steps for each step of the level below with a fixed time step, the only one in hybrid. With an adaptive step (MHD only) each finer level takes as many equal sub-steps as its own stable step requires (:doc:`/dev/subcycling`).
 
 Levels are advanced coarsest first, recursively: a level makes one step, then
 every finer level makes its sub-steps to reach the same time, then the levels
@@ -236,12 +236,13 @@ summed over the sub-steps replace the coarse fluxes on the coarse faces they cov
 and the coarse level redoes its step with them (again refluxing). Details:
 :doc:`/dev/refluxing` and :doc:`/dev/coarsening`.
 
-What refluxing keeps, with a fixed time step:
+What refluxing keeps, with a fixed or an adaptive time step:
 
 * **MHD:** the mass, momentum and energy that leave a coarse cell through a face of the
   border are exactly what the fine cells on the other side receive, because the coarse
-  face is given the time average of the fine fluxes (a quarter of each of the four
-  sub-step fluxes) and, in 2D and 3D, the mean over the 2 (2D) or 4 (3D) fine faces it
+  face is given the time average of the fine fluxes (each sub-step flux weighted by its
+  share of the coarse step, a quarter with four equal sub-steps) and, in 2D and 3D, the
+  mean over the 2 (2D) or 4 (3D) fine faces it
   covers.
 * **Hybrid and MHD:** the magnetic flux through a coarse face of the border changes by the
   sum of the changes through the fine faces it contains, so the divergence of B is kept
@@ -279,8 +280,9 @@ What refluxing keeps, with a fixed time step:
    fig.text(0.5, 0.01, "illustrative numbers", ha="center", fontsize=7, color=C["grey"])
    fig.tight_layout(rect=(0, 0.03, 1, 1))
 
-With an adaptive time step in MHD the number of fine sub-steps can differ from four and the
-mean is no longer the time average: see the known issue on :doc:`/dev/refluxing`.
+With an adaptive time step in MHD the fine sub-steps need not be four, nor all equal: each
+is weighted by its share of the coarse step, so the sum is still the time average
+(:doc:`/dev/refluxing`).
 
 
 Fields at level boundaries

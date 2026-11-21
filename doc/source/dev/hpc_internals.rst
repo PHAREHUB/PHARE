@@ -51,8 +51,9 @@ What every rank must do together
 
    * - Collective call (step order)
      - Code
-   * - adaptive ``dt``: ``mpi::min``
-     - ``MultiPhysicsIntegrator::computeStableDt`` (:src:`src/amr/multiphysics_integrator.hpp#L435-L460`)
+   * - adaptive ``dt``: one ``mpi::min`` per stable step, on level 0 before each step and on
+       each finer level after each of its sub-steps
+     - ``MultiPhysicsIntegrator::levelStableDt_`` (:pr:`1570`)
    * - level 0 load gather (``auto`` only, when due)
      - ``tolerance_rebalance_check`` (:src:`src/amr/wrappers/integrator.hpp#L113-L119`), :doc:`load_balancing`
    * - ``mpi::any_errors`` (exception builds)

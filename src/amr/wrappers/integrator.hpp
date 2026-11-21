@@ -24,6 +24,7 @@
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
+#include <limits>
 #include <stdexcept>
 
 
@@ -203,10 +204,24 @@ Integrator<_dimension>::Integrator(
 
     db->putDouble("start_time", 0.0);
     db->putDouble("end_time", endTime);
-    db->putInteger("max_integrator_steps", 1000000);
+
+    // PHARE never asks SAMRAI whether steps remain, so this limit must not bind. With
+    // read_on_restart, SAMRAI refuses a restart whose level-0 step count is above it.
+    db->putInteger("max_integrator_steps", std::numeric_limits<int>::max());
+
     db->putIntegerVector(
         "tag_buffer", std::vector<int>(hierarchy->getMaxNumberOfLevels(),
                                        dict["simulation"]["AMR"]["tag_buffer"].template to<int>()));
+
+    // After each substep of a refined level, SAMRAI caps the bound on the next one at grow_dt
+    // times the previous bound. SAMRAI's default is 1: the bound could then only shrink. 1e3 is
+    // large enough for the cap never to act, so that the substep follows the bound PHARE
+    // returns (MultiPhysicsIntegrator::advanceLevel) upwards as well as downwards.
+    db->putDouble("grow_dt", 1e3);
+
+    // On a restart, SAMRAI takes end_time, grow_dt, max_integrator_steps and tag_buffer from the
+    // restart file and ignores the values above, unless read_on_restart is set.
+    db->putBool("read_on_restart", true);
 
 
     timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(

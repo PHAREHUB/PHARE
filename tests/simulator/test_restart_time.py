@@ -374,6 +374,56 @@ class RestartTimeTest(RecordingTest):
             )
             self.assertEqual(float(out.stdout.strip().splitlines()[-1]), tA[10])
 
+    def stored_integrator_inputs(self, time):
+        import h5py
+
+        folder = cpp.cpp_etc_lib().restart_path_for_time(f"{self.out()}/restarts", time)
+        path = next(Path(folder).glob("restore.*/nodes.*/proc.*"))
+        with h5py.File(path, "r") as f:
+            integrator = f["TimeRefinementIntegrator"]
+            return {
+                key: np.ravel(integrator[key][()]).tolist()
+                for key in ("end_time", "grow_dt", "max_integrator_steps", "tag_buffer")
+            }
+
+    def test_restart_takes_the_integrator_inputs_of_the_new_run(self):
+        import h5py
+
+        tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
+        written = self.stored_integrator_inputs(0.3)
+        self.assertEqual(written["end_time"], [tA[-1]])
+        self.assertEqual(written["tag_buffer"], [1])
+
+        cpp.mpi_barrier()
+        if cpp.mpi_rank() == 0:
+            for path in Path(f"{self.out()}/restarts").glob(
+                "*/restore.*/nodes.*/proc.*"
+            ):
+                with h5py.File(path, "a") as f:
+                    f["TimeRefinementIntegrator"]["grow_dt"][...] = 1.0
+                    f["TimeRefinementIntegrator"]["max_integrator_steps"][...] = 2
+        cpp.mpi_barrier()
+        legacy = self.stored_integrator_inputs(0.3)
+        self.assertEqual(legacy["grow_dt"], [1.0])
+        self.assertEqual(legacy["max_integrator_steps"], [2])
+
+        tB = self.run_recording(
+            dict(restart_time=0.3, timestamps=[0.5]),
+            time_step=0.1,
+            time_step_nbr=5,
+            tag_buffer=2,
+        )
+        self.assertEqual(tB[0], tA[3])
+        self.assertGreater(tB[-1], tA[-1])
+
+        restarted = self.stored_integrator_inputs(0.5)
+        self.assertEqual(restarted["grow_dt"], written["grow_dt"])
+        self.assertEqual(
+            restarted["max_integrator_steps"], written["max_integrator_steps"]
+        )
+        self.assertEqual(restarted["end_time"], [tB[-1]])
+        self.assertEqual(restarted["tag_buffer"], [2])
+
     def test_restored_time_without_mpi_layout_match(self):
         tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
         folder = cpp.cpp_etc_lib().restart_path_for_time(f"{self.out()}/restarts", 0.3)
