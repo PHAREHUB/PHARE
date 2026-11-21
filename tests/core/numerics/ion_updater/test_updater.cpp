@@ -773,12 +773,11 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
 
     auto& populations = this->ions.getRunTimeResourcesViewList();
@@ -819,12 +818,12 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 //
-//    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-//                                 UpdaterMode::particles_and_moments);
+//    ionUpdater.updatePopulations(UpdaterMode::in_place, this->ions, this->EM, this->boxing,
+//                                 this->dt);
 //
 //    this->fillIonsMomentsGhosts();
 //
-//    ionUpdater.updateIons(this->ions);
+//    this->ions.update();
 //
 //    auto& populations = this->ions.getRunTimeResourcesViewList();
 //
@@ -844,11 +843,12 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(UpdaterMode::in_place, this->ions, this->EM, this->boxing,
+                                 this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -864,12 +864,11 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -882,12 +881,11 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -999,7 +997,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ASSERT_GT(nbrEntering.back(), 0u);
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+        ionUpdater.updatePopulations(UpdaterMode::in_place, this->ions, this->EM, boxing, this->dt);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
@@ -1035,8 +1033,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
                                + (withNonOwned ? 0. : enteringWeights));
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt,
-                                     UpdaterMode::domain_only);
+        ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, boxing, this->dt);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
@@ -1068,7 +1065,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ASSERT_GT(count(pop.levelGhostParticles(), twoCellsPast), 0u);
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+        ionUpdater.updatePopulations(UpdaterMode::in_place, this->ions, this->EM, boxing, this->dt);
 
         for (auto& pop : this->ions)
             EXPECT_EQ(count(pop.levelGhostParticles(), pastGhostBox), 0u);
@@ -1116,7 +1113,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ASSERT_GT(nbrStaying.back(), 0u);
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, mode);
+        ionUpdater.updatePopulations(mode, this->ions, this->EM, boxing, this->dt);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
@@ -1124,7 +1121,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             auto const expected = weights(pop.domainParticles());
             EXPECT_NEAR(total(pop.particleDensity()), expected, 1e-10 * expected);
 
-            if (mode == UpdaterMode::all)
+            if (mode == UpdaterMode::in_place)
             {
                 EXPECT_EQ(pop.domainParticles().size(), nbrDomain[ipop]);
                 EXPECT_EQ(pop.patchGhostParticles().size(), 0u);
@@ -1159,7 +1156,7 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
         ASSERT_GT(nbrCrossing.back(), 0u);
     }
 
-    ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(UpdaterMode::in_place, this->ions, this->EM, boxing, this->dt);
 
     std::size_t ipop = 0;
     for (auto& pop : this->ions)
@@ -1252,7 +1249,7 @@ TYPED_TEST_SUITE(IonUpdaterNeighbourDomainTest, DimInterps1DTwoGhosts, );
 
 TYPED_TEST(IonUpdaterNeighbourDomainTest, levelGhostEnteringNeighbourDomainIsDropped)
 {
-    this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::all);
+    this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::in_place);
 }
 
 // the moments only pass deposits a level ghost particle only where it enters the patch's own
@@ -1260,7 +1257,7 @@ TYPED_TEST(IonUpdaterNeighbourDomainTest, levelGhostEnteringNeighbourDomainIsDro
 TYPED_TEST(IonUpdaterNeighbourDomainTest,
            levelGhostEnteringNeighbourDomainIsNotDepositedMomentsOnly)
 {
-    this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::domain_only);
+    this->checkLevelGhostEnteringNeighbourDomain(UpdaterMode::copy);
 }
 
 

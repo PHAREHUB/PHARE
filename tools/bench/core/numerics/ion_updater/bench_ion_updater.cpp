@@ -46,16 +46,16 @@ void updater_routine(benchmark::State& state)
     auto dt             = new_time - current_time;
     while (state.KeepRunningBatch(1)) // while (state.KeepRunning())
     {
-        ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::domain_only);
-        ionUpdater_.updateIons(ions);
+        ionUpdater_.updatePopulations(core::UpdaterMode::copy, ions, em, boxing, dt);
+        ions.update();
 
         patch_particles.domain_particles = particles_copy;
         auto& pack
             = std::get<4>(ions.getRunTimeResourcesViewList()[0].getCompileTimeResourcesViewList());
         pack.setBuffer(&patch_particles.pack());
 
-        ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::all);
-        ionUpdater_.updateIons(ions);
+        ionUpdater_.updatePopulations(core::UpdaterMode::in_place, ions, em, boxing, dt);
+        ions.update();
     }
 }
 
