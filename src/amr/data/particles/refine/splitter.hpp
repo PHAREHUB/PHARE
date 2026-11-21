@@ -18,7 +18,7 @@
 
 namespace PHARE::amr
 {
-// see meta_utilities.hpp for list of declared permutations.
+// see possibleSimulators() in simulator/simulator_def.hpp for the declared permutations.
 
 /** \brief A SplitPattern identifies where refined particles will be placed
  * relative to a coarse particle and their weight.
