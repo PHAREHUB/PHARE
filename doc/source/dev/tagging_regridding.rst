@@ -167,22 +167,23 @@ Schematic: the blue part is copied from the old level, the orange part refined f
    (:src:`src/amr/solvers/solver_ppc.hpp#L115-L119`).
 #. ``levelInitializer.initialize``: ``messenger.regrid`` on a regrid, else ``initLevel``
    (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L63-L85`).
-#. Rebuild what is derived: moments, level ghost contribution, J, "old" copies
-   (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L87-L169`).
+#. Rebuild what is derived: moments (domain deposit, then the owned level ghost
+   particles, then the border sums, :doc:`/dev/moments`), J, "old" copies
+   (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L87-L163`).
 #. Estimate the load (not for level 0)
    (:src:`src/amr/multiphysics_integrator.hpp#L338-L341`).
 
 ``HybridHybridMessengerStrategy::regrid``
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L252-L289`):
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L254-L291`):
 
 * **B**: one schedule from new, old and coarser level; a NaN check keeps copied faces
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L958-L966`,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L176-L181`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L944-L952`,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L178-L183`).
 * **E**, **domain particles**: same rule, see :doc:`/dev/field_refinement`,
   :doc:`/dev/particle_splitting`.
 * **Level ghost particles (old)**: ``fillTransient`` from the split of the coarser
   domain particles (above level 0); the "new" ones are refined in the next first step
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L282`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L268-L284`).
 
 Load balancing of level 0
 -------------------------
@@ -210,7 +211,7 @@ Level ghost particles are not regridded
 SAMRAI MPI module, according to the code comment (issue :issue:`604`).
 
 **Fix.** ``regrid`` uses ``fillTransient`` only
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L281`).
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L268-L283`).
 
 Nodes on a ghost box border after a regrid (fixed in SAMRAI)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -222,7 +223,7 @@ nodes on a ghost box border touching an old-level patch were not copied.
 (`SAMRAI pull request 312 <https://github.com/LLNL/SAMRAI/pull/312>`_, which replaced
 `pull request 293 <https://github.com/LLNL/SAMRAI/pull/293>`_). The SAMRAI that PHARE
 downloads (``develop`` branch) contains it, so PHARE has no workaround; the comment at
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L284-L287` is a leftover.
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L286-L289` is a leftover.
 
 Schedules built once per regrid
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
