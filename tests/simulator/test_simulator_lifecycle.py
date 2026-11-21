@@ -60,7 +60,7 @@ class SimulatorLifecycleTest(SimulatorTest):
         self.simulator = Simulator(self.config()).run()
         self.assertIsNotNone(self.simulator.cpp_sim)
         self.assertAlmostEqual(self.simulator.currentTime(), final_time)
-        self.assertTrue(self.simulator.data_wrangler().lvl0EM())
+        self.assertTrue(self.simulator.data_wrangler().getHybridPatchLevel(0).getB("x"))
         self.success = True
 
     @data("phareh5", "pharevtkhdf")
@@ -87,7 +87,7 @@ class SimulatorLifecycleTest(SimulatorTest):
         self.assertIsNone(first.cpp_sim)
         self.assertIsNotNone(self.simulator.cpp_sim)
         first = None  # its __del__ must not reset SAMRAI under the live simulator
-        self.assertTrue(self.simulator.data_wrangler().lvl0EM())
+        self.assertTrue(self.simulator.data_wrangler().getHybridPatchLevel(0).getB("x"))
         self.success = True
 
     def test_setup_raises_while_another_is_unfinished(self):

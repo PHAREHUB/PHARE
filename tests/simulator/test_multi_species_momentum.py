@@ -77,12 +77,12 @@ def level_bulk_velocity(simulator, ilvl):
     """mean of the ion bulk velocity over the physical nodes of a level"""
     patch_level = simulator.data_wrangler().getPatchLevel(ilvl)
     mean = []
-    for getter in (patch_level.getVix, patch_level.getViy, patch_level.getViz):
+    for component in ("x", "y", "z"):
         values = [
             np.asarray(patch.data)[
                 patch.nGhosts : patch.nGhosts + patch.upper[0] - patch.lower[0] + 2
             ]
-            for patch in getter()
+            for patch in patch_level.getVi(component)
         ]
         mean.append(np.concatenate(values).mean())
     return np.array(mean)
