@@ -410,12 +410,12 @@ class BorderSumRefiner
         }
     };
 
-    LevelSum makeLevelSum_(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level) const
+    LevelSum makeLevelSum_(std::shared_ptr<SAMRAI::hier::PatchLevel> level) const
     {
         auto sums     = std::make_shared<Factory_t>();
         auto schedule = algo_->createSchedule(level, patchStrat_.get(), sums);
         sums->finalize(*level);
-        return {level, schedule, sums};
+        return {std::move(level), std::move(schedule), std::move(sums)};
     }
 
     std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo_
