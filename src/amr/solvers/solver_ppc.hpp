@@ -190,7 +190,7 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using Boxing_t = core::UpdaterSelectionBoxing<GridLayout, ParticleArray>;
     struct LevelBoxing
     {
         std::weak_ptr<level_t> level; // identity of the level the boxes were built for
@@ -391,14 +391,14 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     average_(level, model, fromCoarser, currentTime, newTime);
 
-    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::domain_only);
+    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::copy);
 
     predictor2_(level, model, fromCoarser, currentTime, newTime);
 
 
     average_(level, model, fromCoarser, currentTime, newTime);
 
-    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::all);
+    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::in_place);
 
     corrector_(level, model, fromCoarser, currentTime, newTime);
 }
@@ -603,9 +603,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons");
         auto dt = newTime - currentTime;
         for (auto& patch : rm.enumerate(level, ions, electromagAvg_))
-            ionUpdater_.updatePopulations(ions, electromagAvg_,
-                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt,
-                                          mode);
+            ionUpdater_.updatePopulations(mode, ions, electromagAvg_,
+                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt);
     }
     catch (core::DictionaryException const& ex)
     {
@@ -631,7 +630,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         fromCoarser.fillDensityBorders(ions, level, newTime);
     }
 
-    if (mode != core::UpdaterMode::domain_only)
+    if (mode != core::UpdaterMode::copy) // copy leaves the particles untouched
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonGhostParticles");
 
@@ -657,7 +656,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     }
 
     for (auto& patch : rm.enumerate(level, ions))
-        ionUpdater_.updateIons(ions);
+        ions.update();
 
     // no need to update time, since it has been done before
 }
