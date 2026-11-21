@@ -134,9 +134,12 @@ def config(sim, loadbalancing=None):
     )
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
+    final_time = sim.time_stepper.final_time
     for pop in ["brotons", "protons"]:
         ph.ParticleDiagnostics(
-            quantity="domain", write_timestamps=timestamps, population_name=pop
+            quantity="domain",
+            write_timestamps=[t for t in timestamps if t <= final_time],
+            population_name=pop,
         )
 
     if loadbalancing:
@@ -209,6 +212,44 @@ def get_particles(diag_dir, time=0):
     hier = get_time(diag_dir, time)
     hier = get_time(diag_dir, time, "brotons", hier)
     return hier
+
+
+def level_arrays(diag_dir, qty, time):
+    """{(level, component): (lower, values, covered)}: each level's domain nodes of qty ("B",
+    "E") at time, from all its patches, on the level's bounding box from its lower corner,
+    covered where a patch is: comparable whatever the patches. A component's centering and
+    ghost width come from its datasets' shapes"""
+    import h5py
+
+    out = {}
+    with h5py.File(f"{diag_dir}/EM_{qty}.h5", "r") as f:
+        levels = f["t"][f"{time:.10f}"]
+        for level in sorted(k for k in levels if k.startswith("pl")):
+            patches = list(levels[level].values())
+            lower = np.min([p.attrs["lower"] for p in patches], axis=0)
+            upper = np.max([p.attrs["upper"] for p in patches], axis=0)
+            for c in "xyz":
+                key = f"EM_{qty}_{c}"
+                values = covered = None
+                for p in patches:
+                    data = p[key][()]
+                    cells = p.attrs["upper"] - p.attrs["lower"] + 1
+                    primal = (np.array(data.shape) - cells) % 2
+                    ghosts = (np.array(data.shape) - cells - primal) // 2
+                    if values is None:
+                        values = np.zeros(upper - lower + 1 + primal)
+                        covered = np.zeros(values.shape, dtype=bool)
+                    src = tuple(
+                        slice(g, g + n + q) for g, n, q in zip(ghosts, cells, primal)
+                    )
+                    at = tuple(
+                        slice(lo - l0, lo - l0 + n + q)
+                        for lo, l0, n, q in zip(p.attrs["lower"], lower, cells, primal)
+                    )
+                    values[at] = data[src]
+                    covered[at] = True
+                out[(level, c)] = (tuple(lower), values, covered)
+    return out
 
 
 def time_info(diag_dir, time=0):
@@ -288,6 +329,60 @@ class LoadBalancingTest(SimulatorTest):
             },
         )
         Simulator(drifting_load_config(sim)).run()
+
+    def test_rebalance_does_not_change_results(self):
+        # imbalanced on init and not rebalanced then: rebalanced after the first step in one run,
+        # never in the other. A rebalance moves data: it may change the order of some sums at
+        # patch borders (round off), not the results
+        if cpp.mpi_size() == 1:  # doesn't make sense
+            return
+
+        steps = 2
+
+        def run(diag_dir, every):
+            ph.global_vars.sim = None
+            sim = self.simulation(
+                time_step_nbr=steps,
+                time_step=time_step,
+                cells=cells,
+                dl=dl,
+                refinement="tagging",
+                max_nbr_levels=2,
+                hyper_resistivity=0.001,
+                resistivity=0.001,
+                diag_options={
+                    "format": "phareh5",
+                    "options": {"dir": diag_dir, "mode": "overwrite"},
+                },
+            )
+            config(sim, dict(mode="nppc", tol=0.05, on_init=False, every=every))
+            for qty in ["E", "B"]:
+                ph.ElectromagDiagnostics(
+                    quantity=qty, write_timestamps=[steps * time_step]
+                )
+            Simulator(sim).run().reset()
+            # the test's own directory, see simulation()
+            return sim.diag_options["options"]["dir"]
+
+        rebalanced = run(f"{diag_outputs}/rebalanced", every=1)
+        not_rebalanced = run(f"{diag_outputs}/not_rebalanced", every=0)
+
+        # every rank compares (reads only): no rank waits on another
+        for qty in ["B", "E"]:
+            a = level_arrays(rebalanced, qty, steps * time_step)
+            b = level_arrays(not_rebalanced, qty, steps * time_step)
+            self.assertEqual(a.keys(), b.keys())
+            scale = max(np.max(np.abs(v[covered])) for _, v, covered in a.values())
+            for key in a:
+                (lower_a, va, ca), (lower_b, vb, cb) = a[key], b[key]
+                self.assertEqual(lower_a, lower_b, key)  # the same place
+                self.assertEqual(va.shape, vb.shape, key)
+                self.assertTrue(np.array_equal(ca, cb), key)  # the same nodes covered
+                self.assertTrue(np.all(np.isfinite(va[ca])), key)
+                self.assertTrue(np.all(np.isfinite(vb[cb])), key)
+                diff = np.max(np.abs(va[ca] - vb[cb])) / scale
+                print(f"{qty} {key}: max relative difference {diff:.2e}")
+                self.assertLess(diff, 1e-10, f"{qty} {key}")
 
     @unittest.skip("should change with moments")
     @data(
