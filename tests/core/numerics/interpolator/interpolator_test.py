@@ -46,7 +46,8 @@ def bspline(x, n):
 
 def main():
     orders = [1, 2, 3]
-    particle_positions = 3.0 + np.arange(0, 1.0, 0.1)
+    # delta every 1/8, exact in binary: see n_bspline_particles in test_main.cpp
+    particle_positions = 3.0 + np.arange(0, 1.0, 0.125)
 
     path = sys.argv[1]
 
