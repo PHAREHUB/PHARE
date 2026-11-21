@@ -3,6 +3,13 @@
 # Per compiler CXXFLAGS
 set (PHARE_FLAGS ${PHARE_FLAGS} )
 
+# PHARE never reads errno. With it set, sqrt keeps a scalar branch to report domain errors,
+# which stops the MHD face loops (PHARE_VECTORIZE_IVDEP) from vectorising.
+check_cxx_compiler_flag( -fno-math-errno PHARE_SUPPORTS_FNO_MATH_ERRNO)
+if (PHARE_SUPPORTS_FNO_MATH_ERRNO)
+  set (PHARE_FLAGS ${PHARE_FLAGS} -fno-math-errno )
+endif()
+
 if(PHARE_COMPILER_WORKAROUNDS)
   # mostly for silencing spurious Werrors
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")

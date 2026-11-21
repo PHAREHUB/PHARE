@@ -59,7 +59,7 @@ constexpr std::uint32_t nbrGhostsFromInterpOrder()
  *
  * There is no hyper-resistivity layer: the dissipative electric field takes its Laplacian on J at
  * its native edge location, and the flux contributions project it to the face, so they stay within
- * the reconstruction reach. See DissipativeElectricField and Godunov::transverse_on_face_.
+ * the reconstruction reach. See DissipativeElectricField and Godunov::dissipative_energy_flux_.
  */
 template<std::uint32_t reconstruction_nghosts>
 constexpr std::uint32_t nbrGhostsFromReconstruction()

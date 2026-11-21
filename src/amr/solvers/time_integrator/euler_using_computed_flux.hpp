@@ -25,6 +25,21 @@ public:
                     level_t& level, double const newTime, double const dt)
     {
         FiniteVolumeEuler_t{level, model}(state, statenew, fluxes, dt);
+        finish_(model, state, statenew, E, bc, level, newTime, dt);
+    }
+
+    // with the fluxes A + w B, formed face by face instead of stored
+    void operator()(MHDModel& model, auto& state, auto& statenew, auto& E, auto& A, double const w,
+                    auto& B, auto& bc, level_t& level, double const newTime, double const dt)
+    {
+        FiniteVolumeEuler_t{level, model}(state, statenew, A, w, B, dt);
+        finish_(model, state, statenew, E, bc, level, newTime, dt);
+    }
+
+private:
+    void finish_(MHDModel& model, auto& state, auto& statenew, auto& E, auto& bc, level_t& level,
+                 double const newTime, double const dt)
+    {
         TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot);
 
         Faraday_t{level, model}(state.B, E, statenew.B, dt);

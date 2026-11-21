@@ -29,6 +29,7 @@ public:
     TVDRK3Integrator(PHARE::initializer::PHAREDict const& dict)
         : Super{dict, /*n_extra_states=*/2}
         , euler_{dict}
+        , compute_fluxes_{dict}
     {
     }
 
@@ -42,12 +43,10 @@ public:
         auto& state1 = this->extra_states_[0];
         auto& state2 = this->extra_states_[1];
 
-        this->resetButcherFluxes_(model, level);
-
         // U1 = Euler(Un)
         euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w01_ * w11_);
+        this->setButcherFluxes_(model, state.E, fluxes, level, w01_ * w11_);
 
         // U1 = Euler(U1)
         euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);
@@ -65,14 +64,12 @@ public:
         TimeSetter{level, model, stageTime}(state2.rho, state2.rhoV, state2.Etot, state2.B);
         bc.fillStateGhosts(state2, level, stageTime);
 
-        // U2 = Euler(U2)
-        euler_(model, state2, state2, fluxes, bc, level, currentTime, newTime);
-
-        this->accumulateButcherFluxes_(model, state2.E, fluxes, level, w11_);
+        // only F(U2) is needed: the update below starts again from Un
+        compute_fluxes_(model, state2, fluxes, bc, level, newTime);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, newTime - currentTime);
+        this->finalUpdate_(model, state, state2.E, fluxes, w11_, bc, level, newTime,
+                           newTime - currentTime);
     }
 
     void registerResources(MHDModel& model) override
@@ -97,7 +94,8 @@ private:
     static constexpr auto w11_{2. / 3.};
 
     Euler<FVMethodStrategy, MHDModel> euler_;
-    EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
+    // shares its resources with euler_
+    ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;
 };
 
 } // namespace PHARE::solver

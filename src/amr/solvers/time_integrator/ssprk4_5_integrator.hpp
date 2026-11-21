@@ -45,15 +45,13 @@ public:
         auto& state3 = this->extra_states_[2];
         auto& state4 = this->extra_states_[3];
 
-        this->resetButcherFluxes_(model, level);
-
         auto const dt = newTime - currentTime;
 
         // U1 = Un + w0_*dt*F(Un). Fill U1's coarse-fine ghosts at its abscissa t_n + c1_*dt.
         euler_(model, state, state1, fluxes, bc, level, currentTime, currentTime + c1_ * dt,
                w0_ * dt);
 
-        this->accumulateButcherFluxes_(
+        this->setButcherFluxes_(
             model, state.E, fluxes, level,
             (w0_ * w11_ * w21_ * w31_ * w43_ + w0_ * w11_ * w21_ * w41_ + w0_ * w11_ * w40_));
 
@@ -103,10 +101,7 @@ public:
 
         compute_fluxes_(model, state4, fluxes, bc, level, newTime);
 
-        this->accumulateButcherFluxes_(model, state4.E, fluxes, level, w44_);
-
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, dt);
+        this->finalUpdate_(model, state, state4.E, fluxes, w44_, bc, level, newTime, dt);
     }
 
     void registerResources(MHDModel& model) override
