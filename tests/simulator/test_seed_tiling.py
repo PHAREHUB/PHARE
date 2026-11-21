@@ -25,8 +25,8 @@ ppc = 10
 diag_dir = "phare_outputs/seed_tiling"
 
 
-def config(largest_patch_size, diag_subdir):
-    sim = ph.Simulation(
+def config(largest_patch_size, diag_subdir, simulation=ph.Simulation):
+    sim = simulation(
         time_step=0.001,
         time_step_nbr=1,
         cells=cells,
@@ -77,10 +77,10 @@ def config(largest_patch_size, diag_subdir):
     return sim
 
 
-def particles_by_cell(diag_subdir):
+def particles_by_cell(run_dir):
     """level-0 domain particles at t=0 as {cell: sorted rows}, and the patch boxes"""
     hier = hierarchy_from(
-        h5_filename=f"{diag_dir}/{diag_subdir}/ions_pop_protons_domain.h5",
+        h5_filename=f"{run_dir}/ions_pop_protons_domain.h5",
         times=f"{0:.10f}",
     )
     boxes, rows = [], {}
@@ -106,18 +106,19 @@ class SeedTilingTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def run_with(self, largest_patch_size, diag_subdir):
-        ph.global_vars.sim = None
-        Simulator(config(largest_patch_size, diag_subdir)).initialize().reset()
+        sim = config(largest_patch_size, diag_subdir, self.simulation)
+        Simulator(sim).initialize().reset()
+        return sim.diag_options["options"]["dir"]
 
     def test_particles_do_not_depend_on_the_tiling(self):
-        self.run_with(40, "large_patches")
-        self.run_with(13, "small_patches")
+        dir_a = self.run_with(40, "large_patches")
+        dir_b = self.run_with(13, "small_patches")
 
         if cpp.mpi_rank() != 0:
             return
 
-        boxes_a, cells_a = particles_by_cell("large_patches")
-        boxes_b, cells_b = particles_by_cell("small_patches")
+        boxes_a, cells_a = particles_by_cell(dir_a)
+        boxes_b, cells_b = particles_by_cell(dir_b)
 
         self.assertNotEqual(boxes_a, boxes_b, "the two runs have the same tiling")
         self.assertEqual(len(cells_a), cells[0] * cells[1])

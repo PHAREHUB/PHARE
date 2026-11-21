@@ -274,20 +274,34 @@ class SimulatorTest(unittest.TestCase):
         default of 1 forwarded unconditionally overrode that derivation, so every
         MHD-only deck built through this helper asked for the coupled hybrid+MHD
         pybind module instead of the MHD-only one.
+
+        A restarts dir is made unique the same way as the diagnostics dir, so a run
+        restarting from the checkpoints of an earlier run of the same test finds them.
+        The simulation is then built again with the unique dirs: Simulation reads the
+        restarts dir when built (restart_time="auto").
         """
+        import copy
+
+        given = copy.deepcopy(kwargs)  # Simulation edits the option dicts it is given
         ph.global_vars.sim = None
         sim = ph.Simulation(**kwargs)
         base = sim.diag_options["options"]["dir"]
-        test_output = self.unique_diag_dir(sim)
-        if base.endswith(test_output):
+        suffix = self.unique_diag_dir(sim)
+        if base.endswith(suffix):
             return sim  # already applied!
-        test_output = f"{base}/{test_output}"
+        test_output = f"{base}/{suffix}"
         os.makedirs(test_output, exist_ok=True)
-        sim.diag_options["options"]["dir"] = test_output
+        given["diag_options"]["options"]["dir"] = test_output
         self.register_diag_dir_for_cleanup(test_output)
-        if sim.restart_options:
-            sim.restart_options["dir"] = test_output
-        return sim
+        if given.get("restart_options"):
+            restart_dir = given["restart_options"].get("dir", test_output)
+            restart_dir = restart_dir.rstrip(os.path.sep)
+            if not restart_dir.endswith(suffix):  # else an earlier run's, to restart from
+                restart_dir = f"{restart_dir}/{suffix}"
+                self.register_diag_dir_for_cleanup(restart_dir)
+            given["restart_options"]["dir"] = restart_dir
+        ph.global_vars.sim = None
+        return ph.Simulation(**given)
 
     def clean_up_diags_dirs(self):
         from pyphare import cpp
