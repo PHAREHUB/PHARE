@@ -174,16 +174,10 @@ public:
         )
         // clang-format on
 
-        constexpr bool data_is_vector = core::IsStdVector<Data>;
-
         auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
-            if constexpr (data_is_vector)
-                node.template createAttribute<typename Data::value_type>(
-                        _key, HighFive::DataSpace::From(value))
-                    .write(value);
-            else
-                node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
-                    .write(value);
+            node.template createAttribute<core::final_type_t<Data, std::string>>(
+                    _key, HighFive::DataSpace::From(value))
+                .write(value);
         };
 
         if (h5file_.exist(keyPath)
