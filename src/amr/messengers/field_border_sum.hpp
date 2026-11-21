@@ -21,6 +21,7 @@
 
 #include <map>
 #include <span>
+#include <tuple>
 #include <memory>
 #include <vector>
 #include <cstddef>
@@ -339,15 +340,15 @@ private:
 
 
 
-template<typename FieldData_t>
+/** Allocates the transactions of a border-sum schedule, with one BorderSums per PatchData type:
+ * items of several types (eg a population's particle density, FieldData, and flux, VecFieldData)
+ * then share one schedule, so one MPI exchange instead of one per type. Each transaction gets
+ * the type whose overlap it carries (FieldOverlap or TensorFieldOverlap<rank>).
+ */
+template<typename... FieldData_ts>
 class FieldBorderSumTransactionFactory : public SAMRAI::xfer::RefineTransactionFactory
 {
 public:
-    explicit FieldBorderSumTransactionFactory(std::shared_ptr<BorderSums<FieldData_t>> sums)
-        : sums_{std::move(sums)}
-    {
-    }
-
     std::shared_ptr<SAMRAI::tbox::Transaction>
     allocate(std::shared_ptr<SAMRAI::hier::PatchLevel> const& dst_level,
              std::shared_ptr<SAMRAI::hier::PatchLevel> const& src_level,
@@ -361,12 +362,38 @@ public:
         // only transactions delivering to a local patch carry a contribution to store
         bool const toLocalPatch
             = dst_node.getOwnerRank() == dst_level->getBoxLevel()->getMPI().getRank();
-        auto const handle = toLocalPatch ? sums_->add(dst_node, src_node, overlap,
-                                                      refine_data[item_id]->d_scratch)
-                                         : std::size_t{0};
 
-        return std::make_shared<FieldBorderSumTransaction<FieldData_t>>(
-            dst_level, src_level, overlap, dst_node, src_node, refine_data, item_id, sums_, handle);
+        std::shared_ptr<SAMRAI::tbox::Transaction> transaction;
+        auto const allocate_
+            = [&]<typename FieldData_t>(std::shared_ptr<BorderSums<FieldData_t>> const& sums) {
+                  using Overlap_t = BorderSums<FieldData_t>::Overlap_t;
+                  if (transaction or !dynamic_cast<Overlap_t const*>(overlap.get()))
+                      return;
+
+                  auto const handle = toLocalPatch ? sums->add(dst_node, src_node, overlap,
+                                                               refine_data[item_id]->d_scratch)
+                                                   : std::size_t{0};
+                  transaction       = std::make_shared<FieldBorderSumTransaction<FieldData_t>>(
+                      dst_level, src_level, overlap, dst_node, src_node, refine_data, item_id, sums,
+                      handle);
+              };
+        std::apply([&](auto const&... sums) { (allocate_(sums), ...); }, sums_);
+
+        if (!transaction)
+            throw std::runtime_error("FieldBorderSumTransactionFactory: unexpected overlap type");
+        return transaction;
+    }
+
+    // once the schedule is built on `level`, see BorderSums::finalize
+    void finalize(SAMRAI::hier::PatchLevel const& level) const
+    {
+        std::apply([&](auto const&... sums) { (finalizeBorderSums(*sums, level), ...); }, sums_);
+    }
+
+    // once the schedule has run on `level`, see BorderSums::fold
+    void fold(SAMRAI::hier::PatchLevel const& level) const
+    {
+        std::apply([&](auto const&... sums) { (foldBorderSums(*sums, level), ...); }, sums_);
     }
 
     void
@@ -377,7 +404,8 @@ public:
     }
 
 private:
-    std::shared_ptr<BorderSums<FieldData_t>> sums_;
+    std::tuple<std::shared_ptr<BorderSums<FieldData_ts>>...> sums_{
+        std::make_shared<BorderSums<FieldData_ts>>()...};
 };
 
 
