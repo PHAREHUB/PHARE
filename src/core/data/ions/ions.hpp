@@ -55,6 +55,7 @@ namespace core
                   dict["nbrPopulations"].template to<std::size_t>())}
             , momentumTensor_{"momentumTensor", HybridQuantity::Tensor::M}
             , chargeFlux_{"chargeFlux", HybridQuantity::Vector::V}
+            , chargeFluxE_{"chargeFluxE", HybridQuantity::Vector::J}
         {
         }
 
@@ -73,6 +74,10 @@ namespace core
 
         NO_DISCARD vecfield_type const& chargeFlux() const { return chargeFlux_; }
         NO_DISCARD vecfield_type& chargeFlux() { return chargeFlux_; }
+
+        // sum_s q_s fluxE_s: the ion current on the E nodes, which Ohm's law uses (#1577)
+        NO_DISCARD vecfield_type const& chargeFluxE() const { return chargeFluxE_; }
+        NO_DISCARD vecfield_type& chargeFluxE() { return chargeFluxE_; }
 
         NO_DISCARD std::string static chargeDensityName() { return "chargeDensity"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
@@ -158,24 +163,28 @@ namespace core
         }
 
 
-        // sum_s q_s F_s, the charge flux entering the electron velocity
+        // sum_s q_s F_s on the moment nodes (electron velocity) and sum_s q_s fluxE_s on the E
+        // nodes (Ohm's law)
         void computeChargeFlux()
         {
-            chargeFlux_.zero();
-
-            for (auto const& pop : populations_)
-            {
-                auto const plusCharge
-                    = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
-
-                for (std::size_t i = 0; i < chargeFlux_.size(); ++i)
+            auto const sum = [&](auto& total, auto const& popFlux) {
+                total.zero();
+                for (auto const& pop : populations_)
                 {
-                    auto& c       = chargeFlux_[i];
-                    auto const& f = pop.flux()[i];
-                    std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
-                                   plusCharge);
+                    auto const plusCharge
+                        = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
+
+                    for (std::size_t i = 0; i < total.size(); ++i)
+                    {
+                        auto& c       = total[i];
+                        auto const& f = popFlux(pop)[i];
+                        std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
+                                       plusCharge);
+                    }
                 }
-            }
+            };
+            sum(chargeFlux_, [](auto const& pop) -> auto const& { return pop.flux(); });
+            sum(chargeFluxE_, [](auto const& pop) -> auto const& { return pop.fluxE(); });
         }
 
 
@@ -237,7 +246,7 @@ namespace core
         NO_DISCARD bool isUsable() const
         {
             return core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
-                                  chargeFlux_)
+                                  chargeFlux_, chargeFluxE_)
                    and core::all(populations_, [](auto const& pop) { return pop.isUsable(); });
         }
 
@@ -246,7 +255,7 @@ namespace core
         NO_DISCARD bool isSettable() const
         {
             return core::isSettable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
-                                    chargeFlux_)
+                                    chargeFlux_, chargeFluxE_)
                    and core::all(populations_, [](auto const& pop) { return pop.isSettable(); });
         }
 
@@ -266,7 +275,7 @@ namespace core
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
             return std::forward_as_tuple(bulkVelocity_, momentumTensor_, chargeDensity_,
-                                         massDensity_, chargeFlux_);
+                                         massDensity_, chargeFlux_, chargeFluxE_);
         }
 
 
@@ -298,6 +307,7 @@ namespace core
         std::vector<IonPopulation> populations_;
         tensorfield_type momentumTensor_;
         vecfield_type chargeFlux_;
+        vecfield_type chargeFluxE_;
     };
 
 } // namespace core

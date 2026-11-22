@@ -150,7 +150,10 @@ struct ElectronsTest : public ::testing::Test
 
     Electromag<VecFieldND> electromag;
 
-    UsableVecField<dim> J, F, Ve, Vi, chargeFlux, pressureTerm;
+    UsableVecField<dim> J, F, Vi, chargeFlux, pressureTerm;
+    UsableVecField<dim> FE, chargeFluxE; // ion fluxes on the E nodes
+    UsableVecField<dim> Ge; // electron flux n Ve on the E nodes, owned by the electrons
+    UsableVecField<dim> Ve; // electron velocity, owned by the caller of computeVelocity
     UsableTensorField<dim> ionTensor, protonTensor;
 
     GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
@@ -167,24 +170,27 @@ struct ElectronsTest : public ::testing::Test
     auto static _ions(Args&... args)
     {
         auto const& [ionFlux, ionChargeDensity, ionMassDensity, protonParticleDensity,
-                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack]
+                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack, ionFluxE,
+                     chargeFluxE]
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
-            auto const& [V, m, d_c, d_m, c_f] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, d_c, d_m, c_f, c_fE] = ions.getCompileTimeResourcesViewList();
             d_c.setBuffer(&ionChargeDensity);
             d_m.setBuffer(&ionMassDensity);
             Vi.set_on(V);
             chargeFlux.set_on(c_f);
+            chargeFluxE.set_on(c_fE);
             ionTensor.set_on(m);
         }
         auto& pops = ions.getRunTimeResourcesViewList();
         assert(pops.size() == 1);
 
-        auto const& [F, m, Np, Nc, poppack] = pops[0].getCompileTimeResourcesViewList();
+        auto const& [F, m, Np, Nc, poppack, FE] = pops[0].getCompileTimeResourcesViewList();
         Np.setBuffer(&protonParticleDensity);
         Nc.setBuffer(&protonChargeDensity);
         ionFlux.set_on(F);
+        ionFluxE.set_on(FE);
         protonTensor.set_on(m);
         poppack.setBuffer(&pack);
         return ions;
@@ -195,10 +201,13 @@ struct ElectronsTest : public ::testing::Test
         : electromag{createDict<dim>()["electromag"]}
         , J{"J", layout, HybridQuantity::Vector::J}
         , F{"protons_flux", layout, HybridQuantity::Vector::V}
-        , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
+        , FE{"protons_fluxE", layout, HybridQuantity::Vector::J}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
+        , Ge{"StandardHybridElectronFluxComputer_flux", layout, HybridQuantity::Vector::J}
+        , Ve{"Ve", layout, HybridQuantity::Vector::V}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
@@ -211,14 +220,15 @@ struct ElectronsTest : public ::testing::Test
                               layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , ions{_ions(F, ionChargeDensity, ionMassDensity, protonParticleDensity,
-                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack)}
+                     protonChargeDensity, Vi, chargeFlux, ionTensor, protonTensor, pack, FE,
+                     chargeFluxE)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
 
 
-        Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
+        Ge.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
 
         auto&& pc                 = std::get<1>(emm.getCompileTimeResourcesViewList());
@@ -226,8 +236,9 @@ struct ElectronsTest : public ::testing::Test
         P.setBuffer(&Pe);
         pressureTerm.set_on(Pterm);
 
-        auto const& [Jx, Jy, Jz] = J();
-        auto const& [Fx, Fy, Fz] = chargeFlux();
+        auto const& [Jx, Jy, Jz]    = J();
+        auto const& [Fx, Fy, Fz]    = chargeFlux();
+        auto const& [FEx, FEy, FEz] = chargeFluxE(); // same profiles as F, on the E nodes
 
 
         if constexpr (dim == 1)
@@ -242,6 +253,10 @@ struct ElectronsTest : public ::testing::Test
             fill(Fx, [](double x) { return std::cosh(0.2 * x); });
             fill(Fy, [](double x) { return std::cosh(0.3 * x); });
             fill(Fz, [](double x) { return std::cosh(0.4 * x); });
+
+            fill(FEx, [](double x) { return std::cosh(0.2 * x); });
+            fill(FEy, [](double x) { return std::cosh(0.3 * x); });
+            fill(FEz, [](double x) { return std::cosh(0.4 * x); });
 
             fill(Jx, [](double x) { return std::sinh(0.2 * x); });
             fill(Jy, [](double x) { return std::sinh(0.3 * x); });
@@ -261,6 +276,10 @@ struct ElectronsTest : public ::testing::Test
             fill(Fx, [](double x, double y) { return std::cosh(0.2 * x) * std::cosh(0.2 * y); });
             fill(Fy, [](double x, double y) { return std::cosh(0.3 * x) * std::cosh(0.3 * y); });
             fill(Fz, [](double x, double y) { return std::cosh(0.4 * x) * std::cosh(0.4 * y); });
+
+            fill(FEx, [](double x, double y) { return std::cosh(0.2 * x) * std::cosh(0.2 * y); });
+            fill(FEy, [](double x, double y) { return std::cosh(0.3 * x) * std::cosh(0.3 * y); });
+            fill(FEz, [](double x, double y) { return std::cosh(0.4 * x) * std::cosh(0.4 * y); });
 
             fill(Jx, [](double x, double y) { return std::sinh(0.2 * x) * std::sinh(0.2 * y); });
             fill(Jy, [](double x, double y) { return std::sinh(0.3 * x) * std::sinh(0.3 * y); });
@@ -285,6 +304,16 @@ struct ElectronsTest : public ::testing::Test
                 return std::cosh(0.3 * x) * std::cosh(0.3 * y) * std::cosh(0.3 * z);
             });
             fill(Fz, [](double x, double y, double z) {
+                return std::cosh(0.4 * x) * std::cosh(0.4 * y) * std::cosh(0.4 * z);
+            });
+
+            fill(FEx, [](double x, double y, double z) {
+                return std::cosh(0.2 * x) * std::cosh(0.2 * y) * std::cosh(0.2 * z);
+            });
+            fill(FEy, [](double x, double y, double z) {
+                return std::cosh(0.3 * x) * std::cosh(0.3 * y) * std::cosh(0.3 * z);
+            });
+            fill(FEz, [](double x, double y, double z) {
                 return std::cosh(0.4 * x) * std::cosh(0.4 * y) * std::cosh(0.4 * z);
             });
 
@@ -398,69 +427,71 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
 }
 
 
-TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
+// the electron flux n Ve = Ji - J lives on the E nodes, where Ohm reads it, one node beyond the
+// domain included (#1577)
+TYPED_TEST(ElectronsTest, ThatElectronFluxIsChargeFluxEMinusJ)
+{
+    static constexpr auto dim = typename TypeParam::first_type{}();
+    auto& electrons           = this->electrons;
+    auto& layout              = this->layout;
+    electrons.update(layout);
+
+    auto constexpr directions = std::array{Direction::X, Direction::Y, Direction::Z};
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+    {
+        auto const& Gc  = electrons.flux()(c);
+        auto const& Jic = this->chargeFluxE(c);
+        auto const& Jc  = this->J(c);
+        EXPECT_EQ(layout.centering(Gc), layout.centering(Jc));
+
+        // the halo bounds come from the physical indices, not from evalOnBiggerBox (which
+        // computeFlux uses): a traversal skipping a ghost plane would otherwise go unnoticed
+        std::array<std::uint32_t, dim> lower, upper;
+        std::size_t expected = 1, checked = 0;
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            lower[d] = layout.physicalStartIndex(Gc, directions[d]) - 1;
+            upper[d] = layout.physicalEndIndex(Gc, directions[d]) + 1;
+            expected *= upper[d] - lower[d] + 1;
+        }
+        layout.evalOnGhostBox(Gc, [&](auto const&... ijk) {
+            auto const idx = std::array{static_cast<std::uint32_t>(ijk)...};
+            for (std::size_t d = 0; d < dim; ++d)
+                if (idx[d] < lower[d] or idx[d] > upper[d])
+                    return;
+            ++checked;
+            EXPECT_DOUBLE_EQ(Gc(ijk...), Jic(ijk...) - Jc(ijk...));
+        });
+        EXPECT_EQ(checked, expected);
+    }
+}
+
+
+// the electron velocity is not stored: computeVelocity writes G / Ne on the moment nodes into a
+// caller-owned field, G averaged from the E nodes
+TYPED_TEST(ElectronsTest, ThatElectronVelocityIsElectronFluxOverNe)
 {
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
     using GridYee   = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
+    using Scalar    = HybridQuantity::Scalar;
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
     electrons.update(layout);
-    auto& Ne = electrons.density();
+    electrons.computeVelocity(layout, this->Ve);
 
-    auto check = [&layout]<auto src, auto dst>(auto const& Vecomp, auto const& Fcomp,
-                                               auto const& Jcomp, auto const& Ne_) -> void {
-        if constexpr (dim == 1)
-        {
-            auto psi_X = layout.physicalStartIndex(Fcomp, Direction::X);
-            auto pei_X = layout.physicalEndIndex(Fcomp, Direction::X);
-            for (std::uint32_t i = psi_X; i < pei_X; ++i)
-            {
-                auto const JOnV = GridYee::template project<src, dst>(Jcomp, {i});
-                EXPECT_DOUBLE_EQ(Vecomp(i), (Fcomp(i) - JOnV) / Ne_(i));
-            }
-        }
-        else if constexpr (dim == 2)
-        {
-            auto psi_X = layout.physicalStartIndex(Fcomp, Direction::X);
-            auto pei_X = layout.physicalEndIndex(Fcomp, Direction::X);
-            auto psi_Y = layout.physicalStartIndex(Fcomp, Direction::Y);
-            auto pei_Y = layout.physicalEndIndex(Fcomp, Direction::Y);
-            for (std::uint32_t i = psi_X; i < pei_X; ++i)
-                for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
-                {
-                    auto const JOnV = GridYee::template project<src, dst>(Jcomp, {i, j});
-                    EXPECT_DOUBLE_EQ(Vecomp(i, j), (Fcomp(i, j) - JOnV) / Ne_(i, j));
-                }
-        }
-        else if constexpr (dim == 3)
-        {
-            auto psi_X = layout.physicalStartIndex(Fcomp, Direction::X);
-            auto pei_X = layout.physicalEndIndex(Fcomp, Direction::X);
-            auto psi_Y = layout.physicalStartIndex(Fcomp, Direction::Y);
-            auto pei_Y = layout.physicalEndIndex(Fcomp, Direction::Y);
-            auto psi_Z = layout.physicalStartIndex(Fcomp, Direction::Z);
-            auto pei_Z = layout.physicalEndIndex(Fcomp, Direction::Z);
-            for (std::uint32_t i = psi_X; i < pei_X; ++i)
-                for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
-                    for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
-                    {
-                        auto const JOnV = GridYee::template project<src, dst>(Jcomp, {i, j, k});
-                        EXPECT_DOUBLE_EQ(Vecomp(i, j, k), (Fcomp(i, j, k) - JOnV) / Ne_(i, j, k));
-                    }
-        }
-    };
-
-    auto const& [Jx, Jy, Jz]    = this->J();
-    auto const& [Fx, Fy, Fz]    = this->chargeFlux();
+    auto const& Ne              = electrons.density();
+    auto const& [Gx, Gy, Gz]    = electrons.flux()();
     auto const& [Vex, Vey, Vez] = this->Ve();
-
-    check.template operator()<HybridQuantity::Scalar::Jx, HybridQuantity::Scalar::Vx>(Vex, Fx, Jx,
-                                                                                      Ne);
-    check.template operator()<HybridQuantity::Scalar::Jy, HybridQuantity::Scalar::Vy>(Vey, Fy, Jy,
-                                                                                      Ne);
-    check.template operator()<HybridQuantity::Scalar::Jz, HybridQuantity::Scalar::Vz>(Vez, Fz, Jz,
-                                                                                      Ne);
+    layout.evalOnBox(Ne, [&](auto const&... args) {
+        auto const arr   = std::array{args...};
+        auto const GxOnV = GridYee::template project<Scalar::Jx, Scalar::Vx>(Gx, arr);
+        auto const GyOnV = GridYee::template project<Scalar::Jy, Scalar::Vy>(Gy, arr);
+        auto const GzOnV = GridYee::template project<Scalar::Jz, Scalar::Vz>(Gz, arr);
+        EXPECT_DOUBLE_EQ(Vex(arr), GxOnV / Ne(arr));
+        EXPECT_DOUBLE_EQ(Vey(arr), GyOnV / Ne(arr));
+        EXPECT_DOUBLE_EQ(Vez(arr), GzOnV / Ne(arr));
+    });
 }
 
 
@@ -553,8 +584,9 @@ TYPED_TEST(ElectronsTest, ThatIsothermalPressureTermIsMinusTeGradLnNe)
 
 
 
-// two populations with different q/m drifting relative to each other:
-// the electron velocity must be (sum_s q_s F_s - J) / Ne, see issue #1466
+// two populations with different q/m drifting relative to each other: the electron flux on the E
+// nodes must be G = sum_s q_s F_E,s - J, with F_E,s the population flux on the E nodes, and the
+// electron velocity G / Ne, G averaged to the moment nodes. See issue #1466
 template<typename TypeInfo>
 struct TwoPopulationElectronsTest : public ::testing::Test
 {
@@ -586,6 +618,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     {
         PopulationBuffers(std::string const& name, GridYee const& layout)
             : flux{name + "_flux", layout, HybridQuantity::Vector::V}
+            , fluxE{name + "_fluxE", layout, HybridQuantity::Vector::J}
             , momentumTensor{name + "_momentumTensor", layout, HybridQuantity::Tensor::M}
             , particleDensity{name + "_particleDensity", HybridQuantity::Scalar::rho,
                               layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -596,7 +629,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         {
         }
 
-        UsableVecField<dim> flux;
+        UsableVecField<dim> flux, fluxE;
         UsableTensorField<dim> momentumTensor;
         GridND particleDensity, chargeDensity;
         ParticleArray_t domainParticles;
@@ -621,22 +654,25 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     {
         IonsT ions_{dict["ions"]};
         {
-            auto const& [V, m, d_c, d_m, c_f] = ions_.getCompileTimeResourcesViewList();
+            auto const& [V, m, d_c, d_m, c_f, c_fE] = ions_.getCompileTimeResourcesViewList();
             d_c.setBuffer(&ionChargeDensity);
             d_m.setBuffer(&ionMassDensity);
             Vi.set_on(V);
             chargeFlux.set_on(c_f);
+            chargeFluxE.set_on(c_fE);
             ionTensor.set_on(m);
         }
         auto& populations = ions_.getRunTimeResourcesViewList();
         assert(populations.size() == nbrPops);
         for (std::size_t i = 0; i < nbrPops; ++i)
         {
-            auto& buffers                       = popBuffers[i];
-            auto const& [F, m, Np, Nc, poppack] = populations[i].getCompileTimeResourcesViewList();
+            auto& buffers = popBuffers[i];
+            auto const& [F, m, Np, Nc, poppack, FE]
+                = populations[i].getCompileTimeResourcesViewList();
             Np.setBuffer(&buffers.particleDensity);
             Nc.setBuffer(&buffers.chargeDensity);
             buffers.flux.set_on(F);
+            buffers.fluxE.set_on(FE);
             buffers.momentumTensor.set_on(m);
             poppack.setBuffer(&buffers.pack);
         }
@@ -646,9 +682,11 @@ struct TwoPopulationElectronsTest : public ::testing::Test
 
     TwoPopulationElectronsTest()
         : J{"J", layout, HybridQuantity::Vector::J}
-        , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
+        , Ge{"StandardHybridElectronFluxComputer_flux", layout, HybridQuantity::Vector::J}
+        , Ve{"Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
@@ -662,7 +700,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
-        Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
+        Ge.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
         auto&& pc                 = std::get<1>(emm.getCompileTimeResourcesViewList());
         auto const& [_, P, Pterm] = pc.getCompileTimeResourcesViewList();
@@ -680,7 +718,10 @@ struct TwoPopulationElectronsTest : public ::testing::Test
             auto& buffers   = popBuffers[i];
             fill(buffers.particleDensity, pop.density);
             for (std::size_t c = 0; c < 3; ++c)
+            {
                 fill(buffers.flux[c], pop.density * pop.velocity[c]);
+                fill(buffers.fluxE[c], pop.density * pop.velocity[c]);
+            }
         }
         for (std::size_t c = 0; c < 3; ++c)
             fill(J[c], current[c]);
@@ -690,7 +731,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     GridYee layout                     = NDlayout<dim, Base::interp>::create();
     PHARE::initializer::PHAREDict dict = createTwoPopulationDict(pops);
 
-    UsableVecField<dim> J, Ve, Vi, chargeFlux, pressureTerm;
+    UsableVecField<dim> J, Ge, Ve, Vi, chargeFlux, chargeFluxE, pressureTerm;
     UsableTensorField<dim> ionTensor;
     GridND ionChargeDensity, ionMassDensity, Pe;
     std::array<PopulationBuffers, nbrPops> popBuffers;
@@ -713,6 +754,7 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
     ions.computeBulkVelocity();
     ions.computeChargeFlux();
     electrons.update(layout);
+    electrons.computeVelocity(layout, this->Ve);
 
     double Ne = 0;
     std::array<double, 3> chargeFlux{0., 0., 0.};
@@ -725,7 +767,13 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
 
     for (std::size_t c = 0; c < 3; ++c)
     {
-        auto const expected = (chargeFlux[c] - this->current[c]) / Ne;
+        auto const expectedFlux = chargeFlux[c] - this->current[c];
+        auto& Gcomp             = this->Ge[c];
+        layout.evalOnBox(Gcomp, [&](auto const&... args) {
+            EXPECT_DOUBLE_EQ(Gcomp(args...), expectedFlux) << "component " << c;
+        });
+
+        auto const expected = expectedFlux / Ne;
         auto& Vecomp        = this->Ve[c];
         layout.evalOnBox(Vecomp, [&](auto const&... args) {
             EXPECT_DOUBLE_EQ(Vecomp(args...), expected) << "component " << c;

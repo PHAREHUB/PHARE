@@ -9,6 +9,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -657,6 +658,65 @@ public:
     }
 
 
+    /**\brief deposit density and flux on the moment nodes, and the flux on the E nodes
+     *
+     * Each component of fluxE is deposited with the start index and weights that gather the
+     * same component of E to the particle (see operator()(particle, em, layout)), so that
+     * sum_p w_p v_p.E(x_p) = sum_nodes fluxE.E exactly: the work of E on the particles is the
+     * grid product of fluxE and E, which Ohm's law needs to conserve energy (#1577).
+     */
+    template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
+    inline void operator()(ParticleRange& particleRange, Field& particleDensity, VecField& flux,
+                           VecField& fluxE, GridLayout const& layout, double coef = 1.)
+    {
+        using Scalar                      = HybridQuantity::Scalar;
+        auto const& [xFlux, yFlux, zFlux] = flux();
+        auto const& [xFluxE, yFluxE, zFluxE] = fluxE();
+
+        PHARE_LOG_START(3, "ParticleToMesh::operator() with fluxE");
+
+        for (auto currPart = particleRange.begin(); currPart != particleRange.end(); ++currPart)
+        {
+            auto const& iCell = currPart->iCell;
+            auto const& delta = currPart->delta;
+            indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, iCell, delta);
+            indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, iCell, delta);
+
+            particleToMesh_(particleDensity, xFlux, yFlux, zFlux, *currPart, primal_startIndex_,
+                            primal_weights_, coef);
+
+            auto const indexWeights = std::forward_as_tuple(dual_startIndex_, dual_weights_,
+                                                            primal_startIndex_, primal_weights_);
+            auto const w            = currPart->weight * coef;
+            auto const& v           = currPart->v;
+            if constexpr (!onMomentNodes_<GridLayout, Scalar::Ex>())
+                depositOnQty_<GridLayout, Scalar::Ex>(xFluxE, indexWeights, w * v[0]);
+            if constexpr (!onMomentNodes_<GridLayout, Scalar::Ey>())
+                depositOnQty_<GridLayout, Scalar::Ey>(yFluxE, indexWeights, w * v[1]);
+            if constexpr (!onMomentNodes_<GridLayout, Scalar::Ez>())
+                depositOnQty_<GridLayout, Scalar::Ez>(zFluxE, indexWeights, w * v[2]);
+        }
+
+        // an E component on the moment nodes (E_z in 2D, E_y and E_z in 1D) has the gather weights
+        // of the moment flux: its fluxE is the flux, copied instead of deposited a second time.
+        // This holds because every deposit of the flux also goes through this function.
+        auto const copyIfOnMomentNodes = [&]<auto quantity>(auto& dst, auto const& src) {
+            if constexpr (onMomentNodes_<GridLayout, quantity>())
+                std::copy(src.data(), src.data() + src.size(), dst.data());
+        };
+        copyIfOnMomentNodes.template operator()<Scalar::Ex>(xFluxE, xFlux);
+        copyIfOnMomentNodes.template operator()<Scalar::Ey>(yFluxE, yFlux);
+        copyIfOnMomentNodes.template operator()<Scalar::Ez>(zFluxE, zFlux);
+        PHARE_LOG_STOP(3, "ParticleToMesh::operator() with fluxE");
+    }
+    template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
+    inline void operator()(ParticleRange&& range, Field& particleDensity, VecField& flux,
+                           VecField& fluxE, GridLayout const& layout, double coef = 1.)
+    {
+        (*this)(range, particleDensity, flux, fluxE, layout, coef);
+    }
+
+
 
 
     /**
@@ -717,6 +777,61 @@ private:
     NO_DISCARD auto meshToParticle(auto const& field, GridLayout const&, auto const& indexWeights)
     {
         return meshToParticle_.template operator()<GridLayout, quantity>(field, indexWeights);
+    }
+
+    template<typename GridLayout, auto quantity>
+    NO_DISCARD static constexpr bool onMomentNodes_()
+    {
+        constexpr auto centerings = GridLayout::centering(quantity);
+        for (std::size_t d = 0; d < dimension; ++d)
+            if (centerings[d] != QtyCentering::primal)
+                return false;
+        return true;
+    }
+
+    // the transpose of meshToParticle: value spread on the nodes of quantity with the same
+    // start index and weights
+    template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
+    PHARE_ALWAYS_INLINE static void depositOnQty_(Field& field, IndexWeights const& indexWeights,
+                                                  double const value)
+    {
+        auto const& [xStart, xWeights]
+            = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
+        auto const order_size = xWeights.size();
+
+        if constexpr (dimension == 1)
+        {
+            for (auto ix = 0u; ix < order_size; ++ix)
+                field(xStart + ix) += value * xWeights[ix];
+        }
+        else if constexpr (dimension == 2)
+        {
+            auto const& [yStart, yWeights]
+                = start_index_and_weights_for_qty<1, GridLayout, quantity>(indexWeights);
+            for (auto ix = 0u; ix < order_size; ++ix)
+            {
+                auto const xw = value * xWeights[ix];
+                for (auto iy = 0u; iy < order_size; ++iy)
+                    field(xStart + ix, yStart + iy) += xw * yWeights[iy];
+            }
+        }
+        else
+        {
+            auto const& [yStart, yWeights]
+                = start_index_and_weights_for_qty<1, GridLayout, quantity>(indexWeights);
+            auto const& [zStart, zWeights]
+                = start_index_and_weights_for_qty<2, GridLayout, quantity>(indexWeights);
+            for (auto ix = 0u; ix < order_size; ++ix)
+            {
+                auto const xw = value * xWeights[ix];
+                for (auto iy = 0u; iy < order_size; ++iy)
+                {
+                    auto const xyw = xw * yWeights[iy];
+                    for (auto iz = 0u; iz < order_size; ++iz)
+                        field(xStart + ix, yStart + iy, zStart + iz) += xyw * zWeights[iz];
+                }
+            }
+        }
     }
 };
 
