@@ -607,11 +607,24 @@ namespace solver
 
 
 
-        void
-        synchronizeNewLevels(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                             int const /*coarsestLevel*/, int const /*finestLevel*/,
-                             double const /*syncTime*/, bool const /*initialTime*/) override
+        // called by SAMRAI after the hierarchy is initialized, and after regrids, so coarser
+        // levels get the same coarsened quantities as after an advance (no refluxing, nothing
+        // has advanced yet)
+        void synchronizeNewLevels(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                  int const coarsestLevel, int const finestLevel,
+                                  double const syncTime, bool const /*initialTime*/) override
         {
+            PHARE_LOG_SCOPE(1, "Multiphys::synchronizeNewLevels");
+
+            for (auto ilvl = finestLevel; ilvl > coarsestLevel; --ilvl)
+            {
+                auto& toCoarser = getMessengerWithCoarser_(ilvl);
+                toCoarser.synchronize(*hierarchy->getPatchLevel(ilvl));
+
+                auto const iCoarseLevel = ilvl - 1;
+                toCoarser.postSynchronize(getModel_(iCoarseLevel),
+                                          *hierarchy->getPatchLevel(iCoarseLevel), syncTime);
+            }
         }
 
 
