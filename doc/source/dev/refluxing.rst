@@ -42,13 +42,13 @@ Three phases
   belongs to (:math:`1/\text{ratio}^2 = 1/4` with a fixed time step;
   ``substepWeight_``, :pr:`1570`)
   (hybrid: :math:`E_\text{avg}`, MHD: the step's fluxes and E)
-  (:src:`src/amr/multiphysics_integrator.hpp#L526-L532`,
-  :src:`src/amr/multiphysics_integrator.hpp#L550-L556`,
+  (:src:`src/amr/multiphysics_integrator.hpp#L665-L671`,
+  :src:`src/amr/multiphysics_integrator.hpp#L592-L598`,
   :src:`src/amr/solvers/solver_ppc.hpp#L277-L298`,
-  :src:`src/amr/solvers/solver_mhd.hpp#L310-L342`).
+  :src:`src/amr/solvers/solver_mhd.hpp#L312-L344`).
 * A level that has finer levels adds, once, after its own reflux, so that the
   contribution of all finer levels travels up the chain
-  (:src:`src/amr/multiphysics_integrator.hpp#L591-L600`).
+  (:src:`src/amr/multiphysics_integrator.hpp#L633-L642`).
 
 .. claim C-rx-04
 
@@ -57,7 +57,7 @@ When it runs
 
 .. flow::
 
-   synchronize | hybrid: coarsen E, charge density, charge flux. MHD: nothing | /dev/coarsening
+   synchronize | hybrid: coarsen E, charge density, E-edge charge flux. MHD: nothing | /dev/coarsening
    then
    messenger.reflux | coarsen the summed flux onto the coarse level, refill coarse patch ghosts
    then
@@ -68,7 +68,7 @@ When it runs
    postSynchronize | refill patch ghosts (hybrid)
 
 This is one pass of ``standardLevelSynchronization``, finest pair first
-(:src:`src/amr/multiphysics_integrator.hpp#L575-L609`); when the levels meet is
+(:src:`src/amr/multiphysics_integrator.hpp#L617-L651`); when the levels meet is
 on :doc:`subcycling`.
 
 .. claim C-rx-01
@@ -117,8 +117,8 @@ field redone with it.
    :doc:`coarsening` (average of 2 fine edges along a dual direction, copy
    of the coincident fine node otherwise), then the coarse patch ghosts are
    refilled
-   (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L189-L199`,
-   :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L641-L646`).
+   (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L195-L205`,
+   :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L677-L682`).
 
 .. claim C-rx-05
 
@@ -133,14 +133,14 @@ field redone with it.
 
 * Away from the fine level the redo gives the same B as the coarse corrector
   did: the same starting B (the predictors write another array) and the same
-  :math:`E_\text{avg}` (:src:`src/amr/solvers/solver_ppc.hpp#L390-L403`,
-  :src:`src/amr/solvers/solver_ppc.hpp#L498-L503`).
+  :math:`E_\text{avg}` (:src:`src/amr/solvers/solver_ppc.hpp#L389-L402`,
+  :src:`src/amr/solvers/solver_ppc.hpp#L497-L502`).
 
 .. claim C-rf-08
 
 * The coarse B is never coarsened from the fine B: B is not in any
-  synchronizer, only E, charge density and charge flux are
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L912-L924`).
+  synchronizer, only E, charge density and the charge flux on the E edges are
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L971-L986`).
   The coarse edge E is an average of fine edges or a copy, so the change of the
   flux through a coarse face is the sum of the changes of its fine faces
   (:src:`src/amr/data/field/coarsening/electric_field_coarsener.hpp#L45-L145`).
@@ -181,7 +181,7 @@ through :math:`x = 2` is the mass the fine cells received.
 1. **Accumulate:** each fine sub-step adds its step flux times its share of the
    coarse step (¼ with a fixed time step), the step flux being a time average over
    that sub-step (the Runge–Kutta stage fluxes are weighted, the weights sum to 1 for all four integrators)
-   (:src:`src/amr/solvers/solver_mhd.hpp#L310-L327`,
+   (:src:`src/amr/solvers/solver_mhd.hpp#L312-L329`,
    :src:`src/amr/solvers/time_integrator/tvdrk2_integrator.hpp#L35-L40`).
 
 .. claim C-rx-02 C-rf-01
@@ -190,8 +190,8 @@ through :math:`x = 2` is the mass the fine cells received.
    :math:`E_\text{tot}` fluxes are coarsened onto the coarse step fluxes (1D
    copy, 2D mean of 2 fine faces, 3D mean of 4), and the summed E onto the
    coarse E; then the patch ghosts of the fluxes are refilled
-   (:src:`src/amr/messengers/mhd_messenger.hpp#L362-L367`,
-   :src:`src/amr/messengers/mhd_messenger.hpp#L601-L615`,
+   (:src:`src/amr/messengers/mhd_messenger.hpp#L357-L362`,
+   :src:`src/amr/messengers/mhd_messenger.hpp#L596-L610`,
    :src:`src/amr/data/field/coarsening/mhd_flux_coarsener.hpp#L46-L149`).
 
 .. claim C-rx-05 C-rf-03
@@ -200,14 +200,14 @@ through :math:`x = 2` is the mass the fine cells received.
    from the state it saved at the start of the step, with these fluxes and E
    (B through Faraday with that E), over :math:`\Delta t` = sync time − step start,
    then refills the state ghosts
-   (:src:`src/amr/solvers/solver_mhd.hpp#L276-L306`,
-   :src:`src/amr/solvers/solver_mhd.hpp#L345-L357`,
+   (:src:`src/amr/solvers/solver_mhd.hpp#L278-L308`,
+   :src:`src/amr/solvers/solver_mhd.hpp#L347-L359`,
    :src:`src/amr/solvers/time_integrator/euler_using_computed_flux.hpp#L24-L35`).
 
 .. claim C-rx-07
 
 * MHD ``synchronize`` is empty: no fine state is averaged onto the coarse state
-  (:src:`src/amr/messengers/mhd_messenger.hpp#L360`). The coarse cells under the
+  (:src:`src/amr/messengers/mhd_messenger.hpp#L355`). The coarse cells under the
   fine level are *recomputed* by the redo, from the coarsened fine fluxes on
   every covered face; they equal the mean of their fine cells only because the
   fine level started from a refinement that keeps the coarse average

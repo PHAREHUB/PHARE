@@ -143,7 +143,7 @@ N is fixed at compile time
 ``refined_particle_nbr`` picks a compiled simulator; the default build compiles
 :src:`res/sim/all.txt#L1-L33` (``PHARE_PERMUTATIONS`` can point elsewhere,
 :src:`src/python3/CMakeLists.txt#L5-L9`). Default = first value of each row
-(:src:`pyphare/pyphare/pharein/simulation.py#L206-L215`, taken at L237).
+(:src:`pyphare/pyphare/pharein/simulation.py#L217-L226`, taken at L237).
 
 .. list-table:: N built by default (bold: default)
    :header-rows: 1

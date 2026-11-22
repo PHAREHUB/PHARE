@@ -66,7 +66,7 @@ Time steps on refined levels
 
 A refined level has cells half as large (refinement ratio 2). With a fixed time step PHARE
 divides the time step by the *square* of the ratio, so each finer level takes four steps for
-one step of the level above (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`).
+one step of the level above (:src:`src/amr/multiphysics_integrator.hpp#L546-L553`).
 The reason is the whistler limit above, :math:`\Delta t \propto \Delta x^2`. With an
 adaptive time step each finer level splits the step of the level above into equal
 sub-steps no longer than its own stable step: about two in ideal MHD (limit

@@ -38,16 +38,16 @@ The call chain
    regrid finer levels | new patches where needed | /dev/tagging_regridding
 
 * Python: ``advance()`` calls C++, then ``dump()`` writes restarts and
-  diagnostics if due (:src:`pyphare/pyphare/simulator/simulator.py#L150-L165`,
-  :src:`pyphare/pyphare/simulator/simulator.py#L230-L238`).
+  diagnostics if due (:src:`pyphare/pyphare/simulator/simulator.py#L150-L166`,
+  :src:`pyphare/pyphare/simulator/simulator.py#L234-L242`).
 * ``Simulator::advance`` uses a fixed ``dt``, or an adaptive one (MHD only:
   the hybrid solver refuses it, :src:`src/amr/solvers/solver_ppc.hpp#L330`)
-  (:src:`src/simulator/simulator.hpp#L558-L605`).
+  (:src:`src/simulator/simulator.hpp#L565-L612`).
 * SAMRAI owns the loop over levels and calls back PHARE's
   ``MultiPhysicsIntegrator``, its *level strategy*
-  (:src:`src/simulator/simulator.hpp#L302`).
+  (:src:`src/simulator/simulator.hpp#L309`).
 * Synchronization: ``standardLevelSynchronization``
-  (:src:`src/amr/multiphysics_integrator.hpp#L566-L608`); regrid interval 2 is
+  (:src:`src/amr/multiphysics_integrator.hpp#L608-L650`); regrid interval 2 is
   SAMRAI's default for a ratio of 2.
 
 
@@ -89,7 +89,7 @@ level-2 steps.
 
 * With a fixed time step, the only one in hybrid, a level twice finer takes 4
   sub-steps: ``getMaxFinerLevelDt`` asks for
-  :math:`\Delta t / \text{ratio}^2` (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`,
+  :math:`\Delta t / \text{ratio}^2` (:src:`src/amr/multiphysics_integrator.hpp#L546-L553`,
   ratio fixed at 2, :src:`src/amr/amr_constants.hpp#L9`). With an adaptive
   time step (MHD) each finer level sizes its sub-steps from its own stable
   step: see :doc:`/dev/subcycling`.
@@ -131,12 +131,13 @@ the one already at :math:`t+\Delta t`. Here :math:`t_f` is the middle of the
 second fine sub-step, where :math:`E_\text{avg}` is filled.
 
 ``MultiPhysicsIntegrator::advanceLevel``
-(:src:`src/amr/multiphysics_integrator.hpp#L500-L561`), every time SAMRAI calls it:
+(:src:`src/amr/multiphysics_integrator.hpp#L542-L603`), every time SAMRAI calls it:
 
 * first sub-step only: ``messenger.firstStep`` makes the new level ghost
   particles (:doc:`/dev/level_ghost_particles`), ``solver.resetFluxSum``;
-* ``solver.prepareStep`` and ``messenger.prepareStep`` save B (and E) at
-  :math:`t` (:src:`src/amr/multiphysics_integrator.hpp#L533-L534`);
+* ``solver.prepareStep`` and ``messenger.prepareStep`` save B (and E, and the
+  ion moments the finer level refines) at :math:`t`
+  (:src:`src/amr/multiphysics_integrator.hpp#L672-L673`);
 * ``solver.advanceLevel``: the physics (hybrid: :doc:`/dev/ppc_order`;
   MHD: :doc:`/dev/mhd_solver`);
 * last sub-step only: ``messenger.lastStep``; finest level: accumulate the flux
@@ -144,7 +145,7 @@ second fine sub-step, where :math:`E_\text{avg}` is filled.
 
 The messenger is chosen by the models of the level and the coarser one; one
 object per model pair (``registerMessengers_``,
-:src:`src/amr/multiphysics_integrator.hpp#L778-L819`). Level 0, the *root*
+:src:`src/amr/multiphysics_integrator.hpp#L1023-L1064`). Level 0, the *root*
 level, also has one, for its patches only.
 
 
@@ -158,12 +159,12 @@ Coarse level runs ahead, ghosts are interpolated in time
 
 **Problem.** Fine ghosts are needed at times between two coarse steps.
 
-**Fix.** ``prepareStep`` saves B and E at :math:`t`
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L580-L597`);
+**Fix.** ``prepareStep`` saves B, E, the ion charge density and the E-edge ion current
+at :math:`t` (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L589-L621`);
 fine fills interpolate between them and the new coarse values
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L790-L831`), at
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L841-L892`), at
 the time the data stands for (:math:`E_\text{avg}`: mid-sub-step,
-:src:`src/amr/solvers/solver_ppc.hpp#L534-L562`). :pr:`1278`
+:src:`src/amr/solvers/solver_ppc.hpp#L533-L561`). :pr:`1278`
 
 Two saved copies of B
 ^^^^^^^^^^^^^^^^^^^^^
@@ -173,7 +174,7 @@ coarse level's refluxing.
 
 **Fix.** The messenger and the solver each keep a copy
 (:src:`src/amr/solvers/solver_ppc.hpp#L256-L272`), filled one after the other
-(:src:`src/amr/multiphysics_integrator.hpp#L533-L534`). Do not merge them.
+(:src:`src/amr/multiphysics_integrator.hpp#L672-L673`). Do not merge them.
 
 .. _dev-one-time-step-sync:
 
@@ -184,8 +185,8 @@ Coarse B is recomputed, not averaged (refluxing)
 
 **Fix.** The solver sums :math:`E_\text{avg}/4` over the fine sub-steps
 (:src:`src/amr/solvers/solver_ppc.hpp#L276-L288`; finest level in
-:src:`src/amr/multiphysics_integrator.hpp#L549-L556`, others at sync
-:src:`src/amr/multiphysics_integrator.hpp#L591-L600`); at sync this average
+:src:`src/amr/multiphysics_integrator.hpp#L591-L598`, others at sync
+:src:`src/amr/multiphysics_integrator.hpp#L633-L642`); at sync this average
 replaces the coarse :math:`E_\text{avg}` and coarse Faraday is redone
 (:src:`src/amr/solvers/solver_ppc.hpp#L308-L320`). See :doc:`/dev/coarsening`.
 
@@ -193,7 +194,7 @@ Diagnostics come from Python, not from the level loop
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** ``MultiPhysicsIntegrator::dump_`` looks like the diagnostics
-writer (:src:`src/amr/multiphysics_integrator.hpp#L464-L479`).
+writer (:src:`src/amr/multiphysics_integrator.hpp#L574-L589`).
 
 **Fix.** Regular dumps happen in ``Simulator.dump()`` after ``advance``
 returns (:src:`pyphare/pyphare/simulator/simulator.py#L163`); ``dump_`` only

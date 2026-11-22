@@ -76,6 +76,7 @@ How to use this guide
 
       - :doc:`diagnostics_restarts`
       - :doc:`pharesee_reader`
+      - :doc:`output_moments`
       - :doc:`load_balancing`
       - :doc:`hpc_internals`
 
@@ -120,6 +121,7 @@ How to use this guide
    mhd_solver
    diagnostics_restarts
    pharesee_reader
+   output_moments
    load_balancing
    hpc_internals
    working_on_phare

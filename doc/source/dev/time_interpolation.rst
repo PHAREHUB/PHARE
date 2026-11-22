@@ -42,17 +42,19 @@ The two coarse values
 ---------------------
 
 * **Old** is a copy the coarse level makes at the start of each of its own steps
-  (``prepareStep``), stamped with that time. Hybrid saves B and E; MHD saves
+  (``prepareStep``), stamped with that time. Hybrid saves B, E, the ion charge
+  density and the ion current on the E edges (``Nold_``, ``FEold_``: Ohm reads
+  these moments one node beyond a refined level, see :doc:`moments`); MHD saves
   :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}` and B
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L580-L597`,
-  :src:`src/amr/messengers/mhd_messenger.hpp#L324-L342`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L600-L621`,
+  :src:`src/amr/messengers/mhd_messenger.hpp#L319-L337`).
 
 .. claim C-ti-01
 
 * **New** is the coarse model array itself, already advanced to the end of the
   coarse step when the fine level steps
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L789-L831`,
-  :src:`src/amr/messengers/mhd_messenger.hpp#L554-L590`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L841-L892`,
+  :src:`src/amr/messengers/mhd_messenger.hpp#L549-L585`).
 
 .. claim C-ti-02
 
@@ -129,6 +131,11 @@ Which fields, and when they are filled
      - ``Eold_``
      - model E (not the coarse :math:`E_\text{avg}`)
      - middle of the sub-step
+   * - hybrid
+     - ion charge density, ion current on the E edges
+     - ``Nold_``, ``FEold_`` (messenger)
+     - model moments
+     - end of the sub-step
    * - MHD
      - :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}`, B
      - ``rhoOld_``, ``rhoVold_``, ``EtotOld_``, ``Bold_``
@@ -144,15 +151,16 @@ Which fields, and when they are filled
 
 * Hybrid fill times are in the PPC step: B and Bpred at ``newTime``, E at
   ``newTime``, :math:`E_\text{avg}` at ``(currentTime + newTime)/2``
-  (:src:`src/amr/solvers/solver_ppc.hpp#L427`,
-  :src:`src/amr/solvers/solver_ppc.hpp#L508`,
-  :src:`src/amr/solvers/solver_ppc.hpp#L528`,
-  :src:`src/amr/solvers/solver_ppc.hpp#L561`).
+  (:src:`src/amr/solvers/solver_ppc.hpp#L426`,
+  :src:`src/amr/solvers/solver_ppc.hpp#L507`,
+  :src:`src/amr/solvers/solver_ppc.hpp#L527`,
+  :src:`src/amr/solvers/solver_ppc.hpp#L560`); the ion moments at ``newTime``,
+  after each of the two pushes (:src:`src/amr/solvers/solver_ppc.hpp#L663`).
 
 .. claim C-ti-04
 
 * The hybrid current J is never communicated: each level computes it from its
-  time-interpolated B (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L834-L835`).
+  time-interpolated B (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L900-L901`).
 
 .. claim C-ti-09
 

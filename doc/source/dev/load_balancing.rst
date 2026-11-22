@@ -47,11 +47,11 @@ What the partitioner sees
   workload (:src:`src/amr/load_balancing/load_balancer_manager.hpp#L23-L45`); without it SAMRAI counts cells.
 * Hybrid levels: particles per cell (``nppc``,
   :src:`src/amr/load_balancing/concrete_load_balancer_strategy_nppc.hpp#L77-L81`) or 1 (``homogeneous``);
-  MHD levels: always 1 (:src:`src/simulator/simulator.hpp#L275-L295`).
+  MHD levels: always 1 (:src:`src/simulator/simulator.hpp#L271-L291`).
 * Refreshed after each ``advanceLevel``, each new level, each restart load
-  (:src:`src/amr/multiphysics_integrator.hpp#L338-L341`, :src:`src/amr/multiphysics_integrator.hpp#L558`).
+  (:src:`src/amr/multiphysics_integrator.hpp#L359-L362`, :src:`src/amr/multiphysics_integrator.hpp#L695`).
 * One ``CascadePartitioner``, tolerance ``tol``, used by SAMRAI's ``GriddingAlgorithm`` for every level
-  (:src:`src/simulator/simulator.hpp#L257-L263`, :src:`src/amr/wrappers/integrator.hpp#L184-L186`).
+  (:src:`src/simulator/simulator.hpp#L253-L259`, :src:`src/amr/wrappers/integrator.hpp#L197-L199`).
   A new finest level is shared by cell count (SAMRAI uses the workload only for levels that already exist).
 
 When level 0 is re-partitioned
@@ -80,13 +80,13 @@ When level 0 is re-partitioned
 
 * ``Integrator::advance`` passes ``_should_rebalance_now()`` to ``advanceHierarchy(dt, …)``
   (:src:`src/amr/wrappers/integrator.hpp#L57-L64`): false unless tagging, hybrid level 0, and active
-  (:src:`src/amr/wrappers/integrator.hpp#L204-L211`).
+  (:src:`src/amr/wrappers/integrator.hpp#L231-L238`).
 * ``every=N``: re-partition every ``N`` steps and at step 0 if ``on_init``, no measurement
-  (``cadence_rebalance_check``, :src:`src/amr/wrappers/integrator.hpp#L106-L111`).
+  (``cadence_rebalance_check``, :src:`src/amr/wrappers/integrator.hpp#L119-L124`).
 * ``auto``: ``CoarsestRebalanceCheck`` gathers the level 0 loads and tests ``max/avg − 1 > tol``
-  (:src:`src/amr/wrappers/integrator.hpp#L113-L119`,
+  (:src:`src/amr/wrappers/integrator.hpp#L126-L132`,
   :src:`src/amr/load_balancing/coarsest_rebalance_check.hpp#L35-L70`); chosen at
-  :src:`src/amr/wrappers/integrator.hpp#L152-L153`.
+  :src:`src/amr/wrappers/integrator.hpp#L165-L166`.
 
 The tricks
 ----------
@@ -107,17 +107,17 @@ A private SAMRAI sum, redone
    **Problem.** ``CascadePartitioner::computeNonUniformWorkLoad`` is private.
 
    **Fix.** ``computeNonUniformWorkLoadForLevel0`` redoes the sum with the public
-   ``BalanceUtilities`` (:src:`src/amr/wrappers/integrator.hpp#L90-L102`).
+   ``BalanceUtilities`` (:src:`src/amr/wrappers/integrator.hpp#L103-L115`).
 
 Not with refinement boxes
    **Problem.** Re-partitioning with user refinement boxes made SAMRAI abort in ``RefineSchedule``.
 
-   **Fix.** ``Simulator::finalize_init`` refuses the combination (:src:`src/simulator/simulator.hpp#L264-L273`).
+   **Fix.** ``Simulator::finalize_init`` refuses the combination (:src:`src/simulator/simulator.hpp#L260-L269`).
 
 After a level 0 re-split, every level is stale
    **Problem.** SAMRAI reports levels (0, 0) changed, but finer levels read level 0.
 
-   **Fix.** Every messenger is notified (:src:`src/amr/multiphysics_integrator.hpp#L372-L377`), see
+   **Fix.** Every messenger is notified (:src:`src/amr/multiphysics_integrator.hpp#L435-L440`), see
    :doc:`/dev/messengers`.
 
 Go deeper

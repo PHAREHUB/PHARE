@@ -20,7 +20,7 @@ Why it exists
   at the right patch data
   (:src:`src/amr/resources_manager/resources_manager.hpp#L71-L113`).
 * Registered: ``Field``, ``TensorField``, ``ParticleArray`` packs
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L80-L84`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L83-L87`).
 
 The picture
 -----------
@@ -64,37 +64,37 @@ How it works
 * **Discovery.** An object lists its parts with ``getCompileTimeResourcesViewList()``
   (:src:`src/core/data/electromag/electromag.hpp#L59-L64`) or
   ``getRunTimeResourcesViewList()``
-  (:src:`src/core/data/ions/ions.hpp#L261-L271`); ``registerResources`` walks the tree
+  (:src:`src/core/data/ions/ions.hpp#L292-L301`); ``registerResources`` walks the tree
   (:src:`src/amr/resources_manager/resources_manager.hpp#L169-L199`).
 * **Registration, once.** ``registerResource_`` builds a SAMRAI variable; the id is kept by name
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L571-L588`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L582-L599`).
 * **Allocation.** ``allocate_`` creates missing patch data
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L626-L646`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L637-L657`).
 * **Pointing.** ``setOnPatch(patch, obj...)`` calls ``obj.setBuffer(pointer)`` and
   returns a ``ResourcesGuard``
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L595-L609`,
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L606-L620`,
   :src:`src/amr/resources_manager/resources_guards.hpp#L27-L58`).
 * **Loops.** Prefer ``enumerate(level, obj...)``
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L383-L454`; :pr:`1014`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L394-L465`; :pr:`1014`).
 
 What the SAMRAI side holds
 --------------------------
 
 * ``FieldData``: a ``GridLayout`` and the ``Grid``; ``getPointer()`` returns it
   (:src:`src/amr/data/field/field_data.hpp#L25-L52`,
-  :src:`src/amr/data/field/field_data.hpp#L294`).
+  :src:`src/amr/data/field/field_data.hpp#L321`).
 * ``ParticlesData``: five particle arrays and a ``ParticlesPack`` of pointers to them
   (:src:`src/amr/data/particles/particles_data.hpp#L460-L468`).
 * ``TensorFieldData``: the grids of all components
-  (:src:`src/amr/data/tensorfield/tensor_field_data.hpp#L319`).
+  (:src:`src/amr/data/tensorfield/tensor_field_data.hpp#L346`).
 
 Times and restarts
 ------------------
 
 * Each patch data carries a time
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L260-L295`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L263-L298`).
 * :term:`restart`: ``registerForRestarts`` hands every id to SAMRAI
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L328-L333`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L331-L336`).
 
 The tricks
 ----------
@@ -107,7 +107,7 @@ A guard unsets to ``nullptr``, not to the previous state
 **What the code does.** On exit, ``ResourcesGuard`` calls ``setBuffer(nullptr)``,
 not the previous state; nothing checks nesting
 (:src:`src/amr/resources_manager/resources_guards.hpp#L18-L25`,
-:src:`src/amr/resources_manager/resources_manager.hpp#L611-L622`).
+:src:`src/amr/resources_manager/resources_manager.hpp#L622-L633`).
 
 A forgotten guard is caught only in debug builds
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ A forgotten guard is caught only in debug builds
 **Problem.** A guard not kept is destroyed at once; the views are empty.
 
 **Fix.** ``setOnPatch`` is ``NO_DISCARD``
-(:src:`src/amr/resources_manager/resources_manager.hpp#L250-L256`);
+(:src:`src/amr/resources_manager/resources_manager.hpp#L253-L259`);
 ``Field::operator()`` throws only in debug builds
 (:src:`src/core/data/field/field.hpp#L74-L81`).
 
@@ -125,14 +125,14 @@ Resources are found by name
 **Problem.** Same name, same resource; an unknown name stops the run.
 
 **Fix.** Re-registering a name is ignored
-(:src:`src/amr/resources_manager/resources_manager.hpp#L579`); an empty or unknown name
-throws (:src:`src/amr/resources_manager/resources_manager.hpp#L601-L606`).
+(:src:`src/amr/resources_manager/resources_manager.hpp#L590`); an empty or unknown name
+throws (:src:`src/amr/resources_manager/resources_manager.hpp#L612-L617`).
 
 .. admonition:: Known issue
    :class: note
 
    Restarts register every resource, including temporaries (issue :issue:`664`,
-   :src:`src/amr/resources_manager/resources_manager.hpp#L349-L356`).
+   :src:`src/amr/resources_manager/resources_manager.hpp#L352-L359`).
 
 Go deeper
 ---------
