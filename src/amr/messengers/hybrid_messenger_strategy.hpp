@@ -118,6 +118,17 @@ namespace amr
         virtual void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)    = 0;
         virtual void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) = 0;
 
+        // ghost nodes of the total ion charge density and E-node charge flux, read by Ohm one
+        // node beyond the patch: same-level copies and, on level ghosts, coarse values refined in
+        // space and time (#1577)
+        virtual void fillIonMomentGhosts(IonsT& ions, level_t& level, double const fillTime) = 0;
+
+        // same, on a level being created or regridded: its inter-level schedules are built only
+        // once the hierarchy settles (onHierarchyChanged), so this one is built for the fill
+        virtual void fillIonMomentGhosts(hierarchy_ptr const& hierarchy, IonsT& ions,
+                                         level_t& level, double const fillTime)
+            = 0;
+
 
         std::string name() const { return stratname_; }
 

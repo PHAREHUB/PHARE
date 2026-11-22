@@ -121,6 +121,14 @@ namespace amr
                                 double const /*fillTime*/) override
         {
         }
+        void fillIonMomentGhosts(IonsT& /*ions*/, level_t& /*level*/,
+                                 double const /*fillTime*/) override
+        {
+        }
+        void fillIonMomentGhosts(hierarchy_ptr const& /*hierarchy*/, IonsT& /*ions*/,
+                                 level_t& /*level*/, double const /*fillTime*/) override
+        {
+        }
 
 
 

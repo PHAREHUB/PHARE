@@ -39,6 +39,7 @@
 
 #include <map>
 #include <memory>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <utility>
@@ -121,6 +122,8 @@ namespace amr
 
             resourcesManager_->registerResources(Bold_);
             resourcesManager_->registerResources(Eold_);
+            resourcesManager_->registerResources(Nold_);
+            resourcesManager_->registerResources(FEold_);
             resourcesManager_->registerResources(sumVec_);
             resourcesManager_->registerResources(sumField_);
             resourcesManager_->registerResources(sumTensor_);
@@ -143,6 +146,8 @@ namespace amr
         {
             resourcesManager_->allocate(Bold_, patch, allocateTime);
             resourcesManager_->allocate(Eold_, patch, allocateTime);
+            resourcesManager_->allocate(Nold_, patch, allocateTime);
+            resourcesManager_->allocate(FEold_, patch, allocateTime);
             resourcesManager_->allocate(sumVec_, patch, allocateTime);
             resourcesManager_->allocate(sumField_, patch, allocateTime);
             resourcesManager_->allocate(sumTensor_, patch, allocateTime);
@@ -413,6 +418,41 @@ namespace amr
 
 
         /**
+         * @brief fillIonMomentGhosts fills the ghost nodes of the total ion charge density and
+         * E-node charge flux, which Ohm reads one node beyond the patch (#1577).
+         *
+         * The level ghost particles complete every domain node, border included, but not the node
+         * beyond the level. Same-level ghosts are copied from the neighbour's domain, level ghosts
+         * are refined from the coarser level in space and in time (between the old copies saved
+         * by prepareStep and the current moments), like E and B. Domain nodes are not touched.
+         * Nothing to do on the root level: its ghosts are complete after the border sums.
+         */
+        void fillIonMomentGhosts(IonsT& ions, level_t& level, double const fillTime) override
+        {
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
+            if (level.getLevelNumber() == rootLevelNumber)
+                return;
+            fillIonMomentGhosts_(ions, level, [&]() {
+                momentGhostsRefiners_.fill(level.getLevelNumber(), fillTime);
+            });
+        }
+
+        void fillIonMomentGhosts(hierarchy_ptr const& hierarchy, IonsT& ions, level_t& level,
+                                 double const fillTime) override
+        {
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonMomentGhosts(transient)");
+            auto const levelNumber = level.getLevelNumber();
+            if (levelNumber == rootLevelNumber)
+                return;
+            fillIonMomentGhosts_(ions, level, [&]() {
+                momentGhostsRefiners_.fillTransient(
+                    hierarchy, hierarchy->getPatchLevel(levelNumber), fillTime);
+            });
+        }
+
+
+
+        /**
          * @brief fillIonPopMomentGhosts works on moment ghost nodes
          *
          * level border nodes receive the deposition
@@ -558,7 +598,8 @@ namespace amr
          * versions of B and E into the messenger. When the time comes that the next finer
          * level needs to time interpolate these quantities at its ghost nodes, this level
          * will be able to interpolate at required time because the t=n fields of previous
-         * next coarser step will be in the messenger.
+         * next coarser step will be in the messenger. The same holds for the total ion charge
+         * density and E-node charge flux, whose level ghosts the finer level refines too.
          */
         void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) override
         {
@@ -569,13 +610,17 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Bold_, Eold_);
+                    hybridModel.state.ions, Bold_, Eold_, Nold_, FEold_);
 
                 resourcesManager_->setTime(Bold_, *patch, currentTime);
                 resourcesManager_->setTime(Eold_, *patch, currentTime);
+                resourcesManager_->setTime(Nold_, *patch, currentTime);
+                resourcesManager_->setTime(FEold_, *patch, currentTime);
 
                 Bold_.copyData(hybridModel.state.electromag.B);
                 Eold_.copyData(hybridModel.state.electromag.E);
+                Nold_.copyData(hybridModel.state.ions.chargeDensity());
+                FEold_.copyData(hybridModel.state.ions.chargeFluxE());
             }
         }
 
@@ -716,6 +761,7 @@ namespace amr
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
+            momentGhostsRefiners_.registerLevel(hierarchy, level);
 
             // refluxing
             auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
@@ -757,6 +803,7 @@ namespace amr
         {
             elecGhostsRefiners_.removeLevel(levelNumber);
             magGhostsRefiners_.removeLevel(levelNumber);
+            momentGhostsRefiners_.removeLevel(levelNumber);
             lvlGhostPartNewRefiners_.removeLevel(levelNumber);
             electroSynchronizers_.removeLevel(levelNumber);
             chargeDensitySynchronizers_.removeLevel(levelNumber);
@@ -803,6 +850,16 @@ namespace amr
             elecGhostsRefiners_.addTimeRefiners(info->ghostElectric, info->modelElectric,
                                                 Eold_.name(), EfieldRefineOp_, vecFieldTimeOp_,
                                                 nonOverwriteInteriorTFfillPattern);
+
+            // total ion moments Ohm reads beyond the patch: C-F ghosts time interpolated between
+            // Nold_/FEold_ (t=n) and the coarser moments (t=n+1), like E (#1577)
+            momentGhostsRefiners_.addTimeRefiner(
+                info->modelIonDensity, info->modelIonDensity, Nold_.name(), fieldRefineOp_,
+                fieldTimeOp_, info->modelIonDensity, nonOverwriteInteriorFieldFillPattern);
+            momentGhostsRefiners_.addTimeRefiner(
+                info->modelIonChargeFluxE, info->modelIonChargeFluxE, FEold_.name(),
+                EfieldRefineOp_, vecFieldTimeOp_, info->modelIonChargeFluxE,
+                nonOverwriteInteriorTFfillPattern);
 
 
             // we need a separate patch strategy for each refiner so that each one can register
@@ -1021,8 +1078,48 @@ namespace amr
                     setNaNsOnFieldGhosts(field);
         }
 
+        // The refine operators write only nodes that are still NaN (composite_field_refiner.hpp),
+        // so the ghosts are set to NaN before the fill. Hybrid runs are periodic, so every ghost
+        // node is reached by a copy (periodic images included) or a refinement, and a NaN left
+        // afterwards is a bug in the fill. Non-periodic hybrid boundaries would need a boundary
+        // condition for these moments, like E and B.
+        void fillIonMomentGhosts_(IonsT& ions, level_t& level, auto&& fill)
+        {
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, ions))
+            {
+                setNaNsOnFieldGhosts(ions.chargeDensity());
+                for (auto& component : ions.chargeFluxE())
+                    setNaNsOnFieldGhosts(component);
+            }
+
+            fill();
+
+            // debug builds only, like the MHD NaN check: this runs twice per step on every
+            // refined level, and a missed ghost is a code bug, not a runtime condition, so release
+            // builds pay neither the scan nor a global reduction. The throw is local.
+            PHARE_DEBUG_DO({
+                auto const hasNaN = [](auto const& field) {
+                    return std::any_of(field.begin(), field.end(),
+                                       [](auto const v) { return std::isnan(v); });
+                };
+                for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, ions))
+                {
+                    bool nanLeft = hasNaN(ions.chargeDensity());
+                    for (auto const& component : ions.chargeFluxE())
+                        nanLeft = nanLeft or hasNaN(component);
+                    if (nanLeft)
+                        throw std::runtime_error(
+                            "fillIonMomentGhosts: NaN left in the ion moment ghosts of level "
+                            + std::to_string(level.getLevelNumber()));
+                }
+            })
+        }
+
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
         VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
+        // t=n copies of the total ion moments that finer levels refine onto their level ghosts
+        FieldT Nold_{stratName + "_Nold", core::HybridQuantity::Scalar::rho};
+        VecFieldT FEold_{stratName + "_FEold", core::HybridQuantity::Vector::J};
 
         // scratch fields of the diagnostics, which use them under these names
         // (diagnostic_model_view.hpp)
@@ -1102,13 +1199,12 @@ namespace amr
         VecFieldGhostMaxRefinerPool magMaxRootRefiners_{resourcesManager_};
 
         // moment ghosts
-        // There is no level ghost refiner for the moments: on level ghost nodes they come
-        // only from the deposit of level ghost particles, which leaves the outermost level
-        // ghost nodes incomplete (missing the outside contribution). A level ghost schedule
-        // cannot replace that deposit: at interp order >= 2, level ghost particles also
-        // contribute to domain nodes. Such a schedule would be needed to fill the pure level
-        // ghost nodes of the charge density and charge flux, or to coarsen moments with a
-        // multiple point operator.
+        // On a refined level the level ghost particles complete the domain nodes, border
+        // included, but leave the level ghost nodes incomplete (missing the outside
+        // contribution). The total charge density and E-node charge flux are read there by Ohm,
+        // so their ghosts are refined from the coarser level (fillIonMomentGhosts). The deposit
+        // stays: at interp order >= 2, level ghost particles also contribute to domain nodes.
+        GhostRefinerPool momentGhostsRefiners_{resourcesManager_};
 
         PatchGhostRefinerPool chargeDensityPatchGhostsRefiners_{resourcesManager_};
         PatchGhostRefinerPool chargeFluxEPatchGhostsRefiners_{resourcesManager_};
@@ -1163,6 +1259,7 @@ namespace amr
 
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};
+        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
 
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
 
