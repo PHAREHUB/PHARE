@@ -166,7 +166,6 @@ public:
     ModelView(Hierarchy& hierarchy, Model& model)
         : Super{hierarchy, model}
     {
-        declareMomentumTensorAlgos();
     }
 
     NO_DISCARD VecField& getB() const { return this->model_.state.electromag.B; }
@@ -189,25 +188,12 @@ public:
             return tmpTensor_;
     }
 
-    void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
+    // per-population fluxes and momentum tensor, computed for outputs only (HybridLazyMoments)
+    void fillLazyMoments(auto& lvl, bool const flux, bool const momentumTensor)
     {
-        using value_type = TensorFieldT::value_type;
-        auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
-
-        auto& rm   = *this->model_.resourcesManager;
-        auto& ions = this->model_.state.ions;
-
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
-            for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(tmpTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
-
-        MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
-
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
-            for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+        this->model_.lazyMoments.fill(this->hierarchy_, this->model_.resourcesManager,
+                                      this->model_.state.ions, lvl.getLevelNumber(),
+                                      {flux, momentumTensor});
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -221,66 +207,6 @@ public:
     }
 
 protected:
-    void declareMomentumTensorAlgos()
-    {
-        auto& rm = *this->model_.resourcesManager;
-
-        auto const dst_name = tmpTensor_.name();
-
-        for (auto& pop : this->model_.state.ions)
-        {
-            auto& MTAlgo        = MTAlgos.emplace_back();
-            auto const src_name = pop.momentumTensor().name();
-
-            auto&& [idDst, idSrc] = rm.getIDsList(dst_name, src_name);
-            MTAlgo.MTalgo->registerRefine(
-                idDst, idSrc, idDst, nullptr,
-                std::make_shared<
-                    amr::TensorFieldGhostInterpOverlapFillPattern<typename Super::GridLayout,
-                                                                  /*rank_=*/2>>());
-        }
-
-        // can't create schedules here as the hierarchy has no levels yet
-    }
-
-    struct MTAlgo
-    {
-        auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
-        {
-            using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
-
-            auto const level   = hierarchy.getPatchLevel(ilvl);
-            auto schedule_iter = MTschedules.find(ilvl);
-            auto const create_schedule
-                = schedule_iter == MTschedules.end() or schedule_iter->second.level.lock() != level;
-
-            if (create_schedule)
-                schedule_iter
-                    = MTschedules
-                          .insert_or_assign(
-                              ilvl,
-                              Entry{level,
-                                    MTalgo->createSchedule(
-                                        level, 0,
-                                        std::make_shared<amr::FieldBorderOpTransactionFactory<
-                                            typename Super::TensorFieldData_t, PlusEqualsOp>>())})
-                          .first;
-
-            return *schedule_iter->second.schedule;
-        }
-
-        struct Entry
-        {
-            std::weak_ptr<SAMRAI::hier::PatchLevel> level; // invalidadted if the Level is destroyed
-            std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule;
-        };
-
-        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> MTalgo
-            = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-        std::map<int, Entry> MTschedules;
-    };
-
-    std::vector<MTAlgo> MTAlgos;
     Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
     VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
     TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};

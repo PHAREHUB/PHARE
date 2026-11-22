@@ -200,9 +200,7 @@ namespace solver
             // that Ohm reads is not: fillIonMomentGhosts_
             for (auto& patch : rm.enumerate(level, ions))
             {
-                ions.computeChargeDensity();
-                ions.computeBulkVelocity();
-                ions.computeChargeFlux();
+                ions.computeLoopMoments();
             }
         }
 

@@ -13,6 +13,7 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <type_traits>
 
 
 namespace PHARE::core
@@ -27,6 +28,18 @@ namespace PHARE::core
 constexpr int nbrPointsSupport(int interpOrder)
 {
     return interpOrder + 1;
+}
+
+
+//! a flux pointer typed like the density's, null when the component is not written: a disabled
+//! component of another type must not be formed, or deposit_ cannot deduce a single T
+template<bool write, typename T, typename Flux>
+PHARE_ALWAYS_INLINE T* depositFluxPointer(Flux& flux, std::ptrdiff_t const offset)
+{
+    if constexpr (write)
+        return flux.data() + offset;
+    else
+        return nullptr;
 }
 
 
@@ -286,7 +299,11 @@ public:
 //! the per field operator() deposits func(particle) on one field, the fused one deposits
 //! density and flux together: they are all primal, so share the stencil offset and weights
 //! the fused deposit takes __restrict pointers, without which the compiler must assume a
-//! field store may change the weights/particle, and reload them after every one
+//! field store may change the weights/particle, and reload them after every one.
+//! Its flux components can be switched off at compile time (`writes`, x y z): the time loop
+//! deposits only those it needs, with the same arithmetic as the full deposit. A component
+//! switched off is never accessed (no data pointer, no shape check, see depositFluxPointer):
+//! its field argument may be any field
 template<std::size_t dim>
 class ParticleToMesh
 {
@@ -316,23 +333,28 @@ public:
         }
     }
 
-    template<typename Density, typename Flux, typename Particle, typename Indexes, typename Weights>
-    PHARE_ALWAYS_INLINE void operator()(Density& density, Flux& xFlux, Flux& yFlux, Flux& zFlux,
+    template<std::array<bool, 3> writes = {true, true, true}, typename Density, typename XFlux,
+             typename YFlux, typename ZFlux, typename Particle, typename Indexes, typename Weights>
+    PHARE_ALWAYS_INLINE void operator()(Density& density, XFlux& xFlux, YFlux& yFlux, ZFlux& zFlux,
                                         Particle const& particle, Indexes const& startIndex,
                                         Weights const& weights, double coef = 1.)
     {
         auto const& [xStartIndex] = startIndex;
 
-        assert(density.shape() == xFlux.shape() and density.shape() == yFlux.shape()
-               and density.shape() == zFlux.shape());
+        assert(not writes[0] or density.shape() == xFlux.shape());
+        assert(not writes[1] or density.shape() == yFlux.shape());
+        assert(not writes[2] or density.shape() == zFlux.shape());
 
         auto const offset = xStartIndex;
-        deposit_(density.data() + offset, xFlux.data() + offset, yFlux.data() + offset,
-                 zFlux.data() + offset, weights, particle.weight * coef, particle.v);
+        using T           = std::remove_pointer_t<decltype(density.data())>;
+        deposit_<writes>(density.data() + offset, depositFluxPointer<writes[0], T>(xFlux, offset),
+                         depositFluxPointer<writes[1], T>(yFlux, offset),
+                         depositFluxPointer<writes[2], T>(zFlux, offset), weights,
+                         particle.weight * coef, particle.v);
     }
 
 private:
-    template<typename T, typename Weights, typename V>
+    template<std::array<bool, 3> writes, typename T, typename Weights, typename V>
     PHARE_ALWAYS_INLINE static void deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy,
                                              T* __restrict fz, Weights const& weights,
                                              double const deposit, V const& v)
@@ -345,9 +367,12 @@ private:
         {
             auto const w = deposit * xWeights[ik];
             rho[ik] += w;
-            fx[ik] += w * vx;
-            fy[ik] += w * vy;
-            fz[ik] += w * vz;
+            if constexpr (writes[0])
+                fx[ik] += w * vx;
+            if constexpr (writes[1])
+                fy[ik] += w * vy;
+            if constexpr (writes[2])
+                fz[ik] += w * vz;
         }
     }
 };
@@ -383,24 +408,29 @@ public:
         }
     }
 
-    template<typename Density, typename Flux, typename Particle, typename Indexes, typename Weights>
-    PHARE_ALWAYS_INLINE void operator()(Density& density, Flux& xFlux, Flux& yFlux, Flux& zFlux,
+    template<std::array<bool, 3> writes = {true, true, true}, typename Density, typename XFlux,
+             typename YFlux, typename ZFlux, typename Particle, typename Indexes, typename Weights>
+    PHARE_ALWAYS_INLINE void operator()(Density& density, XFlux& xFlux, YFlux& yFlux, ZFlux& zFlux,
                                         Particle const& particle, Indexes const& startIndex,
                                         Weights const& weights, double coef = 1.)
     {
         auto const& [xStartIndex, yStartIndex] = startIndex;
 
-        assert(density.shape() == xFlux.shape() and density.shape() == yFlux.shape()
-               and density.shape() == zFlux.shape());
+        assert(not writes[0] or density.shape() == xFlux.shape());
+        assert(not writes[1] or density.shape() == yFlux.shape());
+        assert(not writes[2] or density.shape() == zFlux.shape());
 
         auto* const rho   = &density(xStartIndex, yStartIndex);
         auto const offset = rho - density.data();
-        deposit_(rho, xFlux.data() + offset, yFlux.data() + offset, zFlux.data() + offset,
-                 density.shape()[1], weights, particle.weight * coef, particle.v);
+        using T           = std::remove_pointer_t<decltype(rho)>;
+        deposit_<writes>(rho, depositFluxPointer<writes[0], T>(xFlux, offset),
+                         depositFluxPointer<writes[1], T>(yFlux, offset),
+                         depositFluxPointer<writes[2], T>(zFlux, offset), density.shape()[1],
+                         weights, particle.weight * coef, particle.v);
     }
 
 private:
-    template<typename T, typename Weights, typename V>
+    template<std::array<bool, 3> writes, typename T, typename Weights, typename V>
     PHARE_ALWAYS_INLINE static void
     deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy, T* __restrict fz,
              std::size_t const xStride, Weights const& weights, double const deposit, V const& v)
@@ -417,9 +447,12 @@ private:
             {
                 auto const w = xw * yWeights[iy];
                 rho[yLine + iy] += w;
-                fx[yLine + iy] += w * vx;
-                fy[yLine + iy] += w * vy;
-                fz[yLine + iy] += w * vz;
+                if constexpr (writes[0])
+                    fx[yLine + iy] += w * vx;
+                if constexpr (writes[1])
+                    fy[yLine + iy] += w * vy;
+                if constexpr (writes[2])
+                    fz[yLine + iy] += w * vz;
             }
         }
     }
@@ -460,8 +493,9 @@ public:
         }
     }
 
-    template<typename Density, typename Flux, typename Particle, typename Indexes, typename Weights>
-    PHARE_ALWAYS_INLINE void operator()(Density& density, Flux& xFlux, Flux& yFlux, Flux& zFlux,
+    template<std::array<bool, 3> writes = {true, true, true}, typename Density, typename XFlux,
+             typename YFlux, typename ZFlux, typename Particle, typename Indexes, typename Weights>
+    PHARE_ALWAYS_INLINE void operator()(Density& density, XFlux& xFlux, YFlux& yFlux, ZFlux& zFlux,
                                         Particle const& particle, Indexes const& startIndex,
                                         Weights const& weights, double coef = 1.)
     {
@@ -469,17 +503,21 @@ public:
         auto const& shape                                   = density.shape();
         std::size_t const yStride                           = shape[2];
 
-        assert(density.shape() == xFlux.shape() and density.shape() == yFlux.shape()
-               and density.shape() == zFlux.shape());
+        assert(not writes[0] or density.shape() == xFlux.shape());
+        assert(not writes[1] or density.shape() == yFlux.shape());
+        assert(not writes[2] or density.shape() == zFlux.shape());
 
         auto* const rho   = &density(xStartIndex, yStartIndex, zStartIndex);
         auto const offset = rho - density.data();
-        deposit_(rho, xFlux.data() + offset, yFlux.data() + offset, zFlux.data() + offset,
-                 shape[1] * yStride, yStride, weights, particle.weight * coef, particle.v);
+        using T           = std::remove_pointer_t<decltype(rho)>;
+        deposit_<writes>(rho, depositFluxPointer<writes[0], T>(xFlux, offset),
+                         depositFluxPointer<writes[1], T>(yFlux, offset),
+                         depositFluxPointer<writes[2], T>(zFlux, offset), shape[1] * yStride,
+                         yStride, weights, particle.weight * coef, particle.v);
     }
 
 private:
-    template<typename T, typename Weights, typename V>
+    template<std::array<bool, 3> writes, typename T, typename Weights, typename V>
     PHARE_ALWAYS_INLINE static void deposit_(T* __restrict rho, T* __restrict fx, T* __restrict fy,
                                              T* __restrict fz, std::size_t const xStride,
                                              std::size_t const yStride, Weights const& weights,
@@ -500,9 +538,12 @@ private:
                 {
                     auto const w = xyw * zWeights[iz];
                     rho[zLine + iz] += w;
-                    fx[zLine + iz] += w * vx;
-                    fy[zLine + iz] += w * vy;
-                    fz[zLine + iz] += w * vz;
+                    if constexpr (writes[0])
+                        fx[zLine + iz] += w * vx;
+                    if constexpr (writes[1])
+                        fy[zLine + iz] += w * vy;
+                    if constexpr (writes[2])
+                        fz[zLine + iz] += w * vz;
                 }
             }
         }
@@ -658,22 +699,29 @@ public:
     }
 
 
-    /**\brief deposit density and flux on the moment nodes, and the flux on the E nodes
+    /**\brief the time loop's deposit: density on the moment nodes and flux on the E nodes
      *
      * Each component of fluxE is deposited with the start index and weights that gather the
      * same component of E to the particle (see operator()(particle, em, layout)), so that
      * sum_p w_p v_p.E(x_p) = sum_nodes fluxE.E exactly: the work of E on the particles is the
      * grid product of fluxE and E, which Ohm's law needs to conserve energy (#1577).
+     *
+     * An E component on the moment nodes (E_z in 2D, E_y and E_z in 1D) has the gather weights
+     * of the density: its fluxE is deposited by the fused density kernel, the others one by one.
+     * The flux on the moment nodes is not deposited: only outputs use it (HybridLazyMoments).
      */
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange& particleRange, Field& particleDensity, VecField& flux,
-                           VecField& fluxE, GridLayout const& layout, double coef = 1.)
+    inline void depositDensityAndFluxE(ParticleRange&& particleRange, Field& particleDensity,
+                                       VecField& fluxE, GridLayout const& layout, double coef = 1.)
     {
-        using Scalar                      = HybridQuantity::Scalar;
-        auto const& [xFlux, yFlux, zFlux] = flux();
+        using Scalar                         = HybridQuantity::Scalar;
         auto const& [xFluxE, yFluxE, zFluxE] = fluxE();
 
-        PHARE_LOG_START(3, "ParticleToMesh::operator() with fluxE");
+        constexpr std::array<bool, 3> onMomentNodes{onMomentNodes_<GridLayout, Scalar::Ex>(),
+                                                    onMomentNodes_<GridLayout, Scalar::Ey>(),
+                                                    onMomentNodes_<GridLayout, Scalar::Ez>()};
+
+        PHARE_LOG_START(3, "ParticleToMesh::depositDensityAndFluxE");
 
         for (auto currPart = particleRange.begin(); currPart != particleRange.end(); ++currPart)
         {
@@ -682,38 +730,26 @@ public:
             indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, iCell, delta);
             indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, iCell, delta);
 
-            particleToMesh_(particleDensity, xFlux, yFlux, zFlux, *currPart, primal_startIndex_,
-                            primal_weights_, coef);
+            // the components switched off are not accessed: the density stands in for them
+            auto& xMoment = select_<onMomentNodes[0]>(xFluxE, particleDensity);
+            auto& yMoment = select_<onMomentNodes[1]>(yFluxE, particleDensity);
+            auto& zMoment = select_<onMomentNodes[2]>(zFluxE, particleDensity);
+            particleToMesh_.template operator()<onMomentNodes>(
+                particleDensity, xMoment, yMoment, zMoment, *currPart, primal_startIndex_,
+                primal_weights_, coef);
 
             auto const indexWeights = std::forward_as_tuple(dual_startIndex_, dual_weights_,
                                                             primal_startIndex_, primal_weights_);
             auto const w            = currPart->weight * coef;
             auto const& v           = currPart->v;
-            if constexpr (!onMomentNodes_<GridLayout, Scalar::Ex>())
+            if constexpr (!onMomentNodes[0])
                 depositOnQty_<GridLayout, Scalar::Ex>(xFluxE, indexWeights, w * v[0]);
-            if constexpr (!onMomentNodes_<GridLayout, Scalar::Ey>())
+            if constexpr (!onMomentNodes[1])
                 depositOnQty_<GridLayout, Scalar::Ey>(yFluxE, indexWeights, w * v[1]);
-            if constexpr (!onMomentNodes_<GridLayout, Scalar::Ez>())
+            if constexpr (!onMomentNodes[2])
                 depositOnQty_<GridLayout, Scalar::Ez>(zFluxE, indexWeights, w * v[2]);
         }
-
-        // an E component on the moment nodes (E_z in 2D, E_y and E_z in 1D) has the gather weights
-        // of the moment flux: its fluxE is the flux, copied instead of deposited a second time.
-        // This holds because every deposit of the flux also goes through this function.
-        auto const copyIfOnMomentNodes = [&]<auto quantity>(auto& dst, auto const& src) {
-            if constexpr (onMomentNodes_<GridLayout, quantity>())
-                std::copy(src.data(), src.data() + src.size(), dst.data());
-        };
-        copyIfOnMomentNodes.template operator()<Scalar::Ex>(xFluxE, xFlux);
-        copyIfOnMomentNodes.template operator()<Scalar::Ey>(yFluxE, yFlux);
-        copyIfOnMomentNodes.template operator()<Scalar::Ez>(zFluxE, zFlux);
-        PHARE_LOG_STOP(3, "ParticleToMesh::operator() with fluxE");
-    }
-    template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange&& range, Field& particleDensity, VecField& flux,
-                           VecField& fluxE, GridLayout const& layout, double coef = 1.)
-    {
-        (*this)(range, particleDensity, flux, fluxE, layout, coef);
+        PHARE_LOG_STOP(3, "ParticleToMesh::depositDensityAndFluxE");
     }
 
 
@@ -777,6 +813,15 @@ private:
     NO_DISCARD auto meshToParticle(auto const& field, GridLayout const&, auto const& indexWeights)
     {
         return meshToParticle_.template operator()<GridLayout, quantity>(field, indexWeights);
+    }
+
+    template<bool first>
+    NO_DISCARD static auto& select_(auto& a, auto& b)
+    {
+        if constexpr (first)
+            return a;
+        else
+            return b;
     }
 
     template<typename GridLayout, auto quantity>

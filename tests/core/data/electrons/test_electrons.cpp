@@ -750,9 +750,7 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
 
-    ions.computeChargeDensity();
-    ions.computeBulkVelocity();
-    ions.computeChargeFlux();
+    ions.computeLoopMoments();
     electrons.update(layout);
     electrons.computeVelocity(layout, this->Ve);
 

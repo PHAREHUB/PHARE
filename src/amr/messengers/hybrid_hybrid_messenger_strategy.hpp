@@ -100,7 +100,6 @@ namespace amr
         using DefaultFieldCoarsenOp    = FieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
         using DefaultVecFieldCoarsenOp = VecFieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
         using MomentsFieldCoarsenOp    = FieldCoarsenOp<MomentsCoarsener<dimension>>;
-        using MomentsVecFieldCoarsenOp = VecFieldCoarsenOp<MomentsCoarsener<dimension>>;
         using ElectricFieldCoarsenOp   = VecFieldCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
     public:
@@ -400,9 +399,8 @@ namespace amr
         // order on all of them (see field_border_sum.hpp)
         void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
-            assert(popFluxBorderSumRefiners_.size() == ions.size());
-            for (auto& refiner : popFluxBorderSumRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
+            // the time loop deposits the flux on the E nodes only (HybridLazyMoments computes the
+            // moment-node flux for outputs, with its own border sums)
             assert(popFluxEBorderSumRefiners_.size() == ions.size());
             for (auto& refiner : popFluxEBorderSumRefiners_)
                 refiner.fill(level.getLevelNumber(), fillTime);
@@ -484,7 +482,6 @@ namespace amr
                 for (auto& pop : ions)
                 {
                     auto& particleDensity = pop.particleDensity();
-                    auto& flux            = pop.flux();
                     auto& fluxE           = pop.fluxE();
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
@@ -494,10 +491,9 @@ namespace amr
                         auto const& ownership = levelGhostOwnership_.at(level.getLevelNumber())
                                                     .at(patch->getGlobalId());
                         core::depositOwned(interpolate_, pop.levelGhostParticlesOld(),
-                                           particleDensity, flux, fluxE, layout, ownership,
-                                           1. - alpha);
+                                           particleDensity, fluxE, layout, ownership, 1. - alpha);
                         core::depositOwned(interpolate_, pop.levelGhostParticlesNew(),
-                                           particleDensity, flux, fluxE, layout, ownership, alpha);
+                                           particleDensity, fluxE, layout, ownership, alpha);
                     }
                 }
             }
@@ -744,8 +740,6 @@ namespace amr
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
             chargeFluxEPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
-            for (auto& refiner : popFluxBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
             for (auto& refiner : popFluxEBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
@@ -958,13 +952,6 @@ namespace amr
                 std::make_shared<ParticleDomainFromGhostFillPattern<GridLayoutT>>());
 
 
-            for (auto const& vecfield : info->ghostFlux)
-                popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
-
             for (auto const& vecfield : info->ghostFluxE)
                 popFluxEBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
@@ -986,10 +973,8 @@ namespace amr
             electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric);
 
-            // no patch ghost refill after sync for the charge flux on the moment nodes: the
-            // electron velocity is only computed and used on the physical box
-            ionChargeFluxSynchronizers_.add(info->modelIonChargeFlux, vecFieldMomentsCoarseningOp_,
-                                            info->modelIonChargeFlux);
+            // the charge flux on the moment nodes is not synchronized: the time loop does not
+            // compute it, outputs compute it on each level from that level's particles
 
             // the charge flux on the E nodes is coarsened like E. Ohm reads it one node beyond
             // the box E is computed on, so its patch ghosts are refilled after sync
@@ -1122,7 +1107,8 @@ namespace amr
         VecFieldT FEold_{stratName + "_FEold", core::HybridQuantity::Vector::J};
 
         // scratch fields of the diagnostics, which use them under these names
-        // (diagnostic_model_view.hpp)
+        // (diagnostic_model_view.hpp): the VTK writer converts fields with them, and
+        // HybridLazyMoments uses PHARE_sumField for the population density
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
         FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
@@ -1159,8 +1145,8 @@ namespace amr
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
-        //! += flux on ghost box overlap incomplete population moment nodes
-        std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
+        //! per population, sums the E-node flux deposits of the patches whose ghost boxes overlap,
+        //! so that every copy of a shared node holds the complete flux
         std::vector<VecFieldGhostSumRefinerPool> popFluxEBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
@@ -1264,8 +1250,6 @@ namespace amr
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
 
         CoarsenOperator_ptr fieldMomentsCoarseningOp_{std::make_shared<MomentsFieldCoarsenOp>()};
-        CoarsenOperator_ptr vecFieldMomentsCoarseningOp_{
-            std::make_shared<MomentsVecFieldCoarsenOp>()};
         CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
         MagneticRefinePatchStrategy<VectorFieldDataT, BoundaryManagerT>

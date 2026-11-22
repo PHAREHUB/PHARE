@@ -163,31 +163,53 @@ namespace core
         }
 
 
-        // sum_s q_s F_s on the moment nodes (electron velocity) and sum_s q_s fluxE_s on the E
-        // nodes (Ohm's law)
-        void computeChargeFlux()
+        // the totals the time loop keeps up to date, from the population densities and E-node
+        // fluxes: the charge density and the E-node charge flux, which Ohm reads, and the mass
+        // density, which the bulk velocity of the outputs divides by (HybridLazyMoments) and the
+        // mass_density output writes. The population fluxes on the moment nodes, their total and
+        // the bulk velocity are computed only for outputs; until then they hold the value of the
+        // last output (NaN on a level that never had one: fields are allocated NaN)
+        void computeLoopMoments()
         {
-            auto const sum = [&](auto& total, auto const& popFlux) {
-                total.zero();
-                for (auto const& pop : populations_)
-                {
-                    auto const plusCharge
-                        = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
-
-                    for (std::size_t i = 0; i < total.size(); ++i)
-                    {
-                        auto& c       = total[i];
-                        auto const& f = popFlux(pop)[i];
-                        std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
-                                       plusCharge);
-                    }
-                }
-            };
-            sum(chargeFlux_, [](auto const& pop) -> auto const& { return pop.flux(); });
-            sum(chargeFluxE_, [](auto const& pop) -> auto const& { return pop.fluxE(); });
+            computeChargeDensity();
+            computeMassDensity();
+            computeChargeFluxOnENodes();
         }
 
+        // sum_s q_s F_s on the moment nodes, for outputs. The E-node sum is left alone: the time
+        // loop completes it (border sums, coarse-fine ghosts, sync) and Ohm reads it.
+        void computeChargeFluxOnMomentNodes()
+        {
+            sumChargeWeighted_(chargeFlux_,
+                               [](auto const& pop) -> auto const& { return pop.flux(); });
+        }
 
+        void computeChargeFluxOnENodes()
+        {
+            sumChargeWeighted_(chargeFluxE_,
+                               [](auto const& pop) -> auto const& { return pop.fluxE(); });
+        }
+
+    private:
+        void sumChargeWeighted_(auto& total, auto&& popFlux)
+        {
+            total.zero();
+            for (auto const& pop : populations_)
+            {
+                auto const plusCharge
+                    = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
+
+                for (std::size_t i = 0; i < total.size(); ++i)
+                {
+                    auto& c       = total[i];
+                    auto const& f = popFlux(pop)[i];
+                    std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
+                                   plusCharge);
+                }
+            }
+        }
+
+    public:
         void computeFullMomentumTensor()
         {
             momentumTensor_.zero();

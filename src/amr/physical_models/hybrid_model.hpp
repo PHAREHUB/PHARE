@@ -12,6 +12,7 @@
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
+#include "amr/physical_models/hybrid_lazy_moments.hpp"
 
 
 #include <string>
@@ -55,6 +56,10 @@ public:
     core::HybridState<Electromag, Ions, Electrons> state;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
+
+    // ion moments only outputs need (fluxes on the moment nodes, momentum tensor), computed when
+    // a diagnostic or the Python data wrangler asks for them; shared by both
+    amr::HybridLazyMoments<resources_manager_type, Ions, GridLayoutT> lazyMoments;
 
 
     void initialize(level_t& level) override;
@@ -170,12 +175,11 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
 {
     auto& hybridInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
-    // only the charge density and the charge flux, which give the electron velocity,
-    // are communicated. The mass density and the bulk velocity are diagnostics only
-    hybridInfo.modelMagnetic      = state.electromag.B.name();
-    hybridInfo.modelElectric      = state.electromag.E.name();
-    hybridInfo.modelIonDensity    = state.ions.chargeDensityName();
-    hybridInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
+    // only the charge density and the E-node charge flux, which Ohm reads, are communicated.
+    // The moment-node fluxes, the mass density and the bulk velocity are outputs only
+    hybridInfo.modelMagnetic       = state.electromag.B.name();
+    hybridInfo.modelElectric       = state.electromag.E.name();
+    hybridInfo.modelIonDensity     = state.ions.chargeDensityName();
     hybridInfo.modelIonChargeFluxE = state.ions.chargeFluxE().name();
 
     hybridInfo.initElectric.emplace_back(state.electromag.E.name());
@@ -195,7 +199,6 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
 
     for (auto const& pop : state.ions)
     {
-        hybridInfo.ghostFlux.emplace_back(pop.flux().name());
         hybridInfo.ghostFluxE.emplace_back(pop.fluxE().name());
         hybridInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
     }
