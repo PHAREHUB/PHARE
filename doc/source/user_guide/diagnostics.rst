@@ -109,6 +109,11 @@ Electromagnetic fields
    * - ``"B"``
      - magnetic field
      - ``EM_B.h5``
+   * - ``"B0"``
+     - external magnetic field (needs an external field block, see
+       :doc:`external_field`; without one the script stops with
+       ``'B0' diagnostics require an external field``)
+     - ``EM_B0.h5``
 
 Ion fluid moments (hybrid model)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

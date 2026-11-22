@@ -112,6 +112,10 @@ The file name is fixed by the diagnostic you asked for. The getter fails with
    * - ``GetE(t)``
      - ``ElectromagDiagnostics("E")``
      - ``EM_E.h5``
+   * - ``GetB0(t)``
+     - ``ElectromagDiagnostics("B0")``, with an
+       :doc:`external field </user_guide/external_field>`
+     - ``EM_B0.h5``
    * - ``GetNi(t)``
      - ``FluidDiagnostics("charge_density")``
      - ``ions_charge_density.h5``
@@ -161,7 +165,7 @@ The other methods do not read a field: ``GetDomainSize()`` (box size),
 ``times(name)`` and ``all_times()``.
 
 The names accepted by ``times(name)`` are short names for some files
-(``"B"``, ``"E"``, ``"Ni"``, ``"Vi"``, ``"rho"`` for the mass density, ``"CF"``
+(``"B"``, ``"E"``, ``"B0"``, ``"Ni"``, ``"Vi"``, ``"rho"`` for the mass density, ``"CF"``
 for the charge flux, ``"nppc"``, ``"mhd_rho"``...); for the other files it is
 the file name without ``.h5``, for example
 ``run.times("ions_pop_protons_flux")``.
@@ -194,8 +198,8 @@ In 1D, ``x`` is one array. In 2D, ``(x, y)`` are two 1D arrays, and the function
 takes 2D arrays: use ``X, Y = numpy.meshgrid(x, y, indexing="ij")`` then
 ``by(X, Y)``.
 
-.. note:: **Known issue.** ``merged=True`` currently works only for ``GetB`` and
-   ``GetE``. For ion quantities (``GetNi``, ``GetVi``, ``GetN``, ``GetFlux``...)
+.. note:: **Known issue.** ``merged=True`` currently works only for ``GetB``,
+   ``GetE`` and ``GetB0``. For ion quantities (``GetNi``, ``GetVi``, ``GetN``, ``GetFlux``...)
    it stops with ``AttributeError: 'dict' object has no attribute 'domain_box'``
    (or a ``KeyError``): use the patch hierarchy instead, as in
    :doc:`plotting_fields`. ``GetPe`` ignores ``merged=True`` (it returns a
@@ -280,7 +284,7 @@ These options are shared by most getters.
        ``merged=True`` or ``all_primal=False``
      - the whole domain
    * - ``all_primal``
-     - for ``GetB``, ``GetE``, ``GetJ`` and the MHD getters: move all
+     - for ``GetB``, ``GetE``, ``GetB0``, ``GetJ`` and the MHD getters: move all
        components to the same grid points (primal nodes, the cell corners).
        Components of B and E live at different points inside a cell; this puts
        them together. Forced to ``False`` when ``merged=True``

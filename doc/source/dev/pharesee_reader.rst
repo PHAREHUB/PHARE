@@ -29,8 +29,8 @@ reader.
    * - Call
      - ``.h5``
      - ``.vtkhdf``
-   * - ``GetB``, ``GetE``, ``GetNi``, ``GetN``, ``GetVi``, ``GetFlux``, ``GetChargeFlux``,
-       ``GetMassDensity``, ``GetMHD*``
+   * - ``GetB``, ``GetE``, ``GetB0``, ``GetNi``, ``GetN``, ``GetVi``, ``GetFlux``,
+       ``GetChargeFlux``, ``GetMassDensity``, ``GetMHD*``
      - new
      - new
    * - the same with ``merged=True``

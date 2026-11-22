@@ -1030,6 +1030,9 @@ class Run(LegacyRun):
         """Electric field (EM_E) -> VectorField; same rules as GetB."""
         return self._stored("GetE", "EM_E", (time, merged, interp, all_primal), kwargs)
 
+    def GetB0(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        return self._stored("GetB0", "EM_B0", (time, merged, interp, all_primal), kwargs)
+
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
         """Ion mass density (ions_mass_density) -> ScalarField."""
         return self._stored("GetMassDensity", "ions_mass_density", (time, merged, interp),

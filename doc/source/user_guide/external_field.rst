@@ -2,23 +2,89 @@
 External magnetic field
 =======================
 
-Either model can be given an external (background) magnetic field B0. It is
-declared with one of the blocks below, right after the
-``Simulation`` and before the model; declaring it after the model, or a second
-time, is an error. Without such a block there is no B0: it is neither
-allocated nor dumped.
+**Goal:** give a run an external (background) magnetic field B0, a field you
+prescribe and that PHARE does not evolve, and write it to disk.
 
-No solver uses it yet.
+.. warning::
 
-.. autoclass:: pyphare.pharein.DipoleExternalField
+   No solver uses B0 yet: declaring it does not change the plasma or the
+   magnetic field of the run. PHARE computes it, keeps it up to date and
+   writes it.
 
-.. autoclass:: pyphare.pharein.UserDefinedExternalField
+
+Minimal example
+---------------
+
+The block goes right after ``Simulation`` and before the model:
 
 .. code-block:: python
 
     import pyphare.pharein as ph
 
-    sim = ph.Simulation(...)
+    sim = ph.Simulation(
+        # ... a 2D grid and time, as in the first simulation ...
+    )
+
+    ph.DipoleExternalField(position=(10.0, 10.0), moment=(0.0, 1.0), radius=1.0)
+
+    # ... ph.MaxwellianFluidModel(...) and ph.ElectronModel(...), or ph.MHDModel(...) ...
+
+    ph.ElectromagDiagnostics(quantity="B0", write_timestamps=[0.0])
+
+The run writes ``EM_B0.h5``, read back with ``run.GetB0(0.0)`` (see
+:doc:`/data_analysis/reading_data`).
+
+
+What happens
+------------
+
+Both the :term:`hybrid model` and :term:`MHD` accept the block. Without it
+there is no B0: it is neither allocated nor written, and asking for its
+diagnostics is an error.
+
+B0 is never given directly: PHARE takes a vector potential :math:`\mathbf{A}_0`
+and computes :math:`\mathbf{B}_0 = \nabla\times\mathbf{A}_0` with the curl of
+the grid, on every patch, ghost nodes included. The divergence of B0 on the
+grid is then zero to round-off, whatever the potential.
+
+B0 is computed
+
+* at the start of the run, on every :term:`level`;
+* on a level each time it is created or regridded: it is computed again from
+  the potential there, not interpolated from the coarser level;
+* after each step of a level, at the new time, when the potential depends on
+  time;
+* at a restart, from the block of the script that restarts: the block can be
+  changed, added or removed between a run and its restart.
+
+
+Two ways to give the field
+--------------------------
+
+**A dipole.** ``DipoleExternalField`` is a static magnetic dipole, in 2D or 3D:
+
+.. code-block:: python
+
+    ph.DipoleExternalField(position=(10.0, 10.0), moment=(0.0, 1.0), radius=1.0)
+
+Inside ``radius`` around ``position`` the field is uniform, which removes the
+singularity at the center; ``radius=0`` is the point dipole.
+
+**Your own potential.** ``UserDefinedExternalField`` takes the components of
+:math:`\mathbf{A}_0` as functions of the coordinates. A component you do not
+give is zero:
+
+.. code-block:: python
+
+    def az(x, y):
+        return 0.3 * y + 0.2 * x      # B0 = (0.3, -0.2, 0)
+
+    ph.UserDefinedExternalField(a0z=az)
+
+For a field that changes in time, the functions take the time as a last
+argument, and the time derivative of the potential is given too:
+
+.. code-block:: python
 
     def az(x, y, t):
         return x * y * (1.0 + t)
@@ -28,5 +94,72 @@ No solver uses it yet.
 
     ph.UserDefinedExternalField(a0z=az, da0z_dt=daz_dt)
 
-    ph.MaxwellianFluidModel(...)
-    ph.ElectromagDiagnostics(quantity="B0", write_timestamps=timestamps)
+The functions receive NumPy arrays (all the points of a patch at once) and
+return an array of the same shape.
+
+
+Options
+-------
+
+``DipoleExternalField`` (all required, by keyword):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Option
+     - Meaning
+   * - ``position``
+     - center of the dipole, one component per dimension
+   * - ``moment``
+     - dipole moment, one component per dimension, not zero
+   * - ``radius``
+     - finite and >= 0; the field is uniform inside it, 0 is the point dipole
+
+``UserDefinedExternalField`` (by keyword):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 55 20
+
+   * - Option
+     - Meaning
+     - Default
+   * - ``a0x``, ``a0y``, ``a0z``
+     - components of the potential, functions of the coordinates
+       (``a0z(x, y)`` in 2D), or of the coordinates and the time
+       (``a0z(x, y, t)``). At least one is required. In 1D ``a0x`` does not
+       contribute to the field and must stay ``None``
+     - ``None`` (zero)
+   * - ``da0x_dt``, ``da0y_dt``, ``da0z_dt``
+     - time derivative of the potential, functions of the coordinates and the
+       time. At least one is required when the potential depends on time; not
+       accepted otherwise
+     - ``None`` (zero)
+
+
+Common mistakes
+---------------
+
+* ``RuntimeError: An external field must be declared before the model`` — move
+  the block between ``Simulation`` and ``MaxwellianFluidModel`` /
+  ``MHDModel``.
+* ``RuntimeError: An external field is already declared`` — a run has one
+  external field block; add the fields in one potential.
+* ``RuntimeError: Error: 'B0' diagnostics require an external field`` —
+  ``ElectromagDiagnostics(quantity="B0")`` without an external field block.
+* ``ValueError: Error: a dipole external field makes no sense in 1D`` — use
+  ``UserDefinedExternalField`` in 1D.
+* ``ValueError: Error: a time-dependent potential requires one of da0x_dt,
+  da0y_dt, da0z_dt`` — the potential takes the time, give its time derivative.
+* ``ValueError: Error: da0x_dt, da0y_dt, da0z_dt given but the potential does
+  not depend on time`` — add the time as last argument of the potential, or
+  drop the derivative.
+
+
+Reference
+---------
+
+.. autoclass:: pyphare.pharein.DipoleExternalField
+
+.. autoclass:: pyphare.pharein.UserDefinedExternalField

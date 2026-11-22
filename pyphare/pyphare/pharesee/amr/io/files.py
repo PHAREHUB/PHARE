@@ -21,6 +21,7 @@ import os
 SHORT_TO_STEM = {
     "B": "EM_B",
     "E": "EM_E",
+    "B0": "EM_B0",
     "Vi": "ions_bulkVelocity",
     "CF": "ions_charge_flux",
     "Ni": "ions_charge_density",
