@@ -70,6 +70,12 @@ public:
     }
 
 
+    std::vector<std::pair<std::string, int>> restartPatchData() const override
+    {
+        return resourcesManager->restart_patch_data();
+    }
+
+
 
 
     /**
