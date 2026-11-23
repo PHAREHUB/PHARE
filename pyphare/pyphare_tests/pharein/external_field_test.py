@@ -75,6 +75,52 @@ _invalid_declarations = [
     # every component is called with positional arguments only
     (2, U, dict(a0z=az_2d_keyword_only)),
     (2, U, dict(a0z=az_2d_t, da0z_dt=dazdt_2d_keyword_only)),
+    (2, U, dict(a0z=lambda x, y: x**2 + y**2)),  # carries current
+]
+
+
+def line_dipole_az(x, y):
+    rx, ry = x - 1.0, y - 1.0
+    return ry / (2 * np.pi * (rx**2 + ry**2))
+
+
+def point_dipole_a(k):
+    def f(x, y, z):
+        rx, ry, rz = x - 1.0, y - 1.0, z - 1.0
+        r3 = (rx**2 + ry**2 + rz**2) ** 1.5
+        return (-ry / r3, rx / r3)[k]
+
+    return f
+
+
+def strong_point_dipole_a(k):
+    return lambda x, y, z: 1e4 * point_dipole_a(k)(x, y, z)
+
+
+_curl_free_potentials = [
+    (1, dict(a0z=lambda x: x)),
+    (1, dict(a0y=ay_1d)),
+    (2, dict(a0z=az_2d)),  # uniform B0
+    (2, dict(a0z=lambda x, y: 0.3 * y + 0.2 * x)),  # user-guide example
+    (2, dict(a0z=lambda x, y: 1e4 + 0.3 * y + 0.2 * x)),  # same B0, large gauge offset
+    (2, dict(a0z=lambda x, y: x * y)),
+    (2, dict(a0z=lambda x, y: 2.0 * x * y)),
+    (2, dict(a0z=lambda x, y, t: x * y * (1.0 + t), da0z_dt=lambda x, y, t: x * y)),
+    (2, dict(a0z=az_2d_t, da0z_dt=dazdt_2d)),
+    (2, dict(a0z=lambda x, y: 1.0)),  # scalar, B0 = 0
+    (2, dict(a0z=lambda x, y: 0.0 * x)),  # zero, atol = 0
+    (2, dict(a0z=line_dipole_az)),
+    (3, dict(a0z=az_3d)),
+    (3, dict(a0z=lambda x, y, z: x * y)),
+    (3, dict(a0x=point_dipole_a(0), a0y=point_dipole_a(1))),
+    (3, dict(a0x=strong_point_dipole_a(0), a0y=strong_point_dipole_a(1))),
+]
+
+_current_carrying_potentials = [
+    (1, dict(a0z=lambda x: x**2)),
+    (2, dict(a0z=lambda x, y: x**2 + y**2)),
+    (2, dict(a0z=lambda x, y: 1e-4 * (x**2 + y**2))),  # weak, same relative current
+    (3, dict(a0z=lambda x, y, z: x**2 + y**2)),
 ]
 
 _mistyped_declarations = [
@@ -219,6 +265,34 @@ class TestExternalFieldDeclaration(SimulationResetting):
         declare_simulation(2)
         with self.assertRaisesRegex(ValueError, "da0z_dt"):
             UserDefinedExternalField(a0z=az_2d_t, da0z_dt=az_2d)
+
+    @data(*_curl_free_potentials)
+    @unpack
+    def test_curl_free_potentials_are_accepted(self, ndim, kwargs):
+        sim = declare_simulation(ndim)
+        ef = UserDefinedExternalField(**kwargs)
+        self.assertIs(sim.external_field, ef)
+
+    @data(*_current_carrying_potentials)
+    @unpack
+    def test_current_carrying_potentials_are_rejected(self, ndim, kwargs):
+        sim = declare_simulation(ndim)
+        with self.assertRaisesRegex(ValueError, "not curl-free"):
+            UserDefinedExternalField(**kwargs)
+        self.assertIsNone(sim.external_field)
+
+    def test_error_names_the_first_failing_instant(self):
+        declare_simulation(2)
+        with self.assertRaisesRegex(ValueError, r"not curl-free at t=0\.00111"):
+            UserDefinedExternalField(
+                a0z=lambda x, y, t: x * y + t * (x**2 + y**2),
+                da0z_dt=lambda x, y, t: x**2 + y**2,
+            )
+
+    def test_non_finite_potential_is_reported(self):
+        declare_simulation(2)
+        with self.assertRaisesRegex(ValueError, "not finite"):
+            UserDefinedExternalField(a0z=lambda x, y: 1.0 / (x - 0.1))
 
 
 class TestExternalFieldOrdering(SimulationResetting):

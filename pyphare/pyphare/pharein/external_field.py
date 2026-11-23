@@ -7,6 +7,8 @@ import math
 import numbers
 from functools import partial
 
+import numpy as np
+
 from ..core import phare_utilities
 from . import global_vars
 
@@ -14,6 +16,14 @@ _AXES = ("x", "y", "z")
 _CPPDICT_PATH = "simulation/external_field"
 _POTENTIAL_NAMES = ("a0x", "a0y", "a0z")
 _DERIVATIVE_NAMES = ("da0x_dt", "da0y_dt", "da0z_dt")
+
+_CURL_FREE_RTOL = 1e-6
+_CURL_CHECK_SAMPLES = 10
+_CURL_CHECK_STEP = 1e-2
+
+_LEVI_CIVITA = np.zeros((3, 3, 3))
+_LEVI_CIVITA[[0, 1, 2], [1, 2, 0], [2, 0, 1]] = 1.0
+_LEVI_CIVITA[[0, 1, 2], [2, 0, 1], [1, 2, 0]] = -1.0
 
 
 def _add_vector(component_adder, path, components):
@@ -136,6 +146,67 @@ def _normalized_components(list, ndim, is_time_dependent):
     return tuple(as_space_time(f) for f in list)
 
 
+def _at_time(f, t):
+    return lambda p: f(*p, t) + np.zeros_like(p[0])
+
+
+def _format_point(point):
+    return "(" + ", ".join(f"{v:.6g}" for v in point) + ")"
+
+
+def _check_curl_free(potential, sim, is_time_dependent):
+    from scipy.differentiate import hessian
+
+    ndim = sim.ndim
+    extents = sim.simulation_domain()
+    length = min(extents)
+    axes = [
+        (np.arange(_CURL_CHECK_SAMPLES) + 0.5) * extent / _CURL_CHECK_SAMPLES
+        for extent in extents
+    ]
+    points = np.array(np.meshgrid(*axes, indexing="ij")).reshape(ndim, -1)
+
+    start = sim.start_time()
+    times = (
+        np.linspace(start, sim.time_stepper.final_time, _CURL_CHECK_SAMPLES)
+        if is_time_dependent
+        else [start]
+    )
+
+    for t in times:
+        components = [_at_time(f, t) for f in potential]
+        with np.errstate(all="ignore"):
+            max_potential = max(np.abs(f(points)).max() for f in components)
+            if not np.isfinite(max_potential):
+                raise ValueError(
+                    f"Error: the external field is not finite at t={t:.6g}"
+                )
+
+            atol = _CURL_FREE_RTOL * max_potential / length**2
+            hessians = np.zeros((3, 3, 3, points.shape[1]))
+            for k, f in enumerate(components):
+                hessians[k, :ndim, :ndim] = hessian(
+                    f,
+                    points,
+                    initial_step=_CURL_CHECK_STEP * length,
+                    tolerances={"atol": atol, "rtol": 0.0},
+                ).ddf
+
+        if not np.all(np.isfinite(hessians)):
+            raise ValueError(f"Error: the external field is not finite at t={t:.6g}")
+
+        curl = np.einsum("lmi,ijk,kmjp->lp", _LEVI_CIVITA, _LEVI_CIVITA, hessians)
+        norms = np.linalg.norm(curl, axis=0)
+        worst = np.argmax(norms)
+        if norms[worst] > atol:
+            raise ValueError(
+                f"Error: the external field is not curl-free at t={t:.6g}: "
+                f"max|curl B0| = {norms[worst]:.3e} > {atol:.3e} "
+                f"({_CURL_FREE_RTOL:g} x max|A0| / L**2), "
+                f"worst at {_format_point(points[:, worst])}"
+            )
+
+
 class ExternalMagneticField:
     """
     Base class of the external magnetic field declarations, not declarable itself:
@@ -233,6 +304,9 @@ class UserDefinedExternalField(ExternalMagneticField):
     its vector potential A0, for a Hybrid or MHD simulation. Declare it at most once,
     after the :class:`~pyphare.pharein.Simulation` and before the model.
 
+    B0 must be curl-free (current-free): this is checked at declaration, on 10 points
+    per direction and 10 instants of the run.
+
     **Usage example:**
 
     .. code-block:: python
@@ -316,6 +390,8 @@ class UserDefinedExternalField(ExternalMagneticField):
         self.is_time_dependent = is_time_dependent
         self.potential = _normalized_components(potential, ndim, is_time_dependent)
         self.potential_time_derivative = potential_time_derivative
+
+        _check_curl_free(self.potential, sim, is_time_dependent)
 
         sim.set_external_field(self)
 

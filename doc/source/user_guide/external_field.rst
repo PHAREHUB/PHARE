@@ -97,6 +97,15 @@ argument, and the time derivative of the potential is given too:
 The functions receive NumPy arrays (all the points of a patch at once) and
 return an array of the same shape.
 
+B0 must carry no current: the solvers take the current from B1 only and drop
+the terms of :math:`\nabla\times\mathbf{B}_0`. ``UserDefinedExternalField``
+checks it when it is declared: on 10 points per direction across the domain,
+and on 10 instants from the start to the end of the run for a time-dependent
+potential, it computes :math:`\nabla\times\mathbf{B}_0` by finite differences
+of the potential and requires it below
+:math:`10^{-6}\,\max|\mathbf{A}_0|/L^2`, with :math:`L` the smallest extent of
+the domain. In 1D this means a uniform B0, that is a linear potential.
+
 
 Options
 -------
@@ -155,6 +164,9 @@ Common mistakes
 * ``ValueError: Error: da0x_dt, da0y_dt, da0z_dt given but the potential does
   not depend on time`` — add the time as last argument of the potential, or
   drop the derivative.
+* ``ValueError: Error: the external field is not curl-free at t=...`` — the
+  curl of the potential's B0 carries current at that time and point; fix the
+  potential.
 
 
 Reference
