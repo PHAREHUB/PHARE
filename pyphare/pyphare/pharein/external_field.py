@@ -19,7 +19,8 @@ _DERIVATIVE_NAMES = ("da0x_dt", "da0y_dt", "da0z_dt")
 
 _CURL_FREE_RTOL = 1e-6
 _CURL_CHECK_SAMPLES = 10
-_CURL_CHECK_STEP = 1e-2
+_CURL_CHECK_OFFSET = (3.0 - math.sqrt(5.0)) / 2.0
+_CURL_CHECK_STEP = 1e-2 / math.sqrt(2.0)
 
 _LEVI_CIVITA = np.zeros((3, 3, 3))
 _LEVI_CIVITA[[0, 1, 2], [1, 2, 0], [2, 0, 1]] = 1.0
@@ -147,11 +148,19 @@ def _normalized_components(list, ndim, is_time_dependent):
 
 
 def _at_time(f, t):
-    return lambda p: f(*p, t) + np.zeros_like(p[0])
+    def evaluate(p):
+        flat = [c.ravel() for c in p]
+        return (f(*flat, t) + np.zeros(flat[0].size)).reshape(p[0].shape)
+
+    return evaluate
 
 
 def _format_point(point):
     return "(" + ", ".join(f"{v:.6g}" for v in point) + ")"
+
+
+def _first_non_finite_point(points, values):
+    return _format_point(points[:, np.argmin(np.isfinite(values))])
 
 
 def _check_curl_free(potential, sim, is_time_dependent):
@@ -160,8 +169,11 @@ def _check_curl_free(potential, sim, is_time_dependent):
     ndim = sim.ndim
     extents = sim.simulation_domain()
     length = min(extents)
+    step = _CURL_CHECK_STEP * length
     axes = [
-        (np.arange(_CURL_CHECK_SAMPLES) + 0.5) * extent / _CURL_CHECK_SAMPLES
+        (np.arange(_CURL_CHECK_SAMPLES) + _CURL_CHECK_OFFSET)
+        * extent
+        / _CURL_CHECK_SAMPLES
         for extent in extents
     ]
     points = np.array(np.meshgrid(*axes, indexing="ij")).reshape(ndim, -1)
@@ -176,24 +188,30 @@ def _check_curl_free(potential, sim, is_time_dependent):
     for t in times:
         components = [_at_time(f, t) for f in potential]
         with np.errstate(all="ignore"):
-            max_potential = max(np.abs(f(points)).max() for f in components)
-            if not np.isfinite(max_potential):
+            magnitude = np.max([np.abs(f(points)) for f in components], axis=0)
+            if not np.all(np.isfinite(magnitude)):
                 raise ValueError(
-                    f"Error: the external field is not finite at t={t:.6g}"
+                    f"Error: the external field is not finite at t={t:.6g}, "
+                    f"at {_first_non_finite_point(points, magnitude)}"
                 )
 
-            atol = _CURL_FREE_RTOL * max_potential / length**2
+            atol = _CURL_FREE_RTOL * magnitude.max() / length**2
             hessians = np.zeros((3, 3, 3, points.shape[1]))
             for k, f in enumerate(components):
                 hessians[k, :ndim, :ndim] = hessian(
                     f,
                     points,
-                    initial_step=_CURL_CHECK_STEP * length,
+                    initial_step=step,
                     tolerances={"atol": atol, "rtol": 0.0},
                 ).ddf
 
-        if not np.all(np.isfinite(hessians)):
-            raise ValueError(f"Error: the external field is not finite at t={t:.6g}")
+        finite = np.all(np.isfinite(hessians), axis=(0, 1, 2))
+        if not np.all(finite):
+            raise ValueError(
+                f"Error: the derivatives of the external field are not finite at "
+                f"t={t:.6g}, near {_first_non_finite_point(points, finite)}: "
+                f"a singularity within a few {step:.3g} of it"
+            )
 
         curl = np.einsum("lmi,ijk,kmjp->lp", _LEVI_CIVITA, _LEVI_CIVITA, hessians)
         norms = np.linalg.norm(curl, axis=0)
