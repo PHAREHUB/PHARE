@@ -1,58 +1,104 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit settings for PHARE. Division of labour:
+#   - the CI gate (.github/workflows/gate.yml) enforces every rule a script can check
+#     (layering includes, removed tests, loosened tolerances, PR body sections,
+#     clang-format, ruff, clang-tidy with compile commands, human threads resolved);
+#   - CodeRabbit gives the judgment a script cannot: physics, numerics, SAMRAI use,
+#     reuse, test strength, scope. Its threads are advice: the gate ignores bot threads.
+# Review rules live in .coderabbit/instructions/, pass/fail checks in
+# .coderabbit/pre-merge-checks/. This file only says when, how loud, and which tools.
+
+language: en-US
+tone_instructions: >-
+  Plain and short. Open each comment with the concrete failure scenario and file:line.
+  No praise, no filler, no restating the diff. Say UNVERIFIED when you did not check.
 early_access: false
 enable_free_tier: true
-language: en
-tone_instructions: ''
-knowledge_base:
-  learnings:
-    scope: auto
-  issues:
-    scope: auto
-  jira:
-    project_keys: []
-  linear:
-    team_keys: []
-  code_guidelines:
-    enabled: true
-    filePatterns:
-      - '**/.cursorrules'
-      - .github/copilot-instructions.md
-      - '**/CLAUDE.md'
-      - '**/GEMINI.md'
-      - '**/.cursor/rules/*'
-      - '**/.windsurfrules'
-      - '**/.clinerules/*'
-      - '**/.rules/*'
-      - '**/AGENT.md'
-      - '**/AGENTS.md'
-      - '**/REVIEW.md'
-      - CONTRIBUTING.md
-chat:
-  auto_reply: true
+
 reviews:
   profile: chill
   request_changes_workflow: false
-  high_level_summary: false
-  high_level_summary_placeholder: '@coderabbitai summary'
-  poem: false
+  high_level_summary: false          # authors write the PR body from the template
   review_status: true
   collapse_walkthrough: true
+  changed_files_summary: true
   sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true         # CONTRIBUTING: every change starts as an issue
+  related_issues: true
+  related_prs: true                  # surface open PRs touching the same code
+  suggested_labels: false            # labeler.yml + size labels already do this
+  suggested_reviewers: false         # CODEOWNERS decides
+  poem: false
+  in_progress_fortune: false
+  merge_risk_instructions: |
+    Higher risk in PHARE:
+    - inter-level communication: src/amr/messengers/**, refine/coarsen operators in
+      src/amr/data/**, regrid and level initialisation, load balancing;
+    - particle splitting (src/amr/data/particles/refine/**);
+    - the per-step hot path: pusher, interpolator, moments, ion updater, Faraday,
+      Ampere, Ohm, solvers;
+    - anything that can make results depend on the number of MPI ranks or on the
+      patch decomposition, or adds MPI collectives;
+    - restart files and diagnostics file layout (old runs must stay readable);
+    - user-facing pharein keywords (input scripts in the wild break).
+    Lower risk: documentation only, tools/, and test-only changes that do not loosen
+    a tolerance or remove a check.
   path_filters: []
-  path_instructions:
-    - path: '**/*.hpp'
-      instructions: >-
-        Review the C++ code, point out issues relative to principles of clean
-        code, expressiveness, and performance.
+  auto_review:
+    enabled: true
+    drafts: false                    # review when ready, not on every draft push
+    ignore_title_keywords:
+      - WIP
+    ignore_usernames:
+      - "dependabot[bot]"
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 2   # then "@coderabbitai review" when ready
+    base_branches:
+      - master
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >-
+        The title states the take-home message: why the PR exists or what it fixes
+        or enables, in one line (e.g. "Fix particle split crash at level boundary").
+        A title that only names files, classes or functions fails.
+    description:
+      mode: "off"                    # the gate's pr-body job checks the sections
+    docstrings:
+      mode: "off"                    # PHARE does not require docstrings
+    issue_assessment:
+      mode: warning
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false                 # generated tests contradict "tests that fail on master"
   tools:
-    shellcheck:
-      enabled: true
+    # duplicated by the CI gate, which runs them with PHARE's own configs
+    clang:
+      enabled: false                 # gate runs clang-tidy with compile commands
     ruff:
+      enabled: false                 # gate runs ruff on changed lines
+    actionlint:
+      enabled: false                 # gate runs actionlint
+    zizmor:
+      enabled: false                 # gate runs zizmor
+    # nothing to check in PHARE
+    biome:
+      enabled: false
+    hadolint:
+      enabled: false
+    ast-grep:
+      essential_rules: false         # security rules for web languages
+    # kept: not covered by the gate
+    cppcheck:
+      enabled: true                  # .cpp files only (tests, bindings)
+    shellcheck:
       enabled: true
     markdownlint:
       enabled: true
-    github-checks:
-      enabled: true
-      timeout_ms: 90000
     languagetool:
       enabled: true
       disabled_rules:
@@ -61,21 +107,19 @@ reviews:
         - TYPOS
         - TYPOGRAPHY
         - CASING
-      enabled_only: false
-      level: default
-    biome:
+    github-checks:
       enabled: true
-    hadolint:
-      enabled: true
-    clang:
-      enabled: true
-    cppcheck:
-      enabled: true
-  auto_review:
-    enabled: true
-    ignore_title_keywords:
-      - WIP
-    labels: []
-    drafts: true
-    base_branches:
-      - master
+
+knowledge_base:
+  learnings:
+    scope: local
+    approval_delay: 7                # a maintainer sees new learnings before they apply
+  issues:
+    scope: auto
+  pull_requests:
+    scope: auto
+  code_guidelines:
+    enabled: true                    # default files (AGENTS.md, .claude/rules/**) are enough
+
+chat:
+  auto_reply: true
