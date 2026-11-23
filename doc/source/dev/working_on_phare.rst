@@ -95,7 +95,7 @@ Tests
 * Level filter: ``phare_exec`` / ``phare_mpi_python3_exec`` (:src:`res/cmake/def.cmake#L318-L343`);
   plain unit tests count as level 1.
 * Labels (only two at this commit): ``physics`` (dispersion) and ``nightly`` (3D particle
-  initialization), set with ``phare_test_labels``, Python tests only (:src:`res/cmake/def.cmake#L352-L360`).
+  initialization, long adaptive-dt MHD cases), set with ``phare_test_labels``, Python tests only (:src:`res/cmake/def.cmake#L352-L360`).
 * ``PHARE_DRY_RUN=1``: scripts set up but ``initialize``, ``advance`` and ``run`` do nothing
   (:src:`pyphare/pyphare/simulator/simulator.py#L136-L137`); CI uses it on the heavy levels
   (:src:`res/ci/jobs/pull_request/dry_run_functional_tests.sh#L10-L12`).

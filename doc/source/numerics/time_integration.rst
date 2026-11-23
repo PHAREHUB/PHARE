@@ -53,22 +53,25 @@ from the fastest wave, the whistler, whose frequency grows like :math:`k^2`. At 
 scale this gives :math:`\Delta t \propto \Delta x^2`: halving the cell size requires a time
 step four times smaller.
 
-**MHD, adaptive.** At every step PHARE computes, on each level, the smallest over the
-cells of a wave limit (fast magnetosonic speed, flow speed and, with Hall, a whistler speed
-at the grid scale) and, when the resistivity is not zero, a diffusive limit. The formulas
-are on :doc:`mhd_time_integration`. Each level's limit is then converted to a
-coarsest-level time step by multiplying it by :math:`4^{\ell}` (level :math:`\ell` takes
-:math:`4^{\ell}` steps per coarsest step, see below), and the smallest over all levels and
-all MPI ranks is used (:src:`src/amr/multiphysics_integrator.hpp#L435-L461`).
+**MHD, adaptive.** The stable step of a level is the smallest over its cells and over
+all MPI ranks of a wave limit (fast magnetosonic speed, flow speed and, with Hall, a
+whistler speed at the grid scale) and, when the resistivity is not zero, a diffusive limit.
+The formulas are on :doc:`mhd_time_integration`. The coarsest level computes its stable
+step before each of its steps and takes it as its step. Each finer level computes its own
+after each of its sub-steps and uses it to size the next ones (below, and
+:doc:`/dev/subcycling`) (:pr:`1570`).
 
 Time steps on refined levels
 ----------------------------
 
-A refined level has cells half as large (refinement ratio 2). PHARE divides the time step
-by the *square* of the ratio, so each finer level takes four steps for one step of the
-level above (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`).
-The reason is the whistler limit above, :math:`\Delta t \propto \Delta x^2`. How the levels
-are stepped and kept in sync is on :doc:`amr`.
+A refined level has cells half as large (refinement ratio 2). With a fixed time step PHARE
+divides the time step by the *square* of the ratio, so each finer level takes four steps for
+one step of the level above (:src:`src/amr/multiphysics_integrator.hpp#L420-L428`).
+The reason is the whistler limit above, :math:`\Delta t \propto \Delta x^2`. With an
+adaptive time step each finer level splits the step of the level above into equal
+sub-steps no longer than its own stable step: about two in ideal MHD (limit
+:math:`\propto \Delta x`), up to four with Hall. How the levels are stepped and kept in sync
+is on :doc:`amr`.
 
 Options
 -------
@@ -91,6 +94,14 @@ Options
    * - ``"cfl_diffusive"`` (key of the ``time_step`` dict)
      - adaptive mode: safety factor on the diffusion limit
      - ``cfl_wave``
+   * - ``"fine_level_substeps_max"`` (key of the ``time_step`` dict)
+     - adaptive mode: stop the run when the stable step of a level is more than this many
+       times smaller than that of the level above; integer ≥ 1
+     - 1000
+   * - ``"level0_dt_shrink_max"`` (key of the ``time_step`` dict)
+     - adaptive mode: stop the run when the stable step of the coarsest level is more than
+       this many times smaller than its first one (at the start or restart time); integer ≥ 1
+     - 1000
    * - ``mhd_timestepper``
      - MHD integrator: ``Euler``, ``TVDRK2``, ``TVDRK3``, ``SSPRK4_5``
      - none (required for MHD)
@@ -103,5 +114,10 @@ Common mistakes
 * **Adaptive time step with** ``time_step_nbr`` — rejected; give ``final_time`` instead.
 * **Adaptive time step and diagnostics** — there is no fixed output grid; give explicit
   ``write_timestamps`` to each diagnostic (:doc:`/user_guide/diagnostics`).
+* **Adaptive time step that collapses** — the run stops with ``stable dt on level ...``
+  naming ``fine_level_substeps_max`` or ``level0_dt_shrink_max``, or with
+  ``non-finite wave speed on level ...`` (the log names the first such cell). These stop a
+  run whose step is shrinking toward zero; raise the limits only if such a small step is
+  expected.
 
 .. seealso:: How this works inside: :doc:`/dev/one_time_step`.

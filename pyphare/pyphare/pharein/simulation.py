@@ -888,14 +888,22 @@ class Simulation:
           (``"value"`` is optional and may be replaced by ``final_time``/``time_step_nbr``).
         * ``{"mode": "adaptive", "cfl_wave": <w>, "cfl_diffusive": <d>}`` - the time step is
           recomputed each step from a CFL constraint. Requires ``final_time`` and
-          is incompatible with ``time_step_nbr``.
+          is incompatible with ``time_step_nbr``. MHD only: a hybrid run stops at start-up.
 
           * **cfl_wave** (``float``), hyperbolic/wave CFL coefficient. Normalized so 1 is
-            the stability limit; choose in (0, 1]. In hall mhd and hybrid,
-            whistler wave speed limits is used.
+            the stability limit; choose in (0, 1]. In Hall MHD, the wave speed includes the
+            whistler speed at the grid scale. With mesh refinement, each level advances at
+            its own stable time step.
           * **cfl_diffusive** (``float``), diffusive CFL coefficient. Normalized so 1 is
             the diffusion stability limit; choose in (0, 1]. Defaults to ``cfl_wave``. Only
             relevant when resistivity is non-zero.
+          * **fine_level_substeps_max** (``int``), default 1000. The run stops when the stable
+            time step of a refined level is more than this many times smaller than the one of
+            the next coarser level, i.e. when a fine level would need more substeps than this
+            per coarser step.
+          * **level0_dt_shrink_max** (``int``), default 1000. The run stops when the stable
+            time step of level 0 is more than this many times smaller than the first one of the
+            run (at the start time, or at the restart time on a restart).
 
           With adaptive stepping there is no fixed dump grid, so diagnostics require explicit
           ``write_timestamps``.

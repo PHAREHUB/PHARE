@@ -8,7 +8,7 @@ Sub-cycling: finer levels take smaller steps
 
    You are here: :doc:`Developer guide </dev/index>` › :doc:`One time step </dev/one_time_step>` › Sub-cycling
 
-**Applies to:** hybrid ✓ | MHD ✓ (the step count is exact in hybrid; see the *Known issue* note for MHD)
+**Applies to:** hybrid ✓ (fixed time step) | MHD ✓ (fixed or adaptive time step)
 
 **In one sentence:** a refined level advances with several smaller time steps
 for each step of the level below (*sub-cycling*), and after them the levels are
@@ -19,8 +19,9 @@ Why
 
 A fine mesh needs a small time step. Hybrid whistler waves need
 :math:`\Delta t \propto \Delta x^2`: halve the cell size and :math:`\Delta t`
-must be divided by 4. PHARE asks for exactly that bound, and lets the integrator
-(SAMRAI) fill the coarse step with equal sub-steps.
+must be divided by 4. With a fixed time step PHARE asks for exactly that bound;
+with an adaptive one (MHD) each level asks for its own stable step. The
+integrator (SAMRAI) then fills the coarse step with equal sub-steps.
 
 .. claim C-sc-02
 
@@ -32,36 +33,53 @@ must be divided by 4. PHARE asks for exactly that bound, and lets the integrator
 How many sub-steps?
 -------------------
 
-PHARE only gives the bound above. SAMRAI chooses the number of sub-steps
-:math:`n`.
+PHARE gives a bound on the next sub-step of a level. SAMRAI chooses the
+number of sub-steps :math:`n`.
 
 .. claim C-sc-03
 
-* When a level is created, SAMRAI stores :math:`dt_\text{max}` = the smaller of the
-  coarse step and PHARE's bound. Then :math:`n = \lceil \text{time remaining} /
-  dt_\text{max} \rceil` and the sub-step is *time remaining* / :math:`n`
+* After each sub-step, SAMRAI takes the bound that PHARE's ``advanceLevel``
+  returns, caps it at the previous bound times ``grow_dt`` (PHARE sets 1000, so
+  that the sub-step can grow back), and sets :math:`n = \lceil \text{time
+  remaining} / \text{bound} \rceil`, rounded up to a multiple of the regrid
+  interval for a level that can be refined. The sub-step is *time remaining* /
+  :math:`n`: the sub-steps left in a coarse step are equal
   (``TimeRefinementIntegrator::findNextDtAndStepsRemaining`` and
   ``advanceRecursivelyForRefinedTimestepping`` in SAMRAI, ``algs/
   TimeRefinementIntegrator.cpp``; SAMRAI at the commit pinned by the
-  ``subprojects/samrai`` submodule, ``d246c078b``).
+  ``subprojects/samrai`` submodule, ``d246c078b``; ``grow_dt`` in the
+  ``Integrator`` constructor, :pr:`1570`).
 
 .. claim C-sc-01
 
-* **Hybrid:** the coarse step is fixed (the hybrid solver refuses an adaptive
-  step, :src:`src/amr/solvers/solver_ppc.hpp#L330`), so :math:`n = 4` at every
-  level, sub-step :math:`\Delta t/4`.
-
-.. admonition:: Known issue (MHD, adaptive time step)
-   :class: note
-
-   SAMRAI stores :math:`dt_\text{max}` of a fine level when the level is created
-   and does not update it later. The level-0 step itself comes from
-   ``computeStableDt`` (:src:`src/amr/multiphysics_integrator.hpp#L435-L461`).
-   When the level-0 step changes, the number of sub-steps can therefore differ from 4: a test run shows values
-   from 2 to 5 as the coarse step changes. The refluxing sums assume 4 (see
-   :doc:`refluxing`).
+* **Fixed time step (hybrid and MHD):** the bound is the level's fixed step,
+  the coarse step divided by :math:`\text{ratio}^2`, so :math:`n = 4` at every
+  level, sub-step :math:`\Delta t/4`. Hybrid only has a fixed step (the hybrid
+  solver refuses an adaptive one, :src:`src/amr/solvers/solver_ppc.hpp#L330`).
 
 .. claim C-sc-04
+
+* **Adaptive time step (MHD):** the bound is the smaller of the coarse
+  sub-step and the level's own stable step, computed on the level's new state
+  after each sub-step (``MultiPhysicsIntegrator::advanceLevel`` and
+  ``levelStableDt_``, :pr:`1570`). :math:`n` follows the fine level's own limit
+  and can change from one coarse step to the next. Where the fine level sees the
+  same wave speeds as the coarse one, :math:`n` is about 2 in ideal MHD, whose
+  limit scales like :math:`\Delta x`, and up to 4 with Hall, whose whistler
+  limit tends to :math:`\Delta x^2` on fine grids; faster waves on the fine
+  level give more.
+* The first sub-step of a level, after start-up or after the regrid that
+  created it, has no stable step yet and uses the fixed-step bound, coarse
+  step / :math:`\text{ratio}^2`. A uniform ideal-MHD state therefore takes 3
+  sub-steps in the first coarse step (¼, then two of ⅜), then 2.
+* Level 0 takes its own stable step (``computeStableDt``); the finer levels do
+  not shorten it.
+* The run stops with an error when a level's stable step is more than
+  ``fine_level_substeps_max`` (default 1000) times smaller than its coarser
+  level's, when the level-0 stable step is more than ``level0_dt_shrink_max``
+  (default 1000) times smaller than the first one of the run (start or
+  restart), or when a cell has a non-finite wave speed, the first of which the
+  solver logs (``levelStableDt_``, :pr:`1570`).
 
 Order of the advances
 ---------------------
@@ -145,7 +163,7 @@ Inside one level step
    then
    lastStep | last sub-step only: level-ghost particles New → Old (hybrid)
    then
-   accumulate flux sum | finest level only, weight 1/ratio² | /dev/refluxing
+   accumulate flux sum | finest level only, weight sub-step / coarse step | /dev/refluxing
 
 ``MultiPhysicsIntegrator::advanceLevel``
 (:src:`src/amr/multiphysics_integrator.hpp#L500-L562`) does these, in this

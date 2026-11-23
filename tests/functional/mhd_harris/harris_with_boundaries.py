@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from common import HarrisTest, dl, full_cells
+from common import HarrisTest, count_nans, dl, full_cells
 
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
@@ -37,26 +37,6 @@ def max_normal_B_at_y_walls(diag_dir, time):
     return float(lower.max()), float(upper.max())
 
 
-def count_nans(diag_dir):
-    """Total NaN count over the raw B dump (all times, levels, patches, ghosts included).
-
-    Reads the h5 file directly: the pharesee face-centered B reconstruction pads with
-    NaN and would give false positives.
-    """
-    import h5py
-
-    n = 0
-    with h5py.File(f"{diag_dir}/EM_B.h5", "r") as f:
-
-        def visit(_, obj):
-            nonlocal n
-            if isinstance(obj, h5py.Dataset) and obj.dtype.kind == "f":
-                n += int(np.isnan(obj[...]).sum())
-
-        f.visititems(visit)
-    return n
-
-
 class HarrisWithBoundariesTest(HarrisTest):
     def test_run(self):
         return self.run_case(
@@ -71,7 +51,8 @@ class HarrisWithBoundariesTest(HarrisTest):
             },
         )
 
-    def check(self, diag_dir):
+    def check(self, diag_dir, final_time):
+        self.check_dumps(diag_dir, final_time)
         times = get_times_from_h5(f"{diag_dir}/EM_B.h5")
         self.assertEqual(
             count_nans(diag_dir),
