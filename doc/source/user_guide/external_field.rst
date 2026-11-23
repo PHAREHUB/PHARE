@@ -106,6 +106,14 @@ of the potential and requires it below
 :math:`10^{-6}\,\max|\mathbf{A}_0|/L^2`, with :math:`L` the smallest extent of
 the domain. In 1D this means a uniform B0, that is a linear potential.
 
+To remove the singularity of a dipole inside the domain, make the field uniform
+inside a radius, as ``DipoleExternalField`` does: :math:`\mathbf{m}\times\mathbf{r}/\max(r, R)^3`
+in 3D (:math:`\max(r, R)^2` in 2D). A smoothed potential such as
+:math:`\mathbf{m}\times\mathbf{r}/(r^2 + R^2)^{3/2}` carries current everywhere
+and is rejected. The uniform core still carries a current on its surface
+:math:`r = R`: a sample point within a few finite-difference steps of it
+(about :math:`0.03\,L`) is rejected too.
+
 
 Options
 -------
@@ -167,6 +175,9 @@ Common mistakes
 * ``ValueError: Error: the external field is not curl-free at t=...`` — the
   curl of the potential's B0 carries current at that time and point; fix the
   potential.
+* ``ValueError: Error: the external field is not finite at t=..., at (...)`` or
+  ``the derivatives of the external field are not finite`` — the potential is
+  singular at or near that point; remove the singularity (see above).
 
 
 Reference

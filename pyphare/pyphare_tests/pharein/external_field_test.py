@@ -79,22 +79,24 @@ _invalid_declarations = [
 ]
 
 
-def line_dipole_az(x, y):
-    rx, ry = x - 1.0, y - 1.0
-    return ry / (2 * np.pi * (rx**2 + ry**2))
+def dipole_potential(center, moment=1.0):
+    if len(center) == 2:
 
+        def az(x, y):
+            rx, ry = x - center[0], y - center[1]
+            return moment * ry / (2 * np.pi * (rx**2 + ry**2))
 
-def point_dipole_a(k):
-    def f(x, y, z):
-        rx, ry, rz = x - 1.0, y - 1.0, z - 1.0
-        r3 = (rx**2 + ry**2 + rz**2) ** 1.5
-        return (-ry / r3, rx / r3)[k]
+        return dict(a0z=az)
 
-    return f
+    def a(k):
+        def f(x, y, z):
+            rx, ry, rz = x - center[0], y - center[1], z - center[2]
+            r3 = (rx**2 + ry**2 + rz**2) ** 1.5
+            return moment * (-ry / r3, rx / r3)[k]
 
+        return f
 
-def strong_point_dipole_a(k):
-    return lambda x, y, z: 1e4 * point_dipole_a(k)(x, y, z)
+    return dict(a0x=a(0), a0y=a(1))
 
 
 _curl_free_potentials = [
@@ -109,11 +111,11 @@ _curl_free_potentials = [
     (2, dict(a0z=az_2d_t, da0z_dt=dazdt_2d)),
     (2, dict(a0z=lambda x, y: 1.0)),  # scalar, B0 = 0
     (2, dict(a0z=lambda x, y: 0.0 * x)),  # zero, atol = 0
-    (2, dict(a0z=line_dipole_az)),
+    (2, dipole_potential((1.0, -0.1))),
     (3, dict(a0z=az_3d)),
     (3, dict(a0z=lambda x, y, z: x * y)),
-    (3, dict(a0x=point_dipole_a(0), a0y=point_dipole_a(1))),
-    (3, dict(a0x=strong_point_dipole_a(0), a0y=strong_point_dipole_a(1))),
+    (3, dipole_potential((1.0, 1.0, -0.1))),
+    (3, dipole_potential((-0.1, 1.0, 1.0), moment=1e4)),
 ]
 
 
@@ -122,26 +124,6 @@ def declare_large_simulation(ndim):
     return simulation.Simulation(
         time_step=0.001, time_step_nbr=10, cells=(100,) * ndim, dl=(1.0,) * ndim
     )
-
-
-def dipole_potential(center):
-    if len(center) == 2:
-
-        def az(x, y):
-            rx, ry = x - center[0], y - center[1]
-            return ry / (2 * np.pi * (rx**2 + ry**2))
-
-        return dict(a0z=az)
-
-    def a(k):
-        def f(x, y, z):
-            rx, ry, rz = x - center[0], y - center[1], z - center[2]
-            r3 = (rx**2 + ry**2 + rz**2) ** 1.5
-            return (-ry / r3, rx / r3)[k]
-
-        return f
-
-    return dict(a0x=a(0), a0y=a(1))
 
 
 _current_carrying_potentials = [
@@ -325,16 +307,15 @@ class TestExternalFieldDeclaration(SimulationResetting):
             UserDefinedExternalField(a0z=lambda x, y: np.log(x - 1.0))
 
     @data(
-        (2, (26.0, 46.0)),
-        (2, (25.0, 45.0)),
-        (2, (25.0, 75.0)),
-        (2, (50.0, 50.0)),
-        (3, (35.0, 45.0, 55.0)),
-        (3, (25.0, 45.0, 46.0)),
-        (3, (25.0, 25.0, 25.0)),
+        (2, (25.0, -1.0)),
+        (2, (-1.0, 45.0)),
+        (2, (101.0, 50.0)),
+        (3, (35.0, 45.0, -1.0)),
+        (3, (-1.0, 25.0, 25.0)),
+        (3, (50.0, 101.0, 50.0)),
     )
     @unpack
-    def test_dipoles_at_round_positions_are_accepted(self, ndim, center):
+    def test_dipoles_just_outside_the_domain_are_accepted(self, ndim, center):
         sim = declare_large_simulation(ndim)
         ef = UserDefinedExternalField(**dipole_potential(center))
         self.assertIs(sim.external_field, ef)
