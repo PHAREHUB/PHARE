@@ -11,8 +11,11 @@ paths:
 
 Check, for changed formulas and stencils:
 - centering: each quantity is read and written at its Yee-grid location
-  (primal or dual per direction, from `GridLayout`); a stencil mixing centerings
-  without interpolation is a bug;
+  (primal or dual per direction, from `GridLayout`). A derivative flips the
+  centering of its direction, so terms built from differently centered fields
+  can be combined (see `CurlComponent` in `differential_operators.hpp`). The bug
+  is two terms that land on different centerings and are added without
+  interpolating one of them;
 - time level: the predictor-corrector reads fields at the time level it needs
   (n, n+1/2, n+1); flag a read of a quantity that was already advanced;
 - conservation: mass, momentum, energy and div B are kept where the scheme claims

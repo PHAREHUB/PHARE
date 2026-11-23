@@ -20,9 +20,12 @@ say whether the existing one is a drop-in or needs a small extension. Flag a
 second abstraction next to an existing one (another box type, another usability
 check beside `isUsable`).
 
-Layers, bottom-up: `core` (physics, no SAMRAI) < `amr` (only layer that uses
-SAMRAI) < `simulator` < `python3` bindings < `pyphare`. Flag SAMRAI types reaching
-`core` indirectly, through template parameters or forwarded headers.
+Layers, bottom-up: `core` (physics, never SAMRAI) < `amr` (wraps SAMRAI) <
+`simulator` < `python3` bindings < `pyphare`. A few files above `amr` use SAMRAI
+directly (`simulator.hpp`, `python3/cpp_etc.cpp`, `diagnostic_model_view.hpp`):
+not a finding by itself, but prefer the `amr` wrappers in new code. Flag SAMRAI
+types reaching `core`, including indirectly, through template parameters or
+forwarded headers.
 
 Runtime choices use factories and strategies (`MessengerFactory`,
 `TaggerFactory`, load balancers). A new variant is a new strategy class; flag a
