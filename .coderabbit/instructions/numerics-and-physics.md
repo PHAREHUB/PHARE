@@ -24,6 +24,13 @@ Check, for changed formulas and stencils:
   and after;
 - normalisation: PHARE works in normalised units; flag a hard-coded physical
   constant or a mixed unit;
+- MHD (finite volume / Godunov): wave-speed estimates (`mhd_speeds.hpp`) are not
+  smaller than the true fastest speed used by Rusanov, HLL and HLLD; a
+  reconstruction keeps its claimed order, and a TVD limiter (minmod, van Leer)
+  does not create new extrema (WENO and MP5 may overshoot slightly); constrained
+  transport keeps div B at round-off (flag an average that breaks it); primitive
+  and conservative conversions are inverse to round-off; density and pressure
+  stay positive (say where a floor is applied);
 - refinement and coarsening: a quantity refined from coarse to fine and coarsened
   back stays consistent (sums for moments, averages for fields as the operator
   defines).

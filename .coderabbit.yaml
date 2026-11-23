@@ -11,8 +11,8 @@
 
 language: en-US
 tone_instructions: >-
-  Plain and short. Open each comment with the concrete failure scenario and file:line.
-  No praise, no filler, no restating the diff. Say UNVERIFIED when you did not check.
+  Plain and short. Follow the comment format in review-policy. No praise, no filler,
+  no restating the diff. Say UNVERIFIED when you did not check.
 early_access: false
 enable_free_tier: true
 
@@ -23,7 +23,7 @@ reviews:
   review_status: true
   collapse_walkthrough: true
   changed_files_summary: true
-  sequence_diagrams: true
+  sequence_diagrams: false          # long and partly guessed on templated C++
   estimate_code_review_effort: true
   assess_linked_issues: true         # CONTRIBUTING: every change starts as an issue
   related_issues: true
@@ -109,6 +109,9 @@ reviews:
         - CASING
     github-checks:
       enabled: true
+    # tools that need a config file PHARE does not have do not run: pylint, flake8,
+    # vale, semgrep, ast-grep. opengrep runs with its built-in high-confidence
+    # security rules (chill profile): kept.
 
 knowledge_base:
   learnings:
@@ -119,7 +122,8 @@ knowledge_base:
   pull_requests:
     scope: auto
   code_guidelines:
-    enabled: true                    # default files (AGENTS.md, .claude/rules/**) are enough
+    enabled: false                   # review rules live in .coderabbit/ only; revisit
+                                     # if the team adopts a shared AGENTS.md
 
 chat:
   auto_reply: true

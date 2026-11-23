@@ -17,4 +17,11 @@ Check:
 - MPI: every rank reaches every collective; no result depends on message arrival
   order, rank count or patch decomposition; nothing writes to shared state from
   one rank only;
-- regrid: data moved to new patches, not recomputed from stale values.
+- regrid: data moved to new patches, not recomputed from stale values;
+- particle splitting (`src/amr/data/particles/refine/`): children copy the
+  parent's velocity; fine weight = parent weight x pattern weight x refinement
+  ratio^dim (`splitter.hpp`), and the pattern weights sum to 1 to float precision
+  (stored as `float`, e.g. `split_1d.hpp`), so charge and momentum are conserved
+  to about 1e-6 relative, not to double round-off; children are kept only where
+  the operator claims (fine domain or level ghost); the result does not depend on
+  patch layout or particle order.

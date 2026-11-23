@@ -22,3 +22,5 @@ Apply in this order, to changed functions only:
 5. Raw loops doing what a standard algorithm or a PHARE utility names.
 6. A function whose name hides that it mutates state.
 Label these comments "expressiveness" and keep them below correctness findings.
+At most 3 expressiveness comments per review: the ones a reader would gain most
+from.

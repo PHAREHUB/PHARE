@@ -15,13 +15,18 @@ Comment on:
 - runtime cost added to code executed every time step.
 
 Do not comment on, because the CI gate already checks them:
-- formatting (clang-format), ruff findings, clang-tidy findings;
+- formatting (clang-format, ruff format), ruff findings, clang-tidy findings;
 - `src/core` including SAMRAI, amr, simulator or python3 headers;
-- removed tests, loosened test tolerances, missing PR body sections.
+- removed tests, tolerances made looser than before and changed test seeds (the
+  gate compares old and new values); a new tolerance looser than the precision
+  the PR claims is still yours to flag;
+- removed pharein keywords, new copy-pasted blocks, Python import cycles;
+- missing PR body sections.
 
 Format of each comment:
 1. what the code is and does, in one plain line;
 2. the problem as a concrete scenario: input or state, then what goes wrong;
 3. how you know: read at file:line, or UNVERIFIED;
 4. the fix, in one or two lines.
+Expressiveness comments skip step 2 (there is no failure scenario).
 Mention a repeated pattern once, not on every occurrence.

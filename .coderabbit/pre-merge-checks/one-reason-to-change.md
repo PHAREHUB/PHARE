@@ -10,7 +10,9 @@ refactor, formatting pass, unrelated cleanup, dependency bump.
 
 Two changes are independent when each could be reverted or merged alone without
 breaking the other. A large change that serves one purpose, such as a rename
-touching many files, counts as one change.
+touching many files, counts as one change. Formatting of lines the pull request
+already changes, and fixes asked for by review or by the CI gate, belong to the
+main change.
 
 Pass if the pull request contains one change, or several that depend on each
 other.
