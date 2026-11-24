@@ -119,10 +119,13 @@ The tricks
 ----------
 
 Compile-time scheme, run-time integrator
-   **Problem.** Reconstruction, limiter, Riemann solver and Hall sit in the per-face loop.
+   **Problem.** Reconstruction, limiter and Riemann solver sit in the per-face loop.
    **Fix.** Template parameters (:src:`src/amr/solvers/mhd_resolver.hpp#L35-L131`); Python
    loads the compiled module for that combination (:src:`pyphare/pyphare/cpp/__init__.py#L8-L35`).
-   Integrator, η, ν stay run-time. :pr:`1233` (runtime integrator and resistivity).
+   Integrator, η, ν and Hall stay run-time: the Hall, resistive and hyper-resistive fields
+   are computed outside the per-face loop, on the edges, by ``NonIdealElectricField``, which
+   runs one loop per active term and tests the flags outside the loops. :pr:`1233` (runtime
+   integrator and resistivity).
 
 Invalid reconstruction/limiter pairs do not compile
    **Problem.** Only ``Linear`` uses a limiter; a half-configured build must not guess.

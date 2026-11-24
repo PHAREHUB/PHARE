@@ -265,9 +265,9 @@ Common mistakes
 
   .. code-block:: text
 
-     ModuleNotFoundError: No module named 'pybindlibs.cpp_1_linear_VanLeer_Rusanov_false'.
+     ModuleNotFoundError: No module named 'pybindlibs.cpp_1_linear_VanLeer_Rusanov'.
      This run needs the build permutation
-         1,linear,VanLeer,Rusanov,false
+         1,linear,VanLeer,Rusanov
      Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.
      Permutations currently built:
          ...
@@ -276,7 +276,7 @@ Common mistakes
   side does not check the names, so the same message appears for
   ``riemann="rusanov"``, or for a limiter with a non-Linear reconstruction such
   as ``reconstruction="WENOZ", limiter="VanLeer"``
-  (``1,WENOZ,VanLeer,Rusanov,false``). Leaving ``limiter`` out gives the same
+  (``1,WENOZ,VanLeer,Rusanov``). Leaving ``limiter`` out gives the same
   message with an empty name: write ``limiter="None"`` for the schemes that
   take no limiter.
 
@@ -344,7 +344,7 @@ Common mistakes
 
 * **Hybrid options in an MHD run.** ``interp_order`` is accepted by Python, but
   it asks for a hybrid+MHD module that is not built: the run stops with
-  ``No module named 'pybindlibs.cpp_1_1_2_Linear_VanLeer_Rusanov_false'``.
+  ``No module named 'pybindlibs.cpp_1_1_2_Linear_VanLeer_Rusanov'``.
   ``refined_particle_nbr`` alone is rejected at once: ``Error:
   refined_particle_nbr is meaningless without a hybrid model (no interp_order
   given), it should be omitted``. Leave both out.

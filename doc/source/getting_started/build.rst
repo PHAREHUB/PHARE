@@ -78,9 +78,9 @@ module in ``build/pybindlibs``. When you run a script, PHARE reads your
    * - ``2,1,4``
      - ``cpp_2_1_4``
      - 2D hybrid, ``interp_order=1``, ``refined_particle_nbr=4``
-   * - ``1,Linear,VanLeer,Rusanov,false``
-     - ``cpp_1_Linear_VanLeer_Rusanov_false``
-     - 1D MHD with that scheme, no Hall term
+   * - ``1,Linear,VanLeer,Rusanov``
+     - ``cpp_1_Linear_VanLeer_Rusanov``
+     - 1D MHD with that scheme, with or without the Hall term
 
 The default list covers 1D, 2D and 3D, and every combination used by PHARE's
 tests.

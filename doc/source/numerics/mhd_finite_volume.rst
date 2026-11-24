@@ -162,7 +162,7 @@ Options
   :doc:`mhd_riemann_solvers`.
 * ``hall``: ``True`` or ``False``. Adds the Hall term :math:`\mathbf{J}\times\mathbf{B}/\rho` to
   the electric field (Hall MHD; :math:`\rho = n` in PHARE units). Its whistler waves make the
-  time step scale like :math:`\Delta x^2`.
+  time step scale like :math:`\Delta x^2`. Chosen at run time: any build runs with or without it.
 * ``gamma``: number > 1. Adiabatic index. Default 5/3.
 * ``eta``: number ≥ 0. Resistivity :math:`\eta`. Default 0.
 * ``nu``: number ≥ 0. Hyper-resistivity :math:`\nu`. Default 0. Requires ``hall=True``.
@@ -251,18 +251,19 @@ Extra terms
 Which combinations exist
 ------------------------
 
-``reconstruction``, ``limiter``, ``riemann``, ``hall`` and the dimension are fixed when
-PHARE is compiled: each combination is a separate compiled module. The list built by
-default is in :src:`res/sim/all.txt`; among others it contains, in 1D, 2D and 3D,
+``reconstruction``, ``limiter``, ``riemann`` and the dimension are fixed when PHARE is
+compiled: each combination is a separate compiled module. ``hall``, ``eta``, ``nu`` and the
+integrator are chosen at run time: every module runs with or without the Hall term. The
+list built by default is in :src:`res/sim/all.txt`; among others it contains, in 1D, 2D and 3D,
 ``Linear`` + ``VanLeer`` + ``Rusanov`` and ``WENOZ`` + ``None`` + ``Rusanov``. ``HLL`` and
 ``HLLD`` are built in 1D only, with ``Constant``.
 
 If you ask for a combination that was not built, the run stops at start-up with a
 message like::
 
-   No module named 'pybindlibs.cpp_2_MP5_None_HLLD_false'.
+   No module named 'pybindlibs.cpp_2_MP5_None_HLLD'.
    This run needs the build permutation
-       2,MP5,None,HLLD,false
+       2,MP5,None,HLLD
    Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.
 
 followed by the list of combinations that are built. Add the printed line to the file
