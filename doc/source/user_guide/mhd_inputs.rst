@@ -115,8 +115,9 @@ consequences: :doc:`/numerics/mhd_finite_volume`):
 * ``eta``, ``nu``: resistivity and hyper-resistivity (default 0; ``nu`` needs ``hall=True``),
   with ``hyper_mode``: ``"constant"`` (default) or ``"spatial"``.
 
-``reconstruction``, ``limiter``, ``riemann``, ``hall`` and the dimension are fixed when PHARE
-is compiled: not every combination is built by default (:doc:`/numerics/mhd_finite_volume`).
+``reconstruction``, ``limiter``, ``riemann`` and the dimension are fixed when PHARE is
+compiled: not every combination is built by default (:doc:`/numerics/mhd_finite_volume`).
+``hall`` is chosen at run time: every build runs with or without the Hall term.
 
 What it does
 ------------
@@ -227,11 +228,11 @@ More on the scheme options
   MHD run and have no effect.
 * ``max_mhd_level`` is meant for a future run mixing MHD and hybrid
   :term:`levels <level>`, which does not work yet: leave it at its default.
-* Which combinations of ``reconstruction``, ``limiter``, ``riemann``, ``hall``
-  and dimension are built by default: :ref:`which-combinations`. To see what
+* Which combinations of ``reconstruction``, ``limiter``, ``riemann`` and
+  dimension are built by default: :ref:`which-combinations`. To see what
   your own build contains, run
   ``python3 -c "from pyphare import cpp; print(cpp.built_simulator_ids())"``
-  (MHD entries read ``<dim>_<reconstruction>_<limiter>_<riemann>_<hall>``).
+  (MHD entries read ``<dim>_<reconstruction>_<limiter>_<riemann>``).
 
 
 Domain boundaries
