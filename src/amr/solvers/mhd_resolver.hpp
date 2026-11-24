@@ -148,7 +148,7 @@ struct MHDResolver
 
     using GridLayout = MHDModel::gridlayout_type;
 
-    using Equations_t = core::MHDEquations<Hall>;
+    using Equations_t = core::MHDEquations;
 
     using RiemannSolver_t = RiemannSolver;
 

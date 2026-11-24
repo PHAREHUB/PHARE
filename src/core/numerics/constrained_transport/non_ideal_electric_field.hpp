@@ -42,16 +42,16 @@ private:
 };
 
 
-template<typename GridLayout, bool Hall>
-class NonIdealElectricField : public OhmInfo
+template<typename GridLayout>
+class NonIdealElectricField : public NonIdealInfo
 {
-    using Super                     = OhmInfo;
+    using Super                     = NonIdealInfo;
     constexpr static auto dimension = GridLayout::dimension;
 
 public:
     using Info_t = Super;
 
-    NonIdealElectricField(OhmInfo const& info, GridLayout const& layout)
+    NonIdealElectricField(NonIdealInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
     {
@@ -64,29 +64,45 @@ public:
         auto const& B   = mhd_state.B;
         auto const& rho = mhd_state.rho;
 
-        Constexprifier{isResistive(), isHyperResistive(),
-                       hyper_mode}([&]<bool isResistive, bool isHyperResistive, HyperMode hyper>() {
-            for_N<3>([&](auto i) {
-                constexpr auto component = static_cast<Component>(i());
-                auto& Ec                 = E(component);
-                auto const& Jc           = J(component);
+        for_N<3>([&](auto i) {
+            constexpr auto component = static_cast<Component>(i());
+            auto& Ec                 = E(component);
+            auto const& Jc           = J(component);
+
+            layout_.evalOnBox(Ec, [&](auto&... args) { Ec(args...) = 0.; });
+
+            if (isResistive())
                 layout_.evalOnBox(Ec, [&](auto&... args) {
                     MeshIndex<dimension> idx{args...};
-                    double e = 0.;
-                    if constexpr (isResistive)
-                        e += eta * Jc(idx);
-                    if constexpr (isHyperResistive)
-                        e -= hyper_coef_<component, hyper>(B, rho, idx)
-                             * laplacian(layout_, Jc, idx);
-                    if constexpr (Hall)
-                        e += hall_<component>(J, B, rho, idx);
-                    Ec(idx) = e;
+                    Ec(idx) += eta * Jc(idx);
                 });
-            });
+
+            if (isHyperResistive())
+            {
+                if (hyper_mode == HyperMode::constant)
+                    hyper_loop_<component, HyperMode::constant>(Ec, Jc, B, rho);
+                else
+                    hyper_loop_<component, HyperMode::spatial>(Ec, Jc, B, rho);
+            }
+
+            if (isHall())
+                layout_.evalOnBox(Ec, [&](auto&... args) {
+                    MeshIndex<dimension> idx{args...};
+                    Ec(idx) += hall_<component>(J, B, rho, idx);
+                });
         });
     }
 
 private:
+    template<auto component, HyperMode hyper>
+    void hyper_loop_(auto& Ec, auto const& Jc, auto const& B, auto const& rho) const
+    {
+        layout_.evalOnBox(Ec, [&](auto&... args) {
+            MeshIndex<dimension> idx{args...};
+            Ec(idx) -= hyper_coef_<component, hyper>(B, rho, idx) * laplacian(layout_, Jc, idx);
+        });
+    }
+
     template<auto srcJ, auto face, typename JField, typename BField, typename RhoField>
     struct FaceProduct
     {

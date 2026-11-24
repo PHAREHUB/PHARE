@@ -25,15 +25,13 @@ class ComputeFluxes
     using FVMethod_t     = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FVMethodInfo_t = FVMethod_t::info_type;
 
-    constexpr static auto Hall = FVMethod_t::Hall;
-
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
     using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
-    using NonIdealElectricField_t = Dispatchers_t::template NonIdealElectricField_t<Hall>;
+    using NonIdealElectricField_t = Dispatchers_t::NonIdealElectricField_t;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
@@ -48,17 +46,17 @@ public:
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
         , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
-        , needsCurrent_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()}
+        , needsCurrent_{fVMethodInfo_.isHall() || fVMethodInfo_.isResistive()
+                        || fVMethodInfo_.isHyperResistive()}
     {
         // eta/nu are duplicated into both info structs
         assert(fVMethodInfo_.eta == constrainedTransportInfo_.eta
                && fVMethodInfo_.nu == constrainedTransportInfo_.nu);
 
         // hyper-resistivity is only meaningful alongside the Hall term
-        if constexpr (!Hall)
-            if (fVMethodInfo_.isHyperResistive())
-                throw std::runtime_error(
-                    "Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled");
+        if (fVMethodInfo_.isHyperResistive() && !fVMethodInfo_.isHall())
+            throw std::runtime_error(
+                "Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled");
     }
 
     void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
@@ -104,7 +102,8 @@ public:
 private:
     FVMethodInfo_t fVMethodInfo_;
     ConstrainedTransportInfo_t constrainedTransportInfo_;
-    bool const isNonIdeal_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()};
+    bool const isNonIdeal_{fVMethodInfo_.isHall() || fVMethodInfo_.isResistive()
+                           || fVMethodInfo_.isHyperResistive()};
 
     core::UpwindConstrainedTransportState<VecField> ct_{};
     core::NonIdealElectricFieldState<VecField> non_ideal_electric_state_{isNonIdeal_};

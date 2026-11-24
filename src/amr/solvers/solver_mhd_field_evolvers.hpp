@@ -98,8 +98,6 @@ public:
     template<typename T>
     using Rec = core_type::template Rec<T>;
 
-    constexpr static auto Hall = core_type::Hall;
-
     explicit FVMethodTransformer(level_t& level, auto& model, info_type const& info)
         : level{level}
         , model{model}
@@ -162,12 +160,12 @@ FiniteVolumeEulerTransformer(typename Model::amr_types::level_t&, Model&)
 
 
 
-template<typename Model, bool Hall>
+template<typename Model>
 class NonIdealElectricFieldTransformer
 {
     using GridLayout = Model::gridlayout_type;
     using level_t    = Model::amr_types::level_t;
-    using core_type  = core::NonIdealElectricField<GridLayout, Hall>;
+    using core_type  = core::NonIdealElectricField<GridLayout>;
 
 public:
     using info_type = core_type::Info_t;
@@ -272,8 +270,7 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
 
     using FiniteVolumeEuler_t = FiniteVolumeEulerTransformer<Model>;
 
-    template<bool Hall>
-    using NonIdealElectricField_t = NonIdealElectricFieldTransformer<Model, Hall>;
+    using NonIdealElectricField_t = NonIdealElectricFieldTransformer<Model>;
 
     template<template<typename> typename Reconstruction>
     using ConstrainedTransport_t

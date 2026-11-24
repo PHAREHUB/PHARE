@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <algorithm>
+#include <vector>
 
 namespace PHARE::core
 {
@@ -168,12 +169,41 @@ struct NonIdealElectricFieldTest : public ::testing::Test
     OwnedVecField<Model> E{layout, MHDQuantity::Vector::E};
     OwnedField<Model> rho{layout, MHDQuantity::Scalar::rho};
 
-    template<bool Hall>
-    void compute(OhmInfo const& info)
+    void compute(NonIdealInfo const& info)
     {
         NonIdealState<typename Model::VecField_t> state{E.view};
         MHDView<typename Model::VecField_t, typename Model::Field_t> mhd{J.view, B.view, rho.field};
-        NonIdealElectricField<Layout, Hall>{info, layout}(state, mhd);
+        NonIdealElectricField<Layout>{info, layout}(state, mhd);
+    }
+
+    void fillNonUniform()
+    {
+        for (std::size_t c = 0; c < 3; ++c)
+        {
+            fill(layout, J.view[c], [&](auto const& x) {
+                return std::sin(1.3 * x[0] + 0.7 * c + 0.4 * x[1] - 0.2 * x[2]);
+            });
+            fill(layout, B.view[c], [&](auto const& x) {
+                return 0.5 + 0.3 * c + 0.2 * std::sin(0.9 * x[0] - 0.5 * x[1] + 0.8 * x[2] + c);
+            });
+        }
+        fill(layout, rho.field, [](auto const& x) {
+            return 1.5 + 0.5 * std::sin(0.6 * x[0] + 1.1 * x[1] - 0.7 * x[2]);
+        });
+    }
+
+    void fillE(double const value)
+    {
+        for (std::size_t c = 0; c < 3; ++c)
+            fill(layout, E.view[c], [&](auto const&) { return value; });
+    }
+
+    std::array<std::vector<double>, 3> snapshotE() const
+    {
+        std::array<std::vector<double>, 3> out;
+        for (std::size_t c = 0; c < 3; ++c)
+            out[c].assign(E.grids[c].data(), E.grids[c].data() + E.grids[c].size());
+        return out;
     }
 };
 
@@ -202,7 +232,7 @@ TYPED_TEST(NonIdealElectricFieldTest, resistiveOnlyIsEtaJ)
     }
     fill(layout, this->rho.field, [&](auto const& x) { return affine(x, 2., 0.1, 0.2, -0.1); });
 
-    this->template compute<false>(OhmInfo{eta, 0.0, HyperMode::constant});
+    this->compute(NonIdealInfo{{eta, 0.0, HyperMode::constant}, false});
 
     for (std::size_t c = 0; c < 3; ++c)
     {
@@ -229,7 +259,7 @@ TYPED_TEST(NonIdealElectricFieldTest, hallIsJcrossBoverRhoAtEdges)
     }
     fill(layout, this->rho.field, r);
 
-    this->template compute<true>(OhmInfo{0.0, 0.0, HyperMode::constant});
+    this->compute(NonIdealInfo{{0.0, 0.0, HyperMode::constant}, true});
 
     for (std::size_t c = 0; c < 3; ++c)
     {
@@ -276,7 +306,7 @@ TYPED_TEST(NonIdealElectricFieldTest, hallDoesNoWork)
     fill(layout, this->rho.field,
          [](auto const& x) { return 1.5 + 0.5 * std::sin(0.6 * x[0] + 1.1 * x[1] - 0.7 * x[2]); });
 
-    this->template compute<true>(OhmInfo{0.0, 0.0, HyperMode::constant});
+    this->compute(NonIdealInfo{{0.0, 0.0, HyperMode::constant}, true});
 
     double work = 0., absWork = 0.;
     for (std::size_t c = 0; c < 3; ++c)
@@ -336,7 +366,7 @@ TYPED_TEST(NonIdealElectricFieldTest, hallCurlVanishesForB0PerpK)
         Ampere<typename TestFixture::Layout>{layout}(this->B.view, this->J.view);
         for (std::size_t c = 0; c < 3; ++c)
             fill(layout, this->B.view[c], [&](auto const&) { return c == along ? 1. : 0.; });
-        this->template compute<true>(OhmInfo{0.0, 0.0, HyperMode::constant});
+        this->compute(NonIdealInfo{{0.0, 0.0, HyperMode::constant}, true});
 
         double maxE = 0.;
         for (std::size_t c = 0; c < 3; ++c)
@@ -356,6 +386,79 @@ TYPED_TEST(NonIdealElectricFieldTest, hallCurlVanishesForB0PerpK)
             check(curlE.x, this->B.view[0]);
         EXPECT_LT(maxCurl, 1e-12);
     }
+}
+
+
+TYPED_TEST(NonIdealElectricFieldTest, combinedTermsAreTheOrderedSumOfEachTerm)
+{
+    auto const& layout = this->layout;
+    this->fillNonUniform();
+
+    this->compute(NonIdealInfo{{0.01, 0.0, HyperMode::spatial}, false});
+    auto const eEta = this->snapshotE();
+    this->compute(NonIdealInfo{{0.0, 0.02, HyperMode::spatial}, false});
+    auto const eNu = this->snapshotE();
+    this->compute(NonIdealInfo{{0.0, 0.0, HyperMode::spatial}, true});
+    auto const eHall = this->snapshotE();
+    this->compute(NonIdealInfo{{0.01, 0.02, HyperMode::spatial}, true});
+    auto const eAll = this->snapshotE();
+
+    std::size_t checked = 0;
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto const& Ec   = this->E.view[c];
+        auto const& grid = this->E.grids[c];
+        layout.evalOnBox(Ec, [&](auto&... args) {
+            auto const i = static_cast<std::size_t>(&Ec(args...) - grid.data());
+            EXPECT_EQ(eAll[c][i], (eEta[c][i] + eNu[c][i]) + eHall[c][i]);
+            ++checked;
+        });
+    }
+    EXPECT_GT(checked, 0u);
+}
+
+
+TYPED_TEST(NonIdealElectricFieldTest, hallFlagOffGivesNoHallTerm)
+{
+    auto const& layout = this->layout;
+    this->fillNonUniform();
+    this->fillE(7.);
+
+    this->compute(NonIdealInfo{{0.0, 0.0, HyperMode::constant}, false});
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto& Ec = this->E.view[c];
+        layout.evalOnBox(Ec, [&](auto&... args) { EXPECT_EQ(Ec(args...), 0.); });
+    }
+}
+
+
+TYPED_TEST(NonIdealElectricFieldTest, nonIdealLeavesPointsOutsideTheBoxUntouched)
+{
+    auto const& layout = this->layout;
+    this->fillNonUniform();
+    this->fillE(7.);
+
+    this->compute(NonIdealInfo{{0.01, 0.02, HyperMode::spatial}, true});
+
+    std::size_t untouched = 0;
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto& Ec         = this->E.view[c];
+        auto const& grid = this->E.grids[c];
+        std::vector<bool> visited(grid.size(), false);
+        layout.evalOnBox(Ec, [&](auto&... args) {
+            visited[static_cast<std::size_t>(&Ec(args...) - grid.data())] = true;
+        });
+        for (std::size_t i = 0; i < grid.size(); ++i)
+            if (!visited[i])
+            {
+                EXPECT_EQ(grid.data()[i], 7.);
+                ++untouched;
+            }
+    }
+    EXPECT_GT(untouched, 0u);
 }
 
 } // namespace PHARE::core

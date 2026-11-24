@@ -7,12 +7,9 @@
 // the magnetic fluxes computations should be removed from here
 namespace PHARE::core
 {
-template<bool Hall>
 class MHDEquations
 {
 public:
-    constexpr static bool hall = Hall;
-
     MHDEquations(double const gamma)
         : gamma_{gamma}
     {

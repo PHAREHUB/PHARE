@@ -51,13 +51,13 @@ auto getGrow(int const nghosts)
     return p;
 }
 
-struct GodunovInfo : public OhmInfo
+struct GodunovInfo : public NonIdealInfo
 {
     double const gamma;
 
     GodunovInfo static FROM(initializer::PHAREDict const& dict)
     {
-        return {{OhmInfo::FROM(dict)}, dict["heat_capacity_ratio"].template to<double>()};
+        return {{NonIdealInfo::FROM(dict)}, dict["heat_capacity_ratio"].template to<double>()};
     }
 };
 
@@ -79,8 +79,6 @@ public:
 
     template<typename T>
     using Rec = Reconstruction<T>;
-
-    constexpr static auto Hall = Equations::hall;
 
     static_assert(GridLayout::options.field_ghost_width >= Reconstruction_t::nghosts + 1,
                   "MHD ghost width too small for the reconstruction stencil plus ampere's layer");
