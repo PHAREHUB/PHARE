@@ -3,7 +3,7 @@ if (withPhlop)
 
   # pinned: the python package (pyproject.toml "timing") must read what these headers write
   if(NOT DEFINED PHARE_PHLOP_VERSION)
-    SET(PHARE_PHLOP_VERSION "v0.0.45")
+    SET(PHARE_PHLOP_VERSION "v0.0.46")
   endif()
 
   set(PHLOP_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/phlop)
