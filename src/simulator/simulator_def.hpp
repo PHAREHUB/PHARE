@@ -55,7 +55,6 @@ struct SimOpts
     MHDOpts::ReconstructionType reconstruction_type = MHDOpts::ReconstructionType::MHDOff;
     MHDOpts::SlopeLimiterType slope_limiter_type    = MHDOpts::SlopeLimiterType::MHDOff;
     MHDOpts::RiemannSolverType riemann_solver_type  = MHDOpts::RiemannSolverType::MHDOff;
-    bool Hall                                       = false;
 
     // derived — two independent axes, never one as the other's negation
     bool hybrid_enabled = interp_order > 0;
@@ -96,7 +95,6 @@ SimOpts inline SimOpts::FROM(initializer::PHAREDict const& dict)
         enum_from("reconstruction", defaults.reconstruction_type),
         enum_from("limiter", defaults.slope_limiter_type),
         enum_from("riemann", defaults.riemann_solver_type),
-        cppdict::get_value(dict, "hall", defaults.Hall),
     };
 }
 
@@ -108,8 +106,7 @@ constexpr bool operator==(SimOpts const& lhs, SimOpts const& rhs)
            and lhs.nbRefinedPart == rhs.nbRefinedPart             //
            and lhs.reconstruction_type == rhs.reconstruction_type //
            and lhs.slope_limiter_type == rhs.slope_limiter_type   //
-           and lhs.riemann_solver_type == rhs.riemann_solver_type //
-           and lhs.Hall == rhs.Hall;
+           and lhs.riemann_solver_type == rhs.riemann_solver_type;
 }
 
 

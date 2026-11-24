@@ -133,8 +133,6 @@ struct MHDResolver
 {
     // Get the types from opts
 
-    static constexpr bool Hall = opts.Hall;
-
     using SlopeLimiter
         = SlopeLimiterSelector<opts.reconstruction_type, opts.slope_limiter_type>::type;
 

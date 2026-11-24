@@ -12,12 +12,13 @@ import numpy as np
 import pyphare.pharein as ph
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import MHDGridLayoutFor
-from pyphare.cpp import simulator_id
+from pyphare.cpp import permutation_line, simulator_id
 from pyphare.pharesee.hierarchy.hierarchy import PatchHierarchy
 from pyphare.pharesee.hierarchy.hierarchy_utils import single_patch_for_LO
 from pyphare.pharesee.hierarchy.patch import Patch
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
+from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
@@ -126,7 +127,40 @@ class MHDOnlyThroughTestHelperTest(SimulatorTest):
         sim = self.mhd_simulation()
         self.assertEqual(sim.interp_order, 0)  # internal, C++-facing value
         self.assertEqual(sim.refined_particle_nbr, 0)
-        self.assertEqual(simulator_id(sim), "1_Linear_VanLeer_Rusanov_false")
+        self.assertEqual(simulator_id(sim), "1_Linear_VanLeer_Rusanov")
+
+    def test_hall_is_not_in_the_permutation_line(self):
+        self.assertEqual(
+            permutation_line(self.mhd_simulation(hall=True)),
+            permutation_line(self.mhd_simulation(hall=False)),
+        )
+        self.assertEqual(
+            permutation_line(self.mhd_simulation()), "1,Linear,VanLeer,Rusanov"
+        )
+
+    def test_hyper_resistivity_without_hall_is_rejected(self):
+        sim = self.mhd_simulation(hall=False, nu=0.02, hyper_mode="constant")
+
+        def one(x):
+            return 1.0 + 0.0 * x
+
+        def zero(x):
+            return 0.0 * x
+
+        ph.MHDModel(
+            density=one, vx=zero, vy=zero, vz=zero, bx=one, by=zero, bz=zero, p=one
+        )
+        simulator = Simulator(sim)
+        with self.assertRaises(Exception) as ctx:
+            simulator.initialize()
+        messages = []
+        e = ctx.exception
+        while e is not None:
+            messages.append(str(e))
+            e = e.__cause__ or e.__context__
+        self.assertTrue(any("requires the Hall term" in m for m in messages), messages)
+        simulator.reset()
+        del simulator
 
 
 if __name__ == "__main__":

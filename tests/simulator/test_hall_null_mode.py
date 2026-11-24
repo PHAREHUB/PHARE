@@ -18,12 +18,12 @@ AMP = 1e-4
 MODES = ((5, 11), (9, 4))
 
 
-def run(hall, diag_dir, bx, by, bz):
+def run(hall, diag_dir, bx, by, bz, reconstruction="WENOZ", limiter="None"):
     ph.global_vars.sim = None
     sim = ph.Simulation(
         model_options=["MHDModel"],
-        reconstruction="WENOZ",
-        limiter="None",
+        reconstruction=reconstruction,
+        limiter=limiter,
         riemann="Rusanov",
         mhd_timestepper="TVDRK3",
         hall=hall,
@@ -84,13 +84,15 @@ def max_rel_diff(a, b, amp):
     return m / amp
 
 
-def hall_on_off_ratios(name, bx, by, bz, amp=AMP):
+def hall_on_off_ratios(
+    name, bx, by, bz, amp=AMP, reconstruction="WENOZ", limiter="None"
+):
     dirs = {
-        hall: f"phare_outputs/hall_null_mode/{name}_hall_{hall}"
+        hall: f"phare_outputs/hall_null_mode/{name}_{reconstruction}_hall_{hall}"
         for hall in (True, False)
     }
     for hall, d in dirs.items():
-        run(hall, d, bx, by, bz)
+        run(hall, d, bx, by, bz, reconstruction, limiter)
 
     def load(d, pattern):
         return level0_data(glob.glob(f"{d}/{pattern}")[0])
@@ -132,6 +134,18 @@ class HallNullModeTest(unittest.TestCase):
             return perturbation(x, y, ((5, 0),))
 
         b_ratio, _ = hall_on_off_ratios("parallel", bx, by, zero)
+        self.assertGreater(b_ratio, 1e-1)
+
+    def test_hall_acts_at_first_order_linear_vanleer(self):
+        def bx(x, y):
+            return 1.0 + 0.0 * x
+
+        def by(x, y):
+            return perturbation(x, y, ((5, 0),))
+
+        b_ratio, _ = hall_on_off_ratios(
+            "parallel", bx, by, zero, reconstruction="Linear", limiter="VanLeer"
+        )
         self.assertGreater(b_ratio, 1e-1)
 
 

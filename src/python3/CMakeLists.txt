@@ -20,12 +20,14 @@ while(THIS_FILE)
     string(REPLACE "," ";" LINE_LIST ${LINE})
     list(LENGTH LINE_LIST LINE_LENGTH)
 
-    if(LINE_LENGTH EQUAL 5)
-        # MHD-only shape: dim,recon,slope,riemann,hall
-        # normalize to the 7-field SimOpts aggregate order: dim,0,0,...
+    if(LINE_LENGTH EQUAL 4)
+        # MHD-only shape: dim,recon,slope,riemann
+        # normalize to the 6-field SimOpts aggregate order: dim,0,0,...
         list(INSERT LINE_LIST 1 "0" "0")
         list(LENGTH LINE_LIST LINE_LENGTH)
-    elseif(NOT LINE_LENGTH EQUAL 3 AND NOT LINE_LENGTH EQUAL 7)
+    elseif(LINE_LENGTH EQUAL 5 OR LINE_LENGTH EQUAL 7)
+        message(FATAL_ERROR "PHARE permutation line '${LINE}' has ${LINE_LENGTH} fields: hall is a runtime option now (Simulation(hall=...)), remove the last field")
+    elseif(NOT LINE_LENGTH EQUAL 3 AND NOT LINE_LENGTH EQUAL 6)
         message(FATAL_ERROR "PHARE permutation line has unsupported arity (${LINE_LENGTH}): ${LINE}")
     endif()
 
