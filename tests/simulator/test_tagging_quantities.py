@@ -59,11 +59,11 @@ def mhd_simulation(tagging, diag_dir):
     )
     ph.MHDModel(
         density=step(1.0, 2.0),
-        vx=step(0.0, 1.0),
+        vx=step(1.0, 1.0),
         vy=step(0.0, 0.0),
         vz=step(0.0, 0.0),
         bx=step(1.0, 1.0),
-        by=step(1.0, 2.0),
+        by=step(0.0, 0.0),
         bz=step(0.0, 0.0),
         p=step(1.0, 2.0),
     )
@@ -127,7 +127,7 @@ class TaggingQuantitiesTest(SimulatorTest):
         ph.global_vars.sim = None
         super().tearDown()
 
-    def check_refines_at_startup(self, model, make_simulation, quantities):
+    def check_levels(self, model, make_simulation, quantities, expected_levels):
         for method, threshold in thresholds.items():
             for quantity in quantities:
                 with self.subTest(method=method, quantity=quantity):
@@ -146,16 +146,22 @@ class TaggingQuantitiesTest(SimulatorTest):
                     self.assertEqual(len(times), 2)
                     for time in times:
                         self.assertEqual(
-                            run.GetB(time).levelNbr(time), max_nbr_levels, time
+                            run.GetB(time).levelNbr(time), expected_levels, time
                         )
 
     def test_mhd_allowed_quantities_refine_at_startup(self):
-        self.check_refines_at_startup(
-            "mhd", mhd_simulation, ("B", "density", "momentum", "Etot")
+        self.check_levels(
+            "mhd",
+            mhd_simulation,
+            ("density", "momentum", "Etot"),
+            max_nbr_levels,
         )
 
+    def test_mhd_uniform_quantity_does_not_refine(self):
+        self.check_levels("mhd", mhd_simulation, ("B",), 1)
+
     def test_hybrid_allowed_quantities_refine_at_startup(self):
-        self.check_refines_at_startup("hybrid", hybrid_simulation, ("B", "By"))
+        self.check_levels("hybrid", hybrid_simulation, ("B", "By"), max_nbr_levels)
 
 
 if __name__ == "__main__":

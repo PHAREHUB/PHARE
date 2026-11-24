@@ -598,7 +598,7 @@ void expectColumns(Model const& model, std::vector<int> const& tags,
         for (auto ix : taggedColumns)
             EXPECT_TRUE(tagged(model, tags, ix, iy)) << ix << " " << iy;
         for (auto ix : untaggedColumns)
-            EXPECT_FALSE(tagged(model, tags, ix, iy)) << ix << " " << iy;
+            EXPECT_EQ(tags[ix + model.layout.nbrCells()[0] * iy], 0) << ix << " " << iy;
     }
 }
 
@@ -1740,29 +1740,43 @@ TEST(GradientScale, PerQuantityRefMagnitudes)
     using Model    = MockMHDModel<2>;
     using Strategy = GradientScaleTaggerStrategy<Model>;
     Model model;
+    auto const ghosts = Model::gridlayout_type::options.field_ghost_width;
     fillMHDStep(model, 1., 2.);
     fillRhoV(
-        model, [](auto const&) { return 0.; }, [](auto const&) { return 0.; },
-        [](auto const&) { return 0.; });
+        model, [&](auto const& idx) { return idx[0] < ghosts + 5 ? 0. : 1e-3; },
+        [](auto const&) { return 0.; }, [](auto const&) { return 0.; });
 
-    std::vector<std::uint32_t> untagged;
-    for (std::uint32_t ix = 0; ix < model.layout.nbrCells()[0]; ++ix)
-        if (ix != 9 and ix != 10)
-            untagged.push_back(ix);
+    auto const allColumnsBut = [&](std::vector<std::uint32_t> const& columns) {
+        std::vector<std::uint32_t> others;
+        for (std::uint32_t ix = 0; ix < model.layout.nbrCells()[0]; ++ix)
+            if (std::find(columns.begin(), columns.end(), ix) == columns.end())
+                others.push_back(ix);
+        return others;
+    };
 
-    auto const small = methodTags<Strategy>(
+    auto const rhoSmall = methodTags<Strategy>(
         model, quantitiesDict({{"rho", 0.2}}, {{"rho", {{"ref_magnitude", 0.1}}}}));
-    expectColumns(model, small, {9, 10}, untagged);
+    expectColumns(model, rhoSmall, {9, 10}, allColumnsBut({9, 10}));
 
     EXPECT_TRUE(
         allEqual(methodTags<Strategy>(
                      model, quantitiesDict({{"rho", 0.2}}, {{"rho", {{"ref_magnitude", 100.}}}})),
                  0));
+
+    auto const rhoVSmall = methodTags<Strategy>(
+        model, quantitiesDict({{"rhoV", 0.2}}, {{"rhoV", {{"ref_magnitude", 1e-8}}}}));
+    expectColumns(model, rhoVSmall, {4, 5}, allColumnsBut({4, 5}));
+
     EXPECT_TRUE(
-        allEqual(methodTags<Strategy>(model, quantitiesDict({{"rho", 0.2}, {"rhoV", 0.2}},
-                                                            {{"rho", {{"ref_magnitude", 100.}}},
-                                                             {"rhoV", {{"ref_magnitude", 1e-8}}}})),
+        allEqual(methodTags<Strategy>(
+                     model, quantitiesDict({{"rhoV", 0.2}}, {{"rhoV", {{"ref_magnitude", 100.}}}})),
                  0));
+
+    auto const both = methodTags<Strategy>(
+        model,
+        quantitiesDict({{"rho", 0.2}, {"rhoV", 0.2}},
+                       {{"rho", {{"ref_magnitude", 100.}}}, {"rhoV", {{"ref_magnitude", 1e-8}}}}));
+    expectColumns(model, both, {4, 5}, allColumnsBut({4, 5}));
 }
 
 TEST(TaggerFactory, hybridAndMHDMethods)
