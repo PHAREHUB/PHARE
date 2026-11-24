@@ -226,6 +226,14 @@ How to choose
 * **Step size.** ``cfl_wave`` and ``cfl_diffusive`` multiply the estimated limits above; the
   docstring advises values in (0, 1]. The first-order and second-order integrators failed at
   0.2 and 0.8 in the documentation run, so staying at or below 1 does not guarantee stability.
+* **With** ``hall=True``: the discrete Hall operator linearised about a uniform B is skew (its
+  spectrum is imaginary) and the upwind dissipation cannot damp the whistler at the grid scale once
+  :math:`\Delta x \lesssim d_i`. ``Euler`` and ``TVDRK2``, which have no stability range on
+  the imaginary axis, are then unstable whatever the step unless ``nu > 0``; use ``TVDRK3`` or
+  ``SSPRK4_5``. PHARE does not check it. With the estimate above at :math:`k=\pi/\Delta x`,
+  the linear stability limit of ``cfl_wave`` for the Hall term is :math:`\pi\rho_I/4`, with
+  :math:`\rho_I` the reach of the integrator on the imaginary axis: 1.36 for ``TVDRK3``
+  (:math:`\rho_I=\sqrt3`) and 2.57 for ``SSPRK4_5`` (:math:`\rho_I=3.28`).
 
 .. seealso::
    :doc:`mhd_reconstruction`, :doc:`mhd_riemann_solvers`, :doc:`mhd_finite_volume`,

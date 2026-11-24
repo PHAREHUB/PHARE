@@ -116,25 +116,16 @@ two actual speeds; HLLD in addition keeps the contact and the Alfvén waves, so 
 Hall and dissipative terms
 --------------------------
 
-With ``hall=True`` the fluxes :math:`F_L` and :math:`F_R` contain the Hall term: the field
-:math:`\mathbf J\times\mathbf B/\rho` enters the magnetic flux like the ideal electric field,
-and :math:`(\mathbf B\cdot\mathbf J\,B_n - B^2 J_n)/\rho` enters the energy flux
-(:src:`src/core/numerics/MHD_equations/MHD_equations.hpp#L113-L144`).
+The Riemann solvers solve ideal MHD only: the left and right fluxes, the wave speeds and the
+weights left for the edge field contain no Hall, resistive or hyper-resistive term, and the
+whistler speed is not in the fan. The whistler speed is used by the adaptive time step only
+(:doc:`mhd_time_integration`).
 
-* ``Rusanov`` and ``HLL`` then take one speed for density and momentum and one for B and
-  energy. In the code as pinned the two speeds are the same number: the whistler wave
-  contribution to the fan speed exists in the code but is switched off
-  (:src:`src/core/numerics/riemann_solvers/rusanov.hpp#L125-L128`,
-  :src:`src/core/numerics/riemann_solvers/hll.hpp#L134-L135`). The whistler speed is, on
-  the other hand, used by the adaptive time step (:doc:`mhd_time_integration`).
-* ``HLLD`` makes no such split; its inner states are those of ideal MHD, the Hall term
-  enters through the left and right fluxes only.
-
-When ``eta`` or ``nu`` is not zero, the dissipative electric field
-:math:`\mathbf E_\mathrm{diss}` is added to the magnetic flux, to the energy flux (as
-:math:`\mathbf E_\mathrm{diss}\times\mathbf B`) and to the electric field on the edges
-(:src:`src/core/numerics/godunov_fluxes/godunov_fluxes.hpp#L149-L157`,
-:src:`src/core/numerics/constrained_transport/dissipative_electric_field.hpp#L63-L113`).
+With ``hall=True``, or when ``eta`` or ``nu`` is not zero, the non-ideal electric field
+:math:`\mathbf E_\mathrm{ni}` (Hall, resistive and hyper-resistive parts) is computed on the
+cell edges from J on the edges (:doc:`mhd_finite_volume`). After the Riemann solve it is added
+to the magnetic flux and, as :math:`\mathbf E_\mathrm{ni}\times\mathbf B`, to the energy flux
+of each face, and to the upwind electric field on the edges described below.
 
 The electric field on the cell edges
 ------------------------------------

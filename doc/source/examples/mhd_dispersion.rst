@@ -32,7 +32,7 @@ Setup
      - Hall MHD (``hall=True``), :math:`\gamma = 5/3`
      - same
    * - Scheme
-     - linear reconstruction, VanLeer limiter, Rusanov :term:`Riemann solver`, ``TVDRK2``
+     - linear reconstruction, VanLeer limiter, Rusanov :term:`Riemann solver`, ``TVDRK3``
      - same
    * - :term:`AMR`
      - no, a single :term:`level`

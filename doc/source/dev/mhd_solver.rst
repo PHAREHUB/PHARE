@@ -70,8 +70,10 @@ One Euler stage
    text(a, 1, 1.12, "F(i−½)"); text(a, 2, 1.12, "F(i+½)")
    finish(fig, ax)
 
-* ``ComputeFluxes`` does panels 1–4: to primitive on the ghost box; J (and the dissipative
-  E) if Hall, η or ν; ``Godunov`` per direction; back to conservative; ``UpwindConstrainedTransport``;
+* ``ComputeFluxes`` does panels 1–4: to primitive on the ghost box; J and the non-ideal E
+  on the edges (``NonIdealElectricField``) if Hall, η or ν; ``Godunov`` per direction, then
+  the non-ideal E added to the face fluxes of B and energy; back to conservative;
+  ``UpwindConstrainedTransport``, which adds the non-ideal E to the edge E;
   fill E ghosts (:src:`src/amr/solvers/time_integrator/compute_fluxes.hpp#L63-L90`).
 * ``EulerUsingComputedFlux`` does panel 5 and fills the new state's ghosts
   (:src:`src/amr/solvers/time_integrator/euler_using_computed_flux.hpp#L24-L35`).
