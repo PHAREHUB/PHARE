@@ -88,15 +88,13 @@ public:
     explicit Godunov(GodunovInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , is_resistive_{info.isResistive()}
-        , is_hyper_resistive_{info.isHyperResistive()}
         , equations_{gamma}
         , riemann_{gamma}
     {
     }
 
     template<typename State, typename Fluxes>
-    void operator()(auto& ct_state, auto const& dissipative_electric_state, State& state,
+    void operator()(auto& ct_state, auto const& non_ideal_electric_state, State& state,
                     Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
@@ -113,53 +111,28 @@ public:
                         = Reconstructor_t::template reconstruct<direction>(state, {indices...});
                     auto&& u = std::forward_as_tuple(uL, uR);
 
-                    if constexpr (Hall)
-                    {
-                        auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, Scalar::Jx, Scalar::Jy, Scalar::Jz, Scalar::rho>(
-                            state.J, {indices...});
+                    auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
+                        return equations_.template compute<direction>(std::get<i>(u));
+                    });
 
-                        auto const& j = std::forward_as_tuple(jL, jR);
+                    fluxes.template get_dir<direction>({indices...})
+                        = riemann_.template solve<direction>(uL, uR, fL, fR);
 
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u),
-                                                                          std::get<i>(j));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
-                                                          riemann_.uct_coefs, {indices...});
-                    }
-                    else
-                    {
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
-                                                          {indices...});
-                    }
+                    ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
+                                                      {indices...});
                 });
 
-            if (is_resistive_ || is_hyper_resistive_)
+            if (non_ideal_electric_state.active())
                 layout_.evalOnBox(fluxes.template expose_centering<direction>(),
                                   [&](auto&... indices) {
                                       auto F = fluxes.template get_dir<direction>({indices...});
                                       auto const [Et, Bt] = transverse_on_face_<direction>(
-                                          dissipative_electric_state.E(), state.B, {indices...});
-                                      equations_.template dissipative_contributions<direction>(
+                                          non_ideal_electric_state.E(), state.B, {indices...});
+                                      equations_.template non_ideal_contributions<direction>(
                                           Et, Bt, F.B, F.Etot());
                                   });
         });
     }
-
-    bool isResistive() const { return is_resistive_; }
-    bool isHyperResistive() const { return is_hyper_resistive_; }
 
 private:
     template<auto direction>
@@ -201,8 +174,6 @@ private:
     }
 
     GridLayout layout_;
-    bool const is_resistive_;
-    bool const is_hyper_resistive_;
     Equations equations_;
     RiemannSolver_t riemann_;
 };

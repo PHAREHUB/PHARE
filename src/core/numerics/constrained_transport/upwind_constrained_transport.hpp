@@ -13,7 +13,7 @@ namespace PHARE::core
 {
 using UpwindConstrainedTransportInfo = OhmInfo;
 
-template<typename GridLayout, template<typename> typename Reconstruction, bool Hall>
+template<typename GridLayout, template<typename> typename Reconstruction>
 class UpwindConstrainedTransport : UpwindConstrainedTransportInfo
 {
     using Super                     = UpwindConstrainedTransportInfo;
@@ -27,11 +27,10 @@ public:
     UpwindConstrainedTransport(UpwindConstrainedTransportInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , is_dissipative_{info.isResistive() || info.isHyperResistive()}
     {
     }
 
-    void operator()(auto& ct_state, auto const& dissipative_electric_state, auto& mhd_state) const
+    void operator()(auto& ct_state, auto const& non_ideal_electric_state, auto& mhd_state) const
     {
         auto& E       = mhd_state.E;
         auto const& B = mhd_state.B;
@@ -44,18 +43,21 @@ public:
         layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}); });
         layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}); });
 
-        if (is_dissipative_)
+        if (non_ideal_electric_state.active())
         {
-            auto const& Ediss = dissipative_electric_state.E();
+            auto const& Enonideal = non_ideal_electric_state.E();
             for (auto c : {Component::X, Component::Y, Component::Z})
-                layout_.evalOnBox(E(c), [&](auto&... args) { E(c)(args...) += Ediss(c)(args...); });
+                layout_.evalOnBox(E(c),
+                                  [&](auto&... args) { E(c)(args...) += Enonideal(c)(args...); });
         }
     }
 
 private:
     void ExEq_(auto& ct_state, auto& Ex, auto const& B, MeshIndex<dimension> idx) const
     {
-        if constexpr (dimension == 2)
+        if constexpr (dimension == 1)
+            Ex(idx) = 0.;
+        else if constexpr (dimension == 2)
         {
             auto [BzL, BzR]
                 = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
@@ -67,24 +69,6 @@ private:
 
             Ex(idx) = -(ct_state.aL_y(idx) * FL + ct_state.aR_y(idx) * FR)
                       + (ct_state.dR_y(idx) * BzR - ct_state.dL_y(idx) * BzL);
-
-            if constexpr (Hall)
-            {
-                auto invRho  = 1.0 / ct_state.template getRhot<Direction::Y>()(idx);
-                auto JxB_x_L = ct_state.template getJt<Direction::Y>()(Component::Y)(idx)*BzL
-                               - ct_state.template getJt<Direction::Y>()(Component::Z)(idx)*B(
-                                   Component::Y)(idx);
-                auto JxB_x_R = ct_state.template getJt<Direction::Y>()(Component::Y)(idx)*BzR
-                               - ct_state.template getJt<Direction::Y>()(Component::Z)(idx)*B(
-                                   Component::Y)(idx);
-
-                auto HallL = -JxB_x_L * invRho;
-                auto HallR = -JxB_x_R * invRho;
-
-                auto F_Bz_y = ct_state.aL_y(idx) * HallL + ct_state.aR_y(idx) * HallR;
-
-                Ex(idx) += -F_Bz_y;
-            }
         }
         else if constexpr (dimension == 3)
         {
@@ -125,22 +109,6 @@ private:
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
-
-            if constexpr (Hall)
-            {
-                auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getJt<Direction::Z>()(Component::Y), idx);
-                auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getJt<Direction::Y>()(Component::Z), idx);
-
-                auto [rhoS, rhoN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getRhot<Direction::Z>(), idx);
-                auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getRhot<Direction::Y>(), idx);
-
-                Ex(idx) += -(aB * jzB * ByB / rhoB + aT * jzT * ByT / rhoT)
-                           + (aS * jyS * BzS / rhoS + aN * jyN * BzN / rhoN);
-            }
         }
     }
 
@@ -158,24 +126,6 @@ private:
 
             Ey(idx) = (ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       - (ct_state.dR_x(idx) * BzR - ct_state.dL_x(idx) * BzL);
-
-            if constexpr (Hall)
-            {
-                auto invRho  = 1.0 / ct_state.template getRhot<Direction::X>()(idx);
-                auto JxB_y_L = ct_state.template getJt<Direction::X>()(Component::Z)(idx)*B(
-                                   Component::X)(idx)
-                               - ct_state.template getJt<Direction::X>()(Component::X)(idx)*BzL;
-                auto JxB_y_R = ct_state.template getJt<Direction::X>()(Component::Z)(idx)*B(
-                                   Component::X)(idx)
-                               - ct_state.template getJt<Direction::X>()(Component::X)(idx)*BzR;
-
-                auto HallL = JxB_y_L * invRho;
-                auto HallR = JxB_y_R * invRho;
-
-                auto F_Bz_x = ct_state.aL_x(idx) * HallL + ct_state.aR_x(idx) * HallR;
-
-                Ey(idx) += F_Bz_x;
-            }
         }
         else if constexpr (dimension == 3)
         {
@@ -215,20 +165,6 @@ private:
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
-
-            if constexpr (Hall)
-            {
-                auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getJt<Direction::Z>()(Component::X), idx);
-                auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getJt<Direction::X>()(Component::Z), idx);
-                auto [rhoW, rhoE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getRhot<Direction::Z>(), idx);
-                auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getRhot<Direction::X>(), idx);
-                Ey(idx) += -(aW * jxW * BzW / rhoW + aE * jxE * BzE / rhoE)
-                           + (aB * jzB * BxB / rhoB + aT * jzT * BxT / rhoT);
-            }
         }
     }
 
@@ -246,24 +182,6 @@ private:
 
             Ez(idx) = -(ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       + (ct_state.dR_x(idx) * ByR - ct_state.dL_x(idx) * ByL);
-
-            if constexpr (Hall)
-            {
-                auto invRho  = 1.0 / ct_state.template getRhot<Direction::X>()(idx);
-                auto JxB_z_L = ct_state.template getJt<Direction::X>()(Component::X)(idx)*ByL
-                               - ct_state.template getJt<Direction::X>()(Component::Y)(idx)*B(
-                                   Component::X)(idx);
-                auto JxB_z_R = ct_state.template getJt<Direction::X>()(Component::X)(idx)*ByR
-                               - ct_state.template getJt<Direction::X>()(Component::Y)(idx)*B(
-                                   Component::X)(idx);
-
-                auto HallL = -JxB_z_L * invRho;
-                auto HallR = -JxB_z_R * invRho;
-
-                auto F_By_x = ct_state.aL_x(idx) * HallL + ct_state.aR_x(idx) * HallR;
-
-                Ez(idx) += -F_By_x;
-            }
         }
         else if constexpr (dimension >= 2)
         {
@@ -304,27 +222,10 @@ private:
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);
-
-            if constexpr (Hall)
-            {
-                auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getJt<Direction::X>()(Component::Y), idx);
-                auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getJt<Direction::Y>()(Component::X), idx);
-
-                auto [rhoS, rhoN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getRhot<Direction::X>(), idx);
-                auto [rhoW, rhoE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getRhot<Direction::Y>(), idx);
-
-                Ez(idx) += (aW * jxW * ByW / rhoW + aE * jxE * ByE / rhoE)
-                           - (aS * jyS * BxS / rhoS + aN * jyN * BxN / rhoN);
-            }
         }
     }
 
     GridLayout layout_;
-    bool const is_dissipative_;
 };
 } // namespace PHARE::core
 

@@ -217,19 +217,32 @@ Only what the tests and measurements of this documentation support:
 * **Cost.** Ghost layers: 2 for ``Constant``, 4 for the others. Flux computations per
   step: 1, 2, 3, 5 for ``Euler``, ``TVDRK2``, ``TVDRK3``, ``SSPRK4_5``.
 * **Hall.** With ``hall=True`` the step must follow the whistler limit, :math:`\Delta t\propto\Delta x^2`
-  (:doc:`mhd_time_integration`).
+  (:doc:`mhd_time_integration`). Without hyper-resistivity (``nu=0``) use ``TVDRK3`` or
+  ``SSPRK4_5``: ``Euler`` and ``TVDRK2`` are unstable at the grid scale whatever the step.
 
 Extra terms
 -----------
 
-* **Hall** (``hall=True``): the field :math:`\mathbf J\times\mathbf B/\rho` is added to the
-  flux of B and of energy, and to the electric field on the edges
-  (:src:`src/core/numerics/MHD_equations/MHD_equations.hpp#L113-L144`).
-* **Resistivity** ``eta``: :math:`\mathbf E_\mathrm{diss}=\eta\mathbf J`. **Hyper-resistivity** ``nu``:
+* **Hall** (``hall=True``): the field :math:`\mathbf J\times\mathbf B/\rho`, computed on the
+  cell edges from J on the edges (see below).
+* **Resistivity** ``eta``: :math:`\eta\mathbf J`. **Hyper-resistivity** ``nu``:
   :math:`-\nu\nabla^2\mathbf J`, or with ``hyper_mode="spatial"`` the coefficient
-  :math:`\nu\,\Delta x^2(|\mathbf B|/\rho+1)`
-  (:src:`src/core/numerics/constrained_transport/dissipative_electric_field.hpp#L63-L113`).
-  They add to the electric field and to the fluxes of B and energy.
+  :math:`\nu\,\Delta x^2(|\mathbf B|/\rho+1)`.
+* These terms form the *non-ideal* electric field :math:`\mathbf E_\mathrm{ni}`, computed on the
+  cell edges, where E lives, by ``NonIdealElectricField``
+  (``src/core/numerics/constrained_transport/non_ideal_electric_field.hpp``). It is added to
+  the edge field that advances B, and to the face fluxes of B and of energy (as
+  :math:`\mathbf E_\mathrm{ni}\times\mathbf B`). The Riemann solvers see ideal MHD only.
+* In the Hall field :math:`E_c = (J_a B_b - J_b B_a)/\rho`, each product :math:`J_a B_b/\rho` is
+  computed on the face that stores :math:`B_b`, with :math:`J_a` and :math:`\rho` averaged to that
+  face, and then averaged to the edge of :math:`E_c`. The two currents of one product pair then
+  carry the same weight :math:`B_b/\rho`, so the discrete Hall field does no work
+  (:math:`\sum_\text{edges}\mathbf J\cdot\mathbf E_\text{Hall}=0`, as in the continuum).
+  Linearised about a uniform B along a grid axis, its discrete curl vanishes for
+  :math:`\mathbf k\perp\mathbf B`, as the continuous one does. For an oblique B it does not
+  vanish exactly: with :math:`\mathbf k\perp\mathbf B` the discrete Hall field is then a
+  truncation error, of order :math:`(k\Delta x)^2` relative to its size for
+  :math:`\mathbf k\parallel\mathbf B`.
 * There is no density or pressure floor: the line that would apply one is commented out
   (:src:`src/core/numerics/primite_conservative_converter/to_primitive_converter.hpp#L26-L28`).
 

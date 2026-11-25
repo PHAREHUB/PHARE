@@ -7,7 +7,7 @@
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
-#include <vector>
+#include <stdexcept>
 
 namespace PHARE::core
 {
@@ -18,50 +18,7 @@ class UpwindConstrainedTransportState
     using Field                     = VecField::field_type;
     constexpr static auto dimension = VecField::dimension;
 
-    // Bundles heterogeneous resources (Fields and VecFields), so they can be exposed by the runtime
-    // resource view list of UpwindConstrainedTransportState. Hence, related memory can be allocated
-    // only when necessary based on a runtime criterion.
-    struct TransverseResistiveState
-    {
-        NO_DISCARD auto getCompileTimeResourcesViewList()
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(jt_x, rhot_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y);
-            else
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y, jt_z, rhot_z);
-        }
-
-        NO_DISCARD auto getCompileTimeResourcesViewList() const
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(jt_x, rhot_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y);
-            else
-                return std::forward_as_tuple(jt_x, rhot_x, jt_y, rhot_y, jt_z, rhot_z);
-        }
-
-        /// those 'transverse' current and density fields are an average value on faces (hence _x,
-        /// _y, _z) of left and right states. The averaging formula depends on the Riemann solver.
-        VecField jt_x{"j_t_x", MHDQuantity::Vector::VecFlux_x};
-        VecField jt_y{"j_t_y", MHDQuantity::Vector::VecFlux_y};
-        VecField jt_z{"j_t_z", MHDQuantity::Vector::VecFlux_z};
-
-        Field rhot_x{"rho_t_x", MHDQuantity::Scalar::ScalarFlux_x};
-        Field rhot_y{"rho_t_y", MHDQuantity::Scalar::ScalarFlux_y};
-        Field rhot_z{"rho_t_z", MHDQuantity::Scalar::ScalarFlux_z};
-    };
-
 public:
-    UpwindConstrainedTransportState() = default;
-    explicit UpwindConstrainedTransportState(bool const isHall)
-    {
-        if (isHall)
-            transverse_state_.emplace_back();
-    }
-
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         if constexpr (dimension == 1)
@@ -92,37 +49,6 @@ public:
                 "Error - UpwindConstrainedTransportState - dimension not supported");
     }
 
-    NO_DISCARD std::vector<TransverseResistiveState>& getRunTimeResourcesViewList()
-    {
-        return transverse_state_;
-    }
-    NO_DISCARD std::vector<TransverseResistiveState> const& getRunTimeResourcesViewList() const
-    {
-        return transverse_state_;
-    }
-
-    template<auto direction>
-    auto& getJt()
-    {
-        if constexpr (direction == Direction::X)
-            return transverse_state_[0].jt_x;
-        else if constexpr (direction == Direction::Y)
-            return transverse_state_[0].jt_y;
-        else if constexpr (direction == Direction::Z)
-            return transverse_state_[0].jt_z;
-    }
-
-    template<auto direction>
-    auto& getRhot() const
-    {
-        if constexpr (direction == Direction::X)
-            return transverse_state_[0].rhot_x;
-        else if constexpr (direction == Direction::Y)
-            return transverse_state_[0].rhot_y;
-        else if constexpr (direction == Direction::Z)
-            return transverse_state_[0].rhot_z;
-    }
-
     template<auto direction>
     void save(auto const vt, auto const& coefs, MeshIndex<dimension> const& idx)
     {
@@ -143,25 +69,6 @@ public:
             assign_fields(vt_y, aL_y, aR_y, dL_y, dR_y);
         else if constexpr (direction == Direction::Z)
             assign_fields(vt_z, aL_z, aR_z, dL_z, dR_z);
-    }
-
-    template<auto direction>
-    void save(auto const& vt, auto const& jt, auto const rhot, auto const& coefs,
-              MeshIndex<dimension> const& idx)
-    {
-        save<direction>(vt, coefs, idx); // vt + uct coefficients
-
-        auto& jT              = getJt<direction>();
-        jT(Component::X)(idx) = jt.x;
-        jT(Component::Y)(idx) = jt.y;
-        jT(Component::Z)(idx) = jt.z;
-
-        if constexpr (direction == Direction::X)
-            transverse_state_[0].rhot_x(idx) = rhot;
-        else if constexpr (direction == Direction::Y)
-            transverse_state_[0].rhot_y(idx) = rhot;
-        else if constexpr (direction == Direction::Z)
-            transverse_state_[0].rhot_z(idx) = rhot;
     }
 
     /// those 'transverse' velocity fields are an average value on faces (hence _x,
@@ -188,11 +95,6 @@ public:
         aR_z{"aR_z", MHDQuantity::Scalar::ScalarFlux_z},
         dL_z{"dL_z", MHDQuantity::Scalar::ScalarFlux_z},
         dR_z{"dR_z", MHDQuantity::Scalar::ScalarFlux_z};
-
-private:
-    // this vector is expected to hold at most one element. This is weird, but this is the only way
-    // the resource manager can handle heterogeneous runtime resources for now.
-    std::vector<TransverseResistiveState> transverse_state_;
 };
 
 } // namespace PHARE::core
