@@ -274,8 +274,8 @@ class PatchLayoutIndependenceTest(SimulatorTest):
             nesting_buffer=1,
             tagging_threshold=0.1,
             resistivity=0.0,
-            # with it, E and B copies of shared nodes differ in the last bits where J is not
-            # zero: the hyper-resistive term reads level 0 B ghosts unfilled at init (#1582)
+            # the ideal-only Ohm is the vectorized kernel: without hyper-resistivity, this case
+            # checks that its vector loop and scalar remainder round shared nodes alike (#1611)
             hyper_resistivity=0.0,
             diag_options={
                 "format": "phareh5",
