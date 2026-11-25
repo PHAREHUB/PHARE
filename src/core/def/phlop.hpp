@@ -3,7 +3,15 @@
 
 #if __has_include("phlop/timing/mpi_scope_timer.hpp")
 
+// The timer is picked per translation unit: phlop::mpi:: (MPI_Wtime) if mpi.h is on the
+//  include path (amr, simulator, python), else serial phlop:: (core and core tests, no MPI).
+//  They are separate instances, samrai.cpp only initialises/writes phlop::mpi::, so scopes
+//  in TUs without MPI are not recorded there.
 #if __has_include("mpi.h")
+// phlop includes mpi.h itself, phare_mpi.hpp must come first: with -Dphare_configurator=ON
+//  its generated core/def/_gen_mpi.hpp is what defines OMPI/MPICH_SKIP_MPICXX, without it
+//  the MPI C++ bindings get compiled in and fail to link (no libmpi_cxx)
+#include "phare_mpi.hpp"                    // IWYU pragma: keep
 #include "phlop/timing/mpi_scope_timer.hpp" // IWYU pragma: keep
 #else
 #include "phlop/timing/scope_timer.hpp" // IWYU pragma: keep

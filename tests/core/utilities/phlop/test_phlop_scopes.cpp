@@ -19,7 +19,11 @@
 #include <filesystem>
 
 static_assert(PHARE_HAVE_PHLOP, "phlop headers not found");
+
 // no mpi.h for core only targets: the serial timer, the mpi timer is for mpirun runs
+#if __has_include("mpi.h")
+#error "core tests must not see mpi.h, check this target's link libraries"
+#endif
 static_assert(_PHLOP_TIMER_EXPORTED_ == 0, "expected phlop's serial timer");
 
 namespace
