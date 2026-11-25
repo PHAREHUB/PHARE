@@ -35,8 +35,10 @@ You choose where the fine levels go in one of two ways:
   This is simple and repeatable, and it is the mode of most tests.
 * ``refinement="tagging"``: PHARE looks at the solution as it runs, marks
   (*tags*) the cells where the magnetic field changes quickly, and puts fine
-  patches around them. The fine regions follow the physics. Hybrid and
-  :term:`MHD` runs use the same criterion, on the magnetic field.
+  patches around them. The fine regions follow the physics. By default,
+  hybrid and :term:`MHD` runs use the same criterion, on the magnetic field.
+  Other criteria and other quantities are chosen with the ``tagging``
+  keyword, see :doc:`amr_tagging`.
 
 .. note::
 
@@ -242,6 +244,11 @@ read from ``pyphare/pharein/simulation.py``.
        code units, so the threshold is relative to a field of order 1. Lower
        value, more cells tagged, larger fine regions.
      - 0.1. No check in Python.
+   * - ``tagging``
+     - ``"tagging"`` only. Dictionary choosing the criterion and the tagged
+       quantities, each with its own threshold. See :doc:`amr_tagging`.
+     - None: the default criterion on the magnetic field, with
+       ``tagging_threshold``. Giving it with ``"boxes"`` is an error.
    * - ``tag_buffer``
      - ``"tagging"`` only. Number of cells added around each tagged cell
        before the fine patches are built. Larger value, wider fine regions
