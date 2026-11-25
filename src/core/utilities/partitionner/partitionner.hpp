@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/span.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/data/particles/particle.hpp"
 
@@ -31,8 +31,7 @@ namespace core
      * are leaving the patch but not through physical boundaries.
      *
      */
-    template<typename ParticleIterator, typename BoxContainer,
-             is_iterable<BoxContainer> = dummy::value>
+    template<typename ParticleIterator, Spannable BoxContainer>
     auto partitionner(ParticleIterator begin, ParticleIterator end, BoxContainer boxes)
     {
         std::vector<ParticleIterator> iterators;
