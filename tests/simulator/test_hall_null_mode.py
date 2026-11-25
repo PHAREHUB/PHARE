@@ -107,6 +107,26 @@ def hall_on_off_ratios(
     return b_ratio, e_ratio
 
 
+def uniform_bx(x, y):
+    return 1.0 + 0.0 * x
+
+
+def parallel_by(x, y):
+    return perturbation(x, y, ((5, 0),))
+
+
+def parallel_b_ratio(reconstruction="WENOZ", limiter="None"):
+    b_ratio, _ = hall_on_off_ratios(
+        "parallel",
+        uniform_bx,
+        parallel_by,
+        zero,
+        reconstruction=reconstruction,
+        limiter=limiter,
+    )
+    return b_ratio
+
+
 class HallNullModeTest(unittest.TestCase):
     def test_hall_vanishes_at_first_order_for_b0_perp_k(self):
         def perp_bz(amp):
@@ -127,26 +147,10 @@ class HallNullModeTest(unittest.TestCase):
             self.assertLess(full / half, 2.2)
 
     def test_hall_acts_at_first_order_for_b0_parallel_k(self):
-        def bx(x, y):
-            return 1.0 + 0.0 * x
-
-        def by(x, y):
-            return perturbation(x, y, ((5, 0),))
-
-        b_ratio, _ = hall_on_off_ratios("parallel", bx, by, zero)
-        self.assertGreater(b_ratio, 1e-1)
+        self.assertGreater(parallel_b_ratio(), 1e-1)
 
     def test_hall_acts_at_first_order_linear_vanleer(self):
-        def bx(x, y):
-            return 1.0 + 0.0 * x
-
-        def by(x, y):
-            return perturbation(x, y, ((5, 0),))
-
-        b_ratio, _ = hall_on_off_ratios(
-            "parallel", bx, by, zero, reconstruction="Linear", limiter="VanLeer"
-        )
-        self.assertGreater(b_ratio, 1e-1)
+        self.assertGreater(parallel_b_ratio("Linear", "VanLeer"), 1e-1)
 
 
 if __name__ == "__main__":

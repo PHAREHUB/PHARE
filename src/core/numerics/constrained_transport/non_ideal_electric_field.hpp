@@ -6,7 +6,6 @@
 #include "core/numerics/differential_operators.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/index/index.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 

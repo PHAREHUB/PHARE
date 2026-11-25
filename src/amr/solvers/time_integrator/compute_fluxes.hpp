@@ -46,8 +46,6 @@ public:
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
         , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
-        , needsCurrent_{fVMethodInfo_.isHall() || fVMethodInfo_.isResistive()
-                        || fVMethodInfo_.isHyperResistive()}
     {
         // eta/nu are duplicated into both info structs
         assert(fVMethodInfo_.eta == constrainedTransportInfo_.eta
@@ -65,14 +63,12 @@ public:
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_);
         TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot, state.V, state.P);
 
-        if (needsCurrent_)
+        if (isNonIdeal_)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
-        }
-
-        if (isNonIdeal_)
             NonIdealElectricField_t{level, model, fVMethodInfo_}(non_ideal_electric_state_, state);
+        }
 
         FVMethod_t{level, model, fVMethodInfo_}(ct_, non_ideal_electric_state_, state, fluxes);
         TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.J);
@@ -109,7 +105,6 @@ private:
     core::NonIdealElectricFieldState<VecField> non_ideal_electric_state_{isNonIdeal_};
     double to_primitive_gamma_;
     double to_conservative_gamma_;
-    bool needsCurrent_;
 };
 } // namespace PHARE::solver
 
