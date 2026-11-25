@@ -60,8 +60,8 @@ def one(x, y):
     return 1.0 + 0.0 * x
 
 
-def perturbation(x, y, modes):
-    return AMP * sum(np.cos(2 * np.pi * (mx * x + my * y) / L) for mx, my in modes)
+def perturbation(x, y, modes, amp=AMP):
+    return amp * sum(np.cos(2 * np.pi * (mx * x + my * y) / L) for mx, my in modes)
 
 
 def level0_data(h5_filename):
@@ -74,16 +74,17 @@ def level0_data(h5_filename):
     return {name: sorted(rows, key=lambda r: r[0]) for name, rows in out.items()}
 
 
-def max_rel_diff(a, b):
+def max_rel_diff(a, b, amp):
     m = 0.0
     for name in a:
         for (la, da), (lb, db) in zip(a[name], b[name]):
             assert la == lb
+            assert np.all(np.isfinite(da)) and np.all(np.isfinite(db)), name
             m = max(m, float(np.max(np.abs(da - db))))
-    return m / AMP
+    return m / amp
 
 
-def hall_on_off_ratios(name, bx, by, bz):
+def hall_on_off_ratios(name, bx, by, bz, amp=AMP):
     dirs = {
         hall: f"phare_outputs/hall_null_mode/{name}_hall_{hall}"
         for hall in (True, False)
@@ -94,9 +95,11 @@ def hall_on_off_ratios(name, bx, by, bz):
     def load(d, pattern):
         return level0_data(glob.glob(f"{d}/{pattern}")[0])
 
-    b_ratio = max_rel_diff(load(dirs[True], "EM_B.h5"), load(dirs[False], "EM_B.h5"))
+    b_ratio = max_rel_diff(
+        load(dirs[True], "EM_B.h5"), load(dirs[False], "EM_B.h5"), amp
+    )
     e_ratio = max_rel_diff(
-        load(dirs[True], "*Etot*.h5"), load(dirs[False], "*Etot*.h5")
+        load(dirs[True], "*Etot*.h5"), load(dirs[False], "*Etot*.h5"), amp
     )
     print(f"{name}: B ratio {b_ratio:.3e}  Etot ratio {e_ratio:.3e}", flush=True)
     return b_ratio, e_ratio
@@ -104,12 +107,22 @@ def hall_on_off_ratios(name, bx, by, bz):
 
 class HallNullModeTest(unittest.TestCase):
     def test_hall_vanishes_at_first_order_for_b0_perp_k(self):
-        def bz(x, y):
-            return 1.0 + perturbation(x, y, MODES)
+        def perp_bz(amp):
+            def bz(x, y):
+                return 1.0 + perturbation(x, y, MODES, amp)
 
-        b_ratio, e_ratio = hall_on_off_ratios("perp", zero, zero, bz)
-        self.assertLess(b_ratio, 1e-2)
-        self.assertLess(e_ratio, 1e-2)
+            return bz
+
+        ratios = [
+            hall_on_off_ratios(f"perp_{amp:g}", zero, zero, perp_bz(amp), amp)
+            for amp in (AMP, AMP / 2)
+        ]
+        for b_ratio, e_ratio in ratios:
+            self.assertLess(b_ratio, 1e-2)
+            self.assertLess(e_ratio, 1e-2)
+        for full, half in zip(*ratios):
+            self.assertGreater(full / half, 1.8)
+            self.assertLess(full / half, 2.2)
 
     def test_hall_acts_at_first_order_for_b0_parallel_k(self):
         def bx(x, y):

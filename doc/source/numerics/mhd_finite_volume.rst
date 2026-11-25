@@ -238,8 +238,11 @@ Extra terms
   face, and then averaged to the edge of :math:`E_c`. The two currents of one product pair then
   carry the same weight :math:`B_b/\rho`, so the discrete Hall field does no work
   (:math:`\sum_\text{edges}\mathbf J\cdot\mathbf E_\text{Hall}=0`, as in the continuum).
-  Linearised about a uniform B, its discrete curl vanishes for :math:`\mathbf k\perp\mathbf B`,
-  as the continuous one does.
+  Linearised about a uniform B along a grid axis, its discrete curl vanishes for
+  :math:`\mathbf k\perp\mathbf B`, as the continuous one does. For an oblique B it does not
+  vanish exactly: with :math:`\mathbf k\perp\mathbf B` the discrete Hall field is then a
+  truncation error, of order :math:`(k\Delta x)^2` relative to its size for
+  :math:`\mathbf k\parallel\mathbf B`.
 * There is no density or pressure floor: the line that would apply one is commented out
   (:src:`src/core/numerics/primite_conservative_converter/to_primitive_converter.hpp#L26-L28`).
 

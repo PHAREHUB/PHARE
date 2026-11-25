@@ -55,7 +55,9 @@ public:
 private:
     void ExEq_(auto& ct_state, auto& Ex, auto const& B, MeshIndex<dimension> idx) const
     {
-        if constexpr (dimension == 2)
+        if constexpr (dimension == 1)
+            Ex(idx) = 0.;
+        else if constexpr (dimension == 2)
         {
             auto [BzL, BzR]
                 = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
