@@ -13,13 +13,7 @@ def _simulator_id_parts(sim):
         parts += [str(sim.interp_order), str(sim.refined_particle_nbr)]
 
     if sim.mhd_timestepper:
-        hall_active = "true" if sim.hall else "false"
-        parts += [
-            sim.reconstruction,
-            sim.limiter,
-            sim.riemann,
-            hall_active,
-        ]
+        parts += [sim.reconstruction, sim.limiter, sim.riemann]
 
     return parts
 

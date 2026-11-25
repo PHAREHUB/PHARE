@@ -20,19 +20,18 @@ class ComputeFluxes
     // using Layout        = MHDModel::gridlayout_type;
     using Dispatchers_t = Dispatchers<MHDModel>;
 
-    using Ampere_t                   = Dispatchers_t::Ampere_t;
-    using DissipativeElectricField_t = Dispatchers_t::DissipativeElectricField_t;
+    using Ampere_t = Dispatchers_t::Ampere_t;
 
     using FVMethod_t     = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FVMethodInfo_t = FVMethod_t::info_type;
 
-    constexpr static auto Hall = FVMethod_t::Hall;
-
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
-    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
+    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
+
+    using NonIdealElectricField_t = Dispatchers_t::NonIdealElectricField_t;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
@@ -47,17 +46,15 @@ public:
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
         , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
-        , needsCurrent_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()}
     {
         // eta/nu are duplicated into both info structs
         assert(fVMethodInfo_.eta == constrainedTransportInfo_.eta
                && fVMethodInfo_.nu == constrainedTransportInfo_.nu);
 
         // hyper-resistivity is only meaningful alongside the Hall term
-        if constexpr (!Hall)
-            if (fVMethodInfo_.isHyperResistive())
-                throw std::runtime_error(
-                    "Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled");
+        if (fVMethodInfo_.isHyperResistive() && !fVMethodInfo_.isHall())
+            throw std::runtime_error(
+                "Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled");
     }
 
     void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
@@ -66,17 +63,14 @@ public:
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_);
         TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot, state.V, state.P);
 
-        if (needsCurrent_)
+        if (isNonIdeal_)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
+            NonIdealElectricField_t{level, model, fVMethodInfo_}(non_ideal_electric_state_, state);
         }
 
-        if (isDissipative_)
-            DissipativeElectricField_t{level, model, fVMethodInfo_}(dissipative_electric_state_,
-                                                                    state);
-
-        FVMethod_t{level, model, fVMethodInfo_}(ct_, dissipative_electric_state_, state, fluxes);
+        FVMethod_t{level, model, fVMethodInfo_}(ct_, non_ideal_electric_state_, state, fluxes);
         TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.J);
 
         // unecessary if we decide to store both primitive and conservative variables
@@ -84,7 +78,7 @@ public:
         TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.rhoV, state.Etot);
 
         ConstrainedTransport_t{level, model,
-                               constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
+                               constrainedTransportInfo_}(ct_, non_ideal_electric_state_, state);
 
         bc.fillElectricGhosts(state.E, level, newTime);
     }
@@ -92,25 +86,25 @@ public:
     void registerResources(MHDModel& model)
     {
         model.resourcesManager->registerResources(ct_);
-        model.resourcesManager->registerResources(dissipative_electric_state_);
+        model.resourcesManager->registerResources(non_ideal_electric_state_);
     }
 
     void allocate(MHDModel& model, auto& patch, double const allocateTime) const
     {
         model.resourcesManager->allocate(ct_, patch, allocateTime);
-        model.resourcesManager->allocate(dissipative_electric_state_, patch, allocateTime);
+        model.resourcesManager->allocate(non_ideal_electric_state_, patch, allocateTime);
     }
 
 private:
     FVMethodInfo_t fVMethodInfo_;
     ConstrainedTransportInfo_t constrainedTransportInfo_;
-    bool const isDissipative_{fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()};
+    bool const isNonIdeal_{fVMethodInfo_.isHall() || fVMethodInfo_.isResistive()
+                           || fVMethodInfo_.isHyperResistive()};
 
-    core::UpwindConstrainedTransportState<VecField> ct_{Hall};
-    core::DissipativeElectricFieldState<VecField> dissipative_electric_state_{isDissipative_};
+    core::UpwindConstrainedTransportState<VecField> ct_{};
+    core::NonIdealElectricFieldState<VecField> non_ideal_electric_state_{isNonIdeal_};
     double to_primitive_gamma_;
     double to_conservative_gamma_;
-    bool needsCurrent_;
 };
 } // namespace PHARE::solver
 

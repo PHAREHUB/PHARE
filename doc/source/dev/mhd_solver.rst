@@ -70,8 +70,10 @@ One Euler stage
    text(a, 1, 1.12, "F(i−½)"); text(a, 2, 1.12, "F(i+½)")
    finish(fig, ax)
 
-* ``ComputeFluxes`` does panels 1–4: to primitive on the ghost box; J (and the dissipative
-  E) if Hall, η or ν; ``Godunov`` per direction; back to conservative; ``UpwindConstrainedTransport``;
+* ``ComputeFluxes`` does panels 1–4: to primitive on the ghost box; J and the non-ideal E
+  on the edges (``NonIdealElectricField``) if Hall, η or ν; ``Godunov`` per direction, then
+  the non-ideal E added to the face fluxes of B and energy; back to conservative;
+  ``UpwindConstrainedTransport``, which adds the non-ideal E to the edge E;
   fill E ghosts (:src:`src/amr/solvers/time_integrator/compute_fluxes.hpp#L63-L90`).
 * ``EulerUsingComputedFlux`` does panel 5 and fills the new state's ghosts
   (:src:`src/amr/solvers/time_integrator/euler_using_computed_flux.hpp#L24-L35`).
@@ -117,10 +119,13 @@ The tricks
 ----------
 
 Compile-time scheme, run-time integrator
-   **Problem.** Reconstruction, limiter, Riemann solver and Hall sit in the per-face loop.
+   **Problem.** Reconstruction, limiter and Riemann solver sit in the per-face loop.
    **Fix.** Template parameters (:src:`src/amr/solvers/mhd_resolver.hpp#L35-L131`); Python
    loads the compiled module for that combination (:src:`pyphare/pyphare/cpp/__init__.py#L8-L35`).
-   Integrator, η, ν stay run-time. :pr:`1233` (runtime integrator and resistivity).
+   Integrator, η, ν and Hall stay run-time: the Hall, resistive and hyper-resistive fields
+   are computed outside the per-face loop, on the edges, by ``NonIdealElectricField``, which
+   runs one loop per active term and tests the flags outside the loops. :pr:`1233` (runtime
+   integrator and resistivity).
 
 Invalid reconstruction/limiter pairs do not compile
    **Problem.** Only ``Linear`` uses a limiter; a half-configured build must not guess.

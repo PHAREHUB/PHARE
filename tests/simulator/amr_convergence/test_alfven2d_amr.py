@@ -9,7 +9,7 @@ dispersive) so the pair differs only in the Hall term and in the
 hyper-resistivity the whistler needs to reach order 2.
 
 Requires the build permutation
-  2,WENOZ,None,Rusanov,false  (in res/sim/all.txt).
+  2,WENOZ,None,Rusanov  (in res/sim/all.txt).
 """
 
 import os

@@ -1155,8 +1155,9 @@ class Simulation:
         * **riemann** (``str``), Riemann solver used at cell interfaces (e.g. "Rusanov").
         * **mhd_timestepper** (``str``), mandatory for an MHD simulation, time integration scheme for the MHD solver (e.g. "TVDRK3").
 
-        `reconstruction`, `limiter`, `riemann` and `hall` select which pre-compiled MHD module is
+        `reconstruction`, `limiter` and `riemann` select which pre-compiled MHD module is
         loaded, so their combination must be one that was built (see ``res/sim/all.txt``).
+        `hall` is a runtime option: any MHD module runs with or without the Hall term.
 
     Misc:
 

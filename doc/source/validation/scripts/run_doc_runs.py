@@ -44,7 +44,7 @@ BUILD_ARG = ["<build>"]  # the --build string as given (no absolute path in the 
 
 def conv(rec, lim, t, nx):
     RUNS.append((f"mhd_convergence_{rec}_{lim}_t{t}.txt", CONV,
-                 [rec, lim, "OUT", "SSPRK4_5", "5e-4", "1e-6", nx, str(t)], f"1_{rec}_{lim}_Rusanov_false"))
+                 [rec, lim, "OUT", "SSPRK4_5", "5e-4", "1e-6", nx, str(t)], f"1_{rec}_{lim}_Rusanov"))
 
 
 conv("Constant", "None", 1, "50:800")
@@ -55,17 +55,17 @@ for rec in ("WENO3", "WENOZ", "MP5"):
     conv(rec, "None", 10, "16,24,32,48,64")
 for rec, lim, riem in [("Constant", "None", "Rusanov"), ("Constant", "None", "HLL"), ("Constant", "None", "HLLD"),
                        ("Linear", "VanLeer", "Rusanov"), ("Linear", "MinMod", "Rusanov")]:
-    RUNS.append((f"mhd_shock_{rec}_{lim}_{riem}.txt", SHOCK, [rec, lim, riem, "OUT"], f"1_{rec}_{lim}_{riem}_false"))
+    RUNS.append((f"mhd_shock_{rec}_{lim}_{riem}.txt", SHOCK, [rec, lim, riem, "OUT"], f"1_{rec}_{lim}_{riem}"))
 for st, dts in [("Euler", ["0.0001953125", "0.000390625", "0.00078125", "0.0015625", "0.003125", "0.00625", "0.0125"]),
                 ("TVDRK2", ["0.0015625", "0.003125", "0.00625", "0.0125"]),
                 ("TVDRK3", ["0.0015625", "0.003125", "0.00625", "0.0125"]),
                 ("SSPRK4_5", ["0.0015625", "0.003125", "0.00625", "0.0125"])]:
     for dt in dts:
         RUNS.append((f"mhd_time_order_{st}_{dt}.txt", CONV, ["MP5", "None", "OUT", st, dt, "1e-6", "64", "10"],
-                     "1_MP5_None_Rusanov_false"))
+                     "1_MP5_None_Rusanov"))
 
-RUNS.append(("mhd_divb_init.txt", DIVB, ["init", "OUT"], "2_Linear_VanLeer_Rusanov_false"))
-RUNS.append(("mhd_divb_amr.txt", DIVB, ["amr", "OUT"], "2_Linear_VanLeer_Rusanov_false"))
+RUNS.append(("mhd_divb_init.txt", DIVB, ["init", "OUT"], "2_Linear_VanLeer_Rusanov"))
+RUNS.append(("mhd_divb_amr.txt", DIVB, ["amr", "OUT"], "2_Linear_VanLeer_Rusanov"))
 
 # --check tolerances. The committed files were written with single-precision diagnostics (float32 output, ~1e-13
 # resolution on B ~ 1e-6); a CI build may write double precision and use another compiler (gcc, clang, -O3). So:

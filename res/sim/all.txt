@@ -31,40 +31,33 @@
 3,3,6
 3,3,12
 3,3,27
-# --- MHD-only builds (dim,reconstruction,limiter,riemann,hall) ---
+# --- MHD-only builds (dim,reconstruction,limiter,riemann) ---
+# hall is a runtime option: each line serves Hall and non-Hall runs
 # --- one line per single-run functional test ---
-# mhd_harris (higher-order, kept)
-2,WENOZ,None,Rusanov,true
-# mhd_harris_3d (higher-order, kept)
-3,WENOZ,None,Rusanov,true
-# mhd_alfven2d, mhd_rotor, mhd_orszagtang (ideal)
-2,Linear,VanLeer,Rusanov,false
-# mhd_shock (also covers 1D convergence @ Linear)
-1,Linear,VanLeer,Rusanov,false
-# mhd_dispersion (whistler1d, Hall)
-1,Linear,VanLeer,Rusanov,true
+# mhd_harris, mhd_harris_3d (Hall), hall_null_mode
+# amr_convergence alfven2d (ideal) and whistler2d (Hall)
+2,WENOZ,None,Rusanov
+3,WENOZ,None,Rusanov
+# mhd_alfven2d, mhd_rotor, mhd_orszagtang (ideal), hall_null_mode (Linear)
+2,Linear,VanLeer,Rusanov
+# mhd_shock (also covers 1D convergence @ Linear), mhd_dispersion whistler1d (Hall)
+1,Linear,VanLeer,Rusanov
 # mhd_orszagtang_3d (also covers 3D convergence @ Linear)
-3,Linear,VanLeer,Rusanov,false
+3,Linear,VanLeer,Rusanov
 # --- mhd_convergence (1D): remaining reconstructions ---
-1,Constant,None,Rusanov,false
-1,WENO3,None,Rusanov,false
-1,WENOZ,None,Rusanov,false
-1,MP5,None,Rusanov,false
+1,Constant,None,Rusanov
+1,WENO3,None,Rusanov
+1,WENOZ,None,Rusanov
+1,MP5,None,Rusanov
 # --- mhd_multidimensional_convergence (3D): remaining order-2 reconstructions ---
-3,WENO3,None,Rusanov,false
-3,WENOZ,None,Rusanov,false
-3,MP5,None,Rusanov,false
-# --- tests/simulator/amr_convergence (2D) ---
-# both members share the solver numerics and differ only in the Hall term
+3,WENO3,None,Rusanov
+3,MP5,None,Rusanov
 # (no semicolons in comments -- CMake file(STRINGS) splits lines on them)
-# alfven2d (ideal)
-2,WENOZ,None,Rusanov,false
-# whistler2d (Hall) reuses the mhd_harris permutation above
 # --- coverage-only: gaps not hit by any test ---
-1,Linear,MinMod,Rusanov,false
-1,Constant,None,HLL,false
-1,Constant,None,HLLD,false
-# --- coupled build (dim,interp,nbRefinedPart,reconstruction,limiter,riemann,hall) ---
+1,Linear,MinMod,Rusanov
+1,Constant,None,HLL
+1,Constant,None,HLLD
+# --- coupled build (dim,interp,nbRefinedPart,reconstruction,limiter,riemann) ---
 # proven by a one-timestep gate: mhd_harris/harris.py's config with interp_order/
-# refined_particle_nbr forced explicit (its own default is 5-field MHD-only)
-2,1,4,WENOZ,None,Rusanov,true
+# refined_particle_nbr forced explicit (its own default is 4-field MHD-only)
+2,1,4,WENOZ,None,Rusanov

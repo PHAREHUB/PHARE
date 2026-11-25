@@ -57,9 +57,9 @@ constexpr std::uint32_t nbrGhostsFromInterpOrder()
  *   against (see coarse_cell_round_out.hpp and
  *   MagneticRefinePatchStrategy::reconstructionRegion)
  *
- * There is no hyper-resistivity layer: the dissipative electric field takes its Laplacian on J at
+ * There is no hyper-resistivity layer: the non-ideal electric field takes its Laplacian on J at
  * its native edge location, and the flux contributions project it to the face, so they stay within
- * the reconstruction reach. See DissipativeElectricField and Godunov::transverse_on_face_.
+ * the reconstruction reach. See NonIdealElectricField and Godunov::transverse_on_face_.
  */
 template<std::uint32_t reconstruction_nghosts>
 constexpr std::uint32_t nbrGhostsFromReconstruction()

@@ -80,7 +80,7 @@ def config(settings):
         reconstruction="Linear",
         limiter="VanLeer",
         riemann="Rusanov",
-        mhd_timestepper="TVDRK2",
+        mhd_timestepper="TVDRK3",
         hall=True,
         model_options=["MHDModel"],
     )

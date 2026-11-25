@@ -12,7 +12,6 @@ namespace PHARE::core
 {
 
 
-template<bool Hall>
 class HLLD
 {
 public:
@@ -39,31 +38,7 @@ public:
         return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
     }
 
-    template<auto direction>
-    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR, auto const& jL, auto const& jR)
-    {
-        auto hlld_speeds = hlld_speeds_<direction>(uL, uR, jL, jR);
-
-        auto const [uL_s, uL_ss, uR_ss, uR_s]
-            = hlld_intermediate_states_<direction>(uL, uR, fL, fR, hlld_speeds);
-
-        uL.to_conservative(gamma_);
-        uR.to_conservative(gamma_);
-
-        auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
-            = hlld_(uL.as_tuple(), uL_s.as_tuple(), uL_ss.as_tuple(), uR_ss.as_tuple(),
-                    uR_s.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hlld_speeds);
-
-        return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
-    }
-
     // using HLL averages here following PLUTO and Idefix implementation
-    auto riemann_averaging(auto const& L, auto const& R) const
-    {
-        auto const inv = 1.0 / (SR_ - SL_);
-        return (SR_ * L - SL_ * R) * inv;
-    }
-
     auto vector_riemann_averaging(auto const& L, auto const& R) const
     {
         auto const inv = 1.0 / (SR_ - SL_);
@@ -73,9 +48,6 @@ public:
 
     std::array<double, 4> uct_coefs;
     PerIndexVector<double> vt{std::nan(""), std::nan(""), std::nan("")};
-
-    PerIndexVector<double> jt{std::nan(""), std::nan(""), std::nan("")};
-    double rhot{std::nan("")};
 
 private:
     double const gamma_;
@@ -520,65 +492,6 @@ private:
     //     return hlld_intermediate_states(fL, fR);
     // }
 
-    template<auto direction>
-    auto hlld_speeds_(auto const& uL, auto const& uR, auto const& jL, auto const& jR)
-    {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
-
-        auto compute_hll_speeds
-            = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
-                  auto VcompR, auto BcompL, auto BcompR) {
-                  auto cfastL = compute_fast_magnetosonic_(gamma_, uL.rho, BcompL, BdotBL, uL.P);
-                  auto cfastR = compute_fast_magnetosonic_(gamma_, uR.rho, BcompR, BdotBR, uR.P);
-                  auto SL     = std::min({VcompL - cfastL, VcompR - cfastR});
-                  auto SR     = std::max({VcompL + cfastL, VcompR + cfastR});
-
-                  return std::make_tuple(SL, SR);
-              };
-
-        auto compute_hlld_speeds
-            = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
-                  auto VcompR, auto BcompL, auto BcompR) {
-                  auto [SL, SR] = compute_hll_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VcompL,
-                                                     VcompR, BcompL, BcompR);
-
-                  auto PtL = PL + 0.5 * BdotBL;
-                  auto PtR = PR + 0.5 * BdotBR;
-
-                  auto const Bn = BcompL; // is the same on both sides
-
-                  auto SM_numerator
-                      = rhoR * VcompR * (SR - VcompR) - rhoL * VcompL * (SL - VcompL) - PtR + PtL;
-                  auto SM_denominator = rhoR * (SR - VcompR) - rhoL * (SL - VcompL);
-                  auto SM             = SM_numerator / SM_denominator;
-
-                  auto const rhoL_s = rhoL * (SL - VcompL) / (SL - SM);
-                  auto const rhoR_s = rhoR * (SR - VcompR) / (SR - SM);
-
-                  auto const SL_s = SM - std::abs(Bn) / std::sqrt(rhoL_s);
-                  auto const SR_s = SM + std::abs(Bn) / std::sqrt(rhoR_s);
-
-                  auto hlld_speeds = std::make_tuple(SL, SL_s, SM, SR_s, SR);
-
-                  uct_coefs_<direction>(uL, uR, jL, jR, hlld_speeds);
-
-
-                  return hlld_speeds;
-              };
-
-
-        if constexpr (direction == Direction::X)
-            return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                       uL.B.x, uR.B.x);
-        else if constexpr (direction == Direction::Y)
-            return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                       uL.B.y, uR.B.y);
-        else if constexpr (direction == Direction::Z)
-            return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                       uL.B.z, uR.B.z);
-    }
-
     auto hlld_(auto const uL, auto const uL_s, auto const uL_ss, auto const uR_ss, auto const uR_s,
                auto const uR, auto const fL, auto const fR, auto const hlld_speeds) const
     {
@@ -651,17 +564,6 @@ private:
         }
 
         vt = vector_riemann_averaging(uL.V, uR.V);
-    }
-
-    template<auto direction>
-    void uct_coefs_(auto const& uL, auto const& uR, auto const& jL, auto const& jR,
-                    auto const& hlld_speeds)
-    {
-        uct_coefs_<direction>(uL, uR, hlld_speeds);
-
-        jt = vector_riemann_averaging(jL, jR);
-
-        rhot = riemann_averaging(uL.rho, uR.rho);
     }
 };
 } // namespace PHARE::core

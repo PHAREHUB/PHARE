@@ -35,6 +35,19 @@ struct OhmInfo
 };
 
 
+struct NonIdealInfo : public OhmInfo
+{
+    bool const hall;
+
+    bool isHall() const { return hall; }
+
+    NonIdealInfo static FROM(initializer::PHAREDict const& dict)
+    {
+        return {{OhmInfo::FROM(dict)}, cppdict::get_value(dict, "hall", false)};
+    }
+};
+
+
 template<typename GridLayout>
 class Ohm : public OhmInfo
 {

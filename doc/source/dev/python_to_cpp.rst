@@ -81,8 +81,9 @@ each line into its own module, compiled from the same source file with the
 line as a macro (``PHARE_SIM_STR``). In that module,
 ``resolve_simulator_options()`` turns the macro into the ``SimOpts`` of the
 module (:src:`src/python3/cpp_simulator.hpp#L34-L38`). A line has 3 fields
-for a hybrid build (``dim,interp,refined_particle_nbr``), 5 for an MHD build
-(``dim,reconstruction,limiter,riemann,hall``), 7 when it carries both.
+for a hybrid build (``dim,interp,refined_particle_nbr``), 4 for an MHD build
+(``dim,reconstruction,limiter,riemann``), 6 when it carries both. ``hall`` is not part
+of the line: it is read at run time.
 
 **What you see when it is missing.** If the run needs a combination that was
 not built, ``cpp_lib`` raises ``ModuleNotFoundError`` with the exact line to

@@ -112,22 +112,19 @@ struct SlopeLimiterSelector<MHDOpts::ReconstructionType::Linear, MHDOpts::SlopeL
 template<>
 struct RiemannSolverSelector<MHDOpts::RiemannSolverType::Rusanov>
 {
-    template<bool Hall>
-    using type = core::Rusanov<Hall>;
+    using type = core::Rusanov;
 };
 
 template<>
 struct RiemannSolverSelector<MHDOpts::RiemannSolverType::HLL>
 {
-    template<bool Hall>
-    using type = core::HLL<Hall>;
+    using type = core::HLL;
 };
 
 template<>
 struct RiemannSolverSelector<MHDOpts::RiemannSolverType::HLLD>
 {
-    template<bool Hall>
-    using type = core::HLLD<Hall>;
+    using type = core::HLLD;
 };
 
 
@@ -136,13 +133,10 @@ struct MHDResolver
 {
     // Get the types from opts
 
-    static constexpr bool Hall = opts.Hall;
-
     using SlopeLimiter
         = SlopeLimiterSelector<opts.reconstruction_type, opts.slope_limiter_type>::type;
 
-    template<bool HallFlag>
-    using RiemannSolver = RiemannSolverSelector<opts.riemann_solver_type>::template type<HallFlag>;
+    using RiemannSolver = RiemannSolverSelector<opts.riemann_solver_type>::type;
 
     template<typename Layout, typename Limiter>
     using Reconstruction
@@ -152,9 +146,9 @@ struct MHDResolver
 
     using GridLayout = MHDModel::gridlayout_type;
 
-    using Equations_t = core::MHDEquations<Hall>;
+    using Equations_t = core::MHDEquations;
 
-    using RiemannSolver_t = RiemannSolver<Hall>;
+    using RiemannSolver_t = RiemannSolver;
 
     template<typename Layout>
     using Reconstruction_t = Reconstruction<Layout, SlopeLimiter>;

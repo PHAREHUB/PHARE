@@ -115,8 +115,9 @@ consequences: :doc:`/numerics/mhd_finite_volume`):
 * ``eta``, ``nu``: resistivity and hyper-resistivity (default 0; ``nu`` needs ``hall=True``),
   with ``hyper_mode``: ``"constant"`` (default) or ``"spatial"``.
 
-``reconstruction``, ``limiter``, ``riemann``, ``hall`` and the dimension are fixed when PHARE
-is compiled: not every combination is built by default (:doc:`/numerics/mhd_finite_volume`).
+``reconstruction``, ``limiter``, ``riemann`` and the dimension are fixed when PHARE is
+compiled: not every combination is built by default (:doc:`/numerics/mhd_finite_volume`).
+``hall`` is chosen at run time: every build runs with or without the Hall term.
 
 What it does
 ------------
@@ -227,11 +228,11 @@ More on the scheme options
   MHD run and have no effect.
 * ``max_mhd_level`` is meant for a future run mixing MHD and hybrid
   :term:`levels <level>`, which does not work yet: leave it at its default.
-* Which combinations of ``reconstruction``, ``limiter``, ``riemann``, ``hall``
-  and dimension are built by default: :ref:`which-combinations`. To see what
+* Which combinations of ``reconstruction``, ``limiter``, ``riemann`` and
+  dimension are built by default: :ref:`which-combinations`. To see what
   your own build contains, run
   ``python3 -c "from pyphare import cpp; print(cpp.built_simulator_ids())"``
-  (MHD entries read ``<dim>_<reconstruction>_<limiter>_<riemann>_<hall>``).
+  (MHD entries read ``<dim>_<reconstruction>_<limiter>_<riemann>``).
 
 
 Domain boundaries
@@ -265,9 +266,9 @@ Common mistakes
 
   .. code-block:: text
 
-     ModuleNotFoundError: No module named 'pybindlibs.cpp_1_linear_VanLeer_Rusanov_false'.
+     ModuleNotFoundError: No module named 'pybindlibs.cpp_1_linear_VanLeer_Rusanov'.
      This run needs the build permutation
-         1,linear,VanLeer,Rusanov,false
+         1,linear,VanLeer,Rusanov
      Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.
      Permutations currently built:
          ...
@@ -276,7 +277,7 @@ Common mistakes
   side does not check the names, so the same message appears for
   ``riemann="rusanov"``, or for a limiter with a non-Linear reconstruction such
   as ``reconstruction="WENOZ", limiter="VanLeer"``
-  (``1,WENOZ,VanLeer,Rusanov,false``). Leaving ``limiter`` out gives the same
+  (``1,WENOZ,VanLeer,Rusanov``). Leaving ``limiter`` out gives the same
   message with an empty name: write ``limiter="None"`` for the schemes that
   take no limiter.
 
@@ -344,7 +345,7 @@ Common mistakes
 
 * **Hybrid options in an MHD run.** ``interp_order`` is accepted by Python, but
   it asks for a hybrid+MHD module that is not built: the run stops with
-  ``No module named 'pybindlibs.cpp_1_1_2_Linear_VanLeer_Rusanov_false'``.
+  ``No module named 'pybindlibs.cpp_1_1_2_Linear_VanLeer_Rusanov'``.
   ``refined_particle_nbr`` alone is rejected at once: ``Error:
   refined_particle_nbr is meaningless without a hybrid model (no interp_order
   given), it should be omitted``. Leave both out.

@@ -32,23 +32,6 @@ public:
         return std::make_pair(uL, uR);
     }
 
-    template<auto direction, auto srcX, auto srcY, auto srcZ, auto dst, typename VecField>
-    static auto center_reconstruct(VecField const& U, MeshIndex<VecField::dimension> index)
-    {
-        auto const& Ux = U(Component::X);
-        auto const& Uy = U(Component::Y);
-        auto const& Uz = U(Component::Z);
-
-        auto [UxL, UxR]
-            = Reconstruction::template center_reconstruct<direction, srcX, dst>(Ux, index);
-        auto [UyL, UyR]
-            = Reconstruction::template center_reconstruct<direction, srcY, dst>(Uy, index);
-        auto [UzL, UzR]
-            = Reconstruction::template center_reconstruct<direction, srcZ, dst>(Uz, index);
-
-        return std::make_tuple(PerIndexVector{UxL, UyL, UzL}, PerIndexVector{UxR, UyR, UzR});
-    }
-
     template<auto direction>
     static constexpr auto faceQuantity()
     {

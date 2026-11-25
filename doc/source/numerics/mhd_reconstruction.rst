@@ -38,8 +38,8 @@ What is reconstructed
 * **Magnetic field, the two other components.** They live on other faces. They are first
   averaged to the cell centre (in 1D they already sit there), then reconstructed like a cell
   value (:src:`src/core/numerics/reconstructions/reconstructor.hpp#L36-L51`, ``center_reconstruct``).
-* **Current (Hall runs only).** Same treatment as the transverse B
-  (:src:`src/core/numerics/godunov_fluxes/godunov_fluxes.hpp#L116-L130`).
+* **Current.** Not reconstructed: the Hall, resistive and hyper-resistive fields are computed
+  on the cell edges, outside the Riemann solver (:doc:`mhd_riemann_solvers`).
 
 Nothing is projected on characteristic variables: the reconstruction works on the primitive
 variables, one at a time.
