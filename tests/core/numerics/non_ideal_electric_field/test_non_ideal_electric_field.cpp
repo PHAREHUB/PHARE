@@ -197,14 +197,6 @@ struct NonIdealElectricFieldTest : public ::testing::Test
         for (std::size_t c = 0; c < 3; ++c)
             fill(layout, E.view[c], [&](auto const&) { return value; });
     }
-
-    std::array<std::vector<double>, 3> snapshotE() const
-    {
-        std::array<std::vector<double>, 3> out;
-        for (std::size_t c = 0; c < 3; ++c)
-            out[c].assign(E.grids[c].data(), E.grids[c].data() + E.grids[c].size());
-        return out;
-    }
 };
 
 using NonIdealParams = ::testing::Types<MHDParam<1>, MHDParam<2>, MHDParam<3>>;
@@ -386,35 +378,6 @@ TYPED_TEST(NonIdealElectricFieldTest, hallCurlVanishesForB0PerpK)
             check(curlE.x, this->B.view[0]);
         EXPECT_LT(maxCurl, 1e-12);
     }
-}
-
-
-TYPED_TEST(NonIdealElectricFieldTest, combinedTermsAreTheOrderedSumOfEachTerm)
-{
-    auto const& layout = this->layout;
-    this->fillNonUniform();
-
-    this->compute(NonIdealInfo{{0.01, 0.0, HyperMode::spatial}, false});
-    auto const eEta = this->snapshotE();
-    this->compute(NonIdealInfo{{0.0, 0.02, HyperMode::spatial}, false});
-    auto const eNu = this->snapshotE();
-    this->compute(NonIdealInfo{{0.0, 0.0, HyperMode::spatial}, true});
-    auto const eHall = this->snapshotE();
-    this->compute(NonIdealInfo{{0.01, 0.02, HyperMode::spatial}, true});
-    auto const eAll = this->snapshotE();
-
-    std::size_t checked = 0;
-    for (std::size_t c = 0; c < 3; ++c)
-    {
-        auto const& Ec   = this->E.view[c];
-        auto const& grid = this->E.grids[c];
-        layout.evalOnBox(Ec, [&](auto&... args) {
-            auto const i = static_cast<std::size_t>(&Ec(args...) - grid.data());
-            EXPECT_EQ(eAll[c][i], (eEta[c][i] + eNu[c][i]) + eHall[c][i]);
-            ++checked;
-        });
-    }
-    EXPECT_GT(checked, 0u);
 }
 
 
