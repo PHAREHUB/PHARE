@@ -83,10 +83,6 @@ namespace detail
  *     }
  * });
  * @endcode
- *
- * @see core::Ohm::operator() in core/numerics/ohm/ohm.hpp (two bools)
- * @see core::DissipativeElectricField::operator() in
- *      core/numerics/constrained_transport/dissipative_electric_field.hpp (two bools + an enum)
  */
 template<typename... Args>
 struct Constexprifier
