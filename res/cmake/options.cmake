@@ -66,6 +66,12 @@ option(withCaliper "Use LLNL Caliper" OFF)
 # -DwithPhlop=OFF - also interacts with CXX def -DPHARE_LOG_LEVEL=N
 option(withPhlop "Use phlop for scope timings and such" OFF)
 
+# both define the PHARE_LOG_SCOPE macros, see src/core/logger.hpp
+#  caliper.cmake also turns caliper on if CALIPER_ROOT is defined
+if (withPhlop AND (withCaliper OR DEFINED CALIPER_ROOT))
+  message(FATAL_ERROR "withPhlop and withCaliper (or CALIPER_ROOT) are mutually exclusive")
+endif()
+
 
 # -DuseExceptionsInsteadOfMPIAbort=ON
 option(useExceptionsInsteadOfMPIAbort "Exceptions use AllReduce!" OFF)
@@ -122,6 +128,7 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
+  message("build with phlop                            : " ${withPhlop})
   message("profile guided optimization generate        : " ${PGO_GEN})
   message("profile guided optimization use             : " ${PGO_USE})
 
