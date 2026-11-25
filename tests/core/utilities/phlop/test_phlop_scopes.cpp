@@ -1,6 +1,7 @@
 // PHARE_LOG_SCOPE recording into phlop, whatever log level PHARE itself is built with
 //  built only with -DwithPhlop=ON, see tests/core/utilities/CMakeLists.txt
 
+// undef: builds may pass these with -D, see res/cmake/options.cmake
 #undef PHARE_LOG_LEVEL
 #undef PHARE_LOG_SCOPE_FLAGS_1
 #undef PHARE_LOG_SCOPE_FLAGS_2
@@ -8,7 +9,7 @@
 #define PHARE_LOG_LEVEL 3
 #define PHARE_LOG_SCOPE_FLAGS_1 time, mem
 #define PHARE_LOG_SCOPE_FLAGS_2 time
-#define PHARE_LOG_SCOPE_FLAGS_3 time
+#define PHARE_LOG_SCOPE_FLAGS_3 time, mem // not the default, so forwarding is checked
 
 #include "core/logger.hpp"
 
@@ -83,7 +84,9 @@ TEST_F(PhlopScopesTest, eachLevelIsAScopeWithItsFlags)
     EXPECT_FALSE(l2.has_mem);
 
     ASSERT_EQ(l2.childs.size(), 1u);
-    EXPECT_EQ(l2.childs[0]->self->k, "level3");
+    auto const& l3 = *l2.childs[0];
+    EXPECT_EQ(l3.self->k, "level3");
+    EXPECT_TRUE(l3.has_mem); // PHARE_LOG_SCOPE_FLAGS_3
 }
 
 
