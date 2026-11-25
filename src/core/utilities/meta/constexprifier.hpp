@@ -85,8 +85,8 @@ namespace detail
  * @endcode
  *
  * @see core::Ohm::operator() in core/numerics/ohm/ohm.hpp (two bools)
- * @see core::Godunov::operator() in core/numerics/godunov_fluxes/godunov_fluxes.hpp
- *      (two bools + an enum)
+ * @see core::DissipativeElectricField::operator() in
+ *      core/numerics/constrained_transport/dissipative_electric_field.hpp (two bools + an enum)
  */
 template<typename... Args>
 struct Constexprifier

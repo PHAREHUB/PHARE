@@ -25,26 +25,24 @@ concept Iterable = std::ranges::range<T>;
 template<typename T, typename Index = int>
 concept Subscriptable = requires(T t, Index i) { t[i]; };
 
-/** recursively unwraps ::value_type, eg std::vector<std::array<double, 3>> => double
-    Stops: types that have a value_type but should be kept whole rather than unwrapped,
-      eg std::string, which would otherwise become char:
-        final_type_t<std::vector<std::string>>              => char
-        final_type_t<std::vector<std::string>, std::string> => std::string */
-template<typename T, typename... Stops>
+/** the innermost value type of nested std::vector / std::array, eg
+      std::vector<std::array<double, 3>> => double
+    other types are kept whole: std::vector<std::string> => std::string, std::optional<int> */
+template<typename T>
 struct final_type
 {
     using type = T;
 };
 
-template<typename T, typename... Stops>
-    requires(requires { typename T::value_type; } and not(std::same_as<T, Stops> or ...))
-struct final_type<T, Stops...>
+template<typename T>
+    requires(IsStdVector<T> or IsStdArray<T>)
+struct final_type<T>
 {
-    using type = final_type<typename T::value_type, Stops...>::type;
+    using type = final_type<typename T::value_type>::type;
 };
 
-template<typename T, typename... Stops>
-using final_type_t = final_type<T, Stops...>::type;
+template<typename T>
+using final_type_t = final_type<T>::type;
 
 } // namespace PHARE::core
 

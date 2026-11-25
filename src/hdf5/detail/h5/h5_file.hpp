@@ -175,7 +175,7 @@ public:
         // clang-format on
 
         auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
-            node.template createAttribute<core::final_type_t<Data, std::string>>(
+            node.template createAttribute<core::final_type_t<Data>>(
                     _key, HighFive::DataSpace::From(value))
                 .write(value);
         };
