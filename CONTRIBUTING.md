@@ -36,6 +36,8 @@ opening an issue.
     for new classes or concepts.
 - **Tests.** Bring unit or functional tests with the code as much as
   possible. If tests aren't included, explain why in the PR description.
+- **CodeRabbit** reviews PRs when they leave draft and pauses after 2 reviewed
+  pushes; comment `@coderabbitai review` when the PR is ready for another pass.
 
 Use the [PR template](.github/pull_request_template.md) — it mirrors this
 checklist.
