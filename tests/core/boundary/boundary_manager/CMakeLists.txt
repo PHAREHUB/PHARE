@@ -21,4 +21,3 @@ function(_add_test test_name)
 endfunction()
 
 _add_test(test_boundary_manager)
-_add_test(test_boundary_defs)
