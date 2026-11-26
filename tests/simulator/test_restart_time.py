@@ -43,6 +43,7 @@ class RecordingTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.simulator = None
+        self.diag_run_dirs = {}  # diag_dir given to build() -> where the run wrote it
 
     def tearDown(self):
         if self.simulator is not None:
@@ -52,10 +53,7 @@ class RecordingTest(SimulatorTest):
         super().tearDown()
 
     def out(self):
-        out = f"{OUT}/{self._testMethodName}"
-        if out not in self.diag_dirs:
-            self.register_diag_dir_for_cleanup(out)
-        return out
+        return f"{OUT}/{self._testMethodName}"
 
     def build(
         self,
@@ -66,8 +64,7 @@ class RecordingTest(SimulatorTest):
         **time_kwargs,
     ):
         out = self.out()
-        ph.global_vars.sim = None
-        ph.Simulation(
+        self.sim = self.simulation(
             interp_order=None,
             model_options=["MHDModel"],
             reconstruction="WENOZ",
@@ -90,6 +87,7 @@ class RecordingTest(SimulatorTest):
             },
             **time_kwargs,
         )
+        self.diag_run_dirs[diag_dir] = self.sim.diag_options["options"]["dir"]
         uniform_model()
         if diags:
             from pyphare.pharein.diagnostics import all_timestamps
@@ -125,7 +123,7 @@ class RecordingTest(SimulatorTest):
     def diag_times(self, diag_dir):
         import h5py
 
-        path = next(Path(f"{self.out()}/{diag_dir}").glob("*.h5"))
+        path = next(Path(self.diag_run_dirs[diag_dir]).glob("*.h5"))
         with h5py.File(path, "r") as f:
             return sorted(f["t"].keys(), key=float)
 
@@ -327,7 +325,7 @@ class RestartTimeTest(RecordingTest):
     def strip_phare_time(self):
         import h5py
 
-        for path in Path(f"{self.out()}/restarts").glob("*/restore.*/nodes.*/proc.*"):
+        for path in Path(self.sim.restart_options["dir"]).glob("*/restore.*/nodes.*/proc.*"):
             with h5py.File(path, "a") as f:
                 del f["phare"].attrs["time"]
 
@@ -337,13 +335,13 @@ class RestartTimeTest(RecordingTest):
         self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
         if cpp.mpi_rank() == 0:
             self.strip_phare_time()
-            for path in Path(f"{self.out()}/restarts").glob(
+            for path in Path(self.sim.restart_options["dir"]).glob(
                 "*/restore.*/nodes.*/proc.*"
             ):
                 with h5py.File(path, "a") as f:
                     del f["TimeRefinementIntegrator"]
         cpp.mpi_barrier()
-        folder = cpp.cpp_etc_lib().restart_path_for_time(f"{self.out()}/restarts", 0.3)
+        folder = cpp.cpp_etc_lib().restart_path_for_time(self.sim.restart_options["dir"], 0.3)
         with self.assertRaisesRegex(RuntimeError, "holds no restart time"):
             cpp.cpp_etc_lib().restored_time(folder)
 
@@ -363,7 +361,7 @@ class RestartTimeTest(RecordingTest):
         self.assert_ulp_close(tB, tA[10:])
         if cpp.mpi_rank() == 0:
             folder = cpp.cpp_etc_lib().restart_path_for_time(
-                f"{self.out()}/restarts", 10 * dt
+                self.sim.restart_options["dir"], 10 * dt
             )
             code = (
                 "from pyphare import cpp; "
@@ -426,7 +424,7 @@ class RestartTimeTest(RecordingTest):
 
     def test_restored_time_without_mpi_layout_match(self):
         tA = self.run_recording(dict(timestamps=[0.3]), **CONSTANT)
-        folder = cpp.cpp_etc_lib().restart_path_for_time(f"{self.out()}/restarts", 0.3)
+        folder = cpp.cpp_etc_lib().restart_path_for_time(self.sim.restart_options["dir"], 0.3)
         self.assertEqual(cpp.cpp_etc_lib().restored_time(folder), tA[3])
         if cpp.mpi_rank() == 0:
             code = (

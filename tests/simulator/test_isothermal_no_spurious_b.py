@@ -23,7 +23,7 @@ time_step_nbr = 20
 final_time = time_step * time_step_nbr
 
 
-def config():
+def config(simulation=ph.Simulation):
     def density(x, y):
         return 1.0 + 0.5 * np.exp(-((x - 2.5) ** 2 + (y - 2.0) ** 2) / 1.0)
 
@@ -33,7 +33,7 @@ def config():
     def vth(x, y):
         return 0.0 * x + 0.3
 
-    sim = ph.Simulation(
+    sim = simulation(
         time_step=time_step,
         time_step_nbr=time_step_nbr,
         cells=(20, 20),
@@ -94,8 +94,9 @@ class IsothermalNoSpuriousB(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_b_stays_zero(self):
-        self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(config()).run().reset()
+        sim = config(self.simulation)
+        diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
 
         cpp.mpi_barrier()  # before the assertions, so a failure on rank 0 cannot skip it
         if cpp.mpi_rank() == 0:

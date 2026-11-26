@@ -25,7 +25,13 @@ restart_times = [time_step, 3 * time_step]  # 0.005, 0.015
 diag_dir = "phare_outputs/test_regridding"
 
 
-def config(diag_dir_, write_timestamps, restart_source_dir=None, restart_time=None):
+def config(
+    diag_dir_,
+    write_timestamps,
+    restart_source_dir=None,
+    restart_time=None,
+    simulation=ph.Simulation,
+):
     L = 0.5
 
     restart_options = {"dir": restart_source_dir or diag_dir_, "mode": "overwrite"}
@@ -34,7 +40,7 @@ def config(diag_dir_, write_timestamps, restart_source_dir=None, restart_time=No
     if restart_time is not None:
         restart_options["restart_time"] = restart_time
 
-    sim = ph.Simulation(
+    sim = simulation(
         time_step=time_step,
         time_step_nbr=time_step_nbr,
         cells=(40, 40),
@@ -187,29 +193,26 @@ class RegriddingTest(SimulatorTest):
         diag_dir_a = f"{diag_dir}_continuous"
         run_timestamps = sorted({0.0, *restart_times, final_time})
 
-        ph.global_vars.sim = None
-        sim = config(diag_dir_a, run_timestamps)
-        self.register_diag_dir_for_cleanup(diag_dir_a)
+        sim = config(diag_dir_a, run_timestamps, simulation=self.simulation)
         # reset kills diagnostics mananager/modelview/schedules
         Simulator(sim).run().reset()
         ph.global_vars.sim = None
-        return diag_dir_a
+        return sim.diag_options["options"]["dir"]
 
     def _run_restarted(self, source_dir, restart_time):
         diag_dir_b = f"{diag_dir}_restart_{restart_time}"
 
-        ph.global_vars.sim = None
         sim = config(
             diag_dir_b,
             [restart_time],
             restart_source_dir=source_dir,
             restart_time=restart_time,
+            simulation=self.simulation,
         )
-        self.register_diag_dir_for_cleanup(diag_dir_b)
         # Diagnostics schedules are created on init
         Simulator(sim).initialize().reset()
         ph.global_vars.sim = None
-        return diag_dir_b
+        return sim.diag_options["options"]["dir"]
 
     def _assert_same_layout(self, hier0, hier1, time):
         self.assertEqual(

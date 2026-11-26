@@ -20,11 +20,11 @@ timestamps = np.linspace(0, final_time, 6)
 diag_dir = "phare_outputs/rotor"
 
 
-def config():
+def config(simulation=ph.Simulation):
     cells = (100, 100)
     dl = (1.0 / cells[0], 1.0 / cells[1])
 
-    sim = ph.Simulation(
+    sim = simulation(
         smallest_patch_size=15,
         time_step={"mode": "adaptive", "cfl_wave": 0.8},
         final_time=final_time,
@@ -167,8 +167,8 @@ class RotorTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_run(self):
-        self.register_diag_dir_for_cleanup(diag_dir)
-        sim = config()
+        sim = config(self.simulation)
+        diag_dir = sim.diag_options["options"]["dir"]
         Simulator(sim).run().reset()
         if not sim.dry_run and cpp.mpi_rank() == 0:
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())

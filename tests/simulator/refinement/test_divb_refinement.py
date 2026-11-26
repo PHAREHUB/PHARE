@@ -92,7 +92,7 @@ def by_harris(x, y):
     return 0.0 * x + 0.0 * y
 
 
-def config(mode, order, diag_dir):
+def config(mode, order, diag_dir, simulation=ph.Simulation):
     nsteps = NSTEPS[mode]
     check_time = nsteps * time_step
     common = dict(
@@ -109,7 +109,7 @@ def config(mode, order, diag_dir):
         },
     )
     if mode == "boxes":
-        sim = ph.Simulation(
+        sim = simulation(
             refinement="boxes",
             refinement_boxes={"L0": {"B0": FINE_BOX}},
             smallest_patch_size=10,
@@ -117,7 +117,7 @@ def config(mode, order, diag_dir):
             **common,
         )
     else:
-        sim = ph.Simulation(
+        sim = simulation(
             refinement="tagging",
             max_nbr_levels=2,
             tag_buffer=1,
@@ -201,9 +201,8 @@ class DivBRefinementTest(SimulatorTest):
     @data(("boxes", 2), ("tagging", 2))
     @unpack
     def test_divb_preserved_on_refined_level(self, mode, order):
-        diag_dir = f"divb_{mode}_o{order}"
-        self.register_diag_dir_for_cleanup(diag_dir)
-        sim, check_time = config(mode, order, diag_dir)
+        sim, check_time = config(mode, order, f"divb_{mode}_o{order}", self.simulation)
+        diag_dir = sim.diag_options["options"]["dir"]
         Simulator(sim).run().reset()
         dry_run = sim.dry_run
         ph.global_vars.sim = None

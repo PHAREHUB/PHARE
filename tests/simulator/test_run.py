@@ -17,14 +17,12 @@ time_step = 0.005
 final_time = 0.01
 timestamps = [0, time_step, final_time]
 diag_dir = "phare_outputs/test_run"
-plot_dir = Path(f"{diag_dir}_plots")
-plot_dir.mkdir(parents=True, exist_ok=True)
 
 
-def config():
+def config(simulation=ph.Simulation):
     L = 0.5
 
-    sim = ph.Simulation(
+    sim = simulation(
         time_step=time_step,
         final_time=final_time,
         cells=(40, 40),
@@ -160,62 +158,64 @@ def config():
     return sim
 
 
-def plot_file_for_qty(qty, time):
+def plot_file_for_qty(plot_dir, qty, time):
     return f"{plot_dir}/harris_{qty}_t{time}.png"
 
 
-def plot(diag_dir):
+def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
     pop_name = "protons"
     for time in timestamps:
         run.GetDivB(time).plot(
-            filename=plot_file_for_qty("divb", time),
+            filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
             vmin=1e-11,
             vmax=2e-10,
         )
         run.GetRanks(time).plot(
-            filename=plot_file_for_qty("Ranks", time), plot_patches=True
+            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
         run.GetN(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty("N", time), plot_patches=True
+            filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
         )
 
         B = run.GetB(time, all_primal=False)
         Bexp = np.exp(B)
         for c in ["x", "y", "z"]:
             B.plot(
-                filename=plot_file_for_qty(f"b{c}", time),
+                filename=plot_file_for_qty(plot_dir, f"b{c}", time),
                 qty=f"B{c}",
                 plot_patches=True,
             )
-            Bexp.plot(filename=plot_file_for_qty(f"b{c}_exp", time), qty=f"B{c}")
+            Bexp.plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}_exp", time), qty=f"B{c}"
+            )
 
         run.GetJ(time).plot(
             all_primal=False,
-            filename=plot_file_for_qty("jz", time),
+            filename=plot_file_for_qty(plot_dir, "jz", time),
             qty="z",
             plot_patches=True,
             vmin=-2,
             vmax=2,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(f"{pop_name}_Pxx", time),
+            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pxx", time),
             qty=pop_name + "_Pxx",
             plot_patches=True,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(f"{pop_name}_Pzz", time),
+            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pzz", time),
             qty=pop_name + "_Pzz",
             plot_patches=True,
         )
         run.GetPi(time).plot(
-            filename=plot_file_for_qty("Pxx", time),
+            filename=plot_file_for_qty(plot_dir, "Pxx", time),
             qty="Pxx",
             plot_patches=True,
         )
         run.GetPi(time).plot(
-            filename=plot_file_for_qty("Pzz", time),
+            filename=plot_file_for_qty(plot_dir, "Pzz", time),
             qty="Pzz",
             plot_patches=True,
         )
@@ -245,8 +245,8 @@ class RunTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_run(self):
-        sim = config()
-        self.register_diag_dir_for_cleanup(diag_dir)
+        sim = config(self.simulation)
+        diag_dir = sim.diag_options["options"]["dir"]
         Simulator(sim).run().reset()
 
         run = Run(diag_dir)
@@ -257,15 +257,19 @@ class RunTest(SimulatorTest):
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
         if cpp.mpi_rank() == 0:
-            plot(diag_dir)
+            plot_dir = Path(f"{diag_dir}_plots")
+            plot_dir.mkdir(parents=True, exist_ok=True)
+            plot(diag_dir, plot_dir)
 
             for time in timestamps:
                 for q in ["divb", "Ranks", "N", "jz"]:
-                    assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(plot_dir, q, time)
+                    )
 
                 for c in ["x", "y", "z"]:
                     assert_file_exists_with_size_at_least(
-                        plot_file_for_qty(f"b{c}", time)
+                        plot_file_for_qty(plot_dir, f"b{c}", time)
                     )
 
         cpp.mpi_barrier()
