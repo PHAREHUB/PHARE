@@ -42,13 +42,13 @@ Two ways to plot, depending on what the getter returns (see
 :doc:`reading_data`):
 
 * ``merged=True`` gives, for each component, a function and its grid points.
-  You draw with ``matplotlib`` as usual. It currently works only for ``GetB`` and
-  ``GetE``.
+  You draw with ``matplotlib`` as usual. It currently works only for ``GetB``,
+  ``GetE`` and ``GetB0``.
 * Without it, you get a patch hierarchy (:doc:`/data_analysis/patch_hierarchy`)
   that has its own ``plot`` method. It works for every quantity.
 
-.. note:: **Known issue.** ``merged=True`` currently works only for ``GetB`` and
-   ``GetE``. For the others (``GetNi``, ``GetVi``...) use the hierarchy
+.. note:: **Known issue.** ``merged=True`` currently works only for ``GetB``,
+   ``GetE`` and ``GetB0``. For the others (``GetNi``, ``GetVi``...) use the hierarchy
    ``plot`` method.
 
 

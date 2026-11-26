@@ -33,6 +33,7 @@ logger = getLogger(__name__)
 quantities_per_file = {
     "EM_B": "B",
     "EM_E": "E",
+    "EM_B0": "B0",
     "ions_bulkVelocity": "Vi",
     "ions_charge_flux": "CF",
     "ions_charge_density": "Ni",
@@ -122,6 +123,16 @@ class LegacyRun:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
+        return VectorField.FROM(h)
+
+    def GetB0(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "EM_B0.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, x="B0x", y="B0y", z="B0z")
         return VectorField.FROM(h)
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
@@ -1018,6 +1029,9 @@ class Run(LegacyRun):
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         """Electric field (EM_E) -> VectorField; same rules as GetB."""
         return self._stored("GetE", "EM_E", (time, merged, interp, all_primal), kwargs)
+
+    def GetB0(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        return self._stored("GetB0", "EM_B0", (time, merged, interp, all_primal), kwargs)
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
         """Ion mass density (ions_mass_density) -> ScalarField."""

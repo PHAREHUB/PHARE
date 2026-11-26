@@ -270,7 +270,7 @@ def _rebuild_from_levels(cls_name, snap_states, attrs):
 
 # master's patch_datas names of the stored vectors are "<prefix><component>"
 # (hierarchy/hierarchy_utils.py field_qties: EM_B_x -> Bx, bulkVelocity_x -> Vx, ...)
-_MASTER_PREFIXES = {"EM_B": "B", "EM_E": "E", "ions_bulkVelocity": "V",
+_MASTER_PREFIXES = {"EM_B": "B", "EM_E": "E", "EM_B0": "B0", "ions_bulkVelocity": "V",
                     "ions_charge_flux": "CF", "mhd_V": "mhdV", "mhd_rhoV": "mhdRhoV"}
 
 

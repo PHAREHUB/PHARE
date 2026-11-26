@@ -52,6 +52,7 @@ Where to start
    user_guide/hybrid_inputs
    user_guide/electrons
    user_guide/mhd_inputs
+   user_guide/external_field
    user_guide/boundary_conditions
    user_guide/amr
    user_guide/amr_tagging

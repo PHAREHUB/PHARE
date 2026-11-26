@@ -60,6 +60,9 @@ namespace solver
             auto& hybridModel  = static_cast<HybridModel&>(model);
             auto& hybMessenger = dynamic_cast<HybridMessenger&>(messenger);
 
+            hybridModel.initializeExternalField(amr_types::getLevel(*hierarchy, levelNumber),
+                                                initDataTime);
+
             if (isRootLevel(levelNumber))
             {
                 if (isRegridding)

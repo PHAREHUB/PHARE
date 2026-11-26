@@ -129,8 +129,8 @@ What you get when you read the data
 -----------------------------------
 
 The output files keep each quantity where the solver stores it. When you read them with
-``pyphare``, the getters of ``Run`` for B, E, J and the MHD quantities (``GetB``, ``GetE``,
-``GetJ``, ``GetMHDV``, ...) by default move every component to the nodes
+``pyphare``, the getters of ``Run`` for B, E, B0, J and the MHD quantities (``GetB``, ``GetE``,
+``GetB0``, ``GetJ``, ``GetMHDV``, ...) by default move every component to the nodes
 (``all_primal=True``), so all components share the same positions and array sizes. Pass
 ``all_primal=False`` to get the values at their own Yee positions, for example to check
 :math:`\nabla\cdot\mathbf{B}` exactly. With ``merged=True`` the values are always the raw

@@ -375,9 +375,9 @@ class TestComponents(unittest.TestCase):
         """master's patch_datas names of each stored vector (hierarchy_utils.field_qties:
         Vx, CFx, Fx, Ex, mhdVx, mhdRhoVx) select the component; other names raise."""
         backend, _ = fake_vector(dim=1, nlevels=1)
-        cases = {"EM_B": "B", "EM_E": "E", "ions_bulkVelocity": "V", "ions_charge_flux": "CF",
-                 "ions_pop_protons_flux": "F", "ions_pop_alpha_flux": "F", "mhd_V": "mhdV",
-                 "mhd_rhoV": "mhdRhoV"}
+        cases = {"EM_B": "B", "EM_E": "E", "EM_B0": "B0", "ions_bulkVelocity": "V",
+                 "ions_charge_flux": "CF", "ions_pop_protons_flux": "F",
+                 "ions_pop_alpha_flux": "F", "mhd_V": "mhdV", "mhd_rhoV": "mhdRhoV"}
         for quantity, prefix in cases.items():
             f = AMRField.from_backend(backend, quantity=quantity)
             for c in "xyz":

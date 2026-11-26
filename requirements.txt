@@ -3,7 +3,7 @@ ddt
 h5py
 pyyaml
 numpy
-scipy
+scipy>=1.15
 matplotlib
 seaborn
 sphinx_rtd_theme
