@@ -3,18 +3,25 @@
 
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 #include "core/models/hybrid_state.hpp"
 #include "core/boundary/boundary_manager.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
+#include "mpi/mpi_utils.hpp"
+
 #include "initializer/data_provider.hpp"
 
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/physical_models/model_stats.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 
 #include <string>
+#include <vector>
+
 
 namespace PHARE::solver
 {
@@ -105,6 +112,9 @@ public:
 
     virtual ~HybridModel() override {}
 
+    std::vector<LevelSummary> summarize(auto& hierarchy, std::size_t const minlvl,
+                                        std::size_t const maxlvl);
+
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
@@ -130,6 +140,43 @@ public:
 //-------------------------------------------------------------------------
 //                             definitions
 //-------------------------------------------------------------------------
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+auto HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
+    auto& hierarchy, std::size_t const minlvl, std::size_t const maxlvl)
+    -> std::vector<LevelSummary>
+{
+    auto& rm = *this->resourcesManager;
+
+    std::vector<LevelSummary> levels; // rank 0 only
+
+    auto on_level = [&](auto& lvl) mutable {
+        auto const lcl = core::sum_from(rm.enumerate(lvl, state.ions), [&](auto const&) {
+            return core::sum_from(state.ions,
+                                  [](auto const& pop) { return pop.domainParticles().size(); });
+        });
+
+        auto const on_lvl  = mpi::sum_on_rank_0(lcl);
+        auto const max_lcl = mpi::max(lcl);
+
+        auto const level_stats = LevelStats<GridLayoutT, physical_quantity_type>::GET(
+                                     lvl, GridLayoutT::options.field_ghost_width)
+                                     .collect(lvl);
+
+        if (mpi::rank() == 0)
+        {
+            auto& level = levels.emplace_back(level_stats.summary(lvl.getLevelNumber(), "hybrid"));
+            level["particles"]          = on_lvl;
+            level["particle_imbalance"] = imbalance(max_lcl, on_lvl);
+        }
+    };
+
+    amr::onLevels(hierarchy, on_level, minlvl, maxlvl);
+
+    return levels;
+}
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,

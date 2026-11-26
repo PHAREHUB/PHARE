@@ -1,5 +1,6 @@
 import atexit
 import datetime
+import json
 import os
 import sys
 import time as timem
@@ -194,9 +195,9 @@ class Simulator:
 
         if self.simulation.dry_run:
             return self
+        mon.remove_stale_stats()  # also on ranks not monitoring
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -295,6 +296,22 @@ class Simulator:
         self.cpp_sim.initialize()
         self.initialized = True
         return self
+
+    def print_summary(self):
+        summary = self.summary()  # collective, called on all ranks
+        if summary is not None:
+            print("SUMMARY:", json.dumps(summary, indent=1))
+
+    def summary(self):
+        """
+        Per level stats, {"levels": [{"level": 0, "model": "hybrid", ...}, ...]}, on rank 0,
+        None on other ranks. Collective: every rank must call it, in the same order.
+        Raises if not initialized.
+        """
+        if not self.initialized:
+            raise RuntimeError("Simulator.summary(): simulator is not initialized")
+        levels = self.cpp_sim.summary()  # list of dicts on rank 0, empty on other ranks
+        return dict(levels=levels) if cpp.mpi_rank() == 0 else None
 
     def _replace_live_simulator(self):
         # only one simulator per process (SAMRAI statics): the previous one stays alive after
