@@ -211,7 +211,7 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
 
             init(ilvl);
         },
-        this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
+        0, modelView.maxLevel()); // all levels, see VTKFileInitializer::zero_boxes
 
     if constexpr (solver::is_hybrid_model_v<Model_t>)
         for (auto const& pop : modelView.getIons())
