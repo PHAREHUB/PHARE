@@ -5,31 +5,31 @@
 
 #include "core/def/phlop.hpp"
 
-#if PHARE_HAVE_PHLOP
-#define PHARE_SCOPE_TIMER PHLOP_SCOPE_TIMER
-#endif // PHARE_WITH_PHLOP
-
 #ifndef PHARE_SCOPE_TIMER
 #define PHARE_SCOPE_TIMER(str) // nothing
 #endif                         // PHARE_SCOPE_TIMER
 
+#ifndef PHARE_SCOPE
+#define PHARE_SCOPE(str, ...) // nothing
+#endif                        // PHARE_SCOPE
+
 
 #if PHARE_LOG_LEVEL >= 1
-#define PHARE_LOG_SCOPE_1(str) PHARE_SCOPE_TIMER(str)
+#define PHARE_LOG_SCOPE_1(str) PHARE_SCOPE(str, PHARE_LOG_SCOPE_FLAGS_1)
 #else
 #define PHARE_LOG_SCOPE_1(str)
 #endif // LOG_LEVEL >= 1
 
 
 #if PHARE_LOG_LEVEL >= 2
-#define PHARE_LOG_SCOPE_2(str) PHARE_SCOPE_TIMER(str)
+#define PHARE_LOG_SCOPE_2(str) PHARE_SCOPE(str, PHARE_LOG_SCOPE_FLAGS_2)
 #else
 #define PHARE_LOG_SCOPE_2(str)
 #endif // LOG_LEVEL >= 2
 
 
 #if PHARE_LOG_LEVEL == 3
-#define PHARE_LOG_SCOPE_3(str) PHARE_SCOPE_TIMER(str)
+#define PHARE_LOG_SCOPE_3(str) PHARE_SCOPE(str, PHARE_LOG_SCOPE_FLAGS_3)
 #else
 #define PHARE_LOG_SCOPE_3(str)
 #endif // LOG_LEVEL == 3

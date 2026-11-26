@@ -7,3 +7,7 @@ add_subdirectory(ghost_width_calculator)
 add_subdirectory(timestamps)
 add_subdirectory(enum_table)
 # add_subdirectory(point)
+
+if (withPhlop)
+  add_subdirectory(phlop)
+endif(withPhlop)

@@ -8,7 +8,7 @@ choices make it grow.
 Measure it
 ----------
 
-Run with the resource monitor (needs ``python3 -m pip install phlop==0.0.45``, see
+Run with the resource monitor (needs ``python3 -m pip install phlop==0.0.46``, see
 :doc:`measuring_performance`; without ``phlop`` nothing is recorded and no
 error is shown):
 
@@ -102,7 +102,7 @@ Common mistakes
 ---------------
 
 * **No file in** ``.phare/stats/`` — ``phlop`` is not installed: monitoring
-  silently does nothing — ``python3 -m pip install phlop==0.0.45``.
+  silently does nothing — ``python3 -m pip install phlop==0.0.46``.
 * **Passing** ``monitoring=True`` — samples every second, which makes long
   YAML files — give the interval in seconds, e.g. ``monitoring=60``.
 * **Comparing the peak of one rank with the memory of a node** — ranks on
