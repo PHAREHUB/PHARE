@@ -67,6 +67,10 @@ option(withCaliper "Use LLNL Caliper" OFF)
 option(withPhlop "Use phlop for scope timings and such" OFF)
 
 
+# -DwithLLNLMpiP=OFF
+option(withLLNLMpiP "Use LLNL mpiP for MPI profiling" OFF)
+
+
 # -DuseExceptionsInsteadOfMPIAbort=ON
 option(useExceptionsInsteadOfMPIAbort "Exceptions use AllReduce!" OFF)
 
@@ -122,6 +126,7 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
+  message("build with LLNL mpiP                        : " ${withLLNLMpiP})
   message("profile guided optimization generate        : " ${PGO_GEN})
   message("profile guided optimization use             : " ${PGO_USE})
 
