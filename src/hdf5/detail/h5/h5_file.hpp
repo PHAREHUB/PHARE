@@ -3,7 +3,7 @@
 
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/types.hpp"
+#include "core/utilities/logic.hpp"
 #include "core/utilities/meta/container_meta.hpp"
 #include "mpi/mpi_utils.hpp"
 #include "core/utilities/span.hpp"

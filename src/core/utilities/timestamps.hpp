@@ -2,7 +2,7 @@
 #define PHARE_CORE_UTILITIES_TIMESTAMPS_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/strings.hpp"
 
 #include "initializer/data_provider.hpp"
 

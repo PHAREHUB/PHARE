@@ -1,6 +1,5 @@
 #include "index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/types.hpp"
 
 namespace PHARE
 {

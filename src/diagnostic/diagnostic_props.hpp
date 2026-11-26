@@ -2,7 +2,7 @@
 #define DIAGNOSTIC_DAO_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/type_meta.hpp"
 
 #include <string>
 #include <type_traits>

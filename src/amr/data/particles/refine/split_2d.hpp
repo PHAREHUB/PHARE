@@ -9,7 +9,7 @@ Splitting reference material can be found @
 #include <array>
 #include <cstddef>
 #include "core/utilities/point/point.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/constants.hpp"
 #include "splitter.hpp"
 
 namespace PHARE::amr
