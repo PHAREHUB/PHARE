@@ -11,18 +11,18 @@ Conventions
 **In one sentence:** the rules the code base follows, so that a change looks like the code around it
 and does not break at run time on another machine.
 
-.. admonition:: In preparation
-   :class: in-preparation
+C++
+---
 
-   C++ conventions (layout of ``src/``, headers, classes, naming, comments) are being written in
-   :pr:`1463` (C++ coding conventions), following :issue:`1317` (no style conventions). This page will
-   be updated when they are agreed. Until then, ``doc/conventions.md`` in the repository is the
-   reference file.
+Layout of ``src/``, headers, classes, naming, comments and formatting are on their own page:
+:doc:`cpp_conventions`. They are still being discussed in :pr:`1463` (C++ coding conventions),
+following :issue:`1317` (no style conventions); the points that are not decided are marked there.
 
 Formatting and lint
 -------------------
 
-* C++: ``.clang-format`` at the repository root (version pinned in ``pyproject.toml``).
+* C++: ``.clang-format`` at the repository root (version pinned in ``pyproject.toml``), see
+  :ref:`dev/cpp_conventions:Formatting`.
 * Python: lint rules in ``ruff.toml``. While ``ruff.toml`` exists, ruff ignores the ``[tool.ruff]``
   table of ``pyproject.toml``.
 
@@ -53,3 +53,8 @@ in the function that uses them. ``numpy`` and similar widely used packages are f
 
        with h5py.File(path, "r") as f:
            return list(f["t"].keys())
+
+Go deeper
+---------
+
+* :doc:`cpp_conventions` — the C++ conventions, with the points still open.

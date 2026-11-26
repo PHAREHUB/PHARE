@@ -150,7 +150,7 @@ class TaggingTest(unittest.TestCase):
             self._test_dump_diags(ndim, **simInput)
 
     def _test_dump_diags(self, dim, **simInput):
-        import h5py  # see doc/conventions.md section 2.1.1
+        import h5py  # see doc/source/dev/conventions.rst
 
         test_id = self.ddt_test_id()
         for key in ["cells", "dl"]:

@@ -73,7 +73,7 @@ def primitive(coord):
 
 
 def main(path="./"):
-    import scipy.misc  # see doc/conventions.md #2.2.1
+    import scipy.misc  # see doc/source/dev/conventions.rst
 
     if len(sys.argv) == 2:
         path = sys.argv[1]

@@ -85,6 +85,7 @@ How to use this guide
 
       - :doc:`working_on_phare`
       - :doc:`conventions`
+      - :doc:`cpp_conventions`
       - :doc:`how_to_add`
       - :doc:`cpp_api`
 
@@ -124,5 +125,6 @@ How to use this guide
    hpc_internals
    working_on_phare
    conventions
+   cpp_conventions
    how_to_add
    cpp_api
