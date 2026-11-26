@@ -12,7 +12,7 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
 #include "core/utilities/random.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer.hpp"
 #include "core/data/particles/particle.hpp"
@@ -23,6 +23,9 @@
 
 namespace PHARE::core
 {
+enum class Basis { Magnetic, Cartesian };
+
+
 template<typename Generator>
 void maxwellianVelocity(std::array<double, 3> const& V, std::array<double, 3> const& Vth,
                         Generator& generator, std::array<double, 3>& partVelocity)

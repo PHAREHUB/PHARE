@@ -4,7 +4,7 @@
 #define PHARE_CORE_UTILITIES_SPAN_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
 
 #include <vector>
 #include <algorithm>
@@ -52,6 +52,15 @@ auto make_const_span(Container_t const& container)
 {
     return make_span(container);
 }
+
+
+template<typename T>
+struct StackVar
+{
+    using value_type = T;
+
+    T var;
+};
 
 
 template<typename T, typename SIZE = std::size_t>

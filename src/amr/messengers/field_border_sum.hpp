@@ -2,7 +2,8 @@
 #define PHARE_AMR_MESSENGERS_FIELD_BORDER_SUM_HPP
 
 #include "core/logger.hpp"
-#include "core/utilities/types.hpp"
+#include "core/data/field/field_traits.hpp"
+#include "core/utilities/meta/for_N.hpp"
 #include "core/utilities/box/box.hpp"
 
 #include "amr/utilities/box/amr_box.hpp"

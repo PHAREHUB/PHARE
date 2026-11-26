@@ -1,5 +1,5 @@
 #include "simulator/simulator_def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/data/field/field_traits.hpp"
 #include "core/data/field/field_box.hpp"
 
 #include "tools/bench/core/bench.hpp"

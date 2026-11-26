@@ -1,5 +1,5 @@
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"

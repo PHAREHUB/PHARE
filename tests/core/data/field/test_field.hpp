@@ -1,7 +1,7 @@
 #ifndef PHARE_TEST_CORE_FIELD_TEST_HPP
 #define PHARE_TEST_CORE_FIELD_TEST_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/logic.hpp"
 #include "core/data/field/field.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"

@@ -2,7 +2,9 @@
 #define PHARE_PER_QUANTITY_TAGGER_STRATEGY_HPP
 
 #include "core/logger.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/numeric.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/field/recentered_field.hpp"
 

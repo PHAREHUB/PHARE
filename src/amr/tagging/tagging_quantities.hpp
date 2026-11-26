@@ -1,7 +1,7 @@
 #ifndef PHARE_TAGGING_QUANTITIES_HPP
 #define PHARE_TAGGING_QUANTITIES_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/type_meta.hpp"
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"

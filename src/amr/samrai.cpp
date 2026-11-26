@@ -5,6 +5,7 @@
 #include "initializer/data_provider.hpp"
 
 #include "samrai.hpp"
+#include "core/utilities/env.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 

@@ -3,7 +3,7 @@
 
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
 
 
 template<typename GridLayout>
