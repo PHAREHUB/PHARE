@@ -26,7 +26,7 @@ public:
 
     void setup(DiagnosticProperties&) override;
     void write(DiagnosticProperties&) override;
-    void compute(DiagnosticProperties&) override {}
+    void compute_as_needed(DiagnosticProperties&) override {}
 
 private:
     struct Info
