@@ -26,7 +26,7 @@ def timestamps(final_time):
     return np.linspace(0, final_time, 6)
 
 
-def config(cells, final_time, diag_dir, levels=2, **kwargs):
+def config(cells, final_time, diag_dir, **kwargs):
     L = 0.5
 
     sim = ph.Simulation(
@@ -35,8 +35,8 @@ def config(cells, final_time, diag_dir, levels=2, **kwargs):
         cells=cells,
         dl=dl,
         refinement="tagging",
-        max_mhd_level=levels,
-        max_nbr_levels=levels,
+        max_mhd_level=2,
+        max_nbr_levels=2,
         hyper_resistivity=0.0,
         resistivity=0.0,
         diag_options={
