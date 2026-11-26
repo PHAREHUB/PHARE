@@ -12,7 +12,8 @@ Moments: deposition and sum borders
 **In one sentence:** the ion :term:`moments` (density and flux of each
 :term:`population`, then the totals) are made by :term:`depositing <deposition>`
 each patch's particles on the grid nodes, then completed near patch borders by
-adding the neighbours' parts.
+adding the neighbours' parts, in one fixed order, so that every copy of a node
+in a patch domain holds the same bits.
 
 Deposit, then sum over patch borders
 ------------------------------------
@@ -55,36 +56,129 @@ Deposit, then sum over patch borders
    brace(a3, 2.6, 7.4, 2.75, "A and B both hold these sums", color=C["ink"])
    finish(fig, [a1, a2, a3])
 
-* **Reset** density and flux of each population before a push
-  (``resetMoments``, :src:`src/core/numerics/moments/moments.hpp#L15-L22`).
+After each push, on every patch of a level:
+
+.. plot::
+   :include-source: False
+   :caption: The moment pipeline after a push. Level ghost particles are
+      deposited before the border sums, so the sums carry them to every patch.
+
+   from phare_draw import *
+   fig, (a,) = strip(1, phone=True, height=4)
+   boxes(a, ["Reset\nper population",
+             "Deposit\ndomain + patch ghosts",
+             "Level ghosts\nowned ones, Old and New",
+             "Border sums\nin place, one order",
+             "Totals\nρ, V, charge flux"],
+         arrows=[(0, 1), (1, 2), (2, 3), (3, 4)], w=4.6, h=0.95, gap=0.45, fs=12)
+   finish(fig, [a])
+
+* **Reset** density and flux of each population
+  (``resetMoments``, :src:`src/core/numerics/moments/moments.hpp#L14-L22`).
 * **Deposit** domain and patch ghost particles on :term:`primal` nodes:
   density += w·S, flux += w·v·S, S the particle shape
-  (``ParticleToMesh``, :src:`src/core/numerics/interpolator/interpolator.hpp#L290-L351`).
-* **Sum** over patch borders, per population: copy to a scratch field, add the
-  neighbours' values on the overlap of the two ghost boxes, copy back
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L388-L434`).
-* **Level ghosts**: add Old × (1−α) and New × α near a refined level's border
-  (:doc:`/dev/level_ghost_particles`).
+  (``ParticleToMesh``, :src:`src/core/numerics/interpolator/interpolator.hpp#L290-L351`;
+  ``IonUpdater::updateAndDepositAll_``, :src:`src/core/numerics/ion_updater/ion_updater.hpp#L309-L312`).
+* **Level ghosts**: near a refined level's border, each patch adds
+  Old × (1−α) and New × α of the level ghost particles it *owns*
+  (``fillIonPopMomentGhosts``, ``depositOwned``,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L418-L455`;
+  ownership: :doc:`/dev/level_ghost_particles`).
+* **Sum** over patch borders, per population, in place: on the nodes shared by
+  several ghost boxes, each patch adds the others' deposits to its own, in one
+  order (``fillFluxBorders``, ``fillDensityBorders``,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L390-L405`;
+  ``BorderSums``, :src:`src/amr/messengers/field_border_sum.hpp#L35-L50`).
 * **Totals**: ρ = Σ q·n, V = Σ m·F / Σ m·n, charge flux Σ q·F
-  (:src:`src/core/data/ions/ions.hpp#L85-L197`); then, on nodes shared by two
-  ghost boxes, each patch keeps the larger value of ρ and of the charge flux
-  (``fillIonBorders``, ``SetMax``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L437-L446`).
+  (``updateIons``, :src:`src/core/numerics/ion_updater/ion_updater.hpp#L111-L117`;
+  :src:`src/core/data/ions/ions.hpp#L85-L197`).
 
-This runs after each of the two pushes of a step (:doc:`/dev/ppc_order`).
+The order of these calls after a push is in ``SolverPPC::moveIons_``
+(:src:`src/amr/solvers/solver_ppc.hpp#L620-L632`, :doc:`/dev/ppc_order`); at
+level initialization it is the same, with Old only
+(:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L97-L123`).
 
 The tricks
 ----------
 
-Sum into a scratch copy
-^^^^^^^^^^^^^^^^^^^^^^^
+Store, then add in one order
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Problem.** Adding in place, B would add A's value that already holds B's part.
-**Fix.** Write into ``sumField_`` / ``sumVec_``, read the neighbours' untouched
-arrays, copy back (comment at :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L394-L397`).
-Overlap = the two ghost boxes' intersection: ``FieldGhostInterpOverlapFillPattern``
-for density, ``TensorFieldGhostInterpOverlapFillPattern`` for flux
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L880-L908`).
+.. plot::
+   :include-source: False
+   :caption: A node (red) shared by three patches. Each holds one part of its
+      density: a, b, c. Floating-point addition is not associative: two orders
+      give two different last digits. Neither order is more exact; what
+      matters is that every copy uses the same one, sorted by patch box.
+
+   from phare_draw import *
+   a, b, c = 0.1, 0.2, 0.3
+   fig, (p1, p2) = strip(2, [
+       "Patches A, B, C meet at one node",
+       "Its value, added in three orders"], height=2.6, phone=True)
+   grid(p1, (0, 0, 8, 6), color=C["light"])
+   patch(p1, (0, 0, 4, 3), color=C["L1"]); text(p1, 2, 1.5, "A", color=C["L1"], bold=True, fs=14)
+   patch(p1, (4, 0, 8, 3), color=C["L2"]); text(p1, 6, 1.5, "B", color=C["L2"], bold=True, fs=14)
+   patch(p1, (0, 3, 8, 6), color=C["ion"]); text(p1, 4, 4.8, "C", color=C["ion"], bold=True, fs=14)
+   mark(p1, "primal", 4, 3, color=C["bad"], size=13)
+   text(p1, 3.3, 2.4, "a", color=C["L1"], bold=True); text(p1, 4.7, 2.4, "b", color=C["L2"], bold=True)
+   text(p1, 4.0, 3.7, "c", color=C["ion"], bold=True)
+   rows = [("patch A", f"(a+b)+c = {(a + b) + c!r}", C["bad"]),
+           ("patch C: copies differ", f"(b+c)+a = {(b + c) + a!r}", C["bad"]),
+           ("all, sorted A, C, B: same", f"(a+c)+b = {(a + c) + b!r}", C["ok"])]
+   for k, (who, val, col) in enumerate(rows):
+       y = -1.6 * k
+       text(p2, 0, y, who, ha="left", color=col, bold=True)
+       text(p2, 0, y - 0.7, val, ha="left", family="monospace")
+   p2.plot([0, 8], [-4.2, 0.4], alpha=0)
+   finish(fig, [p1, p2], align=False)
+
+**Problem.** Where three patches or more share a node (corners, thin patches),
+each patch added the others' values in the order its transactions ran, so the
+copies of the node differed in the last bits: one node, several values in the
+same run. Adding in place would also send a neighbour values that already
+hold its own part.
+**Fix.** The transactions of the sum :term:`schedule` *store* the contribution
+they carry instead of adding it (``BorderSums::add``, one slot per transaction,
+:src:`src/amr/messengers/field_border_sum.hpp#L124-L146`;
+``FieldBorderSumTransaction``, :src:`src/amr/messengers/field_border_sum.hpp#L319-L333`).
+Once the schedule is built, ``finalize`` adds the patch's own contribution
+(over the nodes the others reach) and sorts all of them by source box, then
+patch id (``lexicographicLess``,
+:src:`src/amr/messengers/field_border_sum.hpp#L152-L186`). After the schedule
+has run, ``fold`` copies the patch's own values into its slot, zeroes those
+nodes, then adds every contribution, its own included, in that order, in place
+(:src:`src/amr/messengers/field_border_sum.hpp#L196-L214`). The shared nodes
+are the intersection of the two ghost boxes (``FieldGhostInterpOverlapFillPattern``,
+``TensorFieldGhostInterpOverlapFillPattern``,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L882-L893`;
+:doc:`/dev/fill_patterns`).
+:pr:`1581` (same order everywhere).
+
+No maximum on the totals
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Problem.** Copies of a node used to differ, and a maximum over the shared
+nodes of ρ and of the charge flux made them equal again. A maximum picks the
+complete copy only for a quantity that is never negative: the flux has a sign,
+and the maximum could put a wrong value on a domain node (:issue:`1575`).
+**Fix.** The copies are now equal by construction (one order, level ghosts
+deposited before the sums), and the maximum is gone. Ghost nodes of the
+moments that no sum reaches may stay incomplete; the code does not rely on
+them (comment at
+:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L117-L118`).
+:pr:`1583` (ion border max removed).
+
+Level ghosts deposited before the sums
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Problem.** A level ghost particle sits in the ghost box of every patch that
+covers it, so several patches hold a copy. Deposited after the sums, each patch
+only had its own copies: two patches could disagree on a node both store.
+**Fix.** One patch, the *owner*, deposits each level ghost particle, before the
+sums; the sum adds that deposit to the other patches
+(:doc:`/dev/level_ghost_particles`, "One patch deposits each level ghost
+particle"). :pr:`1580` (deposit once, before sums).
 
 Leavers are deposited by the patch they leave
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,28 +192,22 @@ One patch per particle
 
 **Problem.** Overlapping same-level patches would deposit the overlap twice
 (density about ×2).
-**Fix.** Each cell has one owner patch; the ``+=`` sum is unchanged. :pr:`1334`.
+**Fix.** Each cell has one owner patch; the border sum is unchanged. :pr:`1334`.
 
 Time weights only for Old and New
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Only the Old and New level ghost arrays are deposited with 1−α and α
+Only the owned Old and New level ghost particles are deposited with 1−α and α
 (``fillIonPopMomentGhosts``,
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L457-L495`);
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L442-L452`);
 every other deposit uses weight 1, including pushable level ghosts that enter
 the domain in push 1.
-
-Why two copies of a node can differ before the max
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Each patch adds the level ghosts of its own layer after the border sum: near a
-level border, A's ghost node can miss particles only B holds. Why the maximum
-was chosen is not documented (it came with :pr:`1146`).
 
 Go deeper
 ---------
 
-* :doc:`/dev/level_ghost_particles` · :doc:`/dev/grabbing_particles`
+* :doc:`/dev/level_ghost_particles` · :doc:`/dev/grabbing_particles` ·
+  :doc:`/dev/patch_layout_independence`
 
 Related
 -------

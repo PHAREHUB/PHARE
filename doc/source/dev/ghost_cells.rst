@@ -48,7 +48,7 @@ Look at patch A's ghost layer: blue where patch B is, orange outside level 1.
   (:src:`src/amr/data/field/field_data_factory.hpp#L27`).
 * **One fill does both:** a ``GhostField`` :term:`schedule` copies from the
   level (periodic copies included), then refines from the coarser level where
-  no patch is (:src:`src/amr/messengers/refiner.hpp#L86-L90`).
+  no patch is (:src:`src/amr/messengers/refiner.hpp#L97-L101`).
 * **Time:** patch ghosts are copied at the same time; level ghosts are
   interpolated in time (:ref:`dev-one-time-step-coarse-first`).
 * **Domain edges:** periodic → copied from the other side; otherwise boundary
@@ -93,7 +93,7 @@ Look at the right-hand ghost nodes: once copied in step 2, step 3 leaves
 them alone.
 
 * Before each fill, ghost nodes are set to NaN (``setNaNsOnFieldGhosts``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L969-L1002`;
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L955-L988`;
   the comment explains the mechanism).
 * ``fineBoundaryRepresentsVariable = false`` makes SAMRAI copy *before*
   refining (:src:`src/amr/data/field/field_variable.hpp#L34-L39`).
@@ -118,7 +118,8 @@ Hybrid level; predictor 1, predictor 2, corrector are the solver stages
      - When
    * - B
      - copy + refine, in time (``fillMagneticGhosts``)
-     - after each Faraday update and after refluxing
+     - after each Faraday update and after refluxing; level 0 at
+       initialization, then one maximum (trick below)
    * - E
      - same (``fillElectricGhosts``)
      - after each average (:math:`E_\text{avg}` at mid-step), after the
@@ -127,13 +128,11 @@ Hybrid level; predictor 1, predictor 2, corrector are the solver stages
      - **never filled**: Ampère computes it on the cells plus one ghost layer
      - (none)
    * - ion moments, per population
-     - summed across patch borders, plus level ghost particles
+     - level ghost particles deposited by their owner, then summed across
+       patch borders
      - after each push (:doc:`/dev/moments`)
-   * - total charge density, flux
-     - made equal on shared border nodes
-     - after each push
 
-Functions: :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L351-L497`.
+Functions: :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L353-L469`.
 MHD levels fill their state this way (``fillStateGhosts``,
 :src:`src/amr/messengers/mhd_messenger.hpp#L376-L387`); the MHD E ghosts are
 only set at physical boundaries (``NoOverlapFillPattern``,
@@ -154,6 +153,67 @@ replace a patch's own value.
 (:src:`src/amr/data/field/field_variable_fill_pattern.hpp#L129-L195`); see
 :doc:`/dev/fill_patterns`.
 
+Level 0 B ghosts at initialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. plot::
+   :include-source: False
+   :caption: A cut along x of a periodic domain of 8 cells, patches A (nodes
+      0-4) and B (nodes 4-8), Bx along one row of x faces of a 2D run, initial value a ramp in x that is
+      not periodic. Node 8 is node 0 seen from the other side; nodes 9 and 10
+      are B's ghosts and stand for nodes 1 and 2.
+
+   from phare_draw import *
+   from matplotlib.patches import Rectangle
+   f = lambda x: 0.3 + 0.08 * x
+   H = 2.5
+   def axis(a):
+       a.plot([-0.5, 10.5], [0, 0], color=C["grey"], lw=1)
+       a.plot([8, 8], [-0.2, 3.2], color=C["ink"], lw=1.5, ls="--")
+       for n in range(11):
+           text(a, n, -0.35, str(n), fs=11)
+       text(a, 8, 3.45, "x = L ≡ 0", fs=11)
+   def bar(a, n, v, color, hatch=None):
+       a.add_patch(Rectangle((n - 0.3, 0), 0.6, v * H, fc=color if not hatch else "white",
+                             ec=color, hatch=hatch, lw=1.2))
+   fig, (a1, a2, a3) = strip(3, [
+       "Initialized: every node at its own x",
+       "B ghosts filled: 9, 10 copied from 1, 2",
+       "One maximum: nodes 0 and 8 agree"], height=2.2)
+   for a in (a1, a2, a3):
+       axis(a)
+       for n in range(1, 4):
+           bar(a, n, f(n), C["L1"])
+       for n in range(4, 8):
+           bar(a, n, f(n), C["L2"])
+   bar(a1, 0, f(0), C["L1"]); bar(a1, 8, f(8), C["L2"])
+   bar(a1, 9, f(9), C["bad"], "///"); bar(a1, 10, f(10), C["bad"], "///")
+   text(a1, 0, f(0) * H + 0.3, "f(0)", color=C["L1"]); text(a1, 7.6, f(8) * H + 0.3, "f(L)", color=C["L2"], ha="right")
+   text(a1, 10.6, f(10) * H + 0.3, "f(L+1), f(L+2)", color=C["bad"], ha="right")
+   bar(a2, 0, f(0), C["L1"]); bar(a2, 8, f(8), C["L2"])
+   bar(a2, 9, f(1), C["L2"], "///"); bar(a2, 10, f(2), C["L2"], "///")
+   text(a2, 4, 2.9, "0 and 8 still differ", color=C["bad"])
+   bar(a3, 0, f(8), C["L1"]); bar(a3, 8, f(8), C["L2"])
+   bar(a3, 9, f(1), C["L2"], "///"); bar(a3, 10, f(2), C["L2"], "///")
+   finish(fig, [a1, a2, a3])
+
+**Problem.** At initialization every node gets the initial condition at its own
+coordinate. A ghost across the periodic boundary then holds the value at its
+own x, not the value of the node it stands for; a face on the periodic
+boundary is initialized twice, at x = 0 and at x = L. With an initial
+condition that is not exactly periodic, patches holding the same node
+disagree, and Ampère and Ohm at initialization, and the first push, read these
+ghosts.
+**Fix.** ``fillRootGhosts`` fills the level 0 B ghosts, then runs one maximum
+over the ghost overlaps so that every patch holding a boundary face keeps the
+same value (``magMaxRootRefiners_``,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L576-L597`;
+registered for level 0 only,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L680-L686`).
+The order matters: the maximum covers whole ghost overlaps, so ghosts still
+holding initial values would leak into the domain. :pr:`1582` (level 0 B at
+initialization).
+
 J is computed, not communicated
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -161,7 +221,7 @@ J is computed, not communicated
 
 **Fix.** No refiner for J: each patch runs Ampère on its cells plus one ghost
 layer, from freshly filled B
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L834-L835`). So
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L836-L837`). So
 B ghosts are filled right after each Faraday update.
 
 

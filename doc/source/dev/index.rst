@@ -62,6 +62,7 @@ How to use this guide
       - :doc:`grabbing_particles`
       - :doc:`moments`
       - :doc:`ppc_order`
+      - :doc:`patch_layout_independence`
 
    .. container:: dev-card
 
@@ -116,6 +117,7 @@ How to use this guide
    grabbing_particles
    moments
    ppc_order
+   patch_layout_independence
    electromagnetic
    mhd_solver
    diagnostics_restarts
