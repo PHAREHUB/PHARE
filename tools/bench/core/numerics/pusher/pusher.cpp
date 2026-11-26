@@ -8,18 +8,14 @@ void push(benchmark::State& state)
     constexpr std::uint32_t cells   = 65;
     constexpr std::uint32_t n_parts = 1e7;
 
-    using PHARE_Types       = PHARE::core::PHARE_Types<opts>;
-    using GridLayout_t      = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
-    using Interpolator      = PHARE::core::Interpolator<dim, interp>;
-    using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
-    using Electromag_t      = PHARE::core::UsableElectromag<dim>;
-    using Ions_t            = PHARE_Types::Hybrid::Ions_t;
-    using ParticleArray     = Ions_t::particle_array_type;
-    using Particle_t        = ParticleArray::value_type;
-    using ParticleRange     = PHARE::core::IndexRange<ParticleArray>;
-
-    using BorisPusher_t = PHARE::core::BorisPusher<dim, ParticleRange, Electromag_t, Interpolator,
-                                                   BoundaryCondition, GridLayout_t>;
+    using PHARE_Types   = PHARE::core::PHARE_Types<opts>;
+    using GridLayout_t  = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
+    using Interpolator  = PHARE::core::Interpolator<dim, interp>;
+    using Electromag_t  = PHARE::core::UsableElectromag<dim>;
+    using Ions_t        = PHARE_Types::Hybrid::Ions_t;
+    using ParticleArray = Ions_t::particle_array_type;
+    using Particle_t    = ParticleArray::value_type;
+    using Pusher        = PHARE::core::IonUpdater<Ions_t, Electromag_t, GridLayout_t>::Pusher;
 
 
     GridLayout_t layout{cells};
@@ -37,22 +33,12 @@ void push(benchmark::State& state)
     auto rangeIn  = PHARE::core::makeIndexRange(domainParticles);
     auto rangeOut = PHARE::core::makeIndexRange(tmpDomain);
 
-    BorisPusher_t pusher;
-    pusher.setMeshAndTimeStep(layout.meshSize(), .001);
-
     Interpolator interpolator;
+    Pusher const pusher{/*dt=*/.001, /*charge=*/1, /*mass=*/1, layout};
     auto const no_op = [](auto& particleRange) { return particleRange; };
     while (state.KeepRunningBatch(1))
     {
-        pusher.move(
-            /*ParticleRange const&*/ rangeIn,  //
-            /*ParticleRange&      */ rangeOut, //
-            /*Electromag const&   */ em,       //
-            /*double charge       */ 1,
-            /*double mass         */ 1,
-            /*Interpolator&*/ interpolator,
-            /*GridLayout const&*/ layout, //
-            no_op, no_op);
+        pusher.move(rangeIn, rangeOut, em, interpolator, no_op, no_op);
     }
 }
 BENCHMARK_TEMPLATE(push, /*dim=*/1, /*interp=*/1)->Unit(benchmark::kMicrosecond);
