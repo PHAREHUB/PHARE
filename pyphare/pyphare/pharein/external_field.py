@@ -18,6 +18,7 @@ _POTENTIAL_NAMES = ("a0x", "a0y", "a0z")
 _DERIVATIVE_NAMES = ("da0x_dt", "da0y_dt", "da0z_dt")
 
 _CURL_FREE_RTOL = 1e-6
+_CURL_ROUNDOFF_FACTOR = 1e4
 _CURL_CHECK_SAMPLES = 10
 _CURL_CHECK_OFFSET = (3.0 - math.sqrt(5.0)) / 2.0
 _CURL_CHECK_STEP = 1e-2 / math.sqrt(2.0)
@@ -163,8 +164,18 @@ def _first_non_finite_point(points, values):
     return _format_point(points[:, np.argmin(np.isfinite(values))])
 
 
+def _check_finite_derivatives(derivatives, points, t, step):
+    finite = np.all(np.isfinite(derivatives), axis=tuple(range(derivatives.ndim - 1)))
+    if not np.all(finite):
+        raise ValueError(
+            f"Error: the derivatives of the external field are not finite at "
+            f"t={t:.6g}, near {_first_non_finite_point(points, finite)}: "
+            f"a singularity within a few {step:.3g} of it"
+        )
+
+
 def _check_curl_free(potential, sim, is_time_dependent):
-    from scipy.differentiate import hessian
+    from scipy.differentiate import hessian, jacobian
 
     ndim = sim.ndim
     extents = sim.simulation_domain()
@@ -195,7 +206,19 @@ def _check_curl_free(potential, sim, is_time_dependent):
                     f"at {_first_non_finite_point(points, magnitude)}"
                 )
 
-            atol = _CURL_FREE_RTOL * magnitude.max() / length**2
+            jacobians = np.zeros((3, 3, points.shape[1]))
+            for k, f in enumerate(components):
+                jacobians[k, :ndim] = jacobian(f, points, initial_step=step).df
+
+        _check_finite_derivatives(jacobians, points, t, step)
+
+        b0 = np.einsum("ijk,kjp->ip", _LEVI_CIVITA, jacobians)
+        roundoff = (
+            _CURL_ROUNDOFF_FACTOR * np.finfo(float).eps * magnitude.max() / step**2
+        )
+        atol = _CURL_FREE_RTOL * np.linalg.norm(b0, axis=0).max() / length + roundoff
+
+        with np.errstate(all="ignore"):
             hessians = np.zeros((3, 3, 3, points.shape[1]))
             for k, f in enumerate(components):
                 hessians[k, :ndim, :ndim] = hessian(
@@ -205,13 +228,7 @@ def _check_curl_free(potential, sim, is_time_dependent):
                     tolerances={"atol": atol, "rtol": 0.0},
                 ).ddf
 
-        finite = np.all(np.isfinite(hessians), axis=(0, 1, 2))
-        if not np.all(finite):
-            raise ValueError(
-                f"Error: the derivatives of the external field are not finite at "
-                f"t={t:.6g}, near {_first_non_finite_point(points, finite)}: "
-                f"a singularity within a few {step:.3g} of it"
-            )
+        _check_finite_derivatives(hessians, points, t, step)
 
         curl = np.einsum("lmi,ijk,kmjp->lp", _LEVI_CIVITA, _LEVI_CIVITA, hessians)
         norms = np.linalg.norm(curl, axis=0)
@@ -220,7 +237,7 @@ def _check_curl_free(potential, sim, is_time_dependent):
             raise ValueError(
                 f"Error: the external field is not curl-free at t={t:.6g}: "
                 f"max|curl B0| = {norms[worst]:.3e} > {atol:.3e} "
-                f"({_CURL_FREE_RTOL:g} x max|A0| / L**2), "
+                f"({_CURL_FREE_RTOL:g} x max|B0| / L + round-off), "
                 f"worst at {_format_point(points[:, worst])}"
             )
 

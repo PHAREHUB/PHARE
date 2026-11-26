@@ -111,6 +111,7 @@ _curl_free_potentials = [
     (2, dict(a0z=az_2d_t, da0z_dt=dazdt_2d)),
     (2, dict(a0z=lambda x, y: 1.0)),  # scalar, B0 = 0
     (2, dict(a0z=lambda x, y: 0.0 * x)),  # zero, atol = 0
+    (2, dict(a0x=lambda x, y: y, a0y=lambda x, y: x)),  # pure gradient, B0 = 0
     (2, dipole_potential((1.0, -0.1))),
     (3, dict(a0z=az_3d)),
     (3, dict(a0z=lambda x, y, z: x * y)),
@@ -130,6 +131,7 @@ _current_carrying_potentials = [
     (1, dict(a0z=lambda x: x**2)),
     (2, dict(a0z=lambda x, y: x**2 + y**2)),
     (2, dict(a0z=lambda x, y: 1e-4 * (x**2 + y**2))),  # weak, same relative current
+    (2, dict(a0z=lambda x, y: 1e4 + 1e-4 * (x**2 + y**2))),  # and a large gauge offset
     (3, dict(a0z=lambda x, y, z: x**2 + y**2)),
 ]
 
@@ -290,6 +292,11 @@ class TestExternalFieldDeclaration(SimulationResetting):
         with self.assertRaisesRegex(ValueError, "not curl-free"):
             UserDefinedExternalField(**kwargs)
         self.assertIsNone(sim.external_field)
+
+    def test_threshold_scales_on_the_field_not_on_the_potential(self):
+        declare_simulation(2)
+        with self.assertRaisesRegex(ValueError, r"1e-06 x max\|B0\| / L"):
+            UserDefinedExternalField(a0z=lambda x, y: x**2 + y**2)
 
     def test_error_names_the_first_failing_instant(self):
         declare_simulation(2)

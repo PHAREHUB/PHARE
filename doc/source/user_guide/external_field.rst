@@ -101,10 +101,20 @@ B0 must carry no current: the solvers take the current from B1 only and drop
 the terms of :math:`\nabla\times\mathbf{B}_0`. ``UserDefinedExternalField``
 checks it when it is declared: on 10 points per direction across the domain,
 and on 10 instants from the start to the end of the run for a time-dependent
-potential, it computes :math:`\nabla\times\mathbf{B}_0` by finite differences
-of the potential and requires it below
-:math:`10^{-6}\,\max|\mathbf{A}_0|/L^2`, with :math:`L` the smallest extent of
-the domain. In 1D this means a uniform B0, that is a linear potential.
+potential, it computes :math:`\mathbf{B}_0` and
+:math:`\nabla\times\mathbf{B}_0` by finite differences of the potential and
+requires :math:`|\nabla\times\mathbf{B}_0|` below
+:math:`10^{-6}\,\max|\mathbf{B}_0|/L`, with :math:`L` the smallest extent of
+the domain and the maximum taken over these points. In 1D this means a uniform
+B0, that is a linear potential.
+
+The threshold scales on B0, so the verdict does not change with the gauge:
+adding a constant or a gradient to the potential leaves it as it is. The limit
+is the round-off of the finite differences, about
+:math:`4\times10^{-8}\,\max|\mathbf{A}_0|/L^2`, which is added to the
+threshold: it takes over when the constant or the gradient is more than about
+20 times :math:`L\,\max|\mathbf{B}_0|`, and a current is then seen only above
+that round-off.
 
 To remove the singularity of a dipole inside the domain, make the field uniform
 inside a radius, as ``DipoleExternalField`` does: :math:`\mathbf{m}\times\mathbf{r}/\max(r, R)^3`
