@@ -4,7 +4,7 @@
 #include "core/def.hpp"
 
 #include <iterator>
-#include <type_traits>
+#include <concepts>
 
 namespace PHARE
 {
@@ -40,8 +40,7 @@ namespace core
         Iterator end_;
     };
 
-    template<typename Array, typename Index = std::size_t,
-             typename = std::enable_if_t<std::is_integral_v<Index>>>
+    template<typename Array, std::integral Index = std::size_t>
     class IndexRange
     {
     public:

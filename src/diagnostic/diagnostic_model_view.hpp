@@ -145,12 +145,13 @@ private:
 };
 
 
-template<typename Hierarchy, typename Model, typename Enable = void>
+template<typename Hierarchy, typename Model>
 class ModelView;
 
 
 template<typename Hierarchy, typename Model>
-class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
+    requires solver::is_hybrid_model_v<Model>
+class ModelView<Hierarchy, Model>
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
     using Super        = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
@@ -287,7 +288,8 @@ protected:
 
 
 template<typename Hierarchy, typename Model>
-class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>>>
+    requires solver::is_mhd_model_v<Model>
+class ModelView<Hierarchy, Model>
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
     using Field    = Model::field_type;
