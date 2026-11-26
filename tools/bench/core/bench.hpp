@@ -8,7 +8,6 @@
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/electromag/test_electromag_fixtures.hpp"
 
-#include "benchmark/benchmark.h"
 
 #include <fstream>
 
