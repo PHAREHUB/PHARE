@@ -2,8 +2,13 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_UTILS_HPP
 
 
-#include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/index/index.hpp"
+#include "core/utilities/meta/for_N.hpp"
+
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace PHARE::core
 {

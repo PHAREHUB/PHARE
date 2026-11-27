@@ -1,22 +1,37 @@
 #ifndef DIAGNOSTIC_MODEL_VIEW_HPP
 #define DIAGNOSTIC_MODEL_VIEW_HPP
 
+#include "core/data/field/field_traits.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
+#include "core/utilities/point/point.hpp"
+
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/amr_constants.hpp"
-#include "amr/physical_models/mhd_model.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-#include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include "dict.hpp"
 
+#include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
 
-#include <type_traits>
+#include <cstdint>
+#include <cstring>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace PHARE::diagnostic
 {

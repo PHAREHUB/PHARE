@@ -1,15 +1,19 @@
 #ifndef PHARE_ION_POPULATION_HPP
 #define PHARE_ION_POPULATION_HPP
 
-#include <tuple>
-#include <string>
-#include <sstream>
-
-
-#include "core/def.hpp"
-#include "particle_pack.hpp"
 #include "initializer/data_provider.hpp"
+
+#include "core/data/ions/ion_population/particle_pack.hpp"
+#include "core/def.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+
+#include "dict.hpp"
+
+#include <cassert>
+#include <cstddef>
+#include <sstream>
+#include <string>
+#include <tuple>
 
 namespace PHARE
 {

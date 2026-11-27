@@ -3,7 +3,7 @@
 #ifndef PHARE_CORE_UTILITIES_LOGGER_LOGGER_DEFAULTS_HPP
 #define PHARE_CORE_UTILITIES_LOGGER_LOGGER_DEFAULTS_HPP
 
-#include "core/def/phlop.hpp"
+#include "core/def/phlop.hpp" // IWYU pragma: export
 
 #if PHARE_HAVE_PHLOP
 #define PHARE_SCOPE_TIMER PHLOP_SCOPE_TIMER

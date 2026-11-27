@@ -1,21 +1,30 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
+#include "core/def.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/point/point.hpp"
+
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
 #include "amr/data/field/refine/field_refine_patch_strategy.hpp"
 #include "amr/data/tensorfield/tensor_field_data_traits.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 
-#include "core/utilities/box/box_spans.hpp"
-#include "core/utilities/meta/for_N.hpp"
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/tbox/Dimension.h>
 
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace PHARE::amr

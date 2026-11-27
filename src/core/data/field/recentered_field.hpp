@@ -1,14 +1,14 @@
 #ifndef PHARE_CORE_DATA_FIELD_RECENTERED_FIELD_HPP
 #define PHARE_CORE_DATA_FIELD_RECENTERED_FIELD_HPP
 
-#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/def.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <string>
 #include <stdexcept>
 #include <type_traits>
 

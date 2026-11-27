@@ -2,8 +2,6 @@
 #ifndef PHARE_MESSENGER_INFO_HPP
 #define PHARE_MESSENGER_INFO_HPP
 
-#include <string>
-
 
 
 namespace PHARE

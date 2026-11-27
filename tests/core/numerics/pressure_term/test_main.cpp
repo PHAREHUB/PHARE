@@ -1,15 +1,31 @@
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
+#include "core/data/grid/grid.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/differential_operators.hpp"
 #include "core/numerics/pressure_term/pressure_term.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <initializer_list>
+#include <iterator>
 #include <limits>
+#include <string>
+#include <utility>
 
 using namespace PHARE::core;
 

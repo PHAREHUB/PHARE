@@ -1,16 +1,19 @@
 
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_utilities.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "gtest/gtest.h"
 
-
+#include <array>
+#include <cstdint>
+#include <optional>
 #include <string>
 
 

@@ -1,4 +1,10 @@
-#include "field_coarsen_index_weight.hpp"
+
+#include "core/def.hpp"
+
+#include "amr/data/field/coarsening/coarsen_weighter.hpp"
+
+#include <cstddef>
+#include <vector>
 
 namespace PHARE::amr
 {

@@ -1,23 +1,28 @@
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
-#include "amr/physical_models/hybrid_model.hpp"
-#include "amr/physical_models/mhd_model.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/meta/type_meta.hpp"
 
-#include "diagnostic/diagnostic_props.hpp"
-
-#include "initializer/data_provider.hpp"
-
 #include "mpi/mpi_utils.hpp"
 
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+
+#include "diagnostic/diagnostic_props.hpp"
+
+#include "dict.hpp"
+
+#include <ctime>
 #include <map>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace PHARE::diagnostic
 {

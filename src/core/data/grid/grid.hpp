@@ -2,14 +2,17 @@
 #define PHARE_CORE_DATA_GRID_GRID_BASE_HPP
 
 
-#include "core/def.hpp"
 #include "core/data/field/field.hpp"
+#include "core/def.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
-
+#include <algorithm>
 #include <array>
-#include <string>
-#include <cassert>
+#include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 
 namespace PHARE::core
 {

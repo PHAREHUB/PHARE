@@ -2,15 +2,31 @@
 #define PHARE_HDF5_H5FILE_HPP
 
 #include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/logic.hpp"
+#include "core/utilities/logic.hpp" // IWYU pragma: keep // PHARE_DEBUG_DO
 #include "core/utilities/meta/container_meta.hpp"
-#include "mpi/mpi_utils.hpp"
 #include "core/utilities/span.hpp"
 
+#include "mpi/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "highfive/H5File.hpp"
+#include "H5Dpublic.h"
+#include "H5Ppublic.h"
+#include "H5pubconf.h"
+#include "H5public.h"
+#include "highfive/H5DataSet.hpp"
+#include "highfive/H5DataSpace.hpp"
 #include "highfive/H5Easy.hpp"
+#include "highfive/H5File.hpp"
+#include "highfive/H5Group.hpp"
+#include "highfive/H5Object.hpp"
+#include "highfive/H5PropertyList.hpp"
+#include "highfive/highfive.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 
 

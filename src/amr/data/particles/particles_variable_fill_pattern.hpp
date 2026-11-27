@@ -1,20 +1,28 @@
 #ifndef PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 
-#include "core/logger.hpp"
 #include "core/data/grid/gridlayout.hpp"
+#include "core/logger.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include <amr/utilities/box/amr_box.hpp>
-
-#include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Transformation.h>
 #include <SAMRAI/pdat/CellGeometry.h>
-#include <SAMRAI/hier/RefineOperator.h>
-#include "SAMRAI/xfer/VariableFillPattern.h"
+#include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/Utilities.h>
+#include <SAMRAI/xfer/VariableFillPattern.h>
 
-#include <cassert>
+#include <amr/utilities/box/amr_box.hpp>
+#include <cstddef>
+#include <memory>
+#include <ostream>
 #include <stdexcept>
+#include <string>
 
 namespace PHARE::amr
 {

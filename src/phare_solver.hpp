@@ -2,25 +2,30 @@
 #ifndef PHARE_SOLVER_INCLUDE_HPP
 #define PHARE_SOLVER_INCLUDE_HPP
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "phare_amr.hpp"
+#include "core/utilities/constants.hpp"
+#include "phare_core.hpp"
 
-#include "amr/solvers/solver_mhd.hpp"
-#include "amr/solvers/solver_ppc.hpp"
-#include "amr/multiphysics_integrator.hpp"
-#include "amr/physical_models/mhd_model.hpp"
-#include "amr/messengers/messenger_factory.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/data/particles/refine/particles_data_split.hpp"
+#include "amr/data/particles/refine/splitter.hpp"
+#include "amr/level_initializer/hybrid_level_initializer.hpp"
+#include "amr/level_initializer/level_initializer_factory.hpp"
+#include "amr/level_initializer/mhd_level_initializer.hpp"
 #include "amr/messengers/hybrid_hybrid_messenger_strategy.hpp"
+#include "amr/messengers/messenger_factory.hpp"
 #include "amr/messengers/mhd_hybrid_messenger_strategy.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
+#include "amr/multiphysics_integrator.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "amr/data/particles/refine/splitter.hpp"
-#include "amr/data/particles/refine/particles_data_split.hpp"
-#include "amr/level_initializer/level_initializer_factory.hpp"
-#include "amr/level_initializer/hybrid_level_initializer.hpp"
-#include "amr/level_initializer/mhd_level_initializer.hpp"
 #include "amr/solvers/mhd_resolver.hpp"
+#include "amr/solvers/solver_mhd.hpp"
+#include "amr/solvers/solver_ppc.hpp"
+#include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
+#include "amr/types/amr_types.hpp"
+#include "phare_amr.hpp"
 
 #include <memory>
 

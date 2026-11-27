@@ -2,24 +2,26 @@
 #define PHARE_CORE_UTILITIES_ALGORITHM_HPP
 
 
-#include "core/def.hpp"
-
-#include "core/utilities/span.hpp"
-#include "core/utilities/logic.hpp"
-#include "core/utilities/array.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/field/recentered_field.hpp"
-#include "core/utilities/box/box_spans.hpp"
-#include "core/utilities/meta/constexprifier.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/def.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/meta/constexprifier.hpp"
+#include "core/utilities/span.hpp"
 
-#include <array>
-#include <tuple>
-#include <string>
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <stdexcept>
+#include <string>
+#include <tuple>
 
 
 namespace PHARE

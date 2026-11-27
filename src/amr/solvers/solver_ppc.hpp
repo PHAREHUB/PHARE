@@ -1,31 +1,42 @@
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/numerics/ohm/ohm.hpp"
-#include "core/utilities/algorithm.hpp"
-#include "mpi/mpi_utils.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/ion_updater/ion_updater.hpp"
-#include "core/numerics/riemann_solvers/mhd_speeds.hpp"
+#include "initializer/data_provider.hpp"
 
-#include "amr/solvers/solver.hpp"
+#include "core/data/field/field_traits.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/def.hpp"
+#include "core/errors.hpp"
+#include "core/logger.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/riemann_solvers/mhd_speeds.hpp"
+#include "core/utilities/algorithm.hpp"
+#include "core/utilities/index/index.hpp"
+
+#include "mpi/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
 #include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/messengers/messenger.hpp"
+#include "amr/messengers/messenger_info.hpp"
+#include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/solvers/solver.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
 #include "amr/solvers/solver_hybrid_field_evolvers.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/messengers/hybrid_messenger_info.hpp"
 
-#include <SAMRAI/hier/Patch.h>
-#include "SAMRAI/hier/PatchLevel.h"
-
+#include <algorithm>
+#include <cstddef>
+#include <limits>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <unordered_map>
-#include <cmath>
 
 
 namespace PHARE::solver

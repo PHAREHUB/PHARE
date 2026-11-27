@@ -1,14 +1,15 @@
 #ifndef PHARE_CORE_UTILITIES_META_ENUM_META_HPP
 #define PHARE_CORE_UTILITIES_META_ENUM_META_HPP
 
-#include "core/utilities/meta/for_N.hpp"
 #include "core/utilities/meta/constexprifier.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
+#include <cstddef>
 #include <cstdint>
-#include <utility>
-#include <variant>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
+#include <variant>
 
 namespace PHARE::core
 {

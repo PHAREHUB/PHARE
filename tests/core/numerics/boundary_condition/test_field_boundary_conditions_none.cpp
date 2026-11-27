@@ -1,7 +1,13 @@
+#include "core/boundary/boundary_defs.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_none.hpp"
+
+#include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
+
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_boundary_condition_none.hpp"
-#include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
+#include <array>
+#include <cstdint>
+#include <string>
 
 using namespace PHARE::core;
 

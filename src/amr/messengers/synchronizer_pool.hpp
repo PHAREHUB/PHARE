@@ -1,7 +1,16 @@
 #ifndef PHARE_SYNCHRONIZER_POOL_HPP
 #define PHARE_SYNCHRONIZER_POOL_HPP
 
-#include "synchronizer.hpp"
+#include "amr/messengers/synchronizer.hpp"
+
+#include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 
 

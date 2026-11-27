@@ -1,13 +1,16 @@
 #ifndef PHARE_HDF5_PARTICLE_WRITER_HPP
 #define PHARE_HDF5_PARTICLE_WRITER_HPP
 
-#include <vector>
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_packer.hpp"
+#include "core/def.hpp"
+#include "core/utilities/tuple.hpp"
 
 #include "hdf5/detail/hdf5_utils.hpp"
 
-
-#include "core/def.hpp"
-#include "core/data/particles/particle_packer.hpp"
+#include <cstddef>
+#include <string>
+#include <vector>
 
 
 namespace PHARE::hdf5

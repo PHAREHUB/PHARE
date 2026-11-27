@@ -1,14 +1,13 @@
 #ifndef PHARE_TEST_CORE_DATA_ELECTROMAG_ELECTROMAG_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_ELECTROMAG_ELECTROMAG_FIXTURES_HPP
 
-#include "phare_core.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
-#include "tests/core/data/field/test_field_fixtures.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
-#include <cmath>
-#include <cassert>
-#include <functional>
+#include <cstddef>
+#include <utility>
 
 namespace PHARE::core
 {

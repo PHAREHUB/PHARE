@@ -2,16 +2,19 @@
 #define PHARE_CORE_NUMERICS_INTERPOLATOR_INTERPOLATOR_HPP
 
 
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/utilities/meta/type_meta.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <tuple>
+#include <variant>
 
 
 namespace PHARE::core

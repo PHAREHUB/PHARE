@@ -3,11 +3,21 @@
 
 #include "core/logger.hpp"
 
-#include <SAMRAI/tbox/Dimension.h>
-#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxLevel.h>
 #include <SAMRAI/hier/BoxOverlap.h>
-#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchData.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+#include <SAMRAI/tbox/Transaction.h>
+#include <SAMRAI/tbox/Utilities.h>
+#include <SAMRAI/xfer/RefineClasses.h>
+#include <SAMRAI/xfer/RefineTransactionFactory.h>
 
+#include <iosfwd>
+#include <memory>
+#include <stddef.h>
 #include <stdexcept>
 
 namespace PHARE::amr

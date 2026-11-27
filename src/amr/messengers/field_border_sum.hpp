@@ -1,35 +1,43 @@
 #ifndef PHARE_AMR_MESSENGERS_FIELD_BORDER_SUM_HPP
 #define PHARE_AMR_MESSENGERS_FIELD_BORDER_SUM_HPP
 
-#include "core/logger.hpp"
 #include "core/data/field/field_traits.hpp"
-#include "core/utilities/meta/for_N.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
-#include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "amr/messengers/field_operate_transaction.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
 #include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/GlobalId.h>
-#include <SAMRAI/hier/PatchLevel.h>
-#include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxLevel.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/GlobalId.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/MessageStream.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/xfer/RefineClasses.h>
 #include <SAMRAI/xfer/RefineTransactionFactory.h>
 
-#include <map>
-#include <span>
-#include <memory>
-#include <vector>
-#include <cstddef>
-#include <utility>
 #include <algorithm>
-#include <stdexcept>
 #include <array>
+#include <cstddef>
+#include <iterator>
+#include <map>
+#include <memory>
+#include <ranges>
+#include <span>
+#include <stdexcept>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace PHARE::amr
 {

@@ -54,7 +54,34 @@ PenaltyReturnTypeOnItsOwnLine: 60
 PointerAlignment: Left
 QualifierAlignment: Right
 ReflowComments: true
-SortIncludes: false
+SortIncludes: CaseSensitive
+# grouped by src/ module, in dependency order, then third party, then system
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"initializer/'
+    Priority: 1
+  - Regex: '^"(core/|phare_core\.hpp)'
+    Priority: 2
+  - Regex: '^"(mpi/|phare_mpi\.hpp)'
+    Priority: 3
+  - Regex: '^"hdf5/'
+    Priority: 4
+  - Regex: '^"(amr/|phare_amr\.hpp|phare_solver\.hpp)'
+    Priority: 5
+  - Regex: '^"(diagnostic|restarts)/'
+    Priority: 6
+  - Regex: '^"simulator/'
+    Priority: 7
+  - Regex: '^"python3/'
+    Priority: 8
+  - Regex: '^[<"](gtest|gmock|benchmark)/'
+    Priority: 11
+  - Regex: '^"'
+    Priority: 9
+  - Regex: '^<(SAMRAI|pybind11|highfive|caliper)/'
+    Priority: 10
+  - Regex: '^<'
+    Priority: 12
 SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements

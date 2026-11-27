@@ -3,7 +3,9 @@
 #include "gtest/gtest.h"
 
 #include <cmath>
+#include <initializer_list>
 #include <numbers>
+#include <string>
 
 using namespace PHARE::core;
 

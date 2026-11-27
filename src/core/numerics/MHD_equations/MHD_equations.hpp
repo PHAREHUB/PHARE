@@ -1,6 +1,7 @@
 #ifndef CORE_NUMERICS_MHD_EQUATIONS_HPP
 #define CORE_NUMERICS_MHD_EQUATIONS_HPP
 
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 

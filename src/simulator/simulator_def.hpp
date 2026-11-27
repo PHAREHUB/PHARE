@@ -1,9 +1,11 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_DEF_HPP
 #define PHARE_SIMULATOR_SIMULATOR_DEF_HPP
 
+#include "initializer/data_provider.hpp"
+
 #include "core/models/options/mhd_options_def.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "dict.hpp"
 
 #include <array>
 #include <cassert>

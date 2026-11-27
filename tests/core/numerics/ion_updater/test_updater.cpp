@@ -1,18 +1,41 @@
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
+#include "initializer/data_provider.hpp"
 
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/ions/ion_population/particle_pack.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 #include "core/numerics/moments/level_ghost_ownership.hpp"
+#include "core/numerics/moments/moments.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/utilities/range/range.hpp"
+#include "core/utilities/span.hpp"
+#include "phare_core.hpp"
 
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 #include "gtest/gtest.h"
 
-#include <numeric>
-#include <utility>
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdlib>
+#include <initializer_list>
+#include <iostream>
+#include <iterator>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 
 using namespace PHARE::core;

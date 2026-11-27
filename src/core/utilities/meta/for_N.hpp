@@ -6,10 +6,10 @@
 #include "core/utilities/meta/type_meta.hpp"
 
 #include <array>
-#include <tuple>
 #include <cstdint>
-#include <utility>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace PHARE::core
 {

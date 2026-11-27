@@ -10,16 +10,20 @@
 // periodic images included. The check is a brute force over all patches and their images.
 
 #include "core/numerics/moments/level_ghost_ownership.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include "gtest/gtest.h"
 
 #include <array>
-#include <vector>
-#include <string>
 #include <cstddef>
+#include <initializer_list>
+#include <iterator>
 #include <sstream>
-#include <utility>
+#include <string>
+#include <vector>
 
 using namespace PHARE::core;
 

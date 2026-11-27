@@ -1,19 +1,31 @@
 
-#include "phare_mpi.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/constants.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/particles/particles_data.hpp"
-#include "amr/data/particles/particles_data_factory.hpp"
-#include "amr/data/particles/particles_variable.hpp"
-#include <SAMRAI/geom/CartesianPatchGeometry.h>
+
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDescriptor.h>
+#include <SAMRAI/hier/Transformation.h>
 #include <SAMRAI/pdat/CellGeometry.h>
+#include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <memory>
+#include <string>
 
 using testing::Eq;
 

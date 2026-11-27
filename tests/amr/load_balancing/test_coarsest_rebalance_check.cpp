@@ -1,9 +1,12 @@
 #include "amr/load_balancing/coarsest_rebalance_check.hpp"
+#include "amr/load_balancing/load_balancer_details.hpp"
 
 #include "gtest/gtest.h"
 
-#include <vector>
+#include <algorithm>
 #include <cstddef>
+#include <string>
+#include <vector>
 
 using namespace PHARE::amr;
 

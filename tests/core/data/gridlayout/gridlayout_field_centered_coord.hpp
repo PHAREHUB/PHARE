@@ -2,12 +2,21 @@
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_FIELD_CENTERED_COORD_HPP
 
 
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/utilities/point/point.hpp"
 
-#include "gridlayout_params.hpp"
 #include "gridlayout_base_params.hpp"
+#include "gridlayout_params.hpp"
 
 #include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <fstream>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace PHARE::core;
 

@@ -1,24 +1,44 @@
 
+#include "core/data/grid/grid.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
 #include "phare_core.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/data/field/field_data.hpp"
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_overlap.hpp"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include "phare_mpi.hpp"
-
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/LocalId.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gtest/gtest.h"
 
-
-#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
-
-#include "core/data/grid/grid.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-
-
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

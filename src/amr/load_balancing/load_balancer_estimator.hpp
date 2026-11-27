@@ -1,14 +1,10 @@
 #ifndef PHARE_LOAD_BALANCER_ESTIMATOR_HPP
 #define PHARE_LOAD_BALANCER_ESTIMATOR_HPP
 
-#include <cstddef>
-#include <string>
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/types/amr_types.hpp"
 
 #include <SAMRAI/hier/PatchLevel.h>
-#include "SAMRAI/mesh/CascadePartitioner.h"
-
-#include "amr/resources_manager/amr_utils.hpp"
-#include "amr/physical_models/physical_model.hpp"
 
 
 

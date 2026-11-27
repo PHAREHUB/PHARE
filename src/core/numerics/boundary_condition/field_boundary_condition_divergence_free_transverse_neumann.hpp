@@ -3,12 +3,17 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/box/box_spans.hpp"
 #include "core/numerics/boundary_condition/divergence_free_transverse_common.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <utility>
 
 namespace PHARE::core
 {

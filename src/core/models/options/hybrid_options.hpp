@@ -2,8 +2,8 @@
 #define PHARE_OPTIONS_HYBRID_OPTIONS_HPP
 
 
-#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include <array>
 

@@ -1,15 +1,19 @@
 #ifndef PHARE_PARTICLES_DATA_FACTORY_HPP
 #define PHARE_PARTICLES_DATA_FACTORY_HPP
 
-#include "particles_data.hpp"
-
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/particles/particles_data.hpp"
 
-#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDataFactory.h>
 #include <SAMRAI/pdat/CellGeometry.h>
+
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 
 

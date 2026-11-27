@@ -4,8 +4,15 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/diagnostic_props.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace PHARE::diagnostic::h5
 {

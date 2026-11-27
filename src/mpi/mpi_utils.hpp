@@ -2,16 +2,21 @@
 #define PHARE_CORE_UTILITIES_MPI_HPP
 
 #include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/span.hpp"
-#include "core/utilities/logic.hpp"
 #include "core/utilities/array.hpp"
 #include "core/utilities/meta/container_meta.hpp"
+#include "core/utilities/span.hpp"
 
-#include <vector>
-#include <string>
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include <array>
 #include <cassert>
+#include <cstdint>
 #include <cstring>
+#include <numeric>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 
 #if !defined(PHARE_LOG_ERROR)

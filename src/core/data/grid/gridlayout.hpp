@@ -2,27 +2,30 @@
 #define PHARE_CORE_GRID_GridLayout_HPP
 
 
-#include "core/def.hpp"
-#include "core/utilities/meta/type_meta.hpp"
-#include "core/utilities/meta/for_N.hpp"
-#include "core/utilities/array.hpp"
 #include "core/data/field/field_traits.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/def.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/meta/type_meta.hpp"
 #include "core/utilities/point/point.hpp"
 
-#include "gridlayoutdefs.hpp"
-
-#include <array>
 #include <algorithm>
-#include <tuple>
+#include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
-#include <functional>
+#include <tuple>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace PHARE
 {

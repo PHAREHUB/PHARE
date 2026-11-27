@@ -2,32 +2,43 @@
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 
 
-#include "core/def.hpp" // IWYU pragma: keep
-#include "core/data/vector.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/ions/ion_population/particle_pack.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
-#include "core/data/ions/ion_population/particle_pack.hpp"
+#include "core/data/vector.hpp"
+#include "core/def.hpp" // IWYU pragma: keep
+#include "core/logger.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/tuple.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/samrai.hpp"
 #include "amr/utilities/box/amr_box.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include <amr/data/particles/particles_variable_fill_pattern.hpp>
 
-
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
-#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/Transformation.h>
 #include <SAMRAI/pdat/CellOverlap.h>
-#include <SAMRAI/tbox/RestartManager.h>
-#include "SAMRAI/hier/Transformation.h"
-#include "core/utilities/tuple.hpp"
-#include <SAMRAI/tbox/MemoryUtilities.h>
+#include <SAMRAI/tbox/Database.h>
+#include <SAMRAI/tbox/MessageStream.h>
+#include <SAMRAI/tbox/Utilities.h>
 
+#include <amr/data/particles/particles_variable_fill_pattern.hpp>
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <vector>
-#include <cstddef>
-#include <stdexcept>
 
 
 namespace PHARE

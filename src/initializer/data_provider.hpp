@@ -1,17 +1,18 @@
 #ifndef DATA_PROVIDER_HPP
 #define DATA_PROVIDER_HPP
 
-#include <memory>
-#include <string>
-#include <vector>
-#include <optional>
-#include <functional>
-#include <type_traits>
-
 #include "core/def.hpp"
 #include "core/utilities/span.hpp"
 
 #include "dict.hpp"
+
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <type_traits>
+#include <vector>
 
 namespace cppdict
 {

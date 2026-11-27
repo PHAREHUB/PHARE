@@ -4,7 +4,7 @@
 
 #include "amr/physical_models/physical_model.hpp"
 
-#include <memory>
+#include <string>
 
 namespace PHARE::amr
 {

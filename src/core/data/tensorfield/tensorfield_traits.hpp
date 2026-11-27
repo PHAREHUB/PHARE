@@ -5,7 +5,10 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include <concepts>
+#include <cstddef>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 namespace PHARE::core
 {
@@ -60,6 +63,7 @@ concept IsScalarOrTensorField = IsField<T> || IsTensorField<T>;
  */
 template<typename ScalarOrTensorFieldT, bool is_scalar>
 struct PhysicalQuantityTypeSelector;
+
 /** @brief Specialization for scalar fields */
 template<typename ScalarOrTensorFieldT>
 struct PhysicalQuantityTypeSelector<ScalarOrTensorFieldT, true>
@@ -79,6 +83,7 @@ struct PhysicalQuantityTypeSelector<ScalarOrTensorFieldT, false>
  */
 template<typename ScalarOrTensorFieldT, bool is_scalar>
 struct FieldTypeSelector;
+
 /** @brief Specialization for scalar fields */
 template<typename ScalarOrTensorFieldT>
 struct FieldTypeSelector<ScalarOrTensorFieldT, true>
@@ -98,6 +103,7 @@ struct FieldTypeSelector<ScalarOrTensorFieldT, false>
  */
 template<typename ScalarOrTensorFieldT, bool is_scalar>
 struct NumberOfComponentsSelector;
+
 /** @brief Specialization for scalar fields */
 template<typename ScalarOrTensorFieldT>
 struct NumberOfComponentsSelector<ScalarOrTensorFieldT, true>

@@ -1,19 +1,24 @@
 
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
-#include "core/data/particles/particle_array.hpp"
-
 #include "initializer/data_provider.hpp"
 #include "initializer/python_data_provider.hpp"
 #include "initializer/restart_data_provider.hpp"
 
-#include <memory>
-#include <string>
-#include <stdlib.h>
+#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/span.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
 
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 
 using namespace PHARE::initializer;

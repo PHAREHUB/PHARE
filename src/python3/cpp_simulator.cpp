@@ -8,6 +8,8 @@
 
 #include "python3/cpp_simulator.hpp"
 
+#include "core/def.hpp"
+
 #if !defined(PHARE_CPP_MOD_NAME)
 #define PHARE_CPP_MOD_NAME PHARE_STR_CAT(cpp_, PHARE_SIM_ID)
 #endif

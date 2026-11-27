@@ -1,10 +1,9 @@
 
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 

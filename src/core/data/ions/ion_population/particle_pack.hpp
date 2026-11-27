@@ -2,7 +2,11 @@
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_HPP
 
 #include "core/def.hpp"
-#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/meta/type_meta.hpp"
+
+#include <cstddef>
+#include <stdexcept>
+#include <string>
 
 namespace PHARE
 {

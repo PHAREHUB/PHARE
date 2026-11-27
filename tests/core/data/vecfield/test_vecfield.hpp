@@ -3,11 +3,9 @@
 #ifndef PHARE_TEST_CORE_VECFIELD_TEST_HPP
 #define PHARE_TEST_CORE_VECFIELD_TEST_HPP
 
-#include "core/data/field/field.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+
+#include <tuple>
 
 namespace PHARE::core
 {

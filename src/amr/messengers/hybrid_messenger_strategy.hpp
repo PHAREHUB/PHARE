@@ -5,10 +5,8 @@
 
 #include "amr/messengers/messenger_info.hpp"
 
-#include <SAMRAI/hier/PatchLevel.h>
-#include <SAMRAI/hier/PatchHierarchy.h>
-
-
+#include <memory>
+#include <string>
 #include <utility>
 
 

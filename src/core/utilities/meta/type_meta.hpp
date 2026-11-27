@@ -1,10 +1,10 @@
 #ifndef PHARE_CORE_UTILITIES_META_TYPE_META_HPP
 #define PHARE_CORE_UTILITIES_META_TYPE_META_HPP
 
-#include <tuple>
 #include <cstddef>
-#include <utility>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace PHARE::core
 {

@@ -3,10 +3,10 @@
 
 #include "amr/load_balancing/load_balancer_details.hpp"
 
-#include <vector>
+#include <algorithm>
 #include <cstddef>
 #include <numeric>
-#include <algorithm>
+#include <vector>
 
 namespace PHARE::amr
 {

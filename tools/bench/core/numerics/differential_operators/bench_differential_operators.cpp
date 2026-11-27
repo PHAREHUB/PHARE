@@ -1,7 +1,12 @@
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "benchmark/benchmark.h"
 
@@ -10,6 +15,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <string>
+#include <vector>
 
 namespace PHARE::core::bench
 {

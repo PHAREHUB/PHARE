@@ -1,21 +1,40 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 
+#include "core/data/field/field_box.hpp"
+#include "core/data/field/field_scratch.hpp"
+#include "core/data/field/field_traits.hpp"
+#include "core/data/vector.hpp"
+#include "core/logger.hpp"
+#include "core/utilities/point/point.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/logger.hpp"
-#include "core/data/field/field_scratch.hpp"
-#include "core/data/field/field_box.hpp"
-
-#include "amr/samrai.hpp" // restarts
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_overlap.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/samrai.hpp" // restarts
+#include "amr/utilities/box/amr_box.hpp"
 
-#include "field_geometry.hpp"
-
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/LocalId.h>
+#include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchData.h>
-#include <SAMRAI/tbox/MemoryUtilities.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/MessageStream.h>
+#include <SAMRAI/tbox/Utilities.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace PHARE

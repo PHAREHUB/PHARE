@@ -3,18 +3,23 @@
 #define PHARE_HYBRID_TAGGER_HPP
 
 
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/numeric.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "tagger.hpp"
-#include "tagger_strategy.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-#include "amr/types/amr_types.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/tagging/tagger.hpp"
+#include "amr/tagging/tagger_strategy.hpp"
 
 #include <SAMRAI/pdat/CellData.h>
 
 #include <memory>
-#include <utility>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 
 

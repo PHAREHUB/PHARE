@@ -6,10 +6,11 @@
 #include "core/def.hpp"
 #include "core/utilities/array.hpp"
 
-#include <vector>
 #include <algorithm>
 #include <cstddef>
 #include <numeric>
+#include <type_traits>
+#include <vector>
 
 namespace PHARE::core
 {

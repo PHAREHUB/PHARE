@@ -1,17 +1,11 @@
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "test_weighter_coarsen.hpp" // IWYU pragma: keep // its TESTs are this binary's
 
-#include <SAMRAI/hier/Box.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-
-#include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
-
 #include "gtest/gtest.h"
-
-
-#include "test_weighter_coarsen.hpp"
 
 
 

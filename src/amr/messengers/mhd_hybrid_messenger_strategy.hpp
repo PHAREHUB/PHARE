@@ -3,9 +3,12 @@
 
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
+#include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
 
+#include <memory>
 #include <string>
+#include <utility>
 
 namespace PHARE
 {

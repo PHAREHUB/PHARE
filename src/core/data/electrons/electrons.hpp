@@ -1,12 +1,22 @@
 #ifndef PHARE_ELECTRONS_HPP
 #define PHARE_ELECTRONS_HPP
 
+#include "initializer/data_provider.hpp"
+
+#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/def.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/pressure_term/pressure_term.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "dict.hpp"
+
+#include <algorithm>
+#include <array>
+#include <initializer_list>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <vector>
 
 
 namespace PHARE::core

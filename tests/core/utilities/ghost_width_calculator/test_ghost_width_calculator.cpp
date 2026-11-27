@@ -1,5 +1,8 @@
 #include "core/utilities/ghost_width_calculator.hpp"
+
 #include <gtest/gtest.h>
+
+#include <string>
 
 using namespace PHARE::core;
 

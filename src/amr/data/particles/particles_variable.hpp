@@ -1,13 +1,19 @@
 #ifndef PHARE_PARTICLES_VARIABLE_HPP
 #define PHARE_PARTICLES_VARIABLE_HPP
 
-#include "phare_mpi.hpp"                 // IWYU pragma: keep
 #include "core/data/grid/gridlayout.hpp" // particle ghost width
 
-#include "particles_data_factory.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/particles/particles_data_factory.hpp"
+
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Variable.h>
 #include <SAMRAI/tbox/Dimension.h>
+
+#include <cstddef>
+#include <memory>
+#include <string>
 
 namespace PHARE
 {

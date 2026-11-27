@@ -1,15 +1,28 @@
 #ifndef PHARE_TESTS_AMR_TOOLS_BUFFER_BASIC_HIERARCHY_HPP
 #define PHARE_TESTS_AMR_TOOLS_BUFFER_BASIC_HIERARCHY_HPP
 
-#include "phare_mpi.hpp"
-
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/geom/CartesianGridGeometry.h>
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxId.h>
+#include <SAMRAI/hier/BoxLevel.h>
+#include <SAMRAI/hier/GlobalId.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/LocalId.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/pdat/CellVariable.h>
+#include <SAMRAI/tbox/Database.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/InputManager.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
 
+#include <cstddef>
 #include <memory>
+#include <string>
+#include <vector>
 
 class BasicHierarchy
 {

@@ -6,10 +6,12 @@ Splitting reference material can be found @
 #ifndef PHARE_SPLIT_1D_HPP
 #define PHARE_SPLIT_1D_HPP
 
-#include <array>
-#include "core/utilities/point/point.hpp"
 #include "core/utilities/constants.hpp"
-#include "splitter.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "amr/data/particles/refine/splitter.hpp"
+
+#include <array>
 
 namespace PHARE::amr
 {

@@ -1,13 +1,17 @@
 #ifndef PHARE_MHD_FLUX_COARSENER
 #define PHARE_MHD_FLUX_COARSENER
 
-#include "core/utilities/constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/tbox/Utilities.h>
 
+#include <array>
 #include <cassert>
+#include <cstddef>
 #include <stdexcept>
 
 namespace PHARE::amr

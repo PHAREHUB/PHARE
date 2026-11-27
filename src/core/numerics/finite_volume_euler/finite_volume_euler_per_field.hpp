@@ -2,9 +2,9 @@
 #define PHARE_CORE_NUMERICS_FINITE_VOLUME_EULER_HPP
 
 
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <tuple>
 

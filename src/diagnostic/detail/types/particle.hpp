@@ -1,17 +1,22 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_HPP
 
-#include "diagnostic/detail/h5typewriter.hpp"
-
-#include "core/data/particles/particle_packer.hpp"
 #include "core/data/grid/gridlayout.hpp"
-
+#include "core/data/particles/particle_packer.hpp"
+#include "core/utilities/meta/container_meta.hpp"
+#include "core/utilities/tuple.hpp"
 
 #include "hdf5/writer/particle_writer.hpp"
 
-#include <unordered_map>
+#include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include <cstddef>
+#include <iterator>
 #include <string>
-#include <memory>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
 
 namespace PHARE::diagnostic::h5
 {

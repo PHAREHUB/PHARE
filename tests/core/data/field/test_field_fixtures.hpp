@@ -4,6 +4,8 @@
 #include "core/data/field/field.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
+#include <cstddef>
+
 namespace PHARE::core
 {
 

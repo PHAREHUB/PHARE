@@ -1,8 +1,8 @@
 #ifndef CORE_NUMERICS_RECONSTRUCTION_CONSTANT_HPP
 #define CORE_NUMERICS_RECONSTRUCTION_CONSTANT_HPP
 
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+
 #include <utility>
 
 namespace PHARE::core

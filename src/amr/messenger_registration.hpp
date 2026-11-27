@@ -3,8 +3,12 @@
 
 
 #include "amr/messengers/messenger.hpp"
-#include "physical_models/physical_model.hpp"
+#include "amr/physical_models/physical_model.hpp"
 #include "amr/solvers/solver.hpp"
+
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 
 namespace PHARE

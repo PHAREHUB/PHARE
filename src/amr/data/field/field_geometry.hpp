@@ -2,18 +2,27 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 
 
-#include "core/utilities/meta/for_N.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
-#include "field_overlap.hpp"
+#include "amr/data/field/field_overlap.hpp"
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
 
 #include <SAMRAI/hier/Box.h>
-#include "SAMRAI/hier/IntVector.h"
+#include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
 
-#include <cassert>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
 
 namespace PHARE
 {

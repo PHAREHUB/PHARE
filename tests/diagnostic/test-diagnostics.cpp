@@ -1,10 +1,10 @@
 
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "test_diagnostics.ipp" // IWYU pragma: keep
 
 #include <cstdlib>
 #include <filesystem>
-
-#include "test_diagnostics.ipp"
 
 // PHARE_TEST_DIM/PHARE_TEST_INTERP set per binary by CMake
 

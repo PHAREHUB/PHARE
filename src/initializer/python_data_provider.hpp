@@ -6,8 +6,11 @@
 
 #include "initializer/data_provider.hpp"
 
-#include <pybind11/embed.h> // everything needed for embedding
-#include <pybind11/functional.h>
+#include <pybind11/embed.h>      // everything needed for embedding
+#include <pybind11/functional.h> // IWYU pragma: keep
+#include <pybind11/pybind11.h>
+
+#include <string>
 
 namespace py = pybind11;
 

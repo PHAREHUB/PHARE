@@ -1,8 +1,8 @@
-#include <array>
-#include <cstdint>
-
 #include "core/def.hpp"
 #include "core/utilities/numeric.hpp"
+
+#include <array>
+#include <cstdint>
 
 
 namespace PHARE

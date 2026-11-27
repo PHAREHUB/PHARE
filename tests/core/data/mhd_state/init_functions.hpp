@@ -1,10 +1,10 @@
 #ifndef PHARE_TEST_CORE_DATA_MHD_STATE_INIT_FUNCTIONS_HPP
 #define PHARE_TEST_CORE_DATA_MHD_STATE_INIT_FUNCTIONS_HPP
 
-#include <memory>
-#include <vector>
-
 #include "core/utilities/span.hpp"
+
+#include <cstddef>
+#include <memory>
 
 namespace PHARE::initializer::test_fn::func_1d
 {

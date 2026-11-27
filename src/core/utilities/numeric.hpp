@@ -5,8 +5,9 @@
 
 #include <array>
 #include <cmath>
-#include <numeric>
 #include <functional>
+#include <initializer_list>
+#include <numeric>
 #include <type_traits>
 
 namespace PHARE::core

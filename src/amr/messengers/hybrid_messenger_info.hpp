@@ -1,7 +1,7 @@
 #ifndef PHARE_HYBRID_MESSENGER_INFO_HPP
 #define PHARE_HYBRID_MESSENGER_INFO_HPP
 
-#include "messenger_info.hpp"
+#include "amr/messengers/messenger_info.hpp"
 
 #include <string>
 #include <vector>

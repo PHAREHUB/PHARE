@@ -1,7 +1,12 @@
 
 
-#include "gridlayout_test.hpp"
 #include "gridlayout_field_centered_coord.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "gridlayout_test.hpp"
+
+#include "gtest/gtest.h"
 
 
 using namespace PHARE::core;

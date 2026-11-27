@@ -1,20 +1,26 @@
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/messengers/composite_refine_patch_strategy.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/Connector.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDescriptor.h>
 #include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
+#include <SAMRAI/xfer/RefineClasses.h>
+#include <SAMRAI/xfer/RefinePatchStrategy.h>
 
 #include "gtest/gtest.h"
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace PHARE::amr;

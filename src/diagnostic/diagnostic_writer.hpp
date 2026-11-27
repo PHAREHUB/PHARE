@@ -1,7 +1,7 @@
 #ifndef DIAGNOSTIC_WRITER_HPP
 #define DIAGNOSTIC_WRITER_HPP
 
-#include "diagnostic_props.hpp"
+#include "diagnostic/diagnostic_props.hpp"
 
 
 

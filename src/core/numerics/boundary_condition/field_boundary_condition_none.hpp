@@ -3,8 +3,10 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
+#include "core/utilities/box/box.hpp"
 
 #include <cstddef>
+#include <cstdint>
 
 namespace PHARE::core
 {

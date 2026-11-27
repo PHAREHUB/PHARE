@@ -5,9 +5,12 @@
 #include "core/utilities/enum_table.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <tuple>
 #include <stdexcept>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 
 namespace PHARE::core

@@ -1,15 +1,23 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 
-#include "phare_mpi.hpp"
-
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/def.hpp"
 
 #include "amr/data/field/field_overlap.hpp"
 
-#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BlockId.h>
 #include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Transformation.h>
+
+#include <array>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
 namespace PHARE::amr
 {

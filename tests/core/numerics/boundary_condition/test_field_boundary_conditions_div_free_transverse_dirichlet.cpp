@@ -1,7 +1,22 @@
+#include "core/boundary/boundary_defs.hpp"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_dirichlet.hpp"
+#include "core/utilities/box/box_spans.hpp"
+
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+#include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
+
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_dirichlet.hpp"
-#include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <string>
 
 using namespace PHARE::core;
 

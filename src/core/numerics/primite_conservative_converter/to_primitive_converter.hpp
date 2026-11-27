@@ -2,8 +2,12 @@
 #define PHARE_CORE_NUMERICS_TO_PRIMITIVE_CONVERTER_HPP
 
 
-#include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/index/index.hpp"
+
+#include <cmath>
+#include <limits>
+#include <tuple>
 
 namespace PHARE::core
 {

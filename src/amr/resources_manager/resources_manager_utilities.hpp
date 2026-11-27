@@ -1,11 +1,14 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_HPP
 
-#include "resources_meta.hpp"
+#include "amr/resources_manager/resources_meta.hpp"
 
+#include <memory>
+#include <stdexcept>
 #include <string>
-#include <vector>
+#include <tuple>
 #include <type_traits>
+#include <vector>
 
 
 namespace PHARE

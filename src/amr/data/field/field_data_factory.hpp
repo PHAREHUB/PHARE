@@ -2,15 +2,26 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_FACTORY_HPP
 
 
+#include "core/utilities/point/point.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/field/field_data.hpp"
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
-#include <SAMRAI/tbox/MemoryUtilities.h>
 #include <SAMRAI/hier/PatchDataFactory.h>
-#include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/MemoryUtilities.h>
 
-#include "field_data.hpp"
-
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
 #include <utility>
 
 namespace PHARE

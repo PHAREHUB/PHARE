@@ -4,8 +4,8 @@
 
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/Transformation.h>
 
 namespace PHARE

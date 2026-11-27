@@ -1,4 +1,4 @@
-#include "field_data_test_param.hpp"
+#include "tests/amr/data/field/copy_pack/field_data_test_param.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

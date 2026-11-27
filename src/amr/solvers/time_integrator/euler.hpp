@@ -2,8 +2,11 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_EULER_HPP
 
 #include "initializer/data_provider.hpp"
+
 #include "amr/solvers/time_integrator/compute_fluxes.hpp"
 #include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
+
+#include <cmath>
 
 namespace PHARE::solver
 {

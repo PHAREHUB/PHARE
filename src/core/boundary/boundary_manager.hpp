@@ -1,6 +1,8 @@
 #ifndef PHARE_CORE_BOUNDARY_BOUNDARY_MANAGER
 #define PHARE_CORE_BOUNDARY_BOUNDARY_MANAGER
 
+#include "initializer/data_provider.hpp"
+
 #include "core/boundary/boundary.hpp"
 #include "core/boundary/boundary_defs.hpp"
 #include "core/boundary/boundary_factory.hpp"
@@ -8,17 +10,20 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "dict.hpp"
 
 #include <algorithm>
 #include <array>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <format>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace PHARE::core
 {

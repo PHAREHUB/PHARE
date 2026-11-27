@@ -1,22 +1,24 @@
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
-#include "core/errors.hpp"
-#include "mpi/mpi_utils.hpp"
-#include "core/numerics/moments/moments.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
+#include "initializer/data_provider.hpp"
 
-#include "amr/messengers/messenger.hpp"
+#include "core/logger.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/moments/moments.hpp"
+#include "core/numerics/ohm/ohm.hpp"
+
+#include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/messengers/messenger.hpp"
+#include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
 #include "amr/solvers/solver_hybrid_field_evolvers.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/level_initializer/level_initializer.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "dict.hpp"
 
-#include <exception>
+#include <memory>
 #include <stdexcept>
 
 namespace PHARE

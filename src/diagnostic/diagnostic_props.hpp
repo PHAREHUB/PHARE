@@ -4,12 +4,13 @@
 #include "core/def.hpp"
 #include "core/utilities/meta/type_meta.hpp"
 
+#include "dict.hpp"
+
+#include <cstddef>
 #include <string>
 #include <type_traits>
+#include <variant>
 #include <vector>
-#include <cstddef>
-
-#include "dict.hpp"
 
 namespace PHARE::diagnostic
 {

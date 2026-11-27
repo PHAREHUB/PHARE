@@ -1,24 +1,32 @@
-#include "phare_mpi.hpp"
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "core/data/grid/grid.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "phare_core.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_variable.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/tensorfield/tensor_field_variable.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/PatchDataFactory.h>
+#include <SAMRAI/hier/PatchDescriptor.h>
 #include <SAMRAI/hier/VariableDatabase.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefineClasses.h>
+#include <SAMRAI/xfer/VariableFillPattern.h>
 
 #include "gtest/gtest.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
-#include <typeinfo>
 #include <vector>
 
 using namespace PHARE::core;

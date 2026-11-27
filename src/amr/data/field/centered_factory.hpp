@@ -1,14 +1,16 @@
 #ifndef PHARE_AMR_DATA_FIELD_CENTERED_FACTORY_HPP
 #define PHARE_AMR_DATA_FIELD_CENTERED_FACTORY_HPP
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/meta/enum_meta.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchDataFactory.h>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <type_traits>

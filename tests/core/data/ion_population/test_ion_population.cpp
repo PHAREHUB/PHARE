@@ -1,14 +1,16 @@
-#include <type_traits>
-
-
-
+#include "initializer/data_provider.hpp"
 
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/particles/particle_array.hpp"
-#include "initializer/data_provider.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
+#include "dict.hpp"
+
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <string>
+#include <tuple>
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;

@@ -1,10 +1,13 @@
 #ifndef PHARE_INITIALIZER_DICT_UTILS_HPP
 #define PHARE_INITIALIZER_DICT_UTILS_HPP
 
-#include <array>
-#include <string>
-
 #include "initializer/data_provider.hpp"
+
+#include "dict.hpp"
+
+#include <array>
+#include <cstddef>
+#include <string>
 
 namespace PHARE::initializer
 {

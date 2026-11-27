@@ -1,16 +1,27 @@
 
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include "tools/bench/core/bench.hpp"
+#include "tests/core/data/electromag/test_electromag_fixtures.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tools/bench/core/bench.hpp"
 #include "tools/bench/core/numerics/interpolator/bench_intepolator_access.hpp"
 
-#include <cmath>
-#include <random>
+#include "benchmark/benchmark.h"
+
 #include <algorithm>
-#include <string>
-#include <cstddef>
+#include <array>
+#include <cmath>
+#include <compare>
 #include <cstdint>
+#include <cstdlib>
+#include <random>
+#include <string>
+#include <tuple>
+#include <vector>
 
 
 // MeshToParticle and ParticleToMesh timed separately, per version:

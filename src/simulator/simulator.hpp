@@ -1,35 +1,62 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
-#include "phare_solver.hpp"
+#include "initializer/data_provider.hpp"
 
+#include "core/data/field/field_scratch.hpp"
 #include "core/def.hpp"
 #include "core/errors.hpp"
 #include "core/logger.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/utilities/env.hpp"
-#include "core/data/field/field_scratch.hpp"
-#include "mpi/mpi_utils.hpp"
+#include "core/utilities/strings.hpp"
 #include "core/utilities/timestamps.hpp"
+#include "phare_core.hpp"
 
-#include "amr/wrappers/hierarchy.hpp"
-#include "amr/wrappers/integrator.hpp"
-#include "amr/messengers/refinement_config.hpp"
-#include "amr/tagging/tagger_factory.hpp"
-#include "amr/messengers/messenger_factory.hpp"
+#include "mpi/mpi_utils.hpp"
+
 #include "amr/load_balancing/load_balancer_details.hpp"
-#include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
 #include "amr/load_balancing/load_balancer_estimator_mhd.hpp"
+#include "amr/load_balancing/load_balancer_manager.hpp"
+#include "amr/messengers/messenger_factory.hpp"
+#include "amr/messengers/refinement_config.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
+#include "amr/tagging/tagger_factory.hpp"
+#include "amr/types/amr_types.hpp"
+#include "amr/wrappers/hierarchy.hpp"
+#include "amr/wrappers/integrator.hpp"
+#include "phare_solver.hpp"
 
+#include "diagnostic/diagnostic_manager.hpp"
 #include "diagnostic/diagnostics.hpp"
-
 #include "restarts/restarts.hpp"
+#include "restarts/restarts_manager.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include <stdexcept>
-#include <vector>
-#include <string>
+#include "dict.hpp"
+
+#include <SAMRAI/mesh/CascadePartitioner.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/MemoryDatabase.h>
+
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 
 namespace PHARE

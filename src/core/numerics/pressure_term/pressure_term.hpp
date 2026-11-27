@@ -4,6 +4,7 @@
 #include "core/data/field/field.hpp"
 #include "core/data/field/field_scratch.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/data/vector.hpp"
 #include "core/numerics/differential_operators.hpp"
 
 #include <cmath>

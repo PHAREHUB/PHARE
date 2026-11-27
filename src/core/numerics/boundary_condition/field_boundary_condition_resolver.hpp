@@ -3,8 +3,8 @@
 
 #include "core/data/tensorfield/tensorfield_traits.hpp"
 #include "core/data/vecfield/vecfield_traits.hpp"
-#include "core/numerics/boundary_condition/field_boundary_condition_antisymmetric.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_antisymmetric.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_dirichlet.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_neumann.hpp"

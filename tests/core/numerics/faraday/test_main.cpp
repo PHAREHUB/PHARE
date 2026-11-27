@@ -1,11 +1,13 @@
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
-#include "core/utilities/index/index.hpp"
-#include "core/utilities/point/point.hpp"
+#include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/faraday/faraday.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -13,7 +15,15 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstddef>
 #include <fstream>
+#include <iterator>
+#include <string>
+#include <vector>
 
 
 using namespace PHARE::core;

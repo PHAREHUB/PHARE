@@ -1,18 +1,18 @@
 #ifndef CORE_NUMERICS_GODUNOV_GODUNOV_UTILS_HPP
 #define CORE_NUMERICS_GODUNOV_GODUNOV_UTILS_HPP
 
-#include "core/data/field/field.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/tensorfield/tensorfield_traits.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/def.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/index/index.hpp"
 
-#include <array>
-#include <cassert>
 #include <cstddef>
+#include <stdexcept>
+#include <string>
+#include <tuple>
 
 namespace PHARE::core
 {

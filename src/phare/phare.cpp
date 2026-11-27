@@ -1,17 +1,27 @@
 
 
 
+#include "initializer/data_provider.hpp"
+#include "initializer/python_data_provider.hpp"
+
+#include "core/utilities/algorithm.hpp"
+
 #include "amr/samrai.hpp"
 #include "amr/wrappers/hierarchy.hpp"
 
-#include "initializer/python_data_provider.hpp"
-
 #include "simulator/simulator.hpp"
+#include "simulator/simulator_def.hpp"
 #include "simulator/simulator_runtime.hpp"
 
+#include "dict.hpp"
+
+#include <algorithm>
 #include <atomic>
 #include <csignal>
-#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace PHARE
 {

@@ -1,25 +1,38 @@
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
-#include "core/data/grid/grid.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "core/data/ions/ion_population/ion_population.hpp"
-#include "core/data/ions/ions.hpp"
-#include "core/data/electrons/electrons.hpp"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
 #include "initializer/data_provider.hpp"
 
-#include "amr/types/amr_types.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
+#include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/ions.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "phare_core.hpp"
+
+#include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/messengers/messenger_info.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
+#include "amr/types/amr_types.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <memory>
+#include <string>
 
 
 using namespace PHARE::core;
@@ -27,6 +40,7 @@ using namespace PHARE::solver;
 using namespace PHARE::amr;
 
 #include "tests/initializer/init_functions.hpp"
+
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 static constexpr std::size_t dim         = 1;

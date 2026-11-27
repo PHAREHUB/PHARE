@@ -1,11 +1,18 @@
 
 
+#include "core/models/options/hybrid_options.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
 #include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include "core/utilities/box/box.hpp"
-
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string>
 
 using namespace PHARE::core;
 

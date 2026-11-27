@@ -1,8 +1,8 @@
 #ifndef PHARE_CORE_UTILITIES_CONSTANTS_HPP
 #define PHARE_CORE_UTILITIES_CONSTANTS_HPP
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <type_traits>
 namespace PHARE
 {

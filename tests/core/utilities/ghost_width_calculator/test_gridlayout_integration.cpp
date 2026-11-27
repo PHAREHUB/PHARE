@@ -1,7 +1,13 @@
+#include "core/models/options/hybrid_options.hpp"
+#include "core/models/options/mhd_options.hpp"
+#include "core/models/options/mhd_options_def.hpp"
 #include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
 
 #include <gtest/gtest.h>
+
+#include <string>
 
 namespace PHARE::core
 {

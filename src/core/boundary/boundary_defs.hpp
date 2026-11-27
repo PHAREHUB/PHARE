@@ -4,11 +4,14 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 namespace PHARE::core
 {

@@ -1,5 +1,6 @@
 
 #include "core/utilities/timestamps.hpp"
+
 #include "core/utilities/strings.hpp"
 
 #include "benchmark/benchmark.h"
@@ -8,7 +9,6 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
-#include <sstream>
 #include <string>
 
 namespace PHARE::core::bench

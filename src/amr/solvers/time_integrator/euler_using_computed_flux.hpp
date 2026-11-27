@@ -2,6 +2,7 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_EULER_USING_COMPUTED_FLUX_HPP
 
 
+#include "amr/solvers/solver_field_evolvers.hpp"
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
 
 namespace PHARE::solver

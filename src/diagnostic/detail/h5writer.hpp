@@ -1,25 +1,40 @@
 #ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 #define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
-#include "core/utilities/meta/type_meta.hpp"
-#include "core/utilities/strings.hpp"
-#include "mpi/mpi_utils.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-
 #include "initializer/data_provider.hpp"
 
-#include "diagnostic/diagnostic_model_view.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/meta/type_meta.hpp"
+#include "core/utilities/strings.hpp"
+
+#include "mpi/mpi_utils.hpp"
+
 #include "hdf5/detail/h5/h5_file.hpp"
 
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
 
-#include "diagnostic/diagnostic_props.hpp"
 #include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/detail/types/electromag.hpp"
+#include "diagnostic/detail/types/fluid.hpp"
 #include "diagnostic/detail/types/info.hpp"
 #include "diagnostic/detail/types/meta.hpp"
-#include "diagnostic/detail/types/fluid.hpp"
-#include "diagnostic/detail/types/particle.hpp"
-#include "diagnostic/detail/types/electromag.hpp"
 #include "diagnostic/detail/types/mhd.hpp"
+#include "diagnostic/detail/types/particle.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include "dict.hpp"
+#include "highfive/H5File.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <iterator>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
 
 
 #if !defined(PHARE_DIAG_DOUBLES)

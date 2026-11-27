@@ -2,26 +2,43 @@
 #define PHARE_SOLVER_MHD_HPP
 
 
-#include "amr/messengers/messenger.hpp"
-#include "amr/messengers/mhd_messenger_info.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/solvers/solver.hpp"
-#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
+#include "initializer/data_provider.hpp"
 
+#include "core/data/field/field_traits.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/def.hpp"
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/utilities/point/point.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "mpi/mpi_utils.hpp"
 
+#include "amr/messengers/messenger.hpp"
+#include "amr/messengers/messenger_info.hpp"
+#include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/solvers/solver.hpp"
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
+
+#include "dict.hpp"
+
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <limits>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
-#include <vector>
+#include <unordered_map>
 
 namespace PHARE::solver
 {

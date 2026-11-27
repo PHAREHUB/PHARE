@@ -1,12 +1,18 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_VTK_TYPES_ELECTROMAG_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_VTK_TYPES_ELECTROMAG_HPP
 
-#include "diagnostic/detail/vtkh5_type_writer.hpp"
+#include "core/logger.hpp"
 
-#include <string>
-#include <vector>
+#include "amr/amr_constants.hpp"
+
+#include "diagnostic/detail/vtkh5_type_writer.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include <cstddef>
 #include <optional>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace PHARE::diagnostic::vtkh5
 {

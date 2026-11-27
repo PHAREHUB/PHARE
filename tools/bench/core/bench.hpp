@@ -1,16 +1,19 @@
 #ifndef PHARE_BENCH_CORE_BENCH_H
 #define PHARE_BENCH_CORE_BENCH_H
 
-#include "phare_core.hpp"
-
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
 
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
-#include "tests/core/data/electromag/test_electromag_fixtures.hpp"
-
-#include "benchmark/benchmark.h"
-
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
+#include <optional>
+#include <random>
+#include <string>
 
 namespace PHARE::core::bench
 {

@@ -1,33 +1,53 @@
 
-#include "phare_mpi.hpp"
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
+#include "initializer/data_provider.hpp"
 
+#include "core/boundary/boundary_manager.hpp"
 #include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/options/hybrid_options.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
 
-#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/field_refiner_kernel.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
-#include "amr/messengers/refinement_config.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
+#include "amr/messengers/refinement_config.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/index/index.hpp"
-#include "core/boundary/boundary_manager.hpp"
+#include "simulator/simulator_def.hpp"
 
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
+#include "dict.hpp"
+
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>

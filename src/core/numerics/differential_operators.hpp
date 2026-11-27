@@ -1,10 +1,10 @@
 #ifndef PHARE_CORE_NUMERICS_DIFFERENTIAL_OPERATORS_HPP
 #define PHARE_CORE_NUMERICS_DIFFERENTIAL_OPERATORS_HPP
 
-#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/def.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/for_N.hpp"

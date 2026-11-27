@@ -2,9 +2,9 @@
 #define PHARE_FIELD_REFINER_KERNEL_HPP
 
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/data/grid/gridlayoutdefs.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>

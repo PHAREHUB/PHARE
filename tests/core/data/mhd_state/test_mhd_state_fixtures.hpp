@@ -1,12 +1,19 @@
 #ifndef PHARE_TEST_CORE_DATA_MHDSTATE_MHDSTATE_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_MHDSTATE_MHDSTATE_FIXTURES_HPP
 
+#include "initializer/data_provider.hpp"
+
+#include "core/data/grid/grid.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/mhd_state.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 
-#include "initializer/data_provider.hpp"
-
+#include "dict.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
+
+#include <cstddef>
+#include <string>
+#include <utility>
 
 namespace PHARE::core
 {

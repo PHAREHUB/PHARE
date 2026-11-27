@@ -1,11 +1,11 @@
 #ifndef PHARE_CORE_UTILITIES_INDEX_INDEX_HPP
 #define PHARE_CORE_UTILITIES_INDEX_INDEX_HPP
 
-#include <cstddef>
-
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/point/point.hpp"
 #include "core/def.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace PHARE
 {

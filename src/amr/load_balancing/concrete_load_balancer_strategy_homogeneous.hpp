@@ -4,14 +4,15 @@
 #define PHARE_CONCRERTE_LOAD_BALANCER_HYBRID_STRATEGY_HOMOGENEOUS_HPP
 
 
-#include <SAMRAI/pdat/CellData.h>
-#include <string>
+#include "core/utilities/numeric.hpp"
 
 #include "amr/load_balancing/load_balancer_strategy.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "amr/types/amr_types.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
+
+#include <SAMRAI/pdat/CellData.h>
+
+#include <algorithm>
 
 
 

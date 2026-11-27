@@ -1,16 +1,22 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_RUNTIME_HPP
 #define PHARE_SIMULATOR_SIMULATOR_RUNTIME_HPP
 
-#include "core/logger.hpp"
-
 #include "initializer/data_provider.hpp"
+
+#include "core/logger.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
 #include "amr/wrappers/hierarchy.hpp"
 
 #include "simulator/simulator_def.hpp"
 
-#include <memory>
+#include "dict.hpp"
+
+#include <array>
 #include <cstddef>
+#include <memory>
+#include <sstream>
 #include <stdexcept>
 
 namespace PHARE

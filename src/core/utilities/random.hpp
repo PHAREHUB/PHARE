@@ -2,6 +2,7 @@
 #define PHARE_CORE_UTILITIES_RANDOM_HPP
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string_view>

@@ -2,12 +2,18 @@
 #define PHARE_PARTICLE_INITIALIZER_FACTORY_HPP
 
 
-#include "core/def.hpp"
 #include "initializer/data_provider.hpp"
-#include "maxwellian_particle_initializer.hpp"
-#include "particle_initializer.hpp"
 
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer.hpp"
+#include "core/def.hpp"
+
+#include "dict.hpp"
+
+#include <array>
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace PHARE

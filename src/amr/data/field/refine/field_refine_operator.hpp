@@ -2,17 +2,28 @@
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/constants.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_overlap.hpp"
+#include "amr/data/field/refine/field_refiner_kernel.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
 
-#include "field_refiner_kernel.hpp"
-
-#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/hier/RefineOperator.h>
 
 #include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <type_traits>
+#include <utility>
 
 namespace PHARE::amr
 {

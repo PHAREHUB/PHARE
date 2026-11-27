@@ -1,8 +1,14 @@
 #ifndef DIAGNOSTIC_DIAGNOSTICS_HPP
 #define DIAGNOSTIC_DIAGNOSTICS_HPP
 
+#include "initializer/data_provider.hpp"
+
 #include "core/def.hpp"
+
+#include <cstddef>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
 #if !defined(PHARE_HAS_HIGHFIVE)
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
@@ -13,19 +19,15 @@
 #endif
 
 
-#include "hdf5/phare_hdf5.hpp"
-
-
-#include "diagnostic_manager.hpp"
+#include "diagnostic/diagnostic_manager.hpp"
 
 #include "dict.hpp"
 
 #if PHARE_HAS_HIGHFIVE
 
-#include "diagnostic_model_view.hpp"
-
 #include "diagnostic/detail/h5writer.hpp"
 #include "diagnostic/detail/vtkh5_writer.hpp"
+#include "diagnostic/diagnostic_model_view.hpp"
 
 #endif
 

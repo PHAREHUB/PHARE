@@ -1,17 +1,8 @@
-#include "phare_mpi.hpp"
-
-#include "amr/data/particles/particles_data.hpp"
-#include "amr/data/particles/particles_variable.hpp"
-#include "amr/data/particles/refine/particles_data_split.hpp"
-#include "amr/data/particles/refine/split.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-
-
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 

@@ -1,21 +1,35 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/utilities/meta/for_N.hpp"
 
-#include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
-#include "amr/data/tensorfield/tensor_field_overlap.hpp"
+#include "amr/data/field/field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
-#include <SAMRAI/pdat/CellOverlap.h>
-#include "SAMRAI/xfer/VariableFillPattern.h"
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/PatchDataFactory.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/Utilities.h>
+#include <SAMRAI/xfer/VariableFillPattern.h>
 
 #include <cassert>
 #include <cstddef>
+#include <memory>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace PHARE::amr
 {

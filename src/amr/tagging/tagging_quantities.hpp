@@ -1,22 +1,27 @@
 #ifndef PHARE_TAGGING_QUANTITIES_HPP
 #define PHARE_TAGGING_QUANTITIES_HPP
 
-#include "core/utilities/meta/type_meta.hpp"
-
-#include "amr/physical_models/mhd_model.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-
 #include "initializer/data_provider.hpp"
 
-#include <map>
-#include <array>
-#include <string>
-#include <vector>
-#include <utility>
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/meta/type_meta.hpp"
+
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+
+#include "dict.hpp"
+
 #include <algorithm>
+#include <array>
+#include <initializer_list>
+#include <iterator>
+#include <map>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace PHARE::amr::tagging
 {

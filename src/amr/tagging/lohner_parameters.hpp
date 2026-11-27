@@ -3,6 +3,8 @@
 
 #include "initializer/data_provider.hpp"
 
+#include "dict.hpp"
+
 #include <cmath>
 #include <stdexcept>
 #include <string>

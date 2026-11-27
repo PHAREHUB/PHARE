@@ -5,6 +5,8 @@
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_variable.hpp"
 
+#include <cstddef>
+
 namespace PHARE
 {
 namespace amr

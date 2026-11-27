@@ -1,20 +1,26 @@
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
+#include "initializer/data_provider.hpp"
 
+#include "core/data/field/field.hpp"
+#include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/ions/ion_population/ion_population.hpp"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "phare_core.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
+#include "tests/initializer/init_functions.hpp"
 
 #include "gtest/gtest.h"
 
-#include "tests/initializer/init_functions.hpp"
+#include <cstddef>
+#include <string>
+#include <vector>
 
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 using namespace PHARE::core;

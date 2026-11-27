@@ -6,6 +6,12 @@
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_neumann.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/meta/for_N.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
 namespace PHARE::core
 {

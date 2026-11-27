@@ -3,8 +3,8 @@
 
 #include "core/def.hpp" // IWYU pragma: keep
 
-#include <string>
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #if !defined(PHARE_LOG_LEVEL)
@@ -17,8 +17,8 @@ constexpr static std::uint8_t LOG_LEVEL = PHARE_LOG_LEVEL;
 }
 
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO) || defined(PHARE_FORCE_LOG_LINE)
-#include <sstream>  // IWYU pragma: keep
 #include <iostream> // IWYU pragma: keep
+#include <sstream>  // IWYU pragma: keep
 #define PHARE_LOG_LINE_STR(str)                                                                    \
     std::cout << __FILE__ << ":" << __LINE__ << " - " << (str) << std::endl
 #define PHARE_LOG_LINE_SS(s) PHARE_LOG_LINE_STR((std::stringstream{} << s).str())
@@ -37,7 +37,7 @@ constexpr static std::uint8_t LOG_LEVEL = PHARE_LOG_LEVEL;
 
 #else // !PHARE_WITH_CALIPER
 
-#include "core/utilities/logger/logger_defaults.hpp" // IWYU pragma: keep
+#include "core/utilities/logger/logger_defaults.hpp" // IWYU pragma: export
 
 
 #endif // PHARE_WITH_CALIPER

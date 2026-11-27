@@ -1,12 +1,15 @@
 #ifndef PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
 
-#include "amr/solvers/solver_mhd_field_evolvers.hpp"
+#include "initializer/data_provider.hpp"
 
-#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "core/numerics/constrained_transport/dissipative_electric_field.hpp"
 #include "core/numerics/constrained_transport/upwind_constrained_transport_utils.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "amr/solvers/solver_field_evolvers.hpp"
+#include "amr/solvers/solver_mhd_field_evolvers.hpp"
+
+#include "dict.hpp"
 
 #include <cassert>
 #include <stdexcept>

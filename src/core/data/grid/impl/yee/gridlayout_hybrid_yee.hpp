@@ -2,14 +2,18 @@
 #define PHARE_CORE_GRID_IMPL_YEE_GRIDLAYOUT_HYBRID_YEE_HPP
 
 
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/enum_table.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
-
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+#include <string_view>
+#include <utility>
 
 
 namespace PHARE::core::hybrid

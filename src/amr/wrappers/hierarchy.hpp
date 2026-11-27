@@ -2,34 +2,39 @@
 #define PHARE_AMR_HIERARCHY_HPP
 
 
-#include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "mpi/mpi_utils.hpp"
-
-#include "amr/samrai.hpp"
-#include "amr/amr_constants.hpp"
-
 #include "initializer/data_provider.hpp"
 #include "initializer/dict_utils.hpp"
+
+#include "core/def.hpp"
 #include "core/utilities/strings.hpp"
 
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
+#include "mpi/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/amr_constants.hpp"
+#include "amr/samrai.hpp"
+
+#include "dict.hpp"
+
 #include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/BoxContainer.h>
-#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/PatchDataRestartManager.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TreeLoadBalancer.h>
 #include <SAMRAI/tbox/Database.h>
 #include <SAMRAI/tbox/DatabaseBox.h>
-#include <SAMRAI/tbox/InputManager.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
-
-
+#include <SAMRAI/tbox/RestartManager.h>
+#include <SAMRAI/tbox/Utilities.h>
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <initializer_list>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 
 namespace PHARE::amr

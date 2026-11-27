@@ -2,13 +2,17 @@
 #define PHARE_PYTHON_PARTICLES_HPP
 
 
+#include "core/data/particles/particle_array.hpp"
+#include "core/def.hpp"
+
 #include "amr/data/particles/refine/particles_data_split.hpp"
 
 #include "python3/pybind_def.hpp"
 
-#include <tuple>
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <tuple>
 
 
 namespace PHARE::pydata

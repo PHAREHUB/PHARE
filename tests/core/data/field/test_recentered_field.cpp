@@ -1,9 +1,18 @@
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-#include "core/data/grid/grid.hpp"
 #include "core/data/field/recentered_field.hpp"
+#include "core/data/grid/grid.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
@@ -13,7 +22,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
+#include <optional>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 
 using namespace PHARE::core;

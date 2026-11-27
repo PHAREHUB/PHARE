@@ -1,16 +1,12 @@
 #ifndef PHARE_AMR_COMPOSITE_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_COMPOSITE_REFINE_PATCH_STRATEGY_HPP
 
-#include "SAMRAI/hier/BoxContainer.h"
-#include "SAMRAI/hier/BoxOverlap.h"
-#include "SAMRAI/hier/Connector.h"
-#include "SAMRAI/hier/IntVector.h"
-#include "SAMRAI/hier/Patch.h"
-#include "SAMRAI/hier/PatchLevel.h"
-#include "SAMRAI/xfer/RefineClasses.h"
-#include "SAMRAI/xfer/RefinePatchStrategy.h"
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/xfer/RefineClasses.h>
+#include <SAMRAI/xfer/RefinePatchStrategy.h>
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace PHARE::amr

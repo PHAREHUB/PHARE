@@ -1,9 +1,17 @@
-#include "gmock/gmock.h"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/numeric.hpp"
+
 #include "gtest/gtest.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <numeric>
+#include <optional>
 #include <random>
 #include <string>
-
-#include "core/data/ndarray/ndarray_vector.hpp"
+#include <utility>
+#include <vector>
 
 
 using namespace PHARE::core;
