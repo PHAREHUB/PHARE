@@ -1,14 +1,20 @@
 
 
+#include "gridlayout_laplacian.hpp"
+
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/numerics/differential_operators.hpp"
+#include "core/utilities/index/index.hpp"
+
 #include "simulator/simulator_def.hpp"
 
 #include "gridlayout_params.hpp"
-#include "gridlayout_laplacian.hpp"
-#include "core/numerics/differential_operators.hpp"
-
-#include <math.h>
 
 #include "gmock/gmock.h"
+
+#include <array>
+#include <cmath>
+#include <cstdint>
 
 // -----------------------------------------------------------------------------
 //              1D case

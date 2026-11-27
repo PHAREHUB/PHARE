@@ -1,14 +1,19 @@
 
-#include "core/data/field/field.hpp"
-#include "core/models/mhd_state.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
-
 #include "initializer/data_provider.hpp"
 
+#include "core/data/field/field.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/models/mhd_state.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+
+#include "dict.hpp"
 #include "tests/core/data/mhd_state/init_functions.hpp"
 
 #include "gtest/gtest.h"
+
+#include <string>
+#include <tuple>
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;

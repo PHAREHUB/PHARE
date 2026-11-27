@@ -3,13 +3,22 @@
 
 
 #include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/point/point.hpp"
 
-#include "amr/amr_constants.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "SAMRAI/hier/Box.h"
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 

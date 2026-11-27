@@ -1,23 +1,28 @@
 #ifndef PHARE_TEST_TAG_STRATEGY_HPP
 #define PHARE_TEST_TAG_STRATEGY_HPP
 
-#include "phare_mpi.hpp"
-
-#include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
-#include <SAMRAI/xfer/RefineAlgorithm.h>
-
-#include "amr/data/field/field_data.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 
-#include "SAMRAI/xfer/BoxGeometryVariableFillPattern.h"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/data/field/field_data.hpp"
+
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
+#include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
+#include <SAMRAI/xfer/VariableFillPattern.h>
 
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
+#include <utility>
 
 
 using namespace PHARE::core;

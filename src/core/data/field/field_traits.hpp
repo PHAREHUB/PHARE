@@ -1,9 +1,11 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_TRAITS
 #define PHARE_CORE_DATA_FIELD_FIELD_TRAITS
 
+#include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <string>
+#include <utility>
 
 namespace PHARE::core
 {
@@ -42,6 +44,36 @@ concept IsField = requires(T field) {
                        std::declval<std::size_t>())
                  } -> std::same_as<typename T::value_type&>;
              }));
+};
+
+
+/** element operations for operate_on_fields / FieldBox */
+template<typename D>
+struct SetEqual
+{
+    void operator()(auto& d0) { d = d0; }
+    D& d;
+};
+
+template<typename D>
+struct PlusEquals
+{
+    void operator()(auto& d0) { d += d0; }
+    D& d;
+};
+
+template<typename D>
+struct SetMax
+{
+    void operator()(auto& d0) { d = std::max(d, d0); }
+    D& d;
+};
+
+template<typename D>
+struct PlusEqualsProduct
+{
+    void operator()(auto& d0, auto& o) { d += d0 * o; }
+    D& d;
 };
 
 } // namespace PHARE::core

@@ -1,12 +1,17 @@
 #ifndef PHARE_PARTICLE_UTILITIES
 #define PHARE_PARTICLE_UTILITIES
 
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/particles/particle.hpp"
-#include "core/utilities/point/point.hpp"
 #include "core/def.hpp"
+#include "core/utilities/point/point.hpp"
 
-#include <array>
+#include <algorithm>
+#include <initializer_list>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <stdexcept>
+#include <vector>
 
 
 namespace PHARE::core

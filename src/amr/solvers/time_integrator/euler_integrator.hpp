@@ -3,8 +3,8 @@
 
 #include "initializer/data_provider.hpp"
 
-#include "amr/solvers/time_integrator/euler.hpp"
 #include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
+#include "amr/solvers/time_integrator/euler.hpp"
 
 namespace PHARE::solver
 {

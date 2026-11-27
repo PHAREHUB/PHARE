@@ -1,28 +1,47 @@
 
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "initializer/data_provider.hpp"
 
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/data/grid/grid.hpp"
-#include "core/data/ions/ions.hpp"
-#include "src/core/utilities/types.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/ion_population/particle_pack.hpp"
+#include "core/data/ions/ions.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/pressure_term/pressure_term.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/constants.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tests/initializer/init_functions.hpp"
 
 #include "gtest/gtest.h"
 
-#include "tests/initializer/init_functions.hpp"
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
-#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
-
-
-#include <string_view>
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <iostream>
+#include <iterator>
+#include <string>
+#include <tuple>
+#include <utility>
 
 using namespace PHARE::core;
 

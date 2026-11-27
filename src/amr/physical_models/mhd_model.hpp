@@ -1,20 +1,29 @@
 #ifndef PHARE_MHD_MODEL_HPP
 #define PHARE_MHD_MODEL_HPP
 
-#include "core/boundary/boundary_manager.hpp"
-#include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/mhd_state.hpp"
+#include "initializer/data_provider.hpp"
 
+#include "core/boundary/boundary_manager.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/def.hpp"
+#include "core/models/mhd_state.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
-#include <SAMRAI/hier/PatchLevel.h>
+#include "dict.hpp"
 
 #include <memory>
 #include <string>
 #include <string_view>
+#include <tuple>
+#include <unordered_map>
 #include <vector>
 
 

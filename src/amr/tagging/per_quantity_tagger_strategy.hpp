@@ -1,19 +1,22 @@
 #ifndef PHARE_PER_QUANTITY_TAGGER_STRATEGY_HPP
 #define PHARE_PER_QUANTITY_TAGGER_STRATEGY_HPP
 
-#include "core/logger.hpp"
-#include "core/utilities/types.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/field/recentered_field.hpp"
-
 #include "initializer/data_provider.hpp"
 
-#include "tagger_strategy.hpp"
-#include "tagging_quantities.hpp"
+#include "core/data/field/recentered_field.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/logger.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/numeric.hpp"
+
+#include "amr/tagging/tagger_strategy.hpp"
+#include "amr/tagging/tagging_quantities.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <span>
 #include <string>
 #include <vector>

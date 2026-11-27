@@ -2,7 +2,10 @@
 #define PHARE_REFINEMENT_CONFIG_HPP
 
 #include "initializer/data_provider.hpp"
+
 #include "amr/data/field/refine/field_refiner_kernel.hpp"
+
+#include "dict.hpp"
 
 #include <stdexcept>
 #include <string>

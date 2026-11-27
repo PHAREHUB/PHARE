@@ -1,15 +1,15 @@
 #ifndef PHARE_TEST_COPY_OVERLAP_CENTERED_EY_HPP
 #define PHARE_TEST_COPY_OVERLAP_CENTERED_EY_HPP
 
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "tests/amr/data/field/copy_pack/field_data_test_param.hpp"
 
 #include <SAMRAI/pdat/NodeDataFactory.h>
 #include <SAMRAI/pdat/NodeGeometry.h>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "field_data_test_param.hpp"
 
 using testing::Eq;
 

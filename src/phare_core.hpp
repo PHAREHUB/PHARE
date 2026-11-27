@@ -1,23 +1,30 @@
 #ifndef PHARE_CORE_INCLUDE_HPP
 #define PHARE_CORE_INCLUDE_HPP
 
-#include "core/data/ions/ions.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/field/field.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/data/electrons/electrons.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "core/models/options/mhd_options.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/models/options/hybrid_options.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/ions.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/models/options/hybrid_options.hpp"
+#include "core/models/options/mhd_options.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 
 #include "dict.hpp"
 
-#include <string>
+#include <cstddef>
 #include <functional>
+#include <string>
 #include <unordered_map>
 
 namespace PHARE::core

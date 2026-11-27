@@ -1,8 +1,28 @@
-#include "phare_mpi.hpp"
+#include "core/data/field/field.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
+#include "amr/samrai.hpp"
+#include "amr/wrappers/hierarchy.hpp"
+#include "amr/wrappers/integrator.hpp"
 
 #include "tests/simulator/per_test.hpp"
 
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/mesh/GriddingAlgorithmStrategy.h>
+
+#include "gtest/gtest.h"
+
+#include <algorithm>
+#include <cstdlib>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>

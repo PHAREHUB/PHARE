@@ -1,6 +1,5 @@
 
-#include "phare_mpi.hpp"
-
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/tbox/SAMRAIManager.hpp>
 #include <SAMRAI/tbox/SAMRAI_MPI.hpp>

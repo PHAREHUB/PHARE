@@ -1,13 +1,27 @@
 
-#include "simulator/simulator_def.hpp"
-
-#include "amr/samrai.hpp" // IWYU pragma: keep
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "phare_core.hpp"
 
 #include "amr/data/particles/particles_data.hpp"
+#include "amr/samrai.hpp" // IWYU pragma: keep
+#include "amr/utilities/box/amr_box.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tools/bench/core/bench.hpp"
 
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/tbox/Dimension.h>
+
+#include "benchmark/benchmark.h"
+
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
 
 namespace PHARE::amr::bench
 {

@@ -6,23 +6,35 @@
 #define PHARE_SIM_STR 1, 1, 2 // mostly for clangformat - errors in cpp file if define is missing
 #endif
 
+#include "core/data/particles/particle.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+#include "core/utilities/constants.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/particles/refine/splitter.hpp"
 #include "amr/samrai.hpp" // IWYU pragma: keep
 #include "amr/wrappers/hierarchy.hpp"
+#include "phare_solver.hpp"
 
 #include "simulator/simulator.hpp" // IWYU pragma: keep
+#include "simulator/simulator_def.hpp"
 
-#include "python3/pybind_def.hpp" // IWYU pragma: keep
-#include "pybind11/stl.h"         // IWYU pragma: keep
-#include "pybind11/numpy.h"       // IWYU pragma: keep
-#include "pybind11/chrono.h"      // IWYU pragma: keep
-#include "pybind11/complex.h"     // IWYU pragma: keep
-#include "pybind11/functional.h"  // IWYU pragma: keep
-
+#include "python3/data_wrangler.hpp" // IWYU pragma: keep
 #include "python3/particles.hpp"     // IWYU pragma: keep
 #include "python3/patch_level.hpp"   // IWYU pragma: keep
-#include "python3/data_wrangler.hpp" // IWYU pragma: keep
+#include "python3/pybind_def.hpp"    // IWYU pragma: keep
+
+#include <pybind11/chrono.h>     // IWYU pragma: keep
+#include <pybind11/complex.h>    // IWYU pragma: keep
+#include <pybind11/functional.h> // IWYU pragma: keep
+#include <pybind11/numpy.h>      // IWYU pragma: keep
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h> // IWYU pragma: keep
+
+#include <cstddef>
+#include <memory>
+#include <string>
 
 
 namespace py = pybind11;

@@ -2,18 +2,21 @@
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_HPP
 
 
-#include <cstddef>
-#include <utility>
-#include <vector>
-
+#include "core/data/particles/particle.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
-#include "core/utilities/span.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/cellmap.hpp"
 #include "core/utilities/range/range.hpp"
+#include "core/utilities/span.hpp"
 
-#include "particle.hpp"
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace PHARE::core
 {

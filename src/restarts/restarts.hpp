@@ -1,19 +1,22 @@
 #ifndef RESTART_RESTARTS_HPP
 #define RESTART_RESTARTS_HPP
 
+#include "initializer/data_provider.hpp"
+
 #include "core/def.hpp"
 
 #if !defined(PHARE_HAS_HIGHFIVE)
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
 #endif
 
-#include "restarts_manager.hpp"
+#include "restarts/restarts_manager.hpp"
 
 #if PHARE_HAS_HIGHFIVE
 #include "restarts/detail/h5writer.hpp"
 #endif
 
 #include <memory>
+#include <stdexcept>
 
 namespace PHARE::restarts
 {

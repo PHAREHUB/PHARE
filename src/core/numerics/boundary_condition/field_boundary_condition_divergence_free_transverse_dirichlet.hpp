@@ -6,9 +6,13 @@
 #include "core/numerics/boundary_condition/divergence_free_transverse_common.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
 #include <array>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 
 namespace PHARE::core
 {

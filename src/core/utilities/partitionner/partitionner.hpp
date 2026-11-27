@@ -1,11 +1,12 @@
 #ifndef PHARE_CORE_UTILITIES_PARTITIONNER_PARTITIONNER_HPP
 #define PHARE_CORE_UTILITIES_PARTITIONNER_PARTITIONNER_HPP
 
-#include <vector>
-
-#include "core/utilities/span.hpp"
-#include "core/utilities/box/box.hpp"
 #include "core/data/particles/particle.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/span.hpp"
+
+#include <algorithm>
+#include <vector>
 
 namespace PHARE
 {

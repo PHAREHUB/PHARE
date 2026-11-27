@@ -1,14 +1,20 @@
 #ifndef PHARE_AMR_SAMRAI_HPP
 #define PHARE_AMR_SAMRAI_HPP
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/type_meta.hpp"
 
-#include <SAMRAI/tbox/RestartManager.h>
-#include <SAMRAI/hier/VariableDatabase.h>
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
 #include <SAMRAI/hier/PatchDataRestartManager.h>
+#include <SAMRAI/hier/VariableDatabase.h>
+#include <SAMRAI/tbox/Logger.h>
+#include <SAMRAI/tbox/RestartManager.h>
 
 #include <iostream>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <vector>
 
 namespace PHARE
 {

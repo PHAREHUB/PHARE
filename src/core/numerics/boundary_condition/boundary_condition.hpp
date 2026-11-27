@@ -1,10 +1,11 @@
 #ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_BOUNDARY_CONDITION_HPP
 #define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_BOUNDARY_CONDITION_HPP
 
-#include <cstddef>
-
 #include "core/utilities/box/box.hpp"
-#include "core/utilities/partitionner/partitionner.hpp"
+
+#include <cstddef>
+#include <utility>
+#include <vector>
 
 
 namespace PHARE

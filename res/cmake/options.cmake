@@ -30,6 +30,10 @@ option(devMode "Build with Werror/etc" OFF)
 option(cppcheck "Enable cppcheck xml report" OFF)
 #
 
+# -DwithIWYU=ON
+option(withIWYU "include-what-you-use on src/, the suggested changes in build/iwyu.diff" OFF)
+#
+
 # -Dasan=ON
 option(asan "build with asan support" OFF)
 #
@@ -116,6 +120,7 @@ function(print_phare_options)
   message("Run test with MPI                           : " ${testMPI})
   message("Generate coverage                           : " ${coverage})
   message("Enable cppcheck xml report                  : " ${cppcheck})
+  message("include-what-you-use diff in build/iwyu.diff: " ${withIWYU})
   message("force the test to be serial under MPI mode  : " ${forceSerialTest})
   message("Enable IPO/LTO if system supported          : " ${withIPO})
   message("build with ubsan support                    : " ${ubsan})

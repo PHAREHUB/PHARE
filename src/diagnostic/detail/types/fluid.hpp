@@ -5,9 +5,16 @@
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/diagnostic_props.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace PHARE::diagnostic::h5
 {

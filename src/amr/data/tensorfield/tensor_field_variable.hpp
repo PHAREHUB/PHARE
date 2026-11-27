@@ -2,13 +2,17 @@
 #define PHARE_TENSORFIELD_VARIABLE_HPP
 
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/data/grid/gridlayoutdefs.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/centered_factory.hpp"
 #include "amr/data/tensorfield/tensor_field_data_factory.hpp"
 
 #include <SAMRAI/hier/Variable.h>
+
+#include <cstddef>
+#include <string>
 
 
 

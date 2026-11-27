@@ -2,27 +2,42 @@
 #define PHARE_DIAGNOSTIC_DETAIL_VTK_H5_TYPE_WRITER_HPP
 
 
-#include "core/logger.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/algorithm.hpp"
-#include "mpi/mpi_utils.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/logger.hpp"
+#include "core/utilities/algorithm.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/env.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/numeric.hpp"
 
-#include "amr/resources_manager/amr_utils.hpp"
-
-#include "diagnostic/diagnostic_writer.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
+#include "amr/resources_manager/amr_utils.hpp"
+
+#include "diagnostic/diagnostic_props.hpp"
+#include "diagnostic/diagnostic_writer.hpp"
+
+#include "highfive/H5Attribute.hpp"
+#include "highfive/H5DataSet.hpp"
+#include "highfive/H5DataSpace.hpp"
+#include "highfive/H5Group.hpp"
+#include "highfive/H5Selection.hpp"
+#include "highfive/highfive.hpp"
+
+#include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
-#include <vector>
-#include <utility>
-#include <algorithm>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #if !defined(PHARE_DIAG_DOUBLES)
 #error // PHARE_DIAG_DOUBLES not defined
@@ -190,7 +205,6 @@ public:
 
 protected:
     class VTKFileInitializer;
-
     class VTKFileWriter;
 
 

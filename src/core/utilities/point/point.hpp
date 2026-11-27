@@ -2,16 +2,23 @@
 #define PHARE_CORE_UTILITIES_POINT_POINT_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/meta/type_equality_meta.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/meta/container_meta.hpp"
+#include "core/utilities/meta/type_equality_meta.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/strings.hpp"
 
 #include <array>
-#include <vector>
 #include <cassert>
-#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 #include <sstream>
-#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace PHARE
 {

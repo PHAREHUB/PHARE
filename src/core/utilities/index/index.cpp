@@ -1,6 +1,4 @@
-#include "index.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/index/index.hpp"
 
 namespace PHARE
 {

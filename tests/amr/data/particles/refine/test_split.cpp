@@ -1,19 +1,24 @@
-#include <cmath>
-#include <cstdint>
-#include <map>
-#include <tuple>
-#include <vector>
-#include <sstream>
-#include <algorithm>
-
-#include "phare_mpi.hpp"
-
-#include "core/utilities/types.hpp"
 #include "core/data/particles/particle.hpp"
-#include "amr/data/particles/refine/split.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/tuple.hpp"
 
-#include "gmock/gmock.h"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/data/particles/refine/splitter.hpp"
+
 #include "gtest/gtest.h"
+
+#include <algorithm>
+#include <array>
+#include <cstdlib>
+#include <initializer_list>
+#include <map>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <variant>
+#include <vector>
 
 
 namespace

@@ -1,6 +1,14 @@
 
 #include "amr/resources_manager/amr_utils.hpp"
+
 #include "amr/resources_manager/resources_manager.hpp"
+
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
 
 namespace PHARE
 {

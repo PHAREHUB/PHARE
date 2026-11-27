@@ -1,13 +1,8 @@
 #ifndef PHARE_CORE_DATA_VECFIELD_VECFIELD_HPP
 #define PHARE_CORE_DATA_VECFIELD_VECFIELD_HPP
 
-#include <array>
-#include <utility>
-#include <algorithm>
-#include <unordered_map>
-
-#include "vecfield_component.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE
 {

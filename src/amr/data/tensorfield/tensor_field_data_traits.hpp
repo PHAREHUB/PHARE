@@ -1,11 +1,12 @@
 #ifndef PHARE_SRC_AMR_TENSOR_FIELD_TENSOR_FIELD_DATA_TRAITS_HPP
 #define PHARE_SRC_AMR_TENSOR_FIELD_TENSOR_FIELD_DATA_TRAITS_HPP
 
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchData.h>
+
 #include <array>
 #include <concepts>
-
-#include "SAMRAI/hier/Patch.h"
-#include "SAMRAI/hier/PatchData.h"
+#include <cstddef>
 
 namespace PHARE::amr
 {
@@ -46,6 +47,7 @@ concept IsVecFieldData = IsTensorFieldData<T> && (T::N == 3);
  */
 template<typename ScalarOrTensorFieldDataT, bool is_scalar>
 struct FieldGeometrySelector;
+
 /**
  * @brief Specialization for scalar field data
  */
@@ -70,6 +72,7 @@ struct FieldGeometrySelector<ScalarOrTensorFieldDataT, false>
  */
 template<typename ScalarOrTensorFieldDataT, bool is_scalar>
 struct ScalarOrTensorFieldSelector;
+
 /**
  * @brief Specialization for scalar field data
  */

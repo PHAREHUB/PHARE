@@ -1,13 +1,24 @@
 #ifndef PHARE_TEST_SIMULATOR_PER_TEST_HPP
 #define PHARE_TEST_SIMULATOR_PER_TEST_HPP
 
-#include "phare_solver.hpp"
-#include "simulator/simulator_def.hpp"
-
-#include "simulator/simulator.hpp"
+#include "initializer/data_provider.hpp"
 #include "initializer/python_data_provider.hpp"
 
+#include "core/models/options/mhd_options_def.hpp"
+
+#include "amr/wrappers/hierarchy.hpp"
+#include "phare_solver.hpp"
+
+#include "simulator/simulator.hpp"
+#include "simulator/simulator_def.hpp"
+
+#include <SAMRAI/hier/VariableDatabase.h>
+
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <memory>
+#include <string>
 
 using SimOpts = PHARE::SimOpts;
 

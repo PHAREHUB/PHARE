@@ -6,6 +6,8 @@
 #include "core/data/tensorfield/tensorfield_traits.hpp"
 #include "core/utilities/box/box.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <tuple>
 
 namespace PHARE::core

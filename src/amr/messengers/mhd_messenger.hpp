@@ -1,36 +1,49 @@
 #ifndef PHARE_MHD_MESSENGER_HPP
 #define PHARE_MHD_MESSENGER_HPP
 
-#include "phare_mpi.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/logger.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/mhd_flux_coarsener.hpp"
-#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/field_data.hpp"
+#include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/field_refine_patch_strategy.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
-#include "amr/messengers/refinement_config.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
-#include "amr/messengers/refiner.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/messengers/composite_refine_patch_strategy.hpp"
-#include "amr/messengers/refiner_pool.hpp"
-#include "amr/messengers/synchronizer_pool.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
-#include "amr/data/field/refine/field_refine_patch_strategy.hpp"
-#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
-#include "amr/data/field/field_variable_fill_pattern.hpp"
+#include "amr/messengers/refinement_config.hpp"
+#include "amr/messengers/refiner.hpp"
+#include "amr/messengers/refiner_pool.hpp"
+#include "amr/messengers/synchronizer_pool.hpp"
 
+#include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/hier/TimeInterpolateOperator.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/xfer/CoarsenAlgorithm.h>
+#include <SAMRAI/xfer/CoarsenSchedule.h>
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
 
-#include "SAMRAI/hier/PatchLevel.h"
-#include "SAMRAI/hier/RefineOperator.h"
-#include "SAMRAI/hier/CoarsenOperator.h"
-
+#include <cstddef>
+#include <limits>
+#include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace PHARE

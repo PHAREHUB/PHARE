@@ -1,15 +1,24 @@
 #ifndef HIGHFIVEDIAGNOSTICWRITER_HPP
 #define HIGHFIVEDIAGNOSTICWRITER_HPP
 
-#include <string>
-#include <algorithm>
-#include <unordered_map>
+#include "core/utilities/tuple.hpp"
 
 #include "mpi/mpi_utils.hpp"
 
+#include "hdf5/detail/h5/h5_file.hpp"
+
+#include "diagnostic/diagnostic_props.hpp"
 #include "diagnostic/diagnostic_writer.hpp"
 
-#include "hdf5/detail/h5/h5_file.hpp"
+#include <cassert>
+#include <cstddef>
+#include <iterator>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 
 namespace PHARE::diagnostic::h5

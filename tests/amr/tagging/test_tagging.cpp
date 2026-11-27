@@ -1,32 +1,61 @@
 
 
-#include "phare_solver.hpp"
-#include "simulator/simulator_def.hpp"
+#include "initializer/data_provider.hpp"
 
-#include "amr/tagging/tagger_factory.hpp"
-#include "amr/tagging/tagging_quantities.hpp"
-#include "amr/tagging/lohner_parameters.hpp"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/models/hybrid_state.hpp"
+#include "core/models/mhd_state.hpp"
+#include "core/models/options/mhd_options.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/utilities/span.hpp"
+#include "phare_core.hpp"
+
 #include "amr/tagging/default_tagger_strategy.hpp"
 #include "amr/tagging/gradient_scale_tagger_strategy.hpp"
-#include "amr/tagging/per_quantity_tagger_strategy.hpp"
-#include "amr/tagging/lohner_per_direction_tagger_strategy.hpp"
 #include "amr/tagging/lohner_cross_derivatives_tagger_strategy.hpp"
+#include "amr/tagging/lohner_parameters.hpp"
+#include "amr/tagging/lohner_per_direction_tagger_strategy.hpp"
+#include "amr/tagging/per_quantity_tagger_strategy.hpp"
+#include "amr/tagging/tagger_factory.hpp"
+#include "amr/tagging/tagging_quantities.hpp"
+#include "amr/types/amr_types.hpp"
+#include "phare_solver.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/mhd_state/test_mhd_state_fixtures.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
 
 #include "gtest/gtest.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <iterator>
 #include <limits>
 #include <map>
+#include <memory>
 #include <random>
 #include <span>
-#include <string>
-#include <vector>
-#include <algorithm>
 #include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 using namespace PHARE::amr;
 

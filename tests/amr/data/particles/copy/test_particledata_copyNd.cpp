@@ -1,13 +1,31 @@
 
-#include "phare_mpi.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/utilities/range/range.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/particles/particles_data.hpp"
+#include "amr/utilities/box/amr_box.hpp"
+
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <string>
 
 
 using testing::DoubleEq;

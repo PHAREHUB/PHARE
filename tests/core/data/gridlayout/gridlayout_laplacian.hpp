@@ -3,10 +3,15 @@
 
 
 #include "core/data/grid/grid.hpp"
-#include "core/utilities/point/point.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <string>
+#include <vector>
 
 using namespace PHARE::core;
 

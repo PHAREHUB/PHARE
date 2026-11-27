@@ -3,23 +3,40 @@
 
 
 #include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/numeric.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/resources_manager/field_resource.hpp"
+#include "amr/resources_manager/particle_resource.hpp"
+#include "amr/resources_manager/resources_guards.hpp"
+#include "amr/resources_manager/resources_manager_utilities.hpp"
+#include "amr/resources_manager/resources_meta.hpp"
+#include "amr/resources_manager/tensor_field_resource.hpp"
 #include "amr/samrai.hpp"
 
-#include "field_resource.hpp"
-#include "resources_guards.hpp"
-#include "particle_resource.hpp"
-#include "tensor_field_resource.hpp"
-#include "resources_manager_utilities.hpp"
-
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchDataRestartManager.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/Variable.h>
+#include <SAMRAI/hier/VariableContext.h>
 #include <SAMRAI/hier/VariableDatabase.h>
-#include "SAMRAI/hier/PatchDataRestartManager.h"
+#include <SAMRAI/tbox/Dimension.h>
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <iterator>
 #include <map>
+#include <memory>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 
 

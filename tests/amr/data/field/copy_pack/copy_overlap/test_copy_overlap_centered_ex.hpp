@@ -1,11 +1,9 @@
 #ifndef PHARE_TEST_COPY_OVERLAP_CENTERED_EX_HPP
 #define PHARE_TEST_COPY_OVERLAP_CENTERED_EX_HPP
 
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
-
-
-#include "field_data_test_param.hpp"
+#include "tests/amr/data/field/copy_pack/field_data_test_param.hpp"
 
 #include <SAMRAI/pdat/CellData.h>
 #include <SAMRAI/pdat/CellDataFactory.h>

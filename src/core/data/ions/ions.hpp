@@ -1,26 +1,29 @@
 #ifndef PHARE_IONS_HPP
 #define PHARE_IONS_HPP
 
+#include "initializer/data_provider.hpp"
+
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/algorithm.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/logic.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/utilities/range/range.hpp"
+
+#include "dict.hpp"
+
 #include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <iterator>
 #include <sstream>
-#include <string>
-#include <cmath>
-#include <vector>
-#include <array>
 #include <stdexcept>
-
-
-#include "core/def.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "initializer/data_provider.hpp"
-#include "particle_initializers/particle_initializer_factory.hpp"
-#include "core/utilities/algorithm.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/range/range.hpp"
+#include <string>
+#include <tuple>
+#include <vector>
 
 namespace PHARE
 {

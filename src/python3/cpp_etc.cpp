@@ -1,33 +1,54 @@
 // This file is for the python module for everything besides C++ Simulators.
 
 
+#include "core/boundary/boundary_defs.hpp"
+#include "core/data/particles/particle_array.hpp"
 #include "core/def.hpp"
 #include "core/def/phare_config.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/numerics/ohm/ohm.hpp"
-#include "core/boundary/boundary_defs.hpp"
-
 #include "core/models/options/mhd_options_def.hpp"
+#include "core/numerics/ohm/ohm.hpp"
+#include "core/utilities/span.hpp"
+#include "core/utilities/timestamps.hpp"
+
+#include "mpi/mpi_utils.hpp"
+
+#include "hdf5/phare_hdf5.hpp"
 
 #include "amr/samrai.hpp"             // SamraiLifeCycle without simulators
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
 
-#include "python3/pybind_def.hpp"
-#include "python3/patch_data.hpp"
-
-#include "core/utilities/timestamps.hpp"
-
-#include "hdf5/phare_hdf5.hpp"
 #include "simulator/simulator_runtime.hpp"
+
+#include "python3/patch_data.hpp"
+#include "python3/pybind_def.hpp"
+
+#include "highfive/H5Attribute.hpp"
+#include "highfive/H5File.hpp"
+#include "highfive/H5Group.hpp"
+#include "highfive/H5Version.hpp"
+#include "highfive/highfive.hpp"
+
+#include <SAMRAI/SAMRAI_config.h>
+#include <SAMRAI/tbox/Database.h>
+#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 
 #if PHARE_HAS_HIGHFIVE
 #include "hdf5/detail/h5/h5_file.hpp"
 
-#include "SAMRAI/tbox/HDFDatabase.h"
+#include <SAMRAI/tbox/HDFDatabase.h>
 #endif
 
-#include <algorithm>
+#include <cstddef>
 #include <filesystem>
+#include <memory>
+#include <ranges>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace py = pybind11;
 

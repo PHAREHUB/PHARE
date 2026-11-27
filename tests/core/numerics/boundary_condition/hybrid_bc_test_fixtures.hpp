@@ -1,17 +1,28 @@
 #ifndef PHARE_TEST_CORE_NUMERICS_BOUNDARY_CONDITION_HYBRID_BC_TEST_FIXTURES_HPP
 #define PHARE_TEST_CORE_NUMERICS_BOUNDARY_CONDITION_HYBRID_BC_TEST_FIXTURES_HPP
 
+#include "core/data/field/field.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/models/options/hybrid_options.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
 
 #include "gtest/gtest.h"
 
-#include "simulator/simulator_def.hpp"
-#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
 namespace PHARE::core
 {

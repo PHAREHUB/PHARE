@@ -1,11 +1,11 @@
 
-#include <string>
-
 #include "core/utilities/range/range.hpp"
 
-
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <iterator>
+#include <string>
+#include <vector>
 
 
 using PHARE::core::makeRange;

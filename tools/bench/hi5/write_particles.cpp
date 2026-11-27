@@ -2,15 +2,27 @@
 
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
+#include "core/utilities/tuple.hpp"
+
+#include "hdf5/detail/h5/h5_file.hpp"
+#include "hdf5/detail/hdf5_utils.hpp"
 
 #include "amr/samrai.hpp" // IWYU pragma: keep
 
-#include "hdf5/detail/hdf5_utils.hpp"
-#include "hdf5/detail/h5/h5_file.hpp"
-
+#include "highfive/H5DataSet.hpp"
+#include "highfive/H5DataSpace.hpp"
+#include "highfive/H5File.hpp"
+#include "highfive/highfive.hpp"
 #include "tools/bench/core/bench.hpp"
 
 #include "benchmark/benchmark.h"
+
+#include <array>
+#include <cstddef>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <vector>
 
 constexpr std::size_t dim = 1;
 

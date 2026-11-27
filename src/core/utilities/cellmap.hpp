@@ -1,19 +1,22 @@
 #ifndef PHARE_CELLMAP_H
 #define PHARE_CELLMAP_H
 
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/indexer.hpp"
 #include "core/utilities/meta/container_meta.hpp"
+#include "core/utilities/point/point.hpp"
 #include "core/utilities/range/range.hpp"
 
-#include <cstddef>
 #include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
 #include <unordered_map>
-#include <algorithm>
 
 namespace PHARE::core
 {

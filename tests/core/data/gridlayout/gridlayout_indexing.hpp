@@ -1,14 +1,18 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_INDEXING_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_INDEXING_HPP
 
-#include <array>
-#include <fstream>
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/point/point.hpp"
 
-#include "core/data/grid/gridlayout.hpp"
 #include "gridlayout_base_params.hpp"
 #include "gridlayout_params.hpp"
-#include "gridlayout_utilities.hpp"
-#include "core/utilities/point/point.hpp"
+
+#include <array>
+#include <cstdint>
+#include <fstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace PHARE::core;
 

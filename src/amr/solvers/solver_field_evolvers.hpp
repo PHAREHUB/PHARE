@@ -4,8 +4,8 @@
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 
-#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 
 namespace PHARE::solver

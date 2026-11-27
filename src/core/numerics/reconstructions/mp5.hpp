@@ -1,9 +1,10 @@
 #ifndef CORE_NUMERICS_RECONSTRUCTION_MP5_HPP
 #define CORE_NUMERICS_RECONSTRUCTION_MP5_HPP
 
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/slope_limiters/min_mod.hpp"
 #include "core/utilities/index/index.hpp"
+
+#include <algorithm>
 #include <utility>
 
 namespace PHARE::core

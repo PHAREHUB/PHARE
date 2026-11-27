@@ -1,6 +1,22 @@
-#include "push_bench.hpp"
 
 // Does not include google benchmark as we want to see only PHARE operations/instructions/etc
+
+#include "core/numerics/boundary_condition/boundary_condition.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/pusher/boris.hpp"
+#include "core/utilities/range/range.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "tests/core/data/electromag/test_electromag_fixtures.hpp"
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tools/bench/core/bench.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <sstream>
 
 template<std::size_t dim, std::size_t interp>
 void push()

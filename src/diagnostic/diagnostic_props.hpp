@@ -2,14 +2,15 @@
 #define DIAGNOSTIC_DAO_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
-
-#include <string>
-#include <type_traits>
-#include <vector>
-#include <cstddef>
+#include "core/utilities/meta/type_meta.hpp"
 
 #include "dict.hpp"
+
+#include <cstddef>
+#include <string>
+#include <type_traits>
+#include <variant>
+#include <vector>
 
 namespace PHARE::diagnostic
 {

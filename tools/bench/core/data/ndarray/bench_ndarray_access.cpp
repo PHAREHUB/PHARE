@@ -3,12 +3,13 @@
 
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/index/index.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
 #include "benchmark/benchmark.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <utility>
 
 namespace PHARE::core::bench

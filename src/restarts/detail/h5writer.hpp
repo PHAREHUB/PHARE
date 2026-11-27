@@ -2,14 +2,21 @@
 #define PHARE_DETAIL_RESTART_HIGHFIVE_HPP
 
 
-#include "mpi/mpi_utils.hpp"
-
-#include "restarts/restarts_props.hpp"
-#include "restarts/restarts_manager.hpp"
-
 #include "initializer/data_provider.hpp"
 
+#include "core/def.hpp"
+
+#include "mpi/mpi_utils.hpp"
+
 #include "hdf5/detail/h5/h5_file.hpp"
+
+#include "restarts/restarts_props.hpp"
+
+#include "dict.hpp"
+#include "highfive/H5File.hpp"
+
+#include <memory>
+#include <string>
 
 namespace PHARE::restarts::h5
 {

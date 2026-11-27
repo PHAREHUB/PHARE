@@ -1,8 +1,12 @@
 
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/array.hpp"
+
 #include "benchmark/benchmark.h"
 
-#include "tools/bench/core/bench.hpp"
-#include "core/data/particles/particle.hpp"
+#include <array>
+#include <cstddef>
 
 constexpr std::size_t dim  = 3;
 constexpr std::size_t size = 100000;

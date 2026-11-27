@@ -1,9 +1,28 @@
 
-#include "phare_mpi.hpp"
+#include "core/utilities/constants.hpp"
 
-#include <limits>
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/amr_constants.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/samrai.hpp"
 
 #include "tests/simulator/per_test.hpp"
+
+#include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/xfer/CoarsenAlgorithm.h>
+#include <SAMRAI/xfer/CoarsenSchedule.h>
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
+
+#include "gtest/gtest.h"
+
+#include <array>
+#include <memory>
+#include <string>
+#include <vector>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

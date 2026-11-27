@@ -1,17 +1,29 @@
 #ifndef PHARE_REFINER_HPP
 #define PHARE_REFINER_HPP
 
-#include "communicator.hpp"
+#include "core/data/field/field_traits.hpp"
 
+#include "amr/messengers/communicator.hpp"
 #include "amr/messengers/field_border_sum.hpp"
 #include "amr/messengers/field_operate_transaction.hpp"
-#include "core/utilities/types.hpp"
+
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/hier/TimeInterpolateOperator.h>
+#include <SAMRAI/xfer/PatchLevelBorderFillPattern.h>
+#include <SAMRAI/xfer/PatchLevelInteriorFillPattern.h>
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefinePatchStrategy.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
+#include <SAMRAI/xfer/VariableFillPattern.h>
 
 #include <map>
 #include <memory>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 
 namespace PHARE::amr

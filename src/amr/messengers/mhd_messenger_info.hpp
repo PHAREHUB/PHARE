@@ -2,7 +2,11 @@
 #define PHARE_MHD_MESSENGER_INFO_HPP
 
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
-#include "messenger_info.hpp"
+
+#include "amr/messengers/messenger_info.hpp"
+
+#include <string>
+#include <vector>
 
 
 

@@ -3,8 +3,8 @@
 
 #include "initializer/data_provider.hpp"
 
-#include "lohner_parameters.hpp"
-#include "per_quantity_tagger_strategy.hpp"
+#include "amr/tagging/lohner_parameters.hpp"
+#include "amr/tagging/per_quantity_tagger_strategy.hpp"
 
 #include <array>
 #include <cmath>

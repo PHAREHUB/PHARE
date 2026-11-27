@@ -1,17 +1,22 @@
 #ifndef PHARE_CORE_BOUNDARY_BOUNDARY_FACTORY
 #define PHARE_CORE_BOUNDARY_BOUNDARY_FACTORY
 
+#include "initializer/data_provider.hpp"
+#include "initializer/dict_utils.hpp"
+
 #include "core/boundary/boundary.hpp"
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/field/field_traits.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
-#include "initializer/data_provider.hpp"
-#include "initializer/dict_utils.hpp"
+#include "dict.hpp"
 
 #include <array>
 #include <concepts>
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <string>

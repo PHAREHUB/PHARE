@@ -3,7 +3,9 @@
 
 #include "initializer/data_provider.hpp"
 
-#include "per_quantity_tagger_strategy.hpp"
+#include "amr/tagging/per_quantity_tagger_strategy.hpp"
+
+#include "dict.hpp"
 
 #include <array>
 #include <cmath>

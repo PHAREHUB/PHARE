@@ -2,12 +2,15 @@
 #define PHARE_CORE_DATA_PARTICLE_PACKER_HPP
 
 
-#include <cstddef>
-#include <vector>
-
-#include "particle.hpp"
-#include "particle_array.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
 #include "core/def.hpp"
+
+#include <array>
+#include <cstddef>
+#include <string>
+#include <tuple>
+#include <utility>
 
 namespace PHARE::core
 {

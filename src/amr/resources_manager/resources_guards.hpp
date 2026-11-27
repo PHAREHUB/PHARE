@@ -3,13 +3,9 @@
 
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "resources_manager_utilities.hpp"
-
-#include <memory>
-#include <tuple>
-#include <utility>
-
 #include <SAMRAI/hier/Patch.h>
+
+#include <tuple>
 
 namespace PHARE
 {

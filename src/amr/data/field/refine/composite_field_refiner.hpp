@@ -2,17 +2,19 @@
 #define PHARE_COMPOSITE_FIELD_REFINER_HPP
 
 
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/def.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/point/point.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/point/point.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/box/box_spans.hpp"
-
+#include "amr/data/field/refine/coarse_cell_round_out.hpp"
+#include "amr/data/field/refine/field_refiner_kernel.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
-#include "coarse_cell_round_out.hpp"
-#include "field_refiner_kernel.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>

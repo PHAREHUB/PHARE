@@ -1,13 +1,18 @@
 #ifndef PHARE_ELECTRIC_FIELD_COARSENER
 #define PHARE_ELECTRIC_FIELD_COARSENER
 
-#include "amr/amr_constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "amr/amr_constants.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
-
 #include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/tbox/Utilities.h>
+
+#include <array>
 #include <cstddef>
 #include <stdexcept>
 

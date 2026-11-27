@@ -1,49 +1,60 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/moments/level_ghost_ownership.hpp"
 #include "core/numerics/moments/moments.hpp"
 
-#include "refiner_pool.hpp"
-#include "synchronizer_pool.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/field/coarsening/default_field_coarsener.hpp"
+#include "amr/data/field/coarsening/electric_field_coarsener.hpp"
+#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/moments_coarsener.hpp"
-#include "amr/types/amr_types.hpp"
-#include "amr/messengers/messenger_info.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/field/field_variable_fill_pattern.hpp"
+#include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/magnetic_composite_refiner.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
+#include "amr/data/particles/particles_variable_fill_pattern.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
-#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
-#include "amr/data/field/coarsening/electric_field_coarsener.hpp"
-#include "amr/data/field/field_variable_fill_pattern.hpp"
-#include "amr/data/field/refine/field_refine_operator.hpp"
-#include "amr/data/field/refine/composite_field_refiner.hpp"
-#include "amr/data/field/refine/magnetic_composite_refiner.hpp"
+#include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/refinement_config.hpp"
-#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
-#include "amr/data/field/coarsening/default_field_coarsener.hpp"
-#include "amr/data/particles/particles_variable_fill_pattern.hpp"
-#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
+#include "amr/messengers/refiner.hpp"
+#include "amr/messengers/refiner_pool.hpp"
+#include "amr/messengers/synchronizer_pool.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
-#include <SAMRAI/hier/IntVector.h>
-#include <SAMRAI/hier/Patch.h>
-#include <SAMRAI/xfer/RefineSchedule.h>
+#include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/GlobalId.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/hier/TimeInterpolateOperator.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/xfer/CoarsenAlgorithm.h>
+#include <SAMRAI/xfer/CoarsenSchedule.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
-#include <SAMRAI/hier/CoarseFineBoundary.h>
-#include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
 
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-#include <utility>
+#include <cassert>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <limits>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 
 

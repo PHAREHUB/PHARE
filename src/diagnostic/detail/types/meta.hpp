@@ -2,6 +2,13 @@
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_META_HPP
 
 #include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include <cstddef>
+#include <iterator>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 
 namespace PHARE::diagnostic::h5

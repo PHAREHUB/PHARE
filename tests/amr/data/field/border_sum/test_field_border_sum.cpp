@@ -6,32 +6,50 @@
 // stores the overlaps of its ghost box with the others, in some registration order, then folds.
 // Every ghost box node must equal its contributions added in that order from zero.
 
-#include "phare_core.hpp"
-#include "phare_mpi.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "core/data/grid/grid.hpp"
-#include "core/utilities/box/box_spans.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/options/hybrid_options.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_overlap.hpp"
 #include "amr/messengers/field_border_sum.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
+#include "simulator/simulator_def.hpp"
+
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/GlobalId.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/LocalId.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gtest/gtest.h"
 
-#include <map>
-#include <array>
-#include <random>
-#include <vector>
-#include <memory>
-#include <cstring>
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <optional>
+#include <random>
+#include <ranges>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

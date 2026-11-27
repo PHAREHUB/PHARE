@@ -1,9 +1,10 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP
 
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include <cstdint>
 
 
 template<typename GridLayout>

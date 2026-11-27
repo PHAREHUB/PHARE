@@ -1,17 +1,18 @@
 #ifndef PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_DISSIPATIVE_ELECTRIC_FIELD_HPP
 #define PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_DISSIPATIVE_ELECTRIC_FIELD_HPP
 
-#include "core/def.hpp"
-#include "core/numerics/ohm/ohm.hpp"
-#include "core/numerics/differential_operators.hpp"
-#include "core/utilities/index/index.hpp"
-#include "core/utilities/meta/enum_meta.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/differential_operators.hpp"
+#include "core/numerics/ohm/ohm.hpp"
+#include "core/utilities/index/index.hpp"
+#include "core/utilities/meta/constexprifier.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
-#include <algorithm>
 
 namespace PHARE::core
 {

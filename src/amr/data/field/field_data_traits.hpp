@@ -5,6 +5,7 @@
 #include <SAMRAI/hier/PatchData.h>
 
 #include <concepts>
+#include <cstddef>
 
 namespace PHARE::amr
 {

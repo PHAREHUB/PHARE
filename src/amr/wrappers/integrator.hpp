@@ -1,38 +1,47 @@
 #ifndef INTEGRATOR_HPP
 #define INTEGRATOR_HPP
 
-#include "core/logger.hpp"
-
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "mpi/mpi_utils.hpp"
-
-
-#include <SAMRAI/mesh/BalanceUtilities.h>
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
-#include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/BoxContainer.h>
-#include <SAMRAI/hier/IntVector.h>
-#include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/mesh/TileClustering.h>
-#include <SAMRAI/mesh/BergerRigoutsos.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/CascadePartitioner.h>
-#include <SAMRAI/tbox/Database.h>
-#include <SAMRAI/tbox/DatabaseBox.h>
-#include <SAMRAI/tbox/InputManager.h>
-#include <SAMRAI/tbox/MemoryDatabase.h>
-
-#include <limits>
-#include <stdexcept>
-
-
 #include "initializer/data_provider.hpp"
+
+#include "core/logger.hpp"
+#include "core/utilities/strings.hpp"
 #include "core/utilities/timestamps.hpp"
 
-#include "amr/load_balancing/load_balancer_details.hpp"
+#include "mpi/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
 #include "amr/load_balancing/coarsest_rebalance_check.hpp"
+#include "amr/load_balancing/load_balancer_details.hpp"
+
+#include "dict.hpp"
+
+#include <SAMRAI/algs/TimeRefinementIntegrator.h>
+#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/mesh/BalanceUtilities.h>
+#include <SAMRAI/mesh/BergerRigoutsos.h>
+#include <SAMRAI/mesh/BoxGeneratorStrategy.h>
+#include <SAMRAI/mesh/CascadePartitioner.h>
+#include <SAMRAI/mesh/GriddingAlgorithm.h>
+#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
+#include <SAMRAI/mesh/StandardTagAndInitialize.h>
+#include <SAMRAI/mesh/TileClustering.h>
+#include <SAMRAI/tbox/Database.h>
+#include <SAMRAI/tbox/DatabaseBox.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/MemoryDatabase.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
+#include <cstddef>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 
 namespace PHARE::amr

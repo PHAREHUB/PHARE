@@ -2,15 +2,17 @@
 #define TESTS_CORE_DATA_GRIDLAYOUT_ALLOCSIZE_HPP
 
 
-#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
 
-#include "gridlayout_params.hpp"
-#include "gridlayout_utilities.hpp"
 #include "gridlayout_base_params.hpp"
+#include "gridlayout_params.hpp"
 
+#include <array>
+#include <cstdint>
 #include <fstream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 

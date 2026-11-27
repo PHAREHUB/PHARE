@@ -6,19 +6,29 @@
 //     FieldLinearTimeInterpolate
 // -------------------------------------
 
+#include "core/utilities/box/box_spans.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-
 #include "amr/data/field/field_data.hpp"
-#include "core/utilities/box/box_spans.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/TimeInterpolateOperator.h>
+#include <SAMRAI/hier/Transformation.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 
 

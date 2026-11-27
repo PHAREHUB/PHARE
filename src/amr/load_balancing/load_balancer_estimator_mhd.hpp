@@ -1,15 +1,11 @@
 #ifndef PHARE_LOAD_BALANCER_ESTIMATOR_MHD_HPP
 #define PHARE_LOAD_BALANCER_ESTIMATOR_MHD_HPP
 
-#include <memory>
-#include <SAMRAI/hier/PatchLevel.h>
-
-
 #include "amr/load_balancing/concrete_load_balancer_strategy_homogeneous.hpp"
+#include "amr/load_balancing/load_balancer_estimator.hpp"
 #include "amr/physical_models/physical_model.hpp"
 
-#include "load_balancer_estimator.hpp"
-#include "load_balancer_strategy.hpp"
+#include <memory>
 
 
 namespace PHARE::amr

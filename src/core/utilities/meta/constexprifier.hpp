@@ -1,12 +1,12 @@
 #ifndef PHARE_CORE_UTILITIES_META_CONSTEXPRIFIER_HPP
 #define PHARE_CORE_UTILITIES_META_CONSTEXPRIFIER_HPP
 
-#include <tuple>
+#include <concepts>
 #include <cstddef>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 #include <variant>
-#include <concepts>
-#include <type_traits>
 
 namespace PHARE::core
 {

@@ -1,24 +1,34 @@
 
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 #include "gtest/gtest.h"
 
-#include <list>
-#include <array>
-#include <cmath>
-#include <random>
-#include <cstddef>
-#include <fstream>
 #include <algorithm>
+#include <array>
+#include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <initializer_list>
+#include <iostream>
+#include <iterator>
+#include <numeric>
+#include <random>
+#include <sstream>
+#include <string>
+#include <vector>
 
 
 

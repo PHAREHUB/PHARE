@@ -1,24 +1,26 @@
 #ifndef PHARE_PYTHON_DATA_WRANGLER_HPP
 #define PHARE_PYTHON_DATA_WRANGLER_HPP
 
-#include "mpi/mpi_utils.hpp"
 #include "core/utilities/point/point.hpp"
 
-#include "amr/wrappers/hierarchy.hpp"
+#include "mpi/mpi_utils.hpp"
 
-#include "python3/patch_data.hpp"
-#include "python3/patch_level.hpp"
+#include "amr/wrappers/hierarchy.hpp"
+#include "phare_solver.hpp"
 
 #include "simulator/simulator.hpp"
 
+#include "python3/patch_data.hpp"
+#include "python3/patch_level.hpp"
+#include "python3/pybind_def.hpp"
 
+#include <algorithm>
 #include <array>
-#include <memory>
-#include <vector>
 #include <cstddef>
 #include <iterator>
+#include <memory>
 #include <stdexcept>
-#include <algorithm>
+#include <vector>
 
 namespace PHARE::pydata
 {

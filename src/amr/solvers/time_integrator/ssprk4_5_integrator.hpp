@@ -2,12 +2,14 @@
 #define PHARE_CORE_NUMERICS_SSPRK4_5_INTEGRATOR_HPP
 
 #include "initializer/data_provider.hpp"
+
+#include "core/numerics/time_integrator_utils.hpp"
+
+#include "amr/solvers/solver_mhd_field_evolvers.hpp"
 #include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
 #include "amr/solvers/time_integrator/compute_fluxes.hpp"
-#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
-#include "amr/solvers/solver_mhd_field_evolvers.hpp"
 #include "amr/solvers/time_integrator/euler.hpp"
-#include "core/numerics/time_integrator_utils.hpp"
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 
 namespace PHARE::solver
 {

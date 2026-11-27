@@ -1,23 +1,44 @@
 
 
-#include "phare_mpi.hpp"
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "core/data/grid/grid.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "phare_core.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
+#include "amr/data/field/field_data.hpp"
+#include "amr/data/field/field_overlap.hpp"
 #include "amr/data/field/field_variable.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchDataFactory.h>
+#include <SAMRAI/hier/PatchDescriptor.h>
+#include <SAMRAI/hier/PatchGeometry.h>
+#include <SAMRAI/hier/Transformation.h>
 #include <SAMRAI/pdat/CellGeometry.h>
+#include <SAMRAI/pdat/CellOverlap.h>
 #include <SAMRAI/pdat/NodeGeometry.h>
+#include <SAMRAI/pdat/NodeOverlap.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-
-
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
+#include <array>
+#include <memory>
+#include <string>
 
 using testing::Eq;
 

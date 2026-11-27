@@ -2,14 +2,15 @@
 #define PHARE_CORE_UTILITIES_BOX_BOX_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/span.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/numeric.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/span.hpp"
 
-#include <cstddef>
-#include <optional>
-#include <iostream>
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <iostream>
+#include <optional>
 
 namespace PHARE::core
 {

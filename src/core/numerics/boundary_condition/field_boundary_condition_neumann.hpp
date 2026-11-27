@@ -3,10 +3,15 @@
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/box/box_spans.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include <cstddef>
+#include <cstdint>
+#include <utility>
 
 namespace PHARE::core
 {

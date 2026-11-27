@@ -1,13 +1,19 @@
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
-#include "core/utilities/types.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
 #include "gtest/gtest.h"
+
 #include <cmath>
+#include <cstddef>
+#include <string>
+#include <utility>
 
 
 namespace PHARE::core

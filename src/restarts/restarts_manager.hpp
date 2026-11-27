@@ -2,17 +2,26 @@
 #define PHARE_RESTART_MANAGER_HPP_
 
 
+#include "initializer/data_provider.hpp"
+
 #include "core/def.hpp"
 #include "core/logger.hpp"
-
-#include "initializer/data_provider.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/logic.hpp"
 
 #include "mpi/mpi_utils.hpp"
 
 #include "restarts/restarts_props.hpp"
 
+#include "dict.hpp"
+
+#include <cassert>
+#include <ctime>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 
 namespace PHARE::restarts

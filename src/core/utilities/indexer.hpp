@@ -1,21 +1,13 @@
 #ifndef PHARE_INDEXER_H
 #define PHARE_INDEXER_H
 
-#include "core/utilities/types.hpp"
 #include "core/def.hpp"
 
+#include <algorithm>
 #include <cassert>
-#include <cstdint>
-#include <iostream>
 #include <cstddef>
 #include <iterator>
-#include <array>
-#include <stdexcept>
-#include <type_traits>
 #include <vector>
-#include <unordered_map>
-#include <algorithm>
-#include <tuple>
 
 namespace PHARE::core
 {

@@ -2,17 +2,26 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_FACTORY_HPP
 
 
+#include "core/utilities/point/point.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDataFactory.h>
-#include <SAMRAI/tbox/MemoryUtilities.h>
-#include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <SAMRAI/tbox/Dimension.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 

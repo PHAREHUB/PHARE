@@ -2,23 +2,32 @@
 #define PHARE_DIAGNOSTIC_DETAIL_VTK_H5_WRITER_HPP
 
 
-#include "core/logger.hpp"
-#include "mpi/mpi_utils.hpp"
-
 #include "initializer/data_provider.hpp"
 
-#include "diagnostic/diagnostic_props.hpp"
-#include "diagnostic/detail/vtkh5_type_writer.hpp"
+#include "core/logger.hpp"
 
-#include "diagnostic/detail/vtk_types/fluid.hpp"
-#include "diagnostic/detail/vtk_types/electromag.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+
+#include "diagnostic/detail/vtk_types/electromag.hpp"
+#include "diagnostic/detail/vtk_types/fluid.hpp"
+#include "diagnostic/detail/vtkh5_type_writer.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include "dict.hpp"
+#include "highfive/H5File.hpp"
+
+#include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <string>
-#include <algorithm>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 namespace PHARE::diagnostic::vtkh5
 {

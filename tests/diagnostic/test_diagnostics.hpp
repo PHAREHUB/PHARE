@@ -1,14 +1,37 @@
 #ifndef PHARE_TEST_DIAGNOSTIC_INCLUDE_HPP
 #define PHARE_TEST_DIAGNOSTIC_INCLUDE_HPP
 
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 // per_test.hpp brings in simulator.hpp -> diagnostics.hpp, which defines the
 // PHARE_DIAG_DOUBLES default that h5writer.hpp requires: keep it first.
-#include "tests/simulator/per_test.hpp"
+#include "initializer/data_provider.hpp"
+
+#include "core/data/particles/particle_packer.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "hdf5/detail/h5/h5_file.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include "diagnostic/detail/h5writer.hpp"
+#include "diagnostic/diagnostic_manager.hpp"
 #include "diagnostic/diagnostic_model_view.hpp"
 
+#include "dict.hpp"
+#include "highfive/H5File.hpp"
 #include "tests/core/data/field/test_field.hpp"
+#include "tests/simulator/per_test.hpp"
+
+#include "gtest/gtest.h"
 
 
 using namespace PHARE;

@@ -4,6 +4,7 @@
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/field/field_traits.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition_resolver.hpp"
 
 #include <concepts>

@@ -1,9 +1,17 @@
 #ifndef CORE_NUMERICS_RIEMANN_SOLVERS_HLL_HPP
 #define CORE_NUMERICS_RIEMANN_SOLVERS_HLL_HPP
 
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
-#include <cstdlib>
+#include "core/utilities/meta/for_N.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace PHARE::core
 {

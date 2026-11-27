@@ -1,33 +1,44 @@
 #ifndef PHARE_MULTIPHYSICS_INTEGRATOR_HPP
 #define PHARE_MULTIPHYSICS_INTEGRATOR_HPP
 
-#include "phare_core.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-
-#include "amr/amr_constants.hpp"
-#include "amr/level_initializer/level_initializer.hpp"
-#include "amr/messenger_registration.hpp"
-#include "amr/messengers/messenger.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/solvers/solver.hpp"
-#include "amr/tagging/tagger.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "core/logger.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/timestamps.hpp"
+#include "phare_core.hpp"
 
 #include "mpi/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "load_balancing/load_balancer_manager.hpp"
+#include "amr/amr_constants.hpp"
+#include "amr/level_initializer/level_initializer.hpp"
+#include "amr/load_balancing/load_balancer_manager.hpp"
+#include "amr/messenger_registration.hpp"
+#include "amr/messengers/messenger.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/samrai.hpp"
+#include "amr/solvers/solver.hpp"
+#include "amr/tagging/tagger.hpp"
 
-#include "SAMRAI/algs/TimeRefinementLevelStrategy.h"
-#include "SAMRAI/mesh/StandardTagAndInitStrategy.h"
-#include "SAMRAI/tbox/RestartManager.h"
+#include "dict.hpp"
+
+#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/RestartManager.h>
 
 #include <algorithm>
-#include <map>
+#include <cassert>
+#include <cmath>
+#include <cstddef>
+#include <functional>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <stdexcept>

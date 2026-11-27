@@ -1,8 +1,15 @@
 #ifndef PHARE_SYNCHRONIZER_HPP
 #define PHARE_SYNCHRONIZER_HPP
 
-#include "communicator.hpp"
-#include "core/data/vecfield/vecfield.hpp"
+#include "amr/messengers/communicator.hpp"
+
+#include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace PHARE::amr
 {

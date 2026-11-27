@@ -1,11 +1,13 @@
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
 
 #include "tools/bench/core/no_vectorize.hpp"
 
 #include "benchmark/benchmark.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 

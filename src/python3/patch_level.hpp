@@ -1,14 +1,21 @@
 #ifndef PHARE_PYTHON_PATCH_LEVEL_HPP
 #define PHARE_PYTHON_PATCH_LEVEL_HPP
 
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_packer.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/wrappers/hierarchy.hpp"
 #include "phare_solver.hpp"
+
 #include "python3/patch_data.hpp"
 
-#include <string>
-#include <cstring>
 #include <cstddef>
-
-#include "python3/patch_data.hpp"
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 
 namespace PHARE::pydata

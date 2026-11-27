@@ -2,9 +2,10 @@
 #define PHARE_CORE_NUMERICS_MOMENTS_LEVEL_GHOST_OWNERSHIP_HPP
 
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
 
-#include <vector>
 #include <cstddef>
+#include <vector>
 
 namespace PHARE::core
 {

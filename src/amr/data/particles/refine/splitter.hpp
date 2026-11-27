@@ -1,18 +1,20 @@
 #ifndef PHARE_SPLITTER_HPP
 #define PHARE_SPLITTER_HPP
 
-#include "core/utilities/types.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/tuple.hpp"
 
 #include "amr/amr_constants.hpp"
 
-#include <array>
 #include <algorithm>
-#include <cmath>
-#include <tuple>
+#include <array>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <tuple>
+#include <type_traits>
 
 
 

@@ -1,22 +1,24 @@
 #ifndef PHARE_TAGGER_FACTORY_HPP
 #define PHARE_TAGGER_FACTORY_HPP
 
-#include "core/def.hpp"
-
-#include "amr/physical_models/mhd_model.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-
 #include "initializer/data_provider.hpp"
 
-#include "tagger.hpp"
-#include "concrete_tagger.hpp"
-#include "default_tagger_strategy.hpp"
-#include "gradient_scale_tagger_strategy.hpp"
-#include "lohner_per_direction_tagger_strategy.hpp"
-#include "lohner_cross_derivatives_tagger_strategy.hpp"
+#include "core/def.hpp"
+#include "core/utilities/meta/type_meta.hpp"
 
-#include <string>
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/tagging/concrete_tagger.hpp"
+#include "amr/tagging/default_tagger_strategy.hpp"
+#include "amr/tagging/gradient_scale_tagger_strategy.hpp"
+#include "amr/tagging/lohner_cross_derivatives_tagger_strategy.hpp"
+#include "amr/tagging/lohner_per_direction_tagger_strategy.hpp"
+#include "amr/tagging/tagger.hpp"
+
+#include "dict.hpp"
+
 #include <memory>
+#include <string>
 
 namespace PHARE::amr
 {

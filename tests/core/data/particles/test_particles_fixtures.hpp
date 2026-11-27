@@ -1,6 +1,8 @@
 #ifndef PHARE_TEST_CORE_DATA_PARTICLES_TEST_PARTICLES_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_PARTICLES_TEST_PARTICLES_FIXTURES_HPP
 
+#include "core/data/ions/ion_population/particle_pack.hpp"
+
 #include <string>
 
 namespace PHARE::core

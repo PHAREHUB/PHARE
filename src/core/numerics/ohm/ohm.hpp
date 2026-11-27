@@ -2,13 +2,19 @@
 #define PHARE_OHM_HPP
 
 
-#include "core/utilities/index/index.hpp"
-#include "core/utilities/meta/enum_meta.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
+#include "initializer/data_provider.hpp"
+
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
+#include "core/utilities/index/index.hpp"
+#include "core/utilities/meta/constexprifier.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "dict.hpp"
+
+#include <cmath>
+#include <initializer_list>
+#include <stdexcept>
+#include <string>
 
 
 namespace PHARE::core

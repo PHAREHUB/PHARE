@@ -1,21 +1,23 @@
 #ifndef PHARE_AMR_FIELD_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_FIELD_REFINE_PATCH_STRATEGY_HPP
 
-#include "amr/data/field/field_data_traits.hpp"
-#include "amr/data/tensorfield/tensor_field_data_traits.hpp"
-
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
-#include "SAMRAI/hier/BoundaryBox.h"
-#include "SAMRAI/hier/Box.h"
-#include "SAMRAI/hier/IntVector.h"
-#include "SAMRAI/hier/PatchGeometry.h"
-#include "SAMRAI/tbox/Dimension.h"
-#include "SAMRAI/xfer/RefinePatchStrategy.h"
+#include "amr/data/field/field_data_traits.hpp"
+#include "amr/data/tensorfield/tensor_field_data_traits.hpp"
+
+#include <SAMRAI/hier/BoundaryBox.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchGeometry.h>
+#include <SAMRAI/xfer/RefinePatchStrategy.h>
 
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <vector>

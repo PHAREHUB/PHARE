@@ -2,14 +2,26 @@
 #define PHARE_LOAD_BALANCER_MANAGER_HPP
 
 #include "initializer/data_provider.hpp"
-#include "load_balancer_estimator.hpp"
 
+#include "amr/load_balancing/load_balancer_estimator.hpp"
+#include "amr/physical_models/physical_model.hpp"
 #include "amr/samrai.hpp"
+#include "amr/types/amr_types.hpp"
 
+#include "dict.hpp"
+
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/VariableContext.h>
+#include <SAMRAI/hier/VariableDatabase.h>
+#include <SAMRAI/mesh/CascadePartitioner.h>
 #include <SAMRAI/pdat/CellVariable.h>
+#include <SAMRAI/tbox/Dimension.h>
 
+#include <cstddef>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace PHARE::amr

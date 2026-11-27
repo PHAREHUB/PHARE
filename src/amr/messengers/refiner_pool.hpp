@@ -1,16 +1,23 @@
 #ifndef PHARE_REFINER_POOL_HPP
 #define PHARE_REFINER_POOL_HPP
 
-#include "SAMRAI/xfer/RefinePatchStrategy.h"
-#include "refiner.hpp"
+#include "amr/messengers/refiner.hpp"
 
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/hier/TimeInterpolateOperator.h>
+#include <SAMRAI/xfer/RefinePatchStrategy.h>
+#include <SAMRAI/xfer/VariableFillPattern.h>
 
+#include <cassert>
+#include <cstddef>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
-
-#include <SAMRAI/xfer/VariableFillPattern.h>
 
 
 namespace PHARE

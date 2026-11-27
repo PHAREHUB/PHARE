@@ -1,15 +1,21 @@
 
 #include "core/data/field/field_box.hpp"
-
+#include "core/data/field/field_traits.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/numeric.hpp"
 #include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
 #include "gtest/gtest.h"
 
-#include <vector>
 #include <cstddef>
+#include <string>
+#include <vector>
 
 
 namespace PHARE::core

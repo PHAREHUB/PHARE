@@ -2,10 +2,16 @@
 #define PHARE_TEST_CORE_DATA_TEST_TENSORFIELD_FIXTURES_MHD_HPP
 
 #include "core/data/grid/grid.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
+#include "core/utilities/meta/for_N.hpp"
 
 #include "tests/core/data/field/test_field_fixtures_mhd.hpp"
+
+#include <array>
+#include <cstddef>
+#include <string>
 
 namespace PHARE::core
 {

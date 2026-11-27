@@ -1,9 +1,9 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_UTILITIES_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_UTILITIES_HPP
 
-#include <array>
-
 #include "core/data/ndarray/ndarray_vector.hpp"
+
+#include <cstddef>
 
 using namespace PHARE::core;
 

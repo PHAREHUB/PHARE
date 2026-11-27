@@ -2,14 +2,14 @@
 #define PHARE_MAGNETIC_COMPOSITE_REFINER_HPP
 
 
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/numeric.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/types.hpp"
-
-#include "coarse_cell_round_out.hpp"
-#include "composite_field_refiner.hpp"
-#include "field_refiner_kernel.hpp"
+#include "amr/data/field/refine/coarse_cell_round_out.hpp"
+#include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/refine/field_refiner_kernel.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>

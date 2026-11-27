@@ -1,13 +1,17 @@
 #ifndef PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 #define PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 
+#include "initializer/data_provider.hpp"
+
+#include "core/data/vecfield/vecfield_initializer.hpp"
+#include "core/def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+
+#include "dict.hpp"
+
+#include <cstddef>
 #include <string>
 #include <tuple>
-
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_initializer.hpp"
-#include "initializer/data_provider.hpp"
-#include "core/def.hpp"
 
 
 namespace PHARE

@@ -2,8 +2,8 @@
 #define CORE_NUMERICS_RECONSTRUCTION_LINEAR_HPP
 
 #include "core/numerics/slope_limiters/van_leer.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+
 #include <utility>
 
 namespace PHARE::core

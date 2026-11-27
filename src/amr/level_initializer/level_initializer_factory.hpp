@@ -1,11 +1,11 @@
 #ifndef PHARE_LEVEL_INITIALIZER_FACTORY_HPP
 #define PHARE_LEVEL_INITIALIZER_FACTORY_HPP
 
-#include "mhd_level_initializer.hpp"
-#include "hybrid_level_initializer.hpp"
-#include "level_initializer.hpp"
 #include "initializer/data_provider.hpp"
+
 #include "core/def.hpp"
+
+#include "amr/level_initializer/level_initializer.hpp"
 
 #include <memory>
 #include <string>

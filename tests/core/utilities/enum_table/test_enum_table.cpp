@@ -2,8 +2,12 @@
 
 #include "gtest/gtest.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace PHARE::core;
 

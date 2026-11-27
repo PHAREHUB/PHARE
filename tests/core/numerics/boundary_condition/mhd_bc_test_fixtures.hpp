@@ -3,11 +3,17 @@
 
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/models/options/mhd_options.hpp"
-#include "simulator/simulator_def.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/options/mhd_options.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/utilities/box/box.hpp"
-#include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include <cstddef>
+#include <cstdint>
 
 namespace PHARE::core
 {

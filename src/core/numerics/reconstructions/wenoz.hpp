@@ -1,8 +1,10 @@
 #ifndef CORE_NUMERICS_RECONSTRUCTION_WENOZ_HPP
 #define CORE_NUMERICS_RECONSTRUCTION_WENOZ_HPP
 
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+
+#include <cstdlib>
+#include <tuple>
 #include <utility>
 
 namespace PHARE::core

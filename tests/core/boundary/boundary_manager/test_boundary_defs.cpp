@@ -1,11 +1,12 @@
 #include "core/boundary/boundary_defs.hpp"
 
-#include "SAMRAI/appu/CartesianBoundaryDefines.h"
+#include <SAMRAI/appu/CartesianBoundaryDefines.h>
 
 #include "gtest/gtest.h"
 
 #include <array>
 #include <cstddef>
+#include <string>
 #include <utility>
 
 using namespace PHARE::core;

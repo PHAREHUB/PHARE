@@ -1,13 +1,21 @@
 
-#include "phare_mpi.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "amr/data/field/field_overlap.hpp"
+
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Transformation.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gtest/gtest.h"
 
-#include "amr/data/field/field_overlap.hpp"
+#include <string>
 
 
 using namespace PHARE::amr;

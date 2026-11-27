@@ -1,23 +1,23 @@
 #ifndef PHARE_QUANTITY_REFINER_HPP
 #define PHARE_QUANTITY_REFINER_HPP
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/def.hpp"
 
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
 #include <SAMRAI/xfer/CoarsenSchedule.h>
-#include <SAMRAI/xfer/PatchLevelBorderFillPattern.h>
-#include <SAMRAI/xfer/PatchLevelInteriorFillPattern.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
-
+#include <cstddef>
 #include <map>
 #include <memory>
-#include <optional>
-
-#include "core/def.hpp"
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <vector>
 
 
 namespace PHARE

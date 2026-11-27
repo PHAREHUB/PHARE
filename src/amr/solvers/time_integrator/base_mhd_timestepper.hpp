@@ -1,12 +1,17 @@
 #ifndef PHARE_CORE_NUMERICS_BASE_MHD_TIMESTEPPER_HPP
 #define PHARE_CORE_NUMERICS_BASE_MHD_TIMESTEPPER_HPP
 
+#include "initializer/data_provider.hpp"
+
+#include "core/data/field/field_traits.hpp"
+#include "core/def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/utilities/algorithm.hpp"
 
-#include "initializer/data_provider.hpp"
-
-#include <SAMRAI/hier/Patch.h>
+#include <cstddef>
+#include <string>
+#include <tuple>
 #include <vector>
 
 namespace PHARE::amr

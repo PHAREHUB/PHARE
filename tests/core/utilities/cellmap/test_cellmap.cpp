@@ -1,16 +1,19 @@
 
-#include <cstddef>
-#include <vector>
-#include <random>
-#include <cmath>
-
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
 #include "core/utilities/cellmap.hpp"
 #include "core/utilities/indexer.hpp"
-#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
 #include "core/utilities/range/range.hpp"
 
-
 #include "gtest/gtest.h"
+
+#include <array>
+#include <cstdlib>
+#include <iostream>
+#include <random>
+#include <string>
+#include <vector>
 
 using namespace PHARE::core;
 

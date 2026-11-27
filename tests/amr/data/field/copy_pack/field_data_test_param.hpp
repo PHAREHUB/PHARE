@@ -2,30 +2,41 @@
 #define PHARE_TESTS_AMR_FIELD_DATA_FIELD_DATA_TEST_PARAM_HPP
 
 
-#include "phare_mpi.hpp"
-
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "core/data/grid/grid.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "phare_core.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_variable.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <SAMRAI/hier/BlockId.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/Index.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchDataFactory.h>
+#include <SAMRAI/hier/PatchDescriptor.h>
+#include <SAMRAI/hier/PatchGeometry.h>
 #include <SAMRAI/pdat/CellData.h>
 #include <SAMRAI/pdat/CellDataFactory.h>
-#include <SAMRAI/pdat/CellVariable.h>
 #include <SAMRAI/pdat/NodeData.h>
 #include <SAMRAI/pdat/NodeDataFactory.h>
-#include <SAMRAI/pdat/NodeVariable.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include <cmath>
-
-#include <string>
-
 #include "gtest/gtest.h"
-#include "gmock/gmock.h"
+
+#include <cmath>
+#include <memory>
+#include <string>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

@@ -1,14 +1,18 @@
 #ifndef PHARE_CORE_GRID_GRIDLAYOUTYEE_MHD_HPP
 #define PHARE_CORE_GRID_GRIDLAYOUTYEE_MHD_HPP
 
+#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/enum_table.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
-
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+#include <string_view>
+#include <utility>
 
 namespace PHARE::core::mhd
 {
@@ -35,6 +39,7 @@ class GridLayoutImplYee
 
 public:
     struct GridData;
+
     static constexpr std::size_t dimension = dim;
     static constexpr std::string_view type = "yee";
     // The MHD layout reserves ghosts based on the reconstruction stencil width, plus the one

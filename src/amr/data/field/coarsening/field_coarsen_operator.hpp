@@ -1,18 +1,25 @@
 #ifndef PHARE_FIELD_DATA_COARSEN_HPP
 #define PHARE_FIELD_DATA_COARSEN_HPP
 
+#include "core/utilities/box/box_spans.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
-#include "amr/utilities/box/amr_box.hpp"
-#include "core/utilities/box/box_spans.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
-
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchData.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <type_traits>
+#include <utility>
 
 
 namespace PHARE::amr

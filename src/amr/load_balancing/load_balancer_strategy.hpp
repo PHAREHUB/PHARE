@@ -2,10 +2,7 @@
 #ifndef PHARE_LOAD_BALANCER_HYBRID_STRATEGY_HPP
 #define PHARE_LOAD_BALANCER_HYBRID_STRATEGY_HPP
 
-#include <SAMRAI/hier/PatchLevel.h>
-
 #include "amr/physical_models/physical_model.hpp"
-#include "amr/types/amr_types.hpp"
 
 
 

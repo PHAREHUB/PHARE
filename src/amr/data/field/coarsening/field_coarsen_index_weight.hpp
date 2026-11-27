@@ -2,20 +2,19 @@
 #define PHARE_FIELD_COARSEN_HPP
 
 
-#include "phare_mpi.hpp"
-
-#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/def.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
 
+#include "amr/data/field/coarsening/coarsen_weighter.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
-#include "coarsen_weighter.hpp"
+#include <SAMRAI/hier/IntVector.h>
 
-#include <SAMRAI/hier/Box.h>
-
-#include <cmath>
+#include <array>
+#include <cstddef>
 #include <vector>
-#include <utility>
 
 
 

@@ -1,13 +1,15 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-
-#include <string>
-
-#include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+
+#include "gtest/gtest.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
 
 using namespace PHARE::core;

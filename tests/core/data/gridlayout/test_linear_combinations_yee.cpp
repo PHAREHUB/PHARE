@@ -1,13 +1,21 @@
 
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
-
 #include "test_linear_combinations_yee.hpp"
+
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/numeric.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "gtest/gtest.h"
 
 #include <algorithm>
+#include <compare>
+#include <initializer_list>
+#include <utility>
 
 using namespace PHARE::core;
 

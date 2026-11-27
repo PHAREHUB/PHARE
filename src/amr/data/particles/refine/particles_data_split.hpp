@@ -2,20 +2,38 @@
 #define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
+#include "core/data/grid/gridlayout.hpp"
 #include "core/def.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/amr_constants.hpp"
-#include "amr/utilities/box/amr_box.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/particles/particles_data.hpp"
+#include "amr/data/particles/refine/split.hpp" // IWYU pragma: keep
+#include "amr/data/particles/refine/splitter.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
-#include "split.hpp" // IWYU pragma: keep
-
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/pdat/CellOverlap.h>
-#include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/tbox/Utilities.h>
+
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 
 namespace PHARE

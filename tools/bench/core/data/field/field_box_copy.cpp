@@ -1,13 +1,25 @@
-#include "simulator/simulator_def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/data/field/field.hpp"
 #include "core/data/field/field_box.hpp"
+#include "core/data/field/field_traits.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/box/box.hpp"
+#include "phare_core.hpp"
 
-#include "tools/bench/core/bench.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
+#include "benchmark/benchmark.h"
+
+#include <algorithm>
 #include <array>
-#include <vector>
 #include <cstdint>
+#include <initializer_list>
+#include <string>
+#include <vector>
 
 // FieldBox copies, as in MPI unpack (set_from), pack (append_to) and field to field copies
 //  (operate_on_fields), on ghost-slab shaped boxes. A slab thin along z, the fastest varying

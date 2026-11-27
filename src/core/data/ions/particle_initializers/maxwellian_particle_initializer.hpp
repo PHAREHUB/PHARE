@@ -1,28 +1,35 @@
 #ifndef PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 #define PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 
-#include <cmath>
-#include <memory>
-#include <random>
-#include <string>
-#include <cassert>
-#include <cstdint>
-#include <functional>
-#include <stdexcept>
+#include "initializer/data_provider.hpp"
 
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/random.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer.hpp"
 #include "core/data/particles/particle.hpp"
-#include "initializer/data_provider.hpp"
-#include "core/utilities/point/point.hpp"
 #include "core/def.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/random.hpp"
+#include "core/utilities/span.hpp"
+
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <numeric>
+#include <optional>
+#include <random>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <utility>
 
 
 namespace PHARE::core
 {
+enum class Basis { Magnetic, Cartesian };
+
+
 template<typename Generator>
 void maxwellianVelocity(std::array<double, 3> const& V, std::array<double, 3> const& Vth,
                         Generator& generator, std::array<double, 3>& partVelocity)

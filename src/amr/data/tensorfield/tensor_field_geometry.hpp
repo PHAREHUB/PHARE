@@ -1,27 +1,29 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_GEOMETRY_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_GEOMETRY_HPP
 
-// keep this include before any amr or samrai include
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/def.hpp"
+#include "core/utilities/meta/for_N.hpp"
+
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
 
-#include "core/utilities/types.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
-
-#include "amr/data/field/field_overlap.hpp"
-
 #include <SAMRAI/hier/Box.h>
-#include "SAMRAI/hier/IntVector.h"
+#include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/Transformation.h>
 
-
-#include <cassert>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace PHARE::amr
 {

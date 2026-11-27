@@ -1,9 +1,20 @@
 
+#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include "tools/bench/core/bench.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
+#include "tests/core/data/electromag/test_electromag_fixtures.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tools/bench/core/bench.hpp"
+
+#include "benchmark/benchmark.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 template<std::size_t dim, std::size_t interp>
 void interpolate(benchmark::State& state)

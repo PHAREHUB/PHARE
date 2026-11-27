@@ -2,29 +2,55 @@
 // patches behave as a partition of the level: ownership of shared cells, the region used
 // to exchange leaving particles, and the border sum between distinct patches with equal boxes.
 
-#include "phare_core.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "simulator/simulator_def.hpp"
-
+#include "core/data/grid/gridlayout.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/point/point.hpp"
+#include "phare_core.hpp"
+
+#include "phare_mpi.hpp" // IWYU pragma: keep
+
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
-#include "amr/data/tensorfield/tensor_field_geometry.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
+#include "amr/data/tensorfield/tensor_field_geometry.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+#include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/LocalId.h>
+#include <SAMRAI/hier/PeriodicId.h>
+#include <SAMRAI/hier/Transformation.h>
 #include <SAMRAI/pdat/CellGeometry.h>
 #include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gtest/gtest.h"
 
-#include <set>
-#include <limits>
-#include <random>
-#include <numeric>
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <iterator>
+#include <limits>
+#include <memory>
+#include <numeric>
+#include <random>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 
 using namespace PHARE;

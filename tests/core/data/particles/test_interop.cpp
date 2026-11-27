@@ -1,11 +1,14 @@
 
-#include "core/utilities/types.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <cstddef>
+#include <string>
 
 using namespace PHARE::core;
 

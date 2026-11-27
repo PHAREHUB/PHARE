@@ -7,7 +7,7 @@
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/index/index.hpp"
 
-#include <cmath>
+#include <initializer_list>
 
 namespace PHARE::core
 {

@@ -1,10 +1,22 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_MHD_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_MHD_HPP
 
-#include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
-#include "diagnostic/detail/h5typewriter.hpp"
-
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
+
+#include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include "dict.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace PHARE::diagnostic::h5
 {

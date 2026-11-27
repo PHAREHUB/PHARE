@@ -1,15 +1,13 @@
 #ifndef PHARE_LOAD_BALANCER_ESTIMATOR_HYBRID_HPP
 #define PHARE_LOAD_BALANCER_ESTIMATOR_HYBRID_HPP
 
-#include <memory>
-#include <SAMRAI/hier/PatchLevel.h>
-
-
+#include "amr/load_balancing/load_balancer_estimator.hpp"
+#include "amr/load_balancing/load_balancer_hybrid_strategy_factory.hpp"
+#include "amr/load_balancing/load_balancer_strategy.hpp"
 #include "amr/physical_models/physical_model.hpp"
 
-#include "load_balancer_estimator.hpp"
-#include "load_balancer_strategy.hpp"
-#include "load_balancer_hybrid_strategy_factory.hpp"
+#include <memory>
+#include <string>
 
 
 namespace PHARE::amr

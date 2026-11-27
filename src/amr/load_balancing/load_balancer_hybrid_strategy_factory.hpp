@@ -2,11 +2,12 @@
 #define LOAD_BALANCER_HYBRID_STRATEGY_FACTORY_HPP
 
 
-#include <memory>
-
-#include "amr/load_balancing/load_balancer_strategy.hpp"
-#include "amr/load_balancing/concrete_load_balancer_strategy_nppc.hpp"
 #include "amr/load_balancing/concrete_load_balancer_strategy_homogeneous.hpp"
+#include "amr/load_balancing/concrete_load_balancer_strategy_nppc.hpp"
+#include "amr/load_balancing/load_balancer_strategy.hpp"
+
+#include <memory>
+#include <string>
 
 
 namespace PHARE::amr

@@ -2,7 +2,6 @@
 #define PHARE_CORE_UTILITIES_META_TYPE_EQUALITY_META_HPP
 
 #include <concepts>
-#include <type_traits>
 
 
 namespace PHARE

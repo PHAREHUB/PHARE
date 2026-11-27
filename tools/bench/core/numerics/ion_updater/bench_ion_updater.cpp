@@ -1,10 +1,27 @@
 
+#include "initializer/data_provider.hpp"
+
+#include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/utilities/box/box.hpp"
+#include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
 
-#include "tools/bench/core/bench.hpp"
-#include "core/numerics/ion_updater/ion_updater.hpp"
+#include "dict.hpp"
+#include "tests/core/data/electromag/test_electromag_fixtures.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/ion_population/test_ion_population_fixtures.hpp"
+#include "tools/bench/core/bench.hpp"
+
+#include "benchmark/benchmark.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 using namespace PHARE;
 

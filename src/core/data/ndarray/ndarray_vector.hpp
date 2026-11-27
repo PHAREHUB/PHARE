@@ -2,14 +2,22 @@
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
 #include "core/def.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/numeric.hpp"
 
+#include <algorithm>
 #include <array>
-#include <vector>
+#include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <initializer_list>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 
 namespace PHARE::core

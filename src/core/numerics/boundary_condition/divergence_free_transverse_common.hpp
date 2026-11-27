@@ -3,10 +3,14 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace PHARE::core
 {

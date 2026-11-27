@@ -1,11 +1,13 @@
 #ifndef PHARE_AMR_MHD_LEVEL_INITIALIZER_HPP
 #define PHARE_AMR_MHD_LEVEL_INITIALIZER_HPP
 
+#include "core/logger.hpp"
+
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messengers/messenger.hpp"
-#include "amr/messengers/mhd_messenger.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "initializer/data_provider.hpp"
+
+#include <string>
 
 namespace PHARE::solver
 {

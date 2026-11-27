@@ -1,15 +1,18 @@
 #ifndef PHARE_PYTHON_PYBIND_DEF_HPP
 #define PHARE_PYTHON_PYBIND_DEF_HPP
 
-#include <tuple>
-#include <cassert>
-#include <cstdint>
-#include <stdexcept>
-
 #include "core/utilities/span.hpp"
 
-#include "pybind11/stl.h"
-#include "pybind11/numpy.h"
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h> // IWYU pragma: keep
+
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <numeric>
+#include <tuple>
 
 
 namespace PHARE::pydata

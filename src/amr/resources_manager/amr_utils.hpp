@@ -3,35 +3,44 @@
 
 
 #include "core/def.hpp"
-#include "phare_mpi.hpp" // IWYU pragma: keep
-#include "mpi/mpi_utils.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/constants.hpp"
+#include "core/numerics/moments/level_ghost_ownership.hpp"
+#include "core/utilities/array.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
-#include "core/utilities/range/range.hpp"
-#include "core/numerics/moments/level_ghost_ownership.hpp"
+#include "core/utilities/constants.hpp"
+#include "core/utilities/meta/for_N.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "mpi/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/amr_constants.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/Patch.h>
-#include <SAMRAI/hier/IntVector.h>
-#include <SAMRAI/hier/PatchData.h>
-#include <SAMRAI/hier/PatchLevel.h>
-#include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/hier/BoxOverlap.h>
-#include <SAMRAI/hier/HierarchyNeighbors.h>
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <SAMRAI/hier/BaseGridGeometry.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/BoxLevel.h>
+#include <SAMRAI/hier/GlobalId.h>
+#include <SAMRAI/hier/HierarchyNeighbors.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/Transformation.h>
 
-#include <vector>
-#include <sstream>
-#include <utility>
-#include <iterator>
 #include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <sstream>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 namespace PHARE
 {

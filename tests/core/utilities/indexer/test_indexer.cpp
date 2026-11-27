@@ -1,11 +1,15 @@
-#include <string>
-#include <vector>
-#include <random>
-
 #include "core/utilities/indexer.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <iterator>
+#include <random>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 using namespace PHARE::core;
 

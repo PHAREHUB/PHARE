@@ -1,18 +1,20 @@
 #ifndef PHARE_SOLVER_TIME_INTEGRATOR_HPP
 #define PHARE_SOLVER_TIME_INTEGRATOR_HPP
 
+#include "initializer/data_provider.hpp"
+
+#include "core/models/options/mhd_options_def.hpp"
+
+#include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
+#include "amr/solvers/time_integrator/euler_integrator.hpp"
+#include "amr/solvers/time_integrator/ssprk4_5_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk3_integrator.hpp"
+
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
-
-#include "core/models/options/mhd_options_def.hpp"
-#include "initializer/data_provider.hpp"
-
-#include "amr/solvers/time_integrator/euler_integrator.hpp"
-#include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"
-#include "amr/solvers/time_integrator/tvdrk3_integrator.hpp"
-#include "amr/solvers/time_integrator/ssprk4_5_integrator.hpp"
 
 
 namespace PHARE::solver

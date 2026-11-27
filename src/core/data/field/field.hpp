@@ -2,13 +2,16 @@
 #define PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 
 
-#include "core/def.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
-
+#include "core/def.hpp"
+#include "core/utilities/array.hpp"
 
 #include <array>
-#include <string>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <stdexcept> // IWYU pragma: keep // PHARE_DEBUG_DO
+#include <string>
 #include <utility>
 
 

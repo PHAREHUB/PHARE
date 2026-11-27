@@ -1,18 +1,20 @@
 #ifndef PHARE_TEST_CORE_DATA_ION_POPULATIONS_ION_POPULATION_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_ION_POPULATIONS_ION_POPULATION_FIXTURES_HPP
 
-#include <cassert>
-#include <functional>
-
-#include "phare_core.hpp"
+#include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array.hpp"
-#include "core/data/ions/ion_population/ion_population.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/particles/test_particles_fixtures.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+
+#include <cassert>
+#include <functional>
 
 namespace PHARE::core
 {

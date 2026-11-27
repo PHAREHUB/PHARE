@@ -1,12 +1,21 @@
 
-#include "core/def/phlop.hpp" // IWYU pragma: keep // scope timing
-#include "mpi/mpi_utils.hpp"
+#include "amr/samrai.hpp"
 
 #include "initializer/data_provider.hpp"
 
-#include "samrai.hpp"
+#include "core/def/phlop.hpp" // IWYU pragma: keep // scope timing
+#include "core/utilities/env.hpp"
 
+#include "mpi/mpi_utils.hpp"
+
+#include <SAMRAI/hier/PatchDataRestartManager.h>
+#include <SAMRAI/hier/VariableDatabase.h>
+#include <SAMRAI/tbox/Logger.h>
+#include <SAMRAI/tbox/RestartManager.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
+#include <memory>
 
 namespace PHARE
 {

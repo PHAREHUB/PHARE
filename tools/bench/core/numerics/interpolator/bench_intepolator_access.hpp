@@ -1,11 +1,16 @@
 #ifndef PHARE_BENCH_CORE_NUMERICS_INTERPOLATOR_BENCH_INTERPOLATOR_ACCESS_HPP
 #define PHARE_BENCH_CORE_NUMERICS_INTERPOLATOR_BENCH_INTERPOLATOR_ACCESS_HPP
 
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/def.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include <array>
 #include <cstddef>
 #include <tuple>
+#include <utility>
+#include <variant>
 
 
 // frozen copy of the MeshToParticle/ParticleToMesh field access before stride based access

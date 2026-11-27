@@ -1,12 +1,17 @@
 
-#include "phare_core.hpp"
-#include "simulator/simulator_def.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 #include "core/data/particles/particle_array.hpp"
-#include "initializer/data_provider.hpp"
+#include "phare_core.hpp"
+
+#include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
 
 #include "gtest/gtest.h"
+
+#include <string>
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;
@@ -15,6 +20,7 @@ using namespace PHARE::core;
 using namespace PHARE::initializer;
 
 #include "tests/initializer/init_functions.hpp"
+
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 

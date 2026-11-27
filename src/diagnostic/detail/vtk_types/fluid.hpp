@@ -4,15 +4,20 @@
 #include "core/logger.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
 
-#include "amr/physical_models/mhd_model.hpp"
+#include "amr/amr_constants.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
-#include "diagnostic/detail/vtkh5_type_writer.hpp"
+#include "amr/physical_models/mhd_model.hpp"
 
-#include <string>
-#include <vector>
+#include "diagnostic/detail/vtkh5_type_writer.hpp"
+#include "diagnostic/diagnostic_props.hpp"
+
+#include "dict.hpp"
+
+#include <cstddef>
 #include <optional>
-#include <stdexcept>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace PHARE::diagnostic::vtkh5
 {

@@ -2,17 +2,20 @@
 #define PHARE_CONCRERTE_LOAD_BALANCER_HYBRID_STRATEGY_NPPC_HPP
 
 
-#include "core/utilities/types.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/array.hpp"
+#include "core/utilities/box/box.hpp"
 #include "core/utilities/box/box_spans.hpp"
+#include "core/utilities/numeric.hpp"
+#include "core/utilities/point/point.hpp"
 
-#include "amr/resources_manager/amr_utils.hpp"
-#include "amr/physical_models/physical_model.hpp"
 #include "amr/load_balancing/load_balancer_strategy.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
-
-#include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/pdat/CellData.h>
+
+#include <cstdint>
 
 
 

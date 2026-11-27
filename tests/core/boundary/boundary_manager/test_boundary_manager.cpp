@@ -1,14 +1,25 @@
-#include "core/boundary/boundary_manager.hpp"
-#include "core/models/quantities/mhd_quantities.hpp"
-
 #include "initializer/data_provider.hpp"
 
+#include "core/boundary/boundary.hpp"
+#include "core/boundary/boundary_defs.hpp"
+#include "core/boundary/boundary_manager.hpp"
+#include "core/models/options/mhd_options_def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "phare_core.hpp"
+
 #include "simulator/simulator_def.hpp"
+
+#include "dict.hpp"
 
 #include "gtest/gtest.h"
 
+#include <array>
+#include <cstddef>
+#include <iterator>
+#include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace PHARE::core;
 
