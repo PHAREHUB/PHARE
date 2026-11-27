@@ -24,6 +24,8 @@ def make_layout_for(simulator, patch, qty, dl):
 
 
 def hierarchy_from_sim(simulator, qty, pop=""):
+    """hierarchy of one quantity of the running simulation. For population fluxes and
+    the bulk velocity it must be called on every MPI rank (see DataWrangler.getPatchLevel)."""
     dw = simulator.data_wrangler()
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}

@@ -36,11 +36,11 @@ Who triggers a regrid
   :term:`refinement ratio`: 2 if even (or 1), 3 if a multiple of 3.
 * ``tagCellsForRefinement`` calls PHARE's ``applyGradientDetector``: the level's
   tagger runs on every patch
-  (:src:`src/amr/multiphysics_integrator.hpp#L382-L396`,
-  :src:`src/amr/multiphysics_integrator.hpp#L700-L711`).
+  (:src:`src/amr/multiphysics_integrator.hpp#L445-L459`,
+  :src:`src/amr/multiphysics_integrator.hpp#L945-L956`).
 * Fixed boxes instead: ``refinement/boxes`` selects ``REFINE_BOXES``,
   ``refinement/tagging`` selects ``GRADIENT_DETECTOR``
-  (:src:`src/amr/wrappers/integrator.hpp#L213-L288`).
+  (:src:`src/amr/wrappers/integrator.hpp#L240-L315`).
 
 Buffer and cluster
 ------------------
@@ -76,13 +76,13 @@ Buffer and cluster
 Schematic, not the output of a run: the real boxes depend on the clustering algorithm.
 
 * Tags grow by ``tag_buffer`` cells in every direction (default 1,
-  :src:`pyphare/pyphare/pharein/simulation.py#L773`).
+  :src:`pyphare/pyphare/pharein/simulation.py#L783`).
 * ``"berger"``: Berger-Rigoutsos, boxes at most 10 cells wide; ``"tile"``: SAMRAI's
   tile clustering, the default
   (:src:`src/amr/wrappers/integrator.hpp#L163-L198`,
-  :src:`pyphare/pyphare/pharein/simulation.py#L597`).
+  :src:`pyphare/pyphare/pharein/simulation.py#L606`).
 * Boxes are split between ranks by the ``CascadePartitioner``
-  (:src:`src/amr/wrappers/integrator.hpp#L72-L74`, :doc:`/dev/load_balancing`).
+  (:src:`src/amr/wrappers/integrator.hpp#L86-L88`, :doc:`/dev/load_balancing`).
 
 The default tagger
 ------------------
@@ -90,11 +90,13 @@ The default tagger
 * ``Tagger`` is the interface (:src:`src/amr/tagging/tagger.hpp#L11-L28`);
   ``ConcreteTagger::tag`` hands the patch to a ``TaggerStrategy``
   (:src:`src/amr/tagging/concrete_tagger.hpp#L56-L67`).
-* Only ``"default"`` exists (:src:`src/amr/tagging/tagger_factory.hpp#L30-L55`). To add
-  a criterion, write a new ``TaggerStrategy`` subclass and select it there.
-* ``DefaultTaggerStrategy::tag`` reads only B and tags a cell when the criterion exceeds
-  ``tagging_threshold`` (default 0.1, :src:`pyphare/pyphare/pharein/simulation.py#L787`,
-  :src:`src/amr/tagging/default_tagger_strategy.hpp#L27-L44`).
+* Hybrid has four strategies, chosen by name: ``"default"``, ``"lohner-per-direction"``,
+  ``"lohner-cross-derivatives"``, ``"gradient-scale"`` (:src:`src/amr/tagging/tagger_factory.hpp#L43-L55`).
+  To add a criterion, write a new ``TaggerStrategy`` subclass and select it there.
+* ``DefaultTaggerStrategy`` reads B unless the ``tagging`` input names other quantities
+  (:src:`pyphare/pyphare/pharein/tagging.py#L213`), and tags a cell when the criterion exceeds
+  ``tagging_threshold`` (default 0.1, :src:`pyphare/pyphare/pharein/simulation.py#L798`,
+  :src:`src/amr/tagging/per_quantity_tagger_strategy.hpp#L207-L217`).
 
 **2D and 3D.** :math:`F = B_x, B_y, B_z`, :math:`d` a direction, :math:`i` the cell along :math:`d`:
 
@@ -104,10 +106,10 @@ The default tagger
    \qquad
    \text{tag} \iff \max_{F,\,d}\, c_d(F) > \text{threshold}
 
-(:src:`src/amr/tagging/default_tagger_strategy.hpp#L116-L155` in 2D,
-:src:`src/amr/tagging/default_tagger_strategy.hpp#L156-L204` in 3D).
+(:src:`src/amr/tagging/default_tagger_strategy.hpp#L91-L106`, the same code in 2D and 3D).
 
-**1D.** Only :math:`B_y`, :math:`B_z`, each first averaged over 5 values:
+**1D.** Each component F of B, first averaged over 5 values (:math:`B_x` is constant in 1D
+and drops out):
 
 .. math::
 
@@ -115,15 +117,16 @@ The default tagger
    \qquad
    c(F) = \frac{|\bar F_{i+1} - \bar F_i|}{1 + |\bar F_i|},
    \qquad
-   \text{tag} \iff \sqrt{c(B_y)^2 + c(B_z)^2} > \text{threshold}
+   \text{tag} \iff \sqrt{\textstyle\sum_F c(F)^2} > \text{threshold}
 
-(:src:`src/amr/tagging/default_tagger_strategy.hpp#L84-L108`).
+(:src:`src/amr/tagging/default_tagger_strategy.hpp#L84-L90`, :src:`src/amr/tagging/default_tagger_strategy.hpp#L54-L71`).
 
 .. note::
 
-   The 1D stencil reaches 3 cells to the right: at interpolation order 1 (2 ghost
-   cells, :doc:`/dev/ghost_cells`) the last cell of a patch is not computed
-   (``doLastCell``, :src:`src/amr/tagging/default_tagger_strategy.hpp#L89-L91`).
+   The 1D stencil reaches 3 cells to the right (``stencil_reach``,
+   :src:`src/amr/tagging/default_tagger_strategy.hpp#L32-L33`): at interpolation order 1 (2 ghost cells,
+   :doc:`/dev/ghost_cells`) the outermost cell layer of each patch is not tagged
+   (``margin_``, :src:`src/amr/tagging/per_quantity_tagger_strategy.hpp#L146-L153`).
 
 What happens to the new level
 -----------------------------
@@ -159,37 +162,42 @@ Schematic: the blue part is copied from the old level, the orange part refined f
 
 ``initializeLevelData`` is called for every level SAMRAI creates or replaces;
 ``isRegridding`` tells a regrid
-(:src:`src/amr/multiphysics_integrator.hpp#L293-L340`).
+(:src:`src/amr/multiphysics_integrator.hpp#L314-L363`).
 
 #. Allocate the data; ``messenger.registerLevel``.
 #. ``solver.onRegrid()``: before the fill above level 0, after for level 0; the hybrid solver
    clears its cached boxes and resets the ion updater
    (:src:`src/amr/solvers/solver_ppc.hpp#L115-L119`).
-#. ``levelInitializer.initialize``: ``messenger.regrid`` on a regrid, else ``initLevel``
-   (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L63-L85`).
-#. Rebuild what is derived: moments, level ghost contribution, J, "old" copies
-   (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L87-L169`).
-#. Estimate the load (not for level 0)
-   (:src:`src/amr/multiphysics_integrator.hpp#L338-L341`).
+#. ``levelInitializer.initialize``: a regrid moves the level's data with ``messenger.regrid``
+   (level 0 rebalanced or a finer level regridded), a new finer level is refined with
+   ``initLevel`` (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L54-L78`,
+   :src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L97-L135`).
+#. Rebuild what is derived. A finer level: moments with the level ghost contribution, the
+   moment ghosts beyond the level (refined from the coarser level, :doc:`/dev/moments`), J,
+   "old" copies (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L137-L147`). Level 0 rebalanced: its moments moved with
+   the data, not deposited again, then J and "old" copies
+   (:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L97-L112`).
+#. Estimate the load (not on a regrid of level 0)
+   (:src:`src/amr/multiphysics_integrator.hpp#L359-L362`).
 
 ``HybridHybridMessengerStrategy::regrid``
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L252-L289`):
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L258-L300`):
 
 * **B**: one schedule from new, old and coarser level; a NaN check keeps copied faces
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L958-L966`,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L176-L181`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L1020-L1028`,
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L182-L187`).
 * **E**, **domain particles**: same rule, see :doc:`/dev/field_refinement`,
   :doc:`/dev/particle_splitting`.
 * **Level ghost particles (old)**: ``fillTransient`` from the split of the coarser
   domain particles (above level 0); the "new" ones are refined in the next first step
-  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L282`).
+  (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L278-L294`).
 
 Load balancing of level 0
 -------------------------
 
 ``Integrator::_should_rebalance_now``: false unless tagging is on, level 0 is hybrid
 and load balancing is active
-(:src:`src/amr/wrappers/integrator.hpp#L205-L211`, :doc:`/dev/load_balancing`).
+(:src:`src/amr/wrappers/integrator.hpp#L232-L238`, :doc:`/dev/load_balancing`).
 
 The tricks
 ----------
@@ -200,8 +208,8 @@ The skipped last cell must still be written
 **Problem.** SAMRAI pre-sets to 1 the tags under the existing finer level; a skipped
 cell keeps tag 1, so a refined region never goes away.
 
-**Fix.** The skipped last cell is set to 0
-(:src:`src/amr/tagging/default_tagger_strategy.hpp#L110-L114`). :pr:`1531`.
+**Fix.** Every cell is written, the untagged margin with 0
+(:src:`src/amr/tagging/per_quantity_tagger_strategy.hpp#L215-L217`). :pr:`1531`.
 
 Level ghost particles are not regridded
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -210,7 +218,7 @@ Level ghost particles are not regridded
 SAMRAI MPI module, according to the code comment (issue :issue:`604`).
 
 **Fix.** ``regrid`` uses ``fillTransient`` only
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L266-L281`).
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L278-L293`).
 
 Nodes on a ghost box border after a regrid (fixed in SAMRAI)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -222,7 +230,7 @@ nodes on a ghost box border touching an old-level patch were not copied.
 (`SAMRAI pull request 312 <https://github.com/LLNL/SAMRAI/pull/312>`_, which replaced
 `pull request 293 <https://github.com/LLNL/SAMRAI/pull/293>`_). The SAMRAI that PHARE
 downloads (``develop`` branch) contains it, so PHARE has no workaround; the comment at
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L284-L287` is a leftover.
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L296-L299` is a leftover.
 
 Schedules built once per regrid
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -232,7 +240,7 @@ Schedules built once per regrid
 
 **Fix.** ``initializeLevelData`` registers only its own level; cross-level schedules
 go through ``onHierarchyChanged``
-(:src:`src/amr/multiphysics_integrator.hpp#L347-L378`,
+(:src:`src/amr/multiphysics_integrator.hpp#L408-L441`,
 :ref:`dev-messengers-schedules`). :pr:`1419`.
 
 Go deeper

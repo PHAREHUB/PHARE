@@ -223,8 +223,10 @@ coarsens:
 * the electric field: each coarse edge gets the average of the 2 fine edges
   along it or, for components that sit on nodes, the value of the fine node on
   top of it;
-* the ion charge density and charge flux, which live on the grid nodes: each
-  coarse node takes the value of the fine node on top of it;
+* the ion charge density, which lives on the grid nodes: each coarse node takes the value
+  of the fine node on top of it;
+* the ion current on the electric-field positions, which Ohm's law reads
+  (:doc:`hybrid_ohm`): like the electric field;
 * the magnetic field is not averaged. The coarse level redoes its Faraday
   update over the coarse step with the fine electric field, averaged in time
   over the fine sub-steps, where the fine level exists (this is called
@@ -342,6 +344,12 @@ of fine particles just outside the level, the
 sets exist, one from the coarse particles at the start of the coarse step and
 one from the coarse particles at its end; their contributions to the moments
 are weighted by the time of the fine sub-step.
+
+Ohm's law reads the ion charge density and ion current one node beyond the level
+(:doc:`hybrid_ohm`), where the level ghost particles do not reach in full. There, both are
+filled like the fields (hybrid): refined in space from the coarser level and interpolated in
+time between its values at the start and at the end of the coarse step. Where the
+level ghost particles are complete, the fine level keeps its own particle values.
 
 
 .. _tagging-for-refinement:

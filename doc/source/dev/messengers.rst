@@ -37,9 +37,9 @@ Which messenger
 
 * One object per model pair, shared by all levels using it; level 0 uses
   (its model, its model) (``registerMessengers_``,
-  :src:`src/amr/multiphysics_integrator.hpp#L778-L819`).
+  :src:`src/amr/multiphysics_integrator.hpp#L1023-L1064`).
 * Created once at setup by the ``Simulator`` (``registerAndSetupMessengers``,
-  :src:`src/simulator/simulator.hpp#L324`).
+  :src:`src/simulator/simulator.hpp#L332`).
 
 
 What a schedule is
@@ -70,7 +70,7 @@ patches, on every MPI :term:`rank`.
 
 * **Algorithm** (what to move): quantities, refine operator, fill pattern;
   built once at setup (``registerQuantities``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L159-L203`).
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L165-L209`).
 * **Schedule** (who sends what to whom): an algorithm applied to a level;
   costly and collective to build; valid while its levels exist.
 * **Fill**: ``schedule->fillData(time)``, run by the messenger at each call.
@@ -82,8 +82,8 @@ patches, on every MPI :term:`rank`.
 The kinds of transfer
 ---------------------
 
-``RefinerType`` (:src:`src/amr/messengers/refiner.hpp#L16-L29`) decides how a
-schedule is built (``makeSchedule_``, :src:`src/amr/messengers/refiner.hpp#L60-L205`):
+``RefinerType`` (:src:`src/amr/messengers/refiner.hpp#L20-L32`) decides how a
+schedule is built (``makeSchedule_``, :src:`src/amr/messengers/refiner.hpp#L71-L178`):
 
 .. list-table::
    :header-rows: 1
@@ -94,10 +94,11 @@ schedule is built (``makeSchedule_``, :src:`src/amr/messengers/refiner.hpp#L60-L
      - Hybrid refiners
    * - ``GhostField``
      - copy from the level, refine elsewhere (:doc:`/dev/ghost_cells`)
-     - ``magGhostsRefiners_``, ``elecGhostsRefiners_``
+     - ``magGhostsRefiners_``, ``elecGhostsRefiners_``, ``momentGhostsRefiners_``
+       (ion charge density and E-edge current, refined levels, :doc:`/dev/moments`)
    * - ``PatchGhostField``
      - copy from the level only
-     - ``chargeDensityPatchGhostsRefiners_``
+     - ``chargeDensityPatchGhostsRefiners_``, ``chargeFluxEPatchGhostsRefiners_``
    * - ``InitField``
      - refine everything from the coarser level
      - ``electricInitRefiners_``
@@ -112,11 +113,13 @@ schedule is built (``makeSchedule_``, :src:`src/amr/messengers/refiner.hpp#L60-L
      - same-level particle exchange (:doc:`/dev/grabbing_particles`)
      - ``domainGhostPartRefiners_``
    * - ``PatchFieldBorderSum`` (``Vec``, ``Tensor``)
-     - add neighbours' values on shared ghost-box nodes (:doc:`/dev/moments`)
-     - ``popDensityBorderSumRefiners_``, ``popFluxBorderSumRefiners_``
-   * - ``PatchFieldBorderMax`` (``Vec``)
+     - add neighbours' values on shared ghost-box nodes, in place, in one order
+       (:doc:`/dev/moments`)
+     - ``popDensityBorderSumRefiners_``, ``popFluxEBorderSumRefiners_``; flux and
+       momentum tensor for outputs in ``HybridLazyMoments`` (:doc:`/dev/output_moments`)
+   * - ``PatchVecFieldBorderMax``
      - same nodes, keep the larger value
-     - ``ionDensityBorderMaxRefiners_``, ``ionFluxBorderMaxRefiners_``
+     - ``magMaxRootRefiners_`` (level-0 B, once at init)
    * - ``LevelBorderField``
      - level ghosts only; unused
      - (none)
@@ -142,20 +145,20 @@ When schedules are built
    * - same-level
      - patch ghosts, moment sums, particle exchange
      - when level L is created; rebuilt if L was replaced
-       (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L667-L700`)
+       (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L704-L748`)
    * - inter-level
-     - B and E ghosts, level ghost particles, coarsening, reflux
+     - B, E and ion moment ghosts, level ghost particles, coarsening, reflux
      - in ``onHierarchyChanged``; rebuilt if any level 0..L was replaced
-       (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L703-L722`)
-   * - init-only
-     - filling a new level
+       (:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L752-L770`)
+   * - one fill only
+     - filling a new level; sums of the output moments
      - at fill time, then dropped (``fillTransient``,
-       :src:`src/amr/messengers/refiner.hpp#L219-L229`)
+       :src:`src/amr/messengers/refiner.hpp#L192-L202`)
 
 Calls: ``registerLevel`` / ``onHierarchyChanged``
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L208-L243`),
-from ``initializeLevelData`` (:src:`src/amr/multiphysics_integrator.hpp#L327-L330`)
-and ``resetHierarchyConfiguration`` (:src:`src/amr/multiphysics_integrator.hpp#L347-L378`).
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L214-L250`),
+from ``initializeLevelData`` (:src:`src/amr/multiphysics_integrator.hpp#L348-L351`)
+and ``resetHierarchyConfiguration`` (:src:`src/amr/multiphysics_integrator.hpp#L408-L441`).
 
 
 The tricks
@@ -170,8 +173,8 @@ Rebuilt exactly when their levels change
 **Fix.** Each schedule set records the levels it was built on (weak
 pointers); ``onHierarchyChanged`` runs for every level and rebuilds only stale
 sets (``builtOnCurrentLevels_``,
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L725-L744`;
-:src:`src/amr/multiphysics_integrator.hpp#L372-L378`). :pr:`1419`
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L775-L794`;
+:src:`src/amr/multiphysics_integrator.hpp#L435-L441`). :pr:`1419`
 
 Level 0 ghost refiners are same-level
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +184,7 @@ coarser level.
 
 **Fix.** On the root level they are registered as same-level schedules: copy
 plus boundary conditions
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L680-L684`).
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L731-L737`).
 
 Init schedules read only the coarser level
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -189,9 +192,9 @@ Init schedules read only the coarser level
 **Problem.** A new level has no data to copy from its neighbours.
 
 **Fix.** ``InitField`` uses no same-level source (``nullptr``)
-(:src:`src/amr/messengers/refiner.hpp#L144-L153`); new particles go in cells
+(:src:`src/amr/messengers/refiner.hpp#L117-L126`); new particles go in cells
 only, never in ghosts, so ghosts stay exact copies of neighbours
-(:src:`src/amr/messengers/refiner.hpp#L157-L170`).
+(:src:`src/amr/messengers/refiner.hpp#L130-L143`).
 
 Ghosts after init and regrid
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -199,10 +202,13 @@ Ghosts after init and regrid
 **Problem.** Init/regrid schedules read coarser levels at their latest time,
 which can be ahead of a level created mid-step.
 
-**Fix (MHD only).** ``fillGhostsAtInitTime_`` / ``refillGhostsAtInitTime_``
+**Fix.** MHD: ``fillGhostsAtInitTime_`` / ``refillGhostsAtInitTime_``
 refill them with time interpolation
-(:src:`src/amr/messengers/mhd_messenger.hpp#L467-L494`). The hybrid messenger
-has no such refill; its ghosts are next filled in the first sub-step. :pr:`1494`
+(:src:`src/amr/messengers/mhd_messenger.hpp#L462-L489`). :pr:`1494`. Hybrid: only the
+ion moment ghosts Ohm reads are refilled, with a one-fill schedule, the ions stamped
+with the init time so the time interpolation uses it (``fillIonMomentGhosts``,
+:src:`src/amr/level_initializer/hybrid_level_initializer.hpp#L149-L162`); B and E ghosts
+are next filled in the first sub-step.
 
 
 Go deeper

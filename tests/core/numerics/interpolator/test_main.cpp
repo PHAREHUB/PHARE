@@ -765,6 +765,190 @@ using My2dTypes = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Inter
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_2d, My2dTypes);
 
 
+// ---------------------------------------------------------------------------------------------
+// The flux deposited on the E nodes is the transpose of the gather of E (#1577): for any E and
+// any particles, sum_p w_p v_p . E(x_p), with E(x_p) from the production gather, equals
+// sum_nodes fluxE . E, with fluxE from the production deposit. That is what makes the work of E
+// on the ions a grid product Ohm's law can cancel. Particles fill the domain and the particle
+// ghost layer, so supports reach the ghost nodes; both start-index branches (delta < 0.5 and
+// >= 0.5) are hit in every direction. The flux on the moment nodes averaged to the E nodes, what
+// Ohm used before, must fail the same identity.
+// ---------------------------------------------------------------------------------------------
+template<typename InterpolatorT>
+struct AnEnodeDeposit : public ::testing::Test
+{
+    static constexpr auto dim          = InterpolatorT::dimension;
+    static constexpr auto interp_order = InterpolatorT::interp_order;
+    constexpr static PHARE::SimOpts opts{dim, interp_order};
+
+    using PHARE_TYPES     = PHARE_Types<opts>;
+    using GridLayout_t    = PHARE_TYPES::Hybrid::GridLayout_t;
+    using ParticleArray_t = PHARE_TYPES::Hybrid::ParticleArray_t;
+    using Electromag_t    = PHARE_TYPES::Hybrid::Electromag_t;
+    using Grid_t          = PHARE_TYPES::Hybrid::Grid_t;
+    using Scalar          = HybridQuantity::Scalar;
+
+    static constexpr std::uint32_t nCells = 12;
+    static constexpr int pgw              = GridLayout_t::options.particle_ghost_width;
+
+    GridLayout_t layout{ConstArray<double, dim>(.1), ConstArray<std::uint32_t, dim>(nCells),
+                        ConstArray<double, dim>(0.)};
+    Electromag_t em{"EM"};
+    UsableVecField<dim> B{"EM_B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> E{"EM_E", layout, HybridQuantity::Vector::E};
+    UsableVecField<dim> F{"F", layout, HybridQuantity::Vector::V};
+    UsableVecField<dim> fluxE{"fluxE", layout, HybridQuantity::Vector::J};
+    Grid_t rho{"rho", layout, HybridQuantity::Scalar::rho};
+    ParticleArray_t particles{grow(layout.AMRBox(), pgw + 1)};
+    InterpolatorT interp;
+    std::mt19937_64 rng{12345};
+
+    AnEnodeDeposit()
+    {
+        std::uniform_real_distribution<double> u{-1., 1.};
+        for (std::uint8_t c = 0; c < 3; ++c)
+        {
+            layout.evalOnGhostBox(E[c], [&](auto const&... ijk) { E[c](ijk...) = u(rng); });
+            layout.evalOnGhostBox(B[c], [&](auto const&... ijk) { B[c](ijk...) = u(rng); });
+        }
+        E.set_on(em.E);
+        B.set_on(em.B);
+
+        std::uniform_int_distribution<int> cell{-pgw, int(nCells) - 1 + pgw};
+        std::uniform_real_distribution<double> unit{0., 1.};
+        for (int i = 0; i < 2000; ++i)
+        {
+            auto& part = particles.emplace_back();
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                part.iCell[d] = cell(rng);
+                part.delta[d] = unit(rng);
+            }
+            part.weight = 0.5 + unit(rng);
+            for (auto& v : part.v)
+                v = u(rng);
+        }
+    }
+
+    double gatheredWork()
+    {
+        double work = 0.;
+        for (auto const& part : particles)
+        {
+            auto const [pE, pB] = interp(part, em, layout);
+            for (std::size_t c = 0; c < 3; ++c)
+                work += part.weight * part.v[c] * pE[c];
+        }
+        return work;
+    }
+
+    void deposit()
+    {
+        // the time loop's deposit
+        rho.zero();
+        fluxE.zero();
+        interp.depositDensityAndFluxE(makeIndexRange(particles), rho, fluxE, layout);
+        // the moment-node flux, as the outputs deposit it (HybridLazyMoments)
+        Grid_t rhoF{"rhoF", layout, HybridQuantity::Scalar::rho};
+        rhoF.zero();
+        F.zero();
+        interp(makeIndexRange(particles), rhoF, F, layout);
+    }
+
+    // sum over every node of the ghost box: the deposit only writes where the gather reads
+    double gridWork(auto&& onE) const
+    {
+        double work = 0.;
+        for (std::uint8_t c = 0; c < 3; ++c)
+            layout.evalOnGhostBox(E[c], [&](auto const&... ijk) {
+                work += onE(c, MeshIndex<dim>{ijk...}) * E[c](ijk...);
+            });
+        return work;
+    }
+};
+
+using EnodeDepositInterpolators
+    = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>,
+                       Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>,
+                       Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
+TYPED_TEST_SUITE(AnEnodeDeposit, EnodeDepositInterpolators);
+
+
+TYPED_TEST(AnEnodeDeposit, ParticlesHitBothStartIndexBranchesInEveryDirection)
+{
+    for (std::size_t d = 0; d < TestFixture::dim; ++d)
+    {
+        auto const below = std::count_if(this->particles.begin(), this->particles.end(),
+                                         [&](auto const& p) { return p.delta[d] < .5; });
+        EXPECT_GT(below, 0);
+        EXPECT_LT(below, static_cast<long>(this->particles.size()));
+    }
+}
+
+
+TYPED_TEST(AnEnodeDeposit, IsTheTransposeOfTheGather)
+{
+    this->deposit();
+    auto const gathered = this->gatheredWork();
+    auto const onGrid   = this->gridWork([&](auto c, auto const& i) { return this->fluxE[c](i); });
+    EXPECT_NEAR(onGrid, gathered, 1e-13 * std::abs(gathered)) << gathered << " " << onGrid;
+}
+
+
+// an E component on the moment nodes is deposited by the fused density kernel with the moment
+// flux's arithmetic: the same bits as the moment flux (the time loop's results do not depend on
+// whether the moment flux is deposited alongside)
+TYPED_TEST(AnEnodeDeposit, OnMomentNodesIsTheMomentFluxBitwise)
+{
+    this->deposit();
+    std::size_t compared = 0;
+    for (std::uint8_t c = 0; c < 3; ++c)
+    {
+        if (this->layout.centering(this->fluxE[c].physicalQuantity())
+            != this->layout.centering(this->F[c].physicalQuantity()))
+            continue;
+        ++compared;
+        auto const& fE = this->fluxE[c];
+        auto const& F  = this->F[c];
+        ASSERT_EQ(fE.size(), F.size());
+        for (std::size_t i = 0; i < F.size(); ++i)
+            ASSERT_EQ(fE.data()[i], F.data()[i]) << int(c) << " " << i;
+    }
+    EXPECT_EQ(compared, TestFixture::dim == 3 ? 0u : TestFixture::dim == 2 ? 1u : 2u);
+}
+
+
+TYPED_TEST(AnEnodeDeposit, TheMomentFluxAveragedToTheEnodesIsNot)
+{
+    using GridLayout_t = TestFixture::GridLayout_t;
+    using Scalar       = TestFixture::Scalar;
+    this->deposit();
+    auto const& layout = this->layout;
+    auto const& F      = this->F;
+    // averaging reads one node out: drop the outermost ghost layer, where F has no deposit. The
+    // reference, the E-node flux that satisfies the identity, is summed over the same nodes, so
+    // only the projection can make the two sums differ
+    auto const inner = [&](auto c, auto const& i) {
+        for (std::size_t d = 0; d < TestFixture::dim; ++d)
+            if (i[d] == 0 or i[d] + 1 >= layout.ghostBoxFor(this->E[c]).upper[d])
+                return false;
+        return true;
+    };
+    auto const exact = this->gridWork(
+        [&](auto c, auto const& i) { return inner(c, i) ? this->fluxE[c](i) : 0.; });
+    auto const onGrid = this->gridWork([&](auto c, auto const& i) {
+        if (!inner(c, i))
+            return 0.;
+        if (c == 0)
+            return GridLayout_t::template project<Scalar::Vx, Scalar::Ex>(F[0], i);
+        if (c == 1)
+            return GridLayout_t::template project<Scalar::Vy, Scalar::Ey>(F[1], i);
+        return GridLayout_t::template project<Scalar::Vz, Scalar::Ez>(F[2], i);
+    });
+    EXPECT_GT(std::abs(onGrid - exact), 1e-6 * std::abs(exact)) << exact << " " << onGrid;
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

@@ -335,6 +335,14 @@ diagnostics blocks themselves.
   the schedule, at the current time, when the run stops on an error in the
   particle update, in the initialisation of the hybrid levels, or in the MHD
   solver. Use it to look at the state just before a crash.
+* The population ``flux``, ``charge_flux``, ``bulkVelocity`` and the momentum tensors are
+  computed from the particles when they are written, with all levels at the same time.
+  The extra times of ``fine_dump_lvl_max`` and the emergency dumps write one level while the
+  others are at another time, so they do not write these quantities: their files have no data
+  at those times (the log says so once). The densities, E and B are written.
+* ``charge_flux`` on coarse cells covered by a finer level comes from the coarse level's own
+  particles, like ``flux`` and ``bulkVelocity``; the total charge density there is taken from
+  the finer level.
 * An invalid ``format`` or ``mode``, or a non-boolean ``allow_emergency_dumps``,
   raises ``ValueError`` (checked only when ``format`` is given: always give it).
 

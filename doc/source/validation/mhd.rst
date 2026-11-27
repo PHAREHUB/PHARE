@@ -34,7 +34,7 @@ its accuracy.
 The repository has a CI script that configures levels 11 to 100 with ``PHARE_DRY_RUN=1``
 (:src:`res/ci/jobs/pull_request/dry_run_functional_tests.sh#L11-L12`). In a dry run the
 simulation is built and validated but neither initialised nor advanced
-(:src:`pyphare/pyphare/pharein/simulation.py#L1145`).
+(:src:`pyphare/pyphare/pharein/simulation.py#L1165`).
 
 Tests that check something
 --------------------------
@@ -52,11 +52,11 @@ Tests that check something
   test that measures the order of the scheme in more than one dimension.
 * **Shock tube with boundaries** (``py3_mhd_shock_with_boundaries_mpi_n_10``, level 11,
   10 ranks). The density is finite and the first interior cell stays within 5 % of the
-  left state (:src:`tests/functional/mhd_shock/shock_with_boundaries.py#L66`,
-  :src:`tests/functional/mhd_shock/shock_with_boundaries.py#L76`).
+  left state (:src:`tests/functional/mhd_shock/shock_with_boundaries.py#L66-L68`,
+  :src:`tests/functional/mhd_shock/shock_with_boundaries.py#L76-L79`).
 * **Harris sheet with boundaries** (``py3_mhd_harris_with_boundaries_mpi_n_10``, level 11).
   No NaN in B, and :math:`|B_y|` at the walls below :math:`10^{-6}`
-  (:src:`tests/functional/mhd_harris/harris_with_boundaries.py#L74-L87`).
+  (:src:`tests/functional/mhd_harris/harris_with_boundaries.py#L54-L73`).
 * **Initial B in 1D** (level 9): B equals the user function to :math:`10^{-15}`; this is the
   initialisation only.
 * **Shared faces** (level 9, 2D, 3 levels, 2 steps): B is identical, bit for bit, on faces

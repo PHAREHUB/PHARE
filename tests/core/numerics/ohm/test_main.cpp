@@ -78,6 +78,17 @@ struct OhmTest : public ::testing::Test
 
     Grid_t n;
     UsableVecFieldND V, B, J, Enew, pressureTerm;
+    UsableVecFieldND Ji; // ion current on the E nodes
+    UsableVecFieldND Ge; // electron flux Ji - J on the E nodes, the input of Ohm's ideal term
+
+    // what Electrons::computeFlux does, on the whole ghost box: G = Ji - J
+    auto& electronFlux()
+    {
+        for (auto const c : {Component::X, Component::Y, Component::Z})
+            layout.evalOnGhostBox(
+                Ge(c), [&](auto const&... ijk) { Ge(c)(ijk...) = Ji(c)(ijk...) - J(c)(ijk...); });
+        return Ge;
+    }
 
     OhmInfo ohm_info;
 
@@ -88,6 +99,8 @@ struct OhmTest : public ::testing::Test
         , J{"J", layout, HybridQuantity::Vector::J}
         , Enew{"Enew", layout, HybridQuantity::Vector::E}
         , pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E}
+        , Ji{"Ji", layout, HybridQuantity::Vector::J}
+        , Ge{"Ge", layout, HybridQuantity::Vector::J}
         , ohm_info{OhmInfo::FROM(createDict())}
     {
         auto const& [Bx, By, Bz]          = B();
@@ -276,6 +289,21 @@ struct OhmTest : public ::testing::Test
                 }
             }
         }
+
+        // Ji: the profiles of V, on the E nodes (as test_ohm.py)
+        double const k[3] = {0.2, 0.3, 0.4};
+        for (std::uint8_t c = 0; c < 3; ++c)
+        {
+            auto& field = Ji[c];
+            layout.evalOnGhostBox(field, [&](auto const&... ijk) {
+                auto const point = layout.fieldNodeCoordinates(
+                    field, layout.localToAMR(Point{ijk...}.as_signed()));
+                double value = 1.;
+                for (std::size_t d = 0; d < dim; ++d)
+                    value *= std::sinh(k[c] * point[d]);
+                field(ijk...) = value;
+            });
+        }
     }
 
     ~OhmTest() {}
@@ -367,8 +395,8 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
     // the reference values (test_ohm.py) use the isothermal pressure term, so build it the same way
     IsothermalPressureTerm<typename TestFixture::GridYee>{TestFixture::Te}(layout, this->n,
                                                                            this->pressureTerm);
-    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
-                                  this->Enew);
+    Ohm_t{this->ohm_info, layout}(this->n, this->electronFlux(), this->pressureTerm, this->B,
+                                  this->J, this->Enew);
 
 
     auto const& [Exnew, Eynew, Eznew] = this->Enew();
@@ -517,7 +545,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
 
 // Ohm adds the pressure term it is given, whatever the closure that computed it: with
-// V = B = J = 0 and no resistivity, E is the pressure term, value for value
+// Ji = B = J = 0 and no resistivity, E is the pressure term, value for value
 TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
 {
     using Ohm_t = TestFixture::Ohm_t;
@@ -526,7 +554,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
     auto const zero = [&](auto& field) {
         layout.evalOnGhostBox(field, [&](auto const&... ijk) { field(ijk...) = 0.; });
     };
-    for (auto* vecfield : {&this->V, &this->B, &this->J})
+    for (auto* vecfield : {&this->Ji, &this->B, &this->J})
         for (auto const component : {Component::X, Component::Y, Component::Z})
             zero((*vecfield)(component));
 
@@ -546,8 +574,8 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
         dict["hyper_resistivity"] = 0.0;
         return dict;
     }();
-    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->V, this->pressureTerm, this->B, this->J,
-                                       this->Enew);
+    Ohm_t{OhmInfo::FROM(dict), layout}(this->n, this->electronFlux(), this->pressureTerm, this->B,
+                                       this->J, this->Enew);
 
     for (auto const c : {Component::X, Component::Y, Component::Z})
     {
@@ -555,6 +583,195 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsThePressureTermWhenNothingElseActs)
         auto& term = this->pressureTerm(c);
         layout.evalOnBox(Ec, [&](auto const&... ijk) { EXPECT_EQ(Ec(ijk...), term(ijk...)); });
     }
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// The ideal term does no work on the electrons (#1577). With G = Ji - J the electron flux on the E
+// nodes, E = -G x B / n must give sum_i G_i E_i = 0 over a periodic grid, for any n > 0, Ji, J,
+// B. The fields are periodic noise of the AMR index (period = number of cells), so the ghost
+// nodes are periodic copies. The former stencil ("Ve = (F - Proj(J))/n on the moment nodes,
+// Ve and B averaged to the E node, then multiplied") is run in the same harness, with G = Avg(F)
+// - J built by the test's own averaging, and must fail, so the test can tell the two apart.
+// ---------------------------------------------------------------------------------------------
+
+template<typename TypeInfo>
+struct OhmWorkTest : public ::testing::Test
+{
+    static constexpr auto dim    = typename TypeInfo::first_type{}();
+    static constexpr auto interp = typename TypeInfo::second_type{}();
+
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
+    using Grid_t  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using Ohm_t   = Ohm<GridYee>;
+    using Scalar  = HybridQuantity::Scalar;
+
+    GridYee layout = NDlayout<dim, interp>::create();
+    std::array<int, dim> const period
+        = for_N_make_array<dim>([&](auto i) { return int(layout.nbrCells()[i]); });
+
+    Grid_t n{"n", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)};
+    Grid_t Vex{"Vex", Scalar::Vx, layout.allocSize(Scalar::Vx)};
+    Grid_t Vey{"Vey", Scalar::Vy, layout.allocSize(Scalar::Vy)};
+    Grid_t Vez{"Vez", Scalar::Vz, layout.allocSize(Scalar::Vz)};
+    UsableVecField<dim> F{"F", layout, HybridQuantity::Vector::V};
+    UsableVecField<dim> Ji{"Ji", layout, HybridQuantity::Vector::J};
+    UsableVecField<dim> Ge{"Ge", layout, HybridQuantity::Vector::J}; // Ji - J, Ohm's input
+    UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> J{"J", layout, HybridQuantity::Vector::J};
+    UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
+    UsableVecField<dim> pressureTerm{"pressureTerm", layout, HybridQuantity::Vector::E};
+
+    // uniform in [-1, 1), periodic in the AMR index (splitmix64 of the wrapped index)
+    double noise(std::uint64_t seed, auto const& amr) const
+    {
+        std::uint64_t h = seed * 0x9E3779B97F4A7C15ull;
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            auto const wrapped = ((amr[d] % period[d]) + period[d]) % period[d];
+            h ^= std::uint64_t(wrapped) + 0x9E3779B97F4A7C15ull + (h << 6) + (h >> 2);
+            h = (h ^ (h >> 30)) * 0xBF58476D1CE4E5B9ull;
+            h = (h ^ (h >> 27)) * 0x94D049BB133111EBull;
+            h ^= h >> 31;
+        }
+        return 2. * double(h >> 11) / double(1ull << 53) - 1.;
+    }
+
+    void fill(auto& field, std::uint64_t seed, auto&& fn)
+    {
+        layout.ghost_amr_lcl_idx(
+            field, [&](auto const& amr, auto const& lcl) { field(lcl) = fn(noise(seed, amr)); });
+    }
+
+    OhmWorkTest()
+    {
+        // n log-normal over 0.05 to 20, B and F with nonzero means
+        fill(n, 1, [](double u) { return std::exp(3. * u); });
+        double const Bmean[3] = {0.3, -0.7, 1.1}, Fmean[3] = {0.2, 0.5, -0.4};
+        for (std::uint8_t c = 0; c < 3; ++c)
+        {
+            fill(B[c], 10 + c, [&](double u) { return Bmean[c] + u; });
+            fill(F[c], 20 + c, [&](double u) { return Fmean[c] + u; });
+            fill(Ji[c], 60 + c, [&](double u) { return Fmean[c] + u; });
+            fill(J[c], 30 + c, [](double u) { return u; });
+            fill(pressureTerm[c], 40 + c, [](double) { return 0.; });
+            fill(E[c], 50 + c, [](double) { return 0.; });
+        }
+    }
+
+    // G_c on the E_c nodes: Ji - J, or for the former stencil Avg(F) - J with the test's own
+    // averaging: E_c is dual along c (if c < dim) and primal elsewhere, as are the moments;
+    // dual node i sits between primal nodes i and i + 1
+    bool former = false;
+    double G(std::uint8_t c, auto const& lcl) const
+    {
+        if (!former)
+            return Ji[c](lcl) - J[c](lcl);
+        auto f = F[c](lcl);
+        if (c < dim)
+        {
+            auto up = lcl;
+            ++up[c];
+            f = 0.5 * (f + F[c](up));
+        }
+        return f - J[c](lcl);
+    }
+
+    // sum_i G_i E_i over each E component's own periodic nodes (upper primal node excluded),
+    // and the sum of |G_i E_i| as the scale
+    std::pair<double, double> work() const
+    {
+        double sum = 0., scale = 0.;
+        for (std::uint8_t c = 0; c < 3; ++c)
+            layout.domain_amr_lcl_idx(E[c], [&](auto const& amr, auto const& lcl) {
+                for (std::size_t d = 0; d < dim; ++d)
+                    if (amr[d] == period[d])
+                        return;
+                auto const ge = G(c, lcl) * E[c](lcl);
+                sum += ge;
+                scale += std::abs(ge);
+            });
+        return {sum, scale};
+    }
+
+    // the former ideal term: Ve = (F - Proj(J)) / n on the moment nodes, then Ve and B averaged
+    // separately to each E node and multiplied there
+    void formerIdealTerm()
+    {
+        former            = true;
+        auto const shrink = for_N_make_array<dim>([](auto) { return std::uint32_t{1}; });
+        layout.evalOnShrinkedGhostBox(n, shrink, [&](auto const&... args) {
+            auto const i = MeshIndex<dim>{args...};
+            Vex(i) = (F[0](i) - GridYee::template project<Scalar::Jx, Scalar::Vx>(J[0], i)) / n(i);
+            Vey(i) = (F[1](i) - GridYee::template project<Scalar::Jy, Scalar::Vy>(J[1], i)) / n(i);
+            Vez(i) = (F[2](i) - GridYee::template project<Scalar::Jz, Scalar::Vz>(J[2], i)) / n(i);
+        });
+        auto P = [&]<auto src, auto dst>(auto const& f, auto const& i) {
+            return GridYee::template project<src, dst>(f, i);
+        };
+        layout.evalOnBox(E[0], [&](auto const&... args) {
+            auto const i = MeshIndex<dim>{args...};
+            E[0](i)      = -P.template operator()<Scalar::Vy, Scalar::Ex>(Vey, i)
+                          * P.template operator()<Scalar::Bz, Scalar::Ex>(B[2], i)
+                      + P.template operator()<Scalar::Vz, Scalar::Ex>(Vez, i)
+                            * P.template operator()<Scalar::By, Scalar::Ex>(B[1], i);
+        });
+        layout.evalOnBox(E[1], [&](auto const&... args) {
+            auto const i = MeshIndex<dim>{args...};
+            E[1](i)      = -P.template operator()<Scalar::Vz, Scalar::Ey>(Vez, i)
+                          * P.template operator()<Scalar::Bx, Scalar::Ey>(B[0], i)
+                      + P.template operator()<Scalar::Vx, Scalar::Ey>(Vex, i)
+                            * P.template operator()<Scalar::Bz, Scalar::Ey>(B[2], i);
+        });
+        layout.evalOnBox(E[2], [&](auto const&... args) {
+            auto const i = MeshIndex<dim>{args...};
+            E[2](i)      = -P.template operator()<Scalar::Vx, Scalar::Ez>(Vex, i)
+                          * P.template operator()<Scalar::By, Scalar::Ez>(B[1], i)
+                      + P.template operator()<Scalar::Vy, Scalar::Ez>(Vey, i)
+                            * P.template operator()<Scalar::Bx, Scalar::Ez>(B[0], i);
+        });
+    }
+};
+
+using OhmWorkTupleInfos
+    = testing::Types<std::pair<DimConst<1>, InterpConst<1>>, std::pair<DimConst<1>, InterpConst<2>>,
+                     std::pair<DimConst<1>, InterpConst<3>>, std::pair<DimConst<2>, InterpConst<1>>,
+                     std::pair<DimConst<2>, InterpConst<2>>, std::pair<DimConst<2>, InterpConst<3>>,
+                     std::pair<DimConst<3>, InterpConst<1>>, std::pair<DimConst<3>, InterpConst<2>>,
+                     std::pair<DimConst<3>, InterpConst<3>>>;
+
+TYPED_TEST_SUITE(OhmWorkTest, OhmWorkTupleInfos);
+
+
+TYPED_TEST(OhmWorkTest, ThatTheIdealTermDoesNoWorkOnTheElectrons)
+{
+    using Ohm_t     = TestFixture::Ohm_t;
+    auto const dict = [] {
+        PHARE::initializer::PHAREDict dict;
+        dict["resistivity"]       = 0.0;
+        dict["hyper_resistivity"] = 0.0;
+        return dict;
+    }();
+
+    for (auto const c : {Component::X, Component::Y, Component::Z})
+        this->layout.evalOnGhostBox(this->Ge(c), [&](auto const&... ijk) {
+            this->Ge(c)(ijk...) = this->Ji(c)(ijk...) - this->J(c)(ijk...);
+        });
+    Ohm_t{OhmInfo::FROM(dict), this->layout}(this->n, this->Ge, this->pressureTerm, this->B,
+                                             this->J, this->E);
+    auto const [sum, scale] = this->work();
+    EXPECT_GT(scale, 0.);
+    EXPECT_LT(std::abs(sum), 1e-13 * scale) << "relative work " << sum / scale;
+    std::cout << "ideal term, relative work " << sum / scale << "\n";
+}
+
+
+TYPED_TEST(OhmWorkTest, ThatTheFormerIdealTermDoesWork)
+{
+    this->formerIdealTerm();
+    auto const [sum, scale] = this->work();
+    EXPECT_GT(std::abs(sum), 1e-6 * scale) << "relative work " << sum / scale;
+    std::cout << "former ideal term, relative work " << sum / scale << "\n";
 }
 
 

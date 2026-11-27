@@ -8,7 +8,7 @@ Coarsening
 
    You are here: :doc:`/dev/index` › :doc:`/dev/refluxing` › Coarsening
 
-**Applies to:** hybrid ✓ (E, charge density, charge flux) | MHD ✓ (only the fine flux sums, inside the reflux; its state is never coarsened)
+**Applies to:** hybrid ✓ (E, charge density, charge flux on the E edges) | MHD ✓ (only the fine flux sums, inside the reflux; its state is never coarsened)
 
 **In one sentence:** :term:`coarsening` hands some fine quantities, averaged or
 copied, to the coarse level underneath when the two meet in time
@@ -102,11 +102,12 @@ chosen for the drawing):
    * - ``ElectricFieldCoarsener``
      - average of the 2 fine edges along the coarse edge; components primal
        everywhere (Ez in 2D; Ey, Ez in 1D) copy the node value
-     - model E, and the summed :math:`E_\text{avg}` at reflux
+     - model E and the charge flux on the E edges (``chargeFluxE``), and the
+       summed :math:`E_\text{avg}` at reflux
      - hybrid (synchronize, reflux); MHD (reflux, E)
    * - ``MomentsCoarsener``
      - copy of the fine node on the coarse node (primal everywhere)
-     - charge density, charge flux
+     - charge density
      - hybrid
    * - ``MHDFluxCoarsener``
      - 1D: copy of the fine face; 2D: mean of the 2 fine faces; 3D: mean of the 4
@@ -126,20 +127,23 @@ What is coarsened
 -----------------
 
 * **Hybrid** (``synchronize``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L626-L637`;
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L912-L924`):
-  E, total charge density, total charge flux. Then :term:`reflux`
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L662-L673`;
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L971-L986`):
+  E, total charge density, and the total charge flux on the E edges
+  (``chargeFluxE``, the one Ohm reads), coarsened like E. The charge flux on the
+  moment nodes is not synchronized: the time loop does not compute it, outputs
+  compute it on each level (:doc:`output_moments`). Then :term:`reflux`
   (:doc:`refluxing`): the time-averaged fine E replaces the coarse
   :math:`E_\text{avg}` and coarse B is recomputed. After the coarsening, the
-  patch ghost cells of E and of the charge density are refilled.
+  patch ghost cells of E, of the charge density and of ``chargeFluxE`` are refilled.
 
 .. claim C-co-06 C-rx-08
 
 * **MHD**: the state is never coarsened: ``synchronize`` is empty. ``reflux``
   coarsens the time-summed fine fluxes and E, and the coarse level redoes its update
-  (:src:`src/amr/messengers/mhd_messenger.hpp#L360-L367`,
-  :src:`src/amr/messengers/mhd_messenger.hpp#L603-L615`,
-  :src:`src/amr/solvers/solver_mhd.hpp#L345-L357`).
+  (:src:`src/amr/messengers/mhd_messenger.hpp#L355-L362`,
+  :src:`src/amr/messengers/mhd_messenger.hpp#L598-L610`,
+  :src:`src/amr/solvers/solver_mhd.hpp#L347-L359`).
 
 
 The tricks
@@ -157,26 +161,28 @@ primal in every direction), so the flux
 through a coarse face changes by the sum of its fine faces' changes. And div B
 is unchanged whatever E is, because the divergence of a discrete curl is zero.
 
-Moments are copied, not averaged
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Density copied, E-edge flux averaged
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** Which fine value should a coarse node get?
 
-**Fix.** Moments are primal, so every coarse node is a fine node: its value
-is copied (asserted in debug builds in
-:src:`src/amr/data/field/coarsening/moments_coarsener.hpp#L60-L77`).
+**Fix.** The charge density is primal, so every coarse node is a fine node: its
+value is copied (asserted in debug builds in
+:src:`src/amr/data/field/coarsening/moments_coarsener.hpp#L60-L77`). The charge
+flux on the E edges lives where E lives, so it takes E's rule.
 
-No ghost refill for the charge flux
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Ghosts refilled after coarsening
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem.** After coarsening, neighbours' ghost copies of the changed cells
-are stale.
+are stale. Ohm reads the charge density and ``chargeFluxE`` one node beyond the
+box it computes E on, so stale ghosts would enter the coarse E.
 
-**Fix.** ``postSynchronize`` refills E and charge density ghosts, not the
-charge flux: the electron velocity built from it is only computed and used on the physical
-box (no ghost cells)
-(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L917-L918`,
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L652-L663`).
+**Fix.** ``postSynchronize`` refills the ghosts of E, and the patch ghosts of
+the charge density and of ``chargeFluxE`` from the neighbours' domain nodes;
+domain nodes are not touched
+(:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L979-L982`,
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L688-L701`).
 
 
 This is the last page of the chain: back to :doc:`subcycling`.

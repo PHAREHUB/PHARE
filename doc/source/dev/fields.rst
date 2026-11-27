@@ -44,12 +44,12 @@ The picture
 
 * ``Grid`` owns the array and can hand out a ``Field`` view of itself
   (:src:`src/core/data/grid/grid.hpp#L15-L26`); patch data (``FieldData``) holds a ``Grid``
-  (:src:`src/amr/data/field/field_data.hpp#L338`).
+  (:src:`src/amr/data/field/field_data.hpp#L365`).
 * ``Field<dim, Quantity>`` is an ``NdArrayView`` plus a name and a quantity
   (:src:`src/core/data/field/field.hpp#L24-L100`); copying it copies the pointer.
 * ``resourcesManager->enumerate(level, B, E, ...)`` sets every listed view for each patch;
   in a range-for loop they are unset when the loop ends
-  (:src:`src/amr/resources_manager/resources_manager.hpp#L373-L431`).
+  (:src:`src/amr/resources_manager/resources_manager.hpp#L384-L442`).
 * ``VecField`` = ``TensorField`` of rank 1 (x, y, z); rank 2 is a symmetric tensor, six
   components ``_xx … _zz`` (:src:`src/core/data/tensorfield/tensorfield.hpp#L16-L35`). Each
   component has its own quantity, hence its own centering.
@@ -61,7 +61,7 @@ The name is the key
    **Problem.** Several objects read the same data (the ion density: electrons, Ohm,
    diagnostics).
    **Fix.** Views are matched to patch data by name: same name, same array
-   (``setResourcesInternal_``, :src:`src/amr/resources_manager/resources_manager.hpp#L595-L609`).
+   (``setResourcesInternal_``, :src:`src/amr/resources_manager/resources_manager.hpp#L606-L620`).
 
 Usable or settable
    **Problem.** A view used outside its patch loop reads a null pointer.

@@ -153,6 +153,10 @@ How it works
   setting identical too (model, populations, ``interp_order``, scheme options,
   ``time_step``); only ``final_time`` (or ``time_step_nbr``), the diagnostics
   and the restart options should change.
+* **Restart files from an older PHARE.** A restart file restores only the data it
+  contains. If it lacks data this version needs (for example files written before the ion
+  current on the electric-field positions, :doc:`/numerics/hybrid_ohm`), PHARE stops with an
+  error that names the missing data. Restart from a file written by the same version.
 * Give ``timestamps`` as multiples of ``time_step`` (the simulation only
   passes through multiples of ``time_step``), in ascending order, between the
   start time and ``final_time``.

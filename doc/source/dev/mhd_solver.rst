@@ -111,7 +111,7 @@ The integrator around the stages
 * Each multi-stage integrator accumulates stage fluxes and E with its weights
   (``accumulateButcherFluxes_``, :src:`src/amr/solvers/time_integrator/base_mhd_timestepper.hpp#L113-L122`).
 * ``SolverMHD::prepareStep`` copies the state to ``stateOld_``; ``reflux`` redoes the Euler
-  update from it with the corrected fluxes (:src:`src/amr/solvers/solver_mhd.hpp#L276-L357`).
+  update from it with the corrected fluxes (:src:`src/amr/solvers/solver_mhd.hpp#L278-L359`).
 
 The tricks
 ----------

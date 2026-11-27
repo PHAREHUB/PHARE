@@ -33,12 +33,12 @@ Add a boundary condition
   :term:`ghost cells <ghost cell>`.
 * MHD only at this commit: Python refuses physical boundaries for hybrid
   (:src:`pyphare/pyphare/pharein/boundary.py#L187-L192`); the hybrid model's ``BoundaryManager`` has no field
-  quantities (:src:`src/amr/physical_models/hybrid_model.hpp#L94-L103`); no particle boundary yet.
+  quantities (:src:`src/amr/physical_models/hybrid_model.hpp#L105-L114`); no particle boundary yet.
 
 New boundary type:
 
 #. Add it at the end of ``enum class BoundaryType`` (:src:`src/core/boundary/boundary_defs.hpp#L16`).
-#. Expose it to Python: ``.value("my_name", ...)`` in :src:`src/python3/cpp_etc.cpp#L165-L169`.
+#. Expose it to Python: ``.value("my_name", ...)`` in :src:`src/python3/cpp_etc.cpp#L229-L233`.
 #. A ``Boundary`` dataclass with ``type = "my-name"`` in ``pharein/boundary.py``, declared *above*
    ``_type_to_class`` (built from the classes defined before it,
    :src:`pyphare/pyphare/pharein/boundary.py#L150-L156`).
@@ -69,14 +69,14 @@ Add a diagnostic
    pharesee reader | field_qties, run.py | /data_analysis/reading_data
 
 * The quantity string, e.g. ``/ions/pop/protons/density``, links everything; it becomes the file name
-  ``ions_pop_protons_density.h5`` (:src:`src/diagnostic/detail/h5writer.hpp#L105-L111`).
+  ``ions_pop_protons_density.h5`` (:src:`src/diagnostic/detail/h5writer.hpp#L112-L118`).
 
 New quantity in an existing type (e.g. ``fluid``):
 
 #. Python: add it to ``FluidDiagnostics_.fluid_quantities``; check the ``population_name`` rules.
 #. C++ (HDF5): list it in ``createFiles`` for the right tree, add branches in ``getDataSetInfo``,
    ``initDataSets``, ``write`` (``compute`` if needed) in ``detail/types/fluid.hpp``. Missing from
-   ``createFiles``: ``Unknown Diagnostic Quantity`` (:src:`src/diagnostic/detail/h5typewriter.hpp#L143-L149`).
+   ``createFiles``: ``Unknown Diagnostic Quantity`` (:src:`src/diagnostic/detail/h5typewriter.hpp#L145-L151`).
 #. VTKHDF (optional): branches in ``setup`` / ``write`` of ``detail/vtk_types/fluid.hpp``.
 #. Reader: ``field_qties`` (``pharesee/hierarchy/hierarchy_utils.py``), ``quantities_per_file`` and a
    ``Get...`` in ``pharesee/run/run.py``.
@@ -102,13 +102,13 @@ Add a hybrid field
 #. **Use:** ``auto _ = resourcesManager->setOnPatch(*patch, myField);``.
 #. **Ghosts:** a list in ``HybridMessengerInfo``, filled in ``fillMessengerInfo``, a refiner in
    ``registerQuantities``, and the fill called by the solver (e.g. ``fillFluxBorders``,
-   :src:`src/amr/solvers/solver_ppc.hpp#L620-L623`). See :doc:`messengers`.
+   :src:`src/amr/solvers/solver_ppc.hpp#L624-L627`). See :doc:`messengers`.
 #. **Restarts:** nothing to do, every registered resource is saved
-   (:src:`src/amr/resources_manager/resources_manager.hpp#L349-L355`).
+   (:src:`src/amr/resources_manager/resources_manager.hpp#L352-L358`).
 
 **Pitfall.** Nothing checks that names are unique: a second resource with the same name is skipped and
 both share the same data (``registerResource_``,
-:src:`src/amr/resources_manager/resources_manager.hpp#L571-L587`).
+:src:`src/amr/resources_manager/resources_manager.hpp#L582-L598`).
 
 Go deeper
 ---------

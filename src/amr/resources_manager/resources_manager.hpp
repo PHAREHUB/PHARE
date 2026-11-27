@@ -20,6 +20,9 @@
 
 #include <map>
 #include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 
 
@@ -353,6 +356,14 @@ namespace amr
             for (auto const& [key, info] : nameToResourceInfo_)
                 ids.emplace_back(info.id);
             return ids;
+        }
+
+        NO_DISCARD auto restart_patch_data() const
+        {
+            std::vector<std::pair<std::string, int>> resources;
+            for (auto const& [key, info] : nameToResourceInfo_)
+                resources.emplace_back(key, info.id);
+            return resources;
         }
 
         auto getIDsList(auto&&... keys) const

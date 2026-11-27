@@ -53,15 +53,18 @@ namespace core
     NO_DISCARD consteval auto recenteringStencil();
 
 
-    template<auto src, auto dst, std::size_t order = 2, typename Field>
-    NO_DISCARD inline auto project(Field const& field,
-                                   Point<std::size_t, Field::dimension> const& index)
+    // values averaged from centering src to dst at index: values is a field, or anything that
+    // gives a value at a mesh index, e.g. a product computed on the fly that no field stores
+    template<auto src, auto dst, std::size_t order = 2, typename Values>
+    NO_DISCARD inline auto
+    project(Values const& values,
+            Point<std::size_t, std::tuple_size_v<std::remove_cvref_t<decltype(src)>>> const& index)
     {
         constexpr auto stencil = recenteringStencil<src, dst, order>();
 
-        typename Field::type result = 0.;
+        std::decay_t<decltype(values(index))> result = 0.;
         for (auto const& wp : stencil)
-            result += wp.coef * field(index + wp.indexes);
+            result += wp.coef * values(index + wp.indexes);
         return result;
     }
 

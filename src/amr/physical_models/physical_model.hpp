@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "amr/messengers/messenger_info.hpp"
 
@@ -59,6 +61,13 @@ namespace solver
          * data
          */
         virtual void allocate(patch_t& patch, double const allocateTime) = 0;
+
+
+        /**
+         * @brief restartPatchData returns the name and patch-data id of every resource the model
+         * registers, so a restart can check they were all restored on the levels this model owns
+         */
+        virtual std::vector<std::pair<std::string, int>> restartPatchData() const = 0;
 
 
 

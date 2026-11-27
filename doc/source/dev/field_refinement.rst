@@ -89,7 +89,7 @@ coarse values each fine value is built from.
   this rule; only Bx gets the second stage (below).
 * The fine index :math:`f` belongs to coarse index :math:`\lfloor f/2 \rfloor`,
   also when :math:`f` is negative
-  (``toCoarseIndex``, :src:`src/amr/resources_manager/amr_utils.hpp#L132-L138`).
+  (``toCoarseIndex``, :src:`src/amr/resources_manager/amr_utils.hpp#L140-L146`).
 
 .. claim C-fr-01 C-fr-02 C-ex-01 C-ex-02 C-ex-04 C-ex-05
 
@@ -97,7 +97,7 @@ coarse values each fine value is built from.
   (``CompositeFill``,
   :src:`src/amr/data/field/refine/composite_field_refiner.hpp#L88-L169`; child
   row ``directionalProlongation``,
-  :src:`src/core/data/grid/gridlayoutdefs.hpp#L152-L178`). Only order 2 exists, and
+  :src:`src/core/data/grid/gridlayoutdefs.hpp#L155-L181`). Only order 2 exists, and
   only a refinement ratio of 2 (otherwise it throws,
   :src:`src/amr/data/field/refine/composite_field_refiner.hpp#L111-L114`).
 * Only fine values that are still NaN are written, so a value already there (a
@@ -111,7 +111,7 @@ coarse values each fine value is built from.
   :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}` this means a refined
   coarse cell keeps its mass, momentum and energy (for cells filled from the coarse
   level only: values already there are kept)
-  (:src:`src/core/data/grid/gridlayoutdefs.hpp#L134-L151`).
+  (:src:`src/core/data/grid/gridlayoutdefs.hpp#L137-L154`).
 
 .. claim C-fr-12
 
@@ -148,9 +148,13 @@ Who is refined, with which operator
      - none: Ampère on each level
      - none: computed from the refined B
    * - hybrid
-     - ion density and flux
+     - ion density and flux, per population
      - none: deposited from particles (:doc:`/dev/level_ghost_particles`)
      - none
+   * - hybrid
+     - total charge density, E-edge ion current
+     - domain: summed from the populations; ghost nodes: composite rule above
+     - composite rule above, in time (``fillIonMomentGhosts``, :doc:`/dev/moments`)
    * - MHD
      - :math:`\rho`, :math:`\rho \mathbf v`, :math:`E_\text{tot}`
      - composite rule (conservative variables)
@@ -173,8 +177,8 @@ Who is refined, with which operator
 * Hybrid operators: ``fieldRefineOp_`` and ``EfieldRefineOp_`` use the composite
   fill, ``BInitRefineOp_`` and ``BRefineOp_`` the magnetic one
   (``makeRefineOperators_``,
-  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L761-L780`);
-  MHD: :src:`src/amr/messengers/mhd_messenger.hpp#L498-L519`.
+  :src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L812-L831`);
+  MHD: :src:`src/amr/messengers/mhd_messenger.hpp#L493-L514`.
 
 B is refined in two stages to keep div B = 0
 --------------------------------------------

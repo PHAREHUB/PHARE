@@ -62,9 +62,9 @@ with E on the cell edges (:src:`src/core/numerics/faraday/faraday.hpp#L44-L57`):
 
 * **Hybrid:** the three Faraday updates of the predictor–predictor–corrector step all
   start from :math:`\mathbf B^n` and subtract a curl
-  (:src:`src/amr/solvers/solver_ppc.hpp#L418-L424`,
-  :src:`src/amr/solvers/solver_ppc.hpp#L457-L462`,
-  :src:`src/amr/solvers/solver_ppc.hpp#L499-L504`).
+  (:src:`src/amr/solvers/solver_ppc.hpp#L417-L423`,
+  :src:`src/amr/solvers/solver_ppc.hpp#L456-L461`,
+  :src:`src/amr/solvers/solver_ppc.hpp#L498-L503`).
 * **MHD:** each Euler stage updates B from the edge field of that stage, and every
   integrator adds the edge fields of its stages with the same weights as the fluxes, so the
   update is the curl of a weighted E (:doc:`mhd_time_integration`;
@@ -199,8 +199,8 @@ Creating the fine level
 A new fine level, or one rebuilt by a regrid, is *not* sampled again from the user
 functions: its B is refined from the coarse level, so each fine cell starts with the
 divergence of its coarse parent (hybrid:
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L761-L780`; MHD:
-:src:`src/amr/messengers/mhd_messenger.hpp#L498-L519`). Only the second-order operator exists
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L812-L831`; MHD:
+:src:`src/amr/messengers/mhd_messenger.hpp#L493-L514`). Only the second-order operator exists
 (``refinement_order`` must be 2).
 
 The B refinement has two stages (hybrid and MHD):
@@ -294,8 +294,8 @@ A fine level needs B in its level ghost cells during every sub-step. They are fi
 this order: the coarse B is first interpolated in time, between its values at the start
 and at the end of the coarse step, then the result is refined with the two-stage
 operator (SAMRAI does the time interpolation on the coarse data before the refinement:
-:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L822-L830`,
-:src:`src/amr/messengers/mhd_messenger.hpp#L553-L590`). A time mix of two fields with
+:src:`src/amr/messengers/hybrid_hybrid_messenger_strategy.hpp#L883-L891`,
+:src:`src/amr/messengers/mhd_messenger.hpp#L549-L585`). A time mix of two fields with
 the same divergence has that divergence, so the refined ghost cells get the divergence of
 their coarse parent, with one exception: the ghost cells that touch the fine interior.
 There, the face on the border itself belongs to the fine level and is advanced, not
@@ -325,8 +325,8 @@ fine level (refluxing, :doc:`/dev/refluxing`):
 * **MHD:** the fine level has summed its stage-weighted edge electric field and fluxes; the
   coarse level repeats one Euler update from its saved start state with them, B through
   Faraday with that E
-  (:src:`src/amr/solvers/solver_mhd.hpp#L345-L357`,
-  :src:`src/amr/messengers/mhd_messenger.hpp#L362-L367`).
+  (:src:`src/amr/solvers/solver_mhd.hpp#L347-L359`,
+  :src:`src/amr/messengers/mhd_messenger.hpp#L357-L362`).
 
 Two consequences:
 

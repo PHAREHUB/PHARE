@@ -141,8 +141,24 @@ namespace solver
         {
             keepOwnedParticles_(hierarchy, levelNumber, level, model);
             depositMoments_(levelNumber, level, model, messenger, time);
+            fillIonMomentGhosts_(hierarchy, level, model, messenger, time);
             computeJ_(level, model, time);
             messenger.prepareStep(model, level, time);
+        }
+
+        // the level ghost particles complete the domain nodes, border included, but not the
+        // node beyond the level that Ohm reads: the total density and E-node flux ghosts are
+        // refined from the coarser level in space and time, like E and B
+        void fillIonMomentGhosts_(hierarchy_ptr const& hierarchy, auto& level, HybridModel& model,
+                                  HybridMessenger& messenger, double const time)
+        {
+            auto& ions = model.state.ions;
+            {
+                // the time interpolation weight comes from the destination's time stamp
+                TimeSetter setIonsTime{level, model, time};
+                setIonsTime(ions);
+            }
+            messenger.fillIonMomentGhosts(hierarchy, ions, level, time);
         }
 
         // overlapping patches were each filled over their whole domain, keep particles only on
@@ -180,12 +196,11 @@ namespace solver
             messenger.fillFluxBorders(ions, level, time);
             messenger.fillDensityBorders(ions, level, time);
 
-            // every domain node complete, the totals
+            // every domain node complete, the totals. The ghost node beyond a refined level
+            // that Ohm reads is not: fillIonMomentGhosts_
             for (auto& patch : rm.enumerate(level, ions))
             {
-                ions.computeChargeDensity();
-                ions.computeBulkVelocity();
-                ions.computeChargeFlux();
+                ions.computeLoopMoments();
             }
         }
 

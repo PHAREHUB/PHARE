@@ -374,7 +374,22 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     }
     else if constexpr (solver::is_hybrid_model_v<Model_t>)
     {
-        // to implement
+        // the per-population fluxes are not kept up to date by the time loop: compute them now
+        // (dumps happen when all levels are at the same time). No momentum tensor is written.
+        auto& h5Writer  = this->h5Writer_;
+        auto& modelView = h5Writer.modelView();
+
+        bool flux = isActiveDiag(diagnostic, "/ions/", "bulkVelocity")
+                    or isActiveDiag(diagnostic, "/ions/", "charge_flux");
+        for (auto const& pop : modelView.getIons())
+            flux = flux or isActiveDiag(diagnostic, "/ions/pop/" + pop.name() + "/", "flux");
+
+        if (flux)
+            modelView.onLevels(
+                [&](auto& lvl) {
+                    modelView.fillLazyMoments(lvl, /*flux=*/true, /*momentumTensor=*/false);
+                },
+                h5Writer.minLevel, h5Writer.maxLevel);
     }
 }
 

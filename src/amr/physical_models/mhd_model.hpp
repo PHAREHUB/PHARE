@@ -70,6 +70,12 @@ public:
     }
 
 
+    std::vector<std::pair<std::string, int>> restartPatchData() const override
+    {
+        return resourcesManager->restart_patch_data();
+    }
+
+
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
     NO_DISCARD auto setOnPatch(patch_t& patch)

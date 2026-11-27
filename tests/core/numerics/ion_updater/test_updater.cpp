@@ -228,6 +228,7 @@ struct IonsBuffers
     Grid alphaChargeDensity;
 
     UsableVecFieldND protonF, alphaF, Vi, chargeFlux;
+    UsableVecFieldND protonFE, alphaFE, chargeFluxE; // fluxes on the E nodes
     UsableTensorField<dim> M, alpha_M, protons_M;
 
     static constexpr int ghostSafeMapLayer
@@ -266,6 +267,9 @@ struct IonsBuffers
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , protonFE{"protons_fluxE", layout, HybridQuantity::Vector::J}
+        , alphaFE{"alpha_fluxE", layout, HybridQuantity::Vector::J}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -304,6 +308,9 @@ struct IonsBuffers
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
+        , protonFE{"protons_fluxE", layout, HybridQuantity::Vector::J}
+        , alphaFE{"alpha_fluxE", layout, HybridQuantity::Vector::J}
+        , chargeFluxE{"chargeFluxE", layout, HybridQuantity::Vector::J}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -334,14 +341,18 @@ struct IonsBuffers
         alphaF.copyData(source.alphaF);
         Vi.copyData(source.Vi);
         chargeFlux.copyData(source.chargeFlux);
+        protonFE.copyData(source.protonFE);
+        alphaFE.copyData(source.alphaFE);
+        chargeFluxE.copyData(source.chargeFluxE);
     }
 
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, cd, md, cf] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, cd, md, cf, cfE] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
             chargeFlux.set_on(cf);
+            chargeFluxE.set_on(cfE);
             M.set_on(m);
             cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
@@ -349,20 +360,22 @@ struct IonsBuffers
 
         auto& pops = ions.getRunTimeResourcesViewList();
         {
-            auto const& [F, M, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
+            auto const& [F, M, d, c, particles, FE] = pops[0].getCompileTimeResourcesViewList();
             d.setBuffer(&protonParticleDensity);
             c.setBuffer(&protonChargeDensity);
             protons_M.set_on(M);
             protonF.set_on(F);
+            protonFE.set_on(FE);
             particles.setBuffer(&protonPack);
         }
 
         {
-            auto const& [F, M, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
+            auto const& [F, M, d, c, particles, FE] = pops[1].getCompileTimeResourcesViewList();
             d.setBuffer(&alphaParticleDensity);
             c.setBuffer(&alphaChargeDensity);
             alpha_M.set_on(M);
             alphaF.set_on(F);
+            alphaFE.set_on(FE);
             particles.setBuffer(&alphaPack);
         }
     }
@@ -546,8 +559,7 @@ struct IonUpdaterTest : public ::testing::Test
                          LevelGhostDeposit{ownership});
 
 
-        ions.computeChargeDensity();
-        ions.computeBulkVelocity();
+        ions.computeLoopMoments();
     } // end Ctor
 
 
@@ -560,14 +572,14 @@ struct IonUpdaterTest : public ::testing::Test
         for (auto& pop : this->ions)
         {
             double alpha = 0.5;
-            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.particleDensity(),
-                        pop.flux(), layout,
-                        /*coef = */ alpha);
+            interpolate.depositDensityAndFluxE(makeIndexRange(pop.levelGhostParticlesNew()),
+                                               pop.particleDensity(), pop.fluxE(), layout,
+                                               /*coef = */ alpha);
 
 
-            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.particleDensity(),
-                        pop.flux(), layout,
-                        /*coef = */ (1. - alpha));
+            interpolate.depositDensityAndFluxE(makeIndexRange(pop.levelGhostParticlesOld()),
+                                               pop.particleDensity(), pop.fluxE(), layout,
+                                               /*coef = */ (1. - alpha));
         }
     }
 
@@ -577,23 +589,29 @@ struct IonUpdaterTest : public ::testing::Test
     {
         auto& populations = this->ions.getRunTimeResourcesViewList();
 
+        // the moments the time loop keeps: densities, and the flux on the E nodes (the flux on the
+        // moment nodes and the bulk velocity are computed for outputs only)
         auto& protonParticleDensity = populations[0].particleDensity();
         auto& protonChargeDensity   = populations[0].chargeDensity();
-        auto& protonFx              = populations[0].flux().getComponent(Component::X);
-        auto& protonFy              = populations[0].flux().getComponent(Component::Y);
-        auto& protonFz              = populations[0].flux().getComponent(Component::Z);
+        auto& protonFx              = populations[0].fluxE().getComponent(Component::X);
+        auto& protonFy              = populations[0].fluxE().getComponent(Component::Y);
+        auto& protonFz              = populations[0].fluxE().getComponent(Component::Z);
 
         auto& alphaParticleDensity = populations[1].particleDensity();
         auto& alphaChargeDensity   = populations[1].chargeDensity();
-        auto& alphaFx              = populations[1].flux().getComponent(Component::X);
-        auto& alphaFy              = populations[1].flux().getComponent(Component::Y);
-        auto& alphaFz              = populations[1].flux().getComponent(Component::Z);
+        auto& alphaFx              = populations[1].fluxE().getComponent(Component::X);
+        auto& alphaFy              = populations[1].fluxE().getComponent(Component::Y);
+        auto& alphaFz              = populations[1].fluxE().getComponent(Component::Z);
 
-        auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-        auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+        // each field over the physical nodes of its own centering (E_x is dual along x)
+        auto range = [&](auto const& field) {
+            return std::make_pair(this->layout.physicalStartIndex(field, Direction::X),
+                                  this->layout.physicalEndIndex(field, Direction::X));
+        };
 
         auto nonZero = [&](auto const& field) {
-            auto sum = 0.;
+            auto const [ix0, ix1] = range(field);
+            auto sum              = 0.;
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 sum += std::abs(field(ix));
@@ -604,6 +622,7 @@ struct IonUpdaterTest : public ::testing::Test
         auto check = [&](auto const& newField, auto const& originalField) {
             nonZero(newField);
             nonZero(originalField);
+            auto const [ix0, ix1] = range(newField);
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 auto evolution = std::abs(newField(ix) - originalField(ix));
@@ -618,19 +637,15 @@ struct IonUpdaterTest : public ::testing::Test
 
         check(protonParticleDensity, ionsBufferCpy.protonParticleDensity);
         check(protonChargeDensity, ionsBufferCpy.protonChargeDensity);
-        check(protonFx, ionsBufferCpy.protonF(Component::X));
-        check(protonFy, ionsBufferCpy.protonF(Component::Y));
-        check(protonFz, ionsBufferCpy.protonF(Component::Z));
+        check(protonFx, ionsBufferCpy.protonFE(Component::X));
+        check(protonFy, ionsBufferCpy.protonFE(Component::Y));
+        check(protonFz, ionsBufferCpy.protonFE(Component::Z));
 
         check(alphaParticleDensity, ionsBufferCpy.alphaParticleDensity);
         check(alphaChargeDensity, ionsBufferCpy.alphaChargeDensity);
-        check(alphaFx, ionsBufferCpy.alphaF(Component::X));
-        check(alphaFy, ionsBufferCpy.alphaF(Component::Y));
-        check(alphaFz, ionsBufferCpy.alphaF(Component::Z));
-
-        check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vi(Component::X));
-        check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vi(Component::Y));
-        check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vi(Component::Z));
+        check(alphaFx, ionsBufferCpy.alphaFE(Component::X));
+        check(alphaFy, ionsBufferCpy.alphaFE(Component::Y));
+        check(alphaFz, ionsBufferCpy.alphaFE(Component::Z));
     }
 
 
@@ -889,25 +904,19 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 
     ionUpdater.updateIons(this->ions);
 
-    auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    // each field on its own physical nodes: the x flux on the E nodes is dual along x
+    auto const expectNoNaN = [&](auto const& field) {
+        auto const ix0 = this->layout.physicalStartIndex(field, Direction::X);
+        auto const ix1 = this->layout.physicalEndIndex(field, Direction::X);
+        for (auto ix = ix0; ix <= ix1; ++ix)
+            EXPECT_FALSE(std::isnan(field(ix))) << field.name() << " " << ix;
+    };
 
     for (auto& pop : this->ions)
     {
-        for (auto ix = ix0; ix <= ix1; ++ix)
-        {
-            auto& density = pop.particleDensity();
-            auto& flux    = pop.flux();
-
-            auto& fx = flux.getComponent(Component::X);
-            auto& fy = flux.getComponent(Component::Y);
-            auto& fz = flux.getComponent(Component::Z);
-
-            EXPECT_FALSE(std::isnan(density(ix)));
-            EXPECT_FALSE(std::isnan(fx(ix)));
-            EXPECT_FALSE(std::isnan(fy(ix)));
-            EXPECT_FALSE(std::isnan(fz(ix)));
-        }
+        expectNoNaN(pop.particleDensity());
+        for (auto const& f : pop.fluxE()) // the flux the time loop deposits
+            expectNoNaN(f);
     }
 }
 

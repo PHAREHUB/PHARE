@@ -63,18 +63,18 @@ The picture
 
 * **One layout per patch**, built on demand by ``layoutFromPatch`` from the SAMRAI patch
   box, mesh size and origin (dl = 1, origin = 0 for SAMRAI's temporary patches that have no
-  geometry) (:src:`src/amr/resources_manager/amr_utils.hpp#L169-L209`).
+  geometry) (:src:`src/amr/resources_manager/amr_utils.hpp#L177-L217`).
 * **Centering table per model**, a compile-time array indexed by the quantity's enum
   (``initLayoutCentering_``, :src:`src/core/data/grid/impl/yee/gridlayout_hybrid_yee.hpp#L52-L98`).
   MHD differs: ρ, ρv, P, Etot at cell centres
   (:src:`src/core/data/grid/impl/yee/gridlayout_mhd_yee.hpp#L60-L80`).
 * **Index tables** per centering and direction: first/last domain index, last ghost index;
-  the first ghost index is 0 (:src:`src/core/data/grid/gridlayout.hpp#L1131-L1238`).
+  the first ghost index is 0 (:src:`src/core/data/grid/gridlayout.hpp#L1123-L1230`).
 * **Loop boxes**: ``evalOnBox`` (domain), ``evalOnGhostBox``, ``evalOnShrinkedGhostBox``,
-  ``evalOnBiggerBox`` (:src:`src/core/data/grid/gridlayout.hpp#L973-L997`).
+  ``evalOnBiggerBox`` (:src:`src/core/data/grid/gridlayout.hpp#L964-L988`).
 * **Two index spaces**: local (array position, 0 = first ghost) and AMR (cell index on the
   level, shared by all its patches), ``localToAMR`` / ``AMRToLocal``
-  (:src:`src/core/data/grid/gridlayout.hpp#L582-L660`). Patch exchanges speak AMR,
+  (:src:`src/core/data/grid/gridlayout.hpp#L569-L647`). Patch exchanges speak AMR,
   numerical loops speak local.
 
 The tricks
@@ -85,13 +85,13 @@ Same number of ghosts for primal and dual
    offsets in every loop.
    **Fix.** Both get ``field_ghost_width`` ghosts, so they start at the same local index; only
    the end differs, ``start + N`` vs ``start + N − 1``
-   (``nDNbrGhosts``, :src:`src/core/data/grid/gridlayout.hpp#L533-L537`; ``dualOffset_``,
-   :src:`src/core/data/grid/gridlayout.hpp#L1087`).
+   (``nDNbrGhosts``, :src:`src/core/data/grid/gridlayout.hpp#L520-L524`; ``dualOffset_``,
+   :src:`src/core/data/grid/gridlayout.hpp#L1078`).
 
 Dual index i is half a cell after primal index i
    **Problem.** Derivatives and averages need a fixed neighbour convention.
    **Fix.** Position :math:`i\,\Delta x` (primal), :math:`(i+\tfrac12)\Delta x` (dual), from
-   the AMR index (``fieldNodeCoordinates``, :src:`src/core/data/grid/gridlayout.hpp#L450-L476`).
+   the AMR index (``fieldNodeCoordinates``, :src:`src/core/data/grid/gridlayout.hpp#L437-L463`).
    So primal → dual uses :math:`i, i+1`; dual → primal uses :math:`i-1, i`
    (``Partial``, :src:`src/core/numerics/differential_operators.hpp#L47-L82`).
 
@@ -100,9 +100,9 @@ Averaging stencils derived from centerings
    **Fix.** ``GridLayout::project<Source, Destination>`` builds the stencil at compile time:
    two-point average in each direction where the centerings differ, product across
    directions (default order 2; the machinery also has orders 4 and 6)
-   (``recenteringStencil``, :src:`src/core/data/grid/gridlayoutdefs.hpp#L259-L275`).
+   (``recenteringStencil``, :src:`src/core/data/grid/gridlayoutdefs.hpp#L261-L278`).
    Debug builds check the field's centering
-   (:src:`src/core/data/grid/gridlayout.hpp#L662-L672`). :pr:`1499` (stencils derived from
+   (:src:`src/core/data/grid/gridlayout.hpp#L654-L661`). :pr:`1499` (stencils derived from
    centerings), :pr:`1495` (centering lookup table).
 
 Ghost width from the numerics
